@@ -1021,4 +1021,161 @@ mod tests {
         );
         assert!(cond_matches);
     }
+
+    // =====================================================================
+    // ETB pipeline integration — `after_enter_battlefield` fires at every
+    // real ETB path (move_object_to_zone, finalize_resolved_spell,
+    // create_token, copy_permanent) and folds in global ETB-event
+    // replacements.
+    // =====================================================================
+
+    /// Register a global "every creature enters tapped" replacement
+    /// against a stand-in source id.
+    fn install_global_enter_tapped(s: &mut GameState) {
+        s.add_replacement_effect(base_effect(
+            /*source=*/ 999,
+            ReplacementCondition::WouldEnterBattlefield {
+                object_filter: ObjectFilter::creature(),
+            },
+            ReplacementKind::EtbTapped,
+        ));
+    }
+
+    /// Register a global "every creature enters with an extra +1/+1
+    /// counter" ETB-event replacement. NOT Hardened Scales — this is
+    /// an ETB-event-level rewrite, not a counter-placement-level one.
+    /// See `modular_plus_hardened_scales_yields_four_counters` for the
+    /// canonical distinction.
+    fn install_global_etb_counter(s: &mut GameState) {
+        s.add_replacement_effect(base_effect(
+            /*source=*/ 999,
+            ReplacementCondition::WouldEnterBattlefield {
+                object_filter: ObjectFilter::creature(),
+            },
+            ReplacementKind::EtbWithCounters {
+                kind: CounterKind::PlusOnePlusOne,
+                count: 1,
+            },
+        ));
+    }
+
+    #[test]
+    fn etb_via_move_object_to_zone_applies_enter_tapped() {
+        let mut s = GameState::new(2, 0);
+        install_global_enter_tapped(&mut s);
+        let c = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            c, 0, Zone::Graveyard(0), 1, creature_chars(2, 2)));
+        let new_id = s.move_object_to_zone(
+            c, Zone::Battlefield,
+            crate::events::MoveCause::SpellResolution,
+        ).unwrap();
+        assert!(s.objects.get(new_id).unwrap().is_tapped(),
+            "graveyard → battlefield path should honor global EtbTapped");
+        assert!(s.objects.get(new_id).unwrap().status.summoning_sick,
+            "unified after_enter_battlefield sets summoning sickness");
+    }
+
+    #[test]
+    fn etb_via_move_object_to_zone_applies_counters() {
+        let mut s = GameState::new(2, 0);
+        install_global_etb_counter(&mut s);
+        let c = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            c, 0, Zone::Hand(0), 1, creature_chars(2, 2)));
+        let new_id = s.move_object_to_zone(
+            c, Zone::Battlefield,
+            crate::events::MoveCause::SpellResolution,
+        ).unwrap();
+        assert_eq!(
+            s.objects.get(new_id).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            1,
+            "global ETB-event counter replacement should add a counter"
+        );
+    }
+
+    #[test]
+    fn etb_via_finalize_resolved_spell_applies_enter_tapped() {
+        use crate::targets::TargetSelection;
+        let mut s = GameState::new(2, 0);
+        install_global_enter_tapped(&mut s);
+        let c = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            c, 0, Zone::Hand(0), 1, creature_chars(2, 2)));
+        let stack_id = s.announce_spell_on_stack(
+            c, 0, TargetSelection::new(), vec![], None);
+        let entry = s.pop_stack_entry().unwrap();
+        assert_eq!(entry.id, stack_id);
+        s.finalize_resolved_spell(entry);
+        let bf = s.objects.objects_in_zone(Zone::Battlefield).next().unwrap();
+        assert!(bf.is_tapped(), "cast path should honor global EtbTapped");
+        assert!(bf.status.summoning_sick);
+    }
+
+    #[test]
+    fn etb_via_create_token_applies_enter_tapped() {
+        let mut s = GameState::new(2, 0);
+        install_global_enter_tapped(&mut s);
+        let def = crate::effects::TokenDefinition {
+            name: 0,
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            subtypes: crate::types::SubtypeSet::default(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: Vec::new(),
+            abilities: Vec::new(),
+        };
+        crate::effects::Effect::CreateToken {
+            controller: 0, token: def,
+        }.execute(&mut s);
+        let tok = s.objects.objects_in_zone(Zone::Battlefield).next().unwrap();
+        assert!(tok.is_tapped(),
+            "tokens should also go through the ETB replacement pipeline");
+        assert!(tok.status.summoning_sick);
+    }
+
+    #[test]
+    fn etb_via_copy_permanent_applies_enter_tapped() {
+        let mut s = GameState::new(2, 0);
+        // Source creature already on the battlefield (pre-existing).
+        let src = put_creature(&mut s, 0, 2, 2);
+        // Install the global replacement AFTER putting the source out
+        // so that `src` itself isn't double-counted.
+        install_global_enter_tapped(&mut s);
+        crate::effects::Effect::CopyPermanent { target: src }.execute(&mut s);
+        let bf_tapped: Vec<_> = s.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.is_tapped()).collect();
+        assert_eq!(bf_tapped.len(), 1,
+            "the copy enters tapped; the pre-existing source is untapped");
+    }
+
+    /// Canonical trap case from the Phase 2 ETB design discussion:
+    /// Modular N + Hardened Scales should produce N+1 +1/+1 counters.
+    ///
+    /// Modular is a card-inherent self-replacement: "this enters with
+    /// N +1/+1 counters on it" (CR 614.1c / 614.13). When that
+    /// self-replacement applies, it generates a *would place counters*
+    /// event, which is itself subject to counter-placement
+    /// replacements. Hardened Scales is a counter-placement
+    /// replacement: "if one or more +1/+1 counters would be placed on
+    /// a creature you control, that many plus one are placed instead."
+    ///
+    /// These are two distinct pipelines, and conflating them into one
+    /// ETB-event pipeline produces the right answer for N=3 only by
+    /// id-order accident; it breaks the moment two non-self ETB
+    /// replacements actually collide.
+    ///
+    /// This test is ignored until the counter-placement replacement
+    /// pipeline lands. It also implies card-inherent self-replacement
+    /// representation (Modular itself), which requires per-card
+    /// replacement hooks on `CardDefinition` — also Phase 3 work.
+    #[test]
+    #[ignore = "requires counter-placement replacement pipeline (Phase 2+) \
+                and card-inherent self-replacement representation (Phase 3)"]
+    fn modular_plus_hardened_scales_yields_four_counters() {
+        // See doc comment above. Placeholder to keep the gap visible.
+        unimplemented!("counter-placement pipeline not yet implemented");
+    }
 }

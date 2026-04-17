@@ -341,6 +341,51 @@ impl GameState {
         self.lki.clear();
     }
 
+    // --- ETB lifecycle hook -------------------------------------------------
+
+    /// Unified ETB lifecycle hook. Every code path that puts a fresh
+    /// object onto the battlefield under a newly allocated id must
+    /// call this just after the arena insert and just before the
+    /// [`GameEvent::EntersBattlefield`] (or analogous) is emitted.
+    ///
+    /// Responsibilities, in this order:
+    /// 1. Fold in ETB-event replacements
+    ///    ([`crate::replacement::ReplacementKind::EtbTapped`],
+    ///    [`crate::replacement::ReplacementKind::EtbWithCounters`])
+    ///    gathered from [`Self::collect_etb_replacements`]. These
+    ///    rewrite the entry itself — counters added, tap flag set.
+    /// 2. Set summoning sickness for creatures and planeswalkers
+    ///    (CR 302.1 / 306.5b).
+    ///
+    /// # Scope
+    ///
+    /// *Only* handles ETB-event replacements. Downstream replacements
+    /// that fire on events produced BY the ETB (notably the counter-
+    /// placement pipeline — Hardened Scales, Doubling Season, Winding
+    /// Constrictor) belong to a separate hook tied to counter
+    /// placement. See the `modular_plus_hardened_scales_yields_four_counters`
+    /// test marker for the canonical trap.
+    ///
+    /// Card-inherent self-replacements (Modular's "enters with N
+    /// counters", Clone's "enters as a copy", Battles' defense
+    /// counters, Planeswalkers' starting loyalty) require per-card
+    /// replacement effects to live on the `CardDefinition` — that's
+    /// Phase 3 work and out of scope here.
+    pub fn after_enter_battlefield(&mut self, id: ObjectId) {
+        let replacements = self.collect_etb_replacements(id);
+        if let Some(obj) = self.objects.get_mut(id) {
+            for (kind, count) in &replacements.additional_counters {
+                obj.add_counters(*kind, *count);
+            }
+            if replacements.enter_tapped {
+                obj.tap();
+            }
+            if obj.is_creature() || obj.is_planeswalker() {
+                obj.status.summoning_sick = true;
+            }
+        }
+    }
+
     // --- zone changes --------------------------------------------------------
 
     /// Move `id` from its current zone to `destination`. Handles the
@@ -375,11 +420,11 @@ impl GameState {
         destination: Zone,
         cause: crate::events::MoveCause,
     ) -> Option<ObjectId> {
-        let Some(obj) = self.objects.get(id) else { return None; };
-        let from = obj.zone;
+        let from = self.objects.get(id)?.zone;
         if from == destination { return None; }
 
-        let was_creature_or_pw = obj.is_creature() || obj.is_planeswalker();
+        let was_creature_or_pw = self.objects.get(id).map_or(false,
+            |o| o.is_creature() || o.is_planeswalker());
         let from_battlefield = from.is_battlefield();
         let to_graveyard = matches!(destination, Zone::Graveyard(_));
         let to_exile = destination.is_exile();
@@ -391,16 +436,71 @@ impl GameState {
             });
         }
 
-        // Maintain library ordering: if leaving a library, drop the old id.
+        let (new_id, from) = self.swap_to_zone_reid(id, destination)?;
+
+        self.emit(GameEvent::ZoneChange {
+            object_id: id, from, to: destination, new_id, cause,
+        });
+        if from_battlefield && to_graveyard && was_creature_or_pw {
+            self.emit(GameEvent::Dies { object_id: id });
+        }
+        if to_graveyard {
+            self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
+        } else if to_exile {
+            self.emit(GameEvent::Exiled { object_id: new_id, from });
+        } else if to_battlefield {
+            // Fold ETB-event replacements and summoning sickness in
+            // BEFORE the event fires so trigger matchers see the
+            // final state of the entering permanent.
+            self.after_enter_battlefield(new_id);
+            self.emit(GameEvent::EntersBattlefield {
+                object_id: new_id, from_zone: from, was_cast: false,
+            });
+        }
+
+        Some(new_id)
+    }
+
+    /// Arena re-id core shared by [`Self::move_object_to_zone`] and
+    /// [`crate::stack::GameState::finalize_resolved_spell`] (and any
+    /// other future path that performs a CR 400.7 zone transition
+    /// needing a fresh [`ObjectId`]).
+    ///
+    /// Responsibilities:
+    /// - pull the object out of the arena under the old id
+    /// - scrub bidirectional attachment links that referenced the old id
+    /// - drop the old id from the owning library's ordering (if leaving
+    ///   a library)
+    /// - snapshot the pre-move object into [`Self::lki`]
+    /// - allocate a fresh id, reset per-zone fields, and re-insert
+    /// - append the new id to the destination library's ordering (if
+    ///   entering a library)
+    /// - reset controller to owner when the destination is NOT the
+    ///   battlefield; for battlefield destinations the caller is
+    ///   responsible for setting the post-move controller before the
+    ///   [`Self::after_enter_battlefield`] hook runs
+    ///
+    /// Does NOT emit events and does NOT call
+    /// [`Self::after_enter_battlefield`] — event emission and the ETB
+    /// hook are caller-specific (spell-cast was_cast, token creation,
+    /// etc.). Returns `(new_id, from_zone)` or `None` if the object
+    /// doesn't exist or already is in `destination`.
+    pub(crate) fn swap_to_zone_reid(
+        &mut self,
+        id: ObjectId,
+        destination: Zone,
+    ) -> Option<(ObjectId, Zone)> {
+        let from = self.objects.get(id)?.zone;
+        if from == destination { return None; }
+
         if let Zone::Library(p) = from {
             let lib = &mut self.player_mut(p).library_top_to_bottom;
             lib.retain(|&o| o != id);
         }
 
-        // Pull the object out of the arena, snapshot it as LKI, then
-        // re-insert under a fresh id with its per-zone fields reset.
         let mut obj = self.objects.remove(id)
-            .expect("move_object_to_zone: object vanished between lookup and remove");
+            .expect("swap_to_zone_reid: object vanished between lookup and remove");
+
         // Attachments are maintained bidirectionally; if this object
         // had an `attached_to`, `reset_on_zone_change` clears it but
         // the target's `attachments` vec still references the old id.
@@ -421,38 +521,20 @@ impl GameState {
         obj.id = new_id;
         obj.zone = destination;
         obj.reset_on_zone_change();
-        // Controller defaults back to owner on zone change unless the
-        // caller adjusts it post-move (CR 110.2a — a permanent's
-        // controller is the player who put it onto the battlefield;
-        // elsewhere, its controller equals its owner).
-        if !to_battlefield {
+        // Controller reverts to owner everywhere except the
+        // battlefield (CR 110.2a). Callers that want a specific
+        // battlefield controller set it on the returned new_id
+        // before calling [`Self::after_enter_battlefield`].
+        if !destination.is_battlefield() {
             obj.controller = obj.owner;
         }
         self.objects.insert(obj);
 
-        // Library ordering: append to the destination library's bottom
-        // under the NEW id.
         if let Zone::Library(p) = destination {
             self.player_mut(p).library_top_to_bottom.push(new_id);
         }
 
-        self.emit(GameEvent::ZoneChange {
-            object_id: id, from, to: destination, new_id, cause,
-        });
-        if from_battlefield && to_graveyard && was_creature_or_pw {
-            self.emit(GameEvent::Dies { object_id: id });
-        }
-        if to_graveyard {
-            self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
-        } else if to_exile {
-            self.emit(GameEvent::Exiled { object_id: new_id, from });
-        } else if to_battlefield {
-            self.emit(GameEvent::EntersBattlefield {
-                object_id: new_id, from_zone: from, was_cast: false,
-            });
-        }
-
-        Some(new_id)
+        Some((new_id, from))
     }
 
     // --- library ordering / drawing ----------------------------------------

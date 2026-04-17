@@ -347,26 +347,19 @@ impl GameState {
         modes: Vec<ModeChoice>,
         x_value: Option<u32>,
     ) -> ObjectId {
-        // CR 400.7: the card becomes a new object on the stack. We
-        // remove it from the arena, snapshot its pre-cast state as
-        // LKI, allocate a fresh id, and reinsert under that id.
-        let mut obj = self.objects.remove(object_id)
-            .unwrap_or_else(|| panic!(
-                "announce_spell_on_stack: object {object_id} not in arena"));
-        let from = obj.zone;
-        let card_id = obj.card_id;
-        self.lki.insert(object_id, obj.clone());
+        if !self.objects.contains(object_id) {
+            panic!("announce_spell_on_stack: object {object_id} not in arena");
+        }
+        let (new_id, from) = self.swap_to_zone_reid(object_id, Zone::Stack)
+            .expect("announce_spell_on_stack: swap_to_zone_reid returned None");
 
-        let new_id = self.allocate_object_id();
-        obj.id = new_id;
-        obj.zone = Zone::Stack;
-        obj.controller = controller;
-        // Stack objects don't carry per-zone status (tapped, sick, etc.)
-        obj.reset_on_zone_change();
-        let characteristics = obj.characteristics.clone();
-        self.objects.insert(obj);
+        // Caster controls the spell while it's on the stack.
+        let (card_id, characteristics) = {
+            let obj = self.objects.get_mut(new_id).unwrap();
+            obj.controller = controller;
+            (obj.card_id, obj.characteristics.clone())
+        };
 
-        // Build and push the stack entry using the new id.
         let entry = StackEntry::new_spell(
             new_id, controller, card_id, characteristics,
             targets, modes, x_value,
@@ -476,34 +469,28 @@ impl GameState {
         let StackEntry { id, controller, .. } = entry;
         let chars = entry.characteristics().cloned().unwrap_or_else(||
             panic!("finalize_resolved_spell: entry {id} is not a spell"));
-
-        // Pull the object out of the arena; owner decides graveyard
-        // routing for instants/sorceries.
-        let mut obj = self.objects.remove(id)
+        let owner = self.objects.get(id)
             .unwrap_or_else(|| panic!(
-                "finalize_resolved_spell: object {id} vanished from arena"));
-        let from = obj.zone;
-        let owner = obj.owner;
+                "finalize_resolved_spell: object {id} vanished from arena"))
+            .owner;
         let destination = if chars.is_permanent() {
             Zone::Battlefield
         } else {
             Zone::Graveyard(owner)
         };
-        // Snapshot the stack-side object as LKI before we reassign the id.
-        self.lki.insert(id, obj.clone());
 
-        let new_id = self.allocate_object_id();
-        obj.id = new_id;
-        obj.zone = destination;
+        let (new_id, from) = self.swap_to_zone_reid(id, destination)
+            .expect("finalize_resolved_spell: swap_to_zone_reid returned None");
+
+        // For battlefield entries the caster becomes the controller
+        // (CR 110.2a). Set it before the ETB hook runs so replacement
+        // effects that key off "controlled by you" see the right
+        // player.
         if destination == Zone::Battlefield {
-            obj.controller = controller;
-            obj.status = crate::types::PermanentStatus::default();
-            obj.status.summoning_sick = true;
-        } else {
-            obj.reset_on_zone_change();
-            obj.controller = owner;
+            if let Some(obj) = self.objects.get_mut(new_id) {
+                obj.controller = controller;
+            }
         }
-        self.objects.insert(obj);
 
         self.emit(GameEvent::ZoneChange {
             object_id: id,
@@ -514,6 +501,7 @@ impl GameState {
         });
 
         if destination == Zone::Battlefield {
+            self.after_enter_battlefield(new_id);
             self.emit(GameEvent::EntersBattlefield {
                 object_id: new_id,
                 from_zone: from,
@@ -527,9 +515,7 @@ impl GameState {
         }
 
         // `SpellResolved` references the stack-entry id so consumers
-        // can correlate it with the preceding `SpellCast` event. The
-        // stack entry is the spell-as-it-resolved, not the post-move
-        // object.
+        // can correlate it with the preceding `SpellCast` event.
         self.emit(GameEvent::SpellResolved { object_id: id });
     }
 
@@ -558,20 +544,14 @@ impl GameState {
     pub fn counter_resolved_spell(&mut self, entry: StackEntry) {
         assert!(entry.is_spell(), "counter_resolved_spell requires a spell entry");
         let id = entry.id;
-        let mut obj = self.objects.remove(id)
+        let owner = self.objects.get(id)
             .unwrap_or_else(|| panic!(
-                "counter_resolved_spell: object {id} vanished from arena"));
-        let from = obj.zone;
-        let owner = obj.owner;
+                "counter_resolved_spell: object {id} vanished from arena"))
+            .owner;
         let destination = Zone::Graveyard(owner);
-        self.lki.insert(id, obj.clone());
 
-        let new_id = self.allocate_object_id();
-        obj.id = new_id;
-        obj.zone = destination;
-        obj.reset_on_zone_change();
-        obj.controller = owner;
-        self.objects.insert(obj);
+        let (new_id, from) = self.swap_to_zone_reid(id, destination)
+            .expect("counter_resolved_spell: swap_to_zone_reid returned None");
 
         self.emit(GameEvent::ZoneChange {
             object_id: id,

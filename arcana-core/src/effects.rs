@@ -1083,13 +1083,20 @@ fn create_token(
 ) {
     if !valid_player(state, controller) { return; }
     let id = state.allocate_object_id();
-    let mut obj = GameObject::new(
+    // Token owner = controller (CR 110.5a — "the player who created
+    // a token is that token's owner"). We're minting a new object so
+    // there's no upstream from-zone; use Stack as the conventional
+    // pretend-origin for the ETB event, matching the cast path.
+    let obj = GameObject::new(
         id, controller, Zone::Battlefield, /*card_id=*/ 0,
         token.to_characteristics(),
     );
-    obj.status.summoning_sick = true;
     state.objects.insert(obj);
     state.emit(GameEvent::TokenCreated { object_id: id, controller });
+    // Tokens are fair game for global ETB replacements (Hardened
+    // Scales, enter-tapped fields, etc.); route through the same
+    // hook the cast/SBA paths use.
+    state.after_enter_battlefield(id);
     state.emit(GameEvent::EntersBattlefield {
         object_id: id, from_zone: Zone::Stack, was_cast: false,
     });
@@ -1194,14 +1201,14 @@ fn copy_spell_on_stack(state: &mut GameState, target: ObjectId) {
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
     let Some(src) = state.objects.get(target).cloned() else { return; };
     let id = state.allocate_object_id();
-    let mut token = GameObject::new(
+    let token = GameObject::new(
         id, src.controller, Zone::Battlefield, /*card_id=*/ 0,
         src.characteristics.clone(),
     );
-    token.status.summoning_sick = true;
     state.objects.insert(token);
     state.emit(GameEvent::TokenCreated { object_id: id, controller: src.controller });
     state.emit(GameEvent::CopyCreated { object_id: id, copying: target });
+    state.after_enter_battlefield(id);
     state.emit(GameEvent::EntersBattlefield {
         object_id: id, from_zone: Zone::Stack, was_cast: false,
     });

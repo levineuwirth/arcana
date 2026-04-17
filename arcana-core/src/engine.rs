@@ -343,16 +343,18 @@ fn apply_play_land(state: &mut GameState, object_id: ObjectId) {
     let controller = state.priority_player();
     state.player_mut(controller).land_plays_remaining =
         state.player(controller).land_plays_remaining.saturating_sub(1);
-    // Land play is NOT a spell — no stack entry. Direct ETB.
-    state.move_object_to_zone(object_id, Zone::Battlefield, MoveCause::PlayLand);
-    // Set controller explicitly (owner != controller is possible for
-    // some edge cases; for Play Land the active player takes control).
-    if let Some(obj) = state.objects.get_mut(object_id) {
+    // Land play is NOT a spell — no stack entry. Direct ETB. Re-id
+    // on the move means we must address the post-move object via the
+    // returned new id.
+    let Some(new_id) = state.move_object_to_zone(
+        object_id, Zone::Battlefield, MoveCause::PlayLand) else {
+        state.priority.record_action();
+        return;
+    };
+    // CR 305.2 — playing a land gives control of it to the player
+    // who played it.
+    if let Some(obj) = state.objects.get_mut(new_id) {
         obj.controller = controller;
-        // Lands don't have summoning sickness for mana purposes
-        // (CR 302.1 / 305.4), but we set the flag consistently; it
-        // only matters for creature attacks anyway.
-        obj.status.summoning_sick = true;
     }
     state.priority.record_action();
 }
