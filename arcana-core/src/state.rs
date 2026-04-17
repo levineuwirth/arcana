@@ -134,6 +134,21 @@ pub struct GameState {
     /// takes and applies it to the answered ids. `None` is valid when
     /// the PickCards handler is hardcoded (e.g. Legend-rule SBA).
     pub pending_choice_follow_up: Option<crate::actions::ChoiceFollowUp>,
+    /// Last-known-information table (CR 603.10 / 400.7). When an
+    /// object changes zones it becomes a new object with a new
+    /// [`ObjectId`]; any ability that must "look back" at the
+    /// pre-transition state (dies triggers, leaves-the-battlefield
+    /// triggers, "exile the attacking creature" delayed triggers,
+    /// replacement-effect classification) reads from this map keyed
+    /// by the old id.
+    ///
+    /// Populated by [`Self::move_object_to_zone`] just before the
+    /// arena swaps in the re-id'd object. Cleared at the top of each
+    /// trigger-sweep iteration in
+    /// [`crate::engine::run_sba_and_triggers`] — one full SBA+trigger
+    /// pass is the CR-mandated retention window for LKI used by
+    /// triggers that watch zone changes.
+    pub lki: HashMap<ObjectId, GameObject>,
 }
 
 impl GameState {
@@ -181,6 +196,7 @@ impl GameState {
             pending_resolution: None,
             currently_resolving: None,
             pending_choice_follow_up: None,
+            lki: HashMap::new(),
         }
     }
 
@@ -293,19 +309,64 @@ impl GameState {
         self.players.iter().map(|p| p.life).collect()
     }
 
+    // --- last-known information (CR 603.10 / 400.7) ------------------------
+
+    /// Snapshot `obj` into [`Self::lki`] under its current id. Called
+    /// by [`Self::move_object_to_zone`] right before the object is
+    /// removed from the arena and re-inserted under a fresh id.
+    pub fn store_lki(&mut self, obj: GameObject) {
+        self.lki.insert(obj.id, obj);
+    }
+
+    /// Fetch the LKI snapshot for `id`, if any. Used by trigger
+    /// matching, replacement-effect classification, and any other code
+    /// path that needs the pre-transition characteristics of an object
+    /// that has already moved zones.
+    pub fn lki(&self, id: ObjectId) -> Option<&GameObject> {
+        self.lki.get(&id)
+    }
+
+    /// Live arena entry first; LKI snapshot as fallback. Preferred
+    /// lookup for code that doesn't care whether the object is still
+    /// in its original zone or has moved on (e.g. dies-trigger scan).
+    pub fn object_or_lki(&self, id: ObjectId) -> Option<&GameObject> {
+        self.objects.get(id).or_else(|| self.lki(id))
+    }
+
+    /// Clear the LKI table. Called at the top of each settle pass in
+    /// [`crate::engine::run_sba_and_triggers`] — one SBA-plus-trigger
+    /// sweep is the retention window CR requires for leaves-the-
+    /// battlefield triggers.
+    pub fn clear_lki(&mut self) {
+        self.lki.clear();
+    }
+
     // --- zone changes --------------------------------------------------------
 
     /// Move `id` from its current zone to `destination`. Handles the
     /// full event cascade per CR 400.7:
     /// - emits [`GameEvent::LeavesBattlefield`] if coming off the field
-    /// - emits [`GameEvent::ZoneChange`]
+    /// - emits [`GameEvent::ZoneChange`] carrying both the old id and
+    ///   the freshly allocated `new_id`
     /// - emits one of [`GameEvent::Dies`] /
     ///   [`GameEvent::PutIntoGraveyard`] / [`GameEvent::Exiled`] /
     ///   [`GameEvent::EntersBattlefield`] as appropriate
+    /// - snapshots the pre-move object into [`Self::lki`] under the old
+    ///   id so dies-triggers and leaves-battlefield triggers can look
+    ///   back at its characteristics
     /// - resets transient per-zone fields (counters, damage, tapped,
     ///   attachments) via [`crate::objects::GameObject::reset_on_zone_change`]
     ///
-    /// No-op if `id` doesn't exist or is already in `destination`.
+    /// Per CR 400.7 the object becomes a new object with a fresh
+    /// [`ObjectId`] when it changes zones. This function performs that
+    /// re-id and returns the new id. Events about something *leaving*
+    /// (`LeavesBattlefield`, `Dies`, `ZoneChange::object_id`) carry
+    /// the OLD id; events about something *arriving*
+    /// (`EntersBattlefield`, `PutIntoGraveyard`, `Exiled`,
+    /// `ZoneChange::new_id`) carry the NEW id.
+    ///
+    /// Returns `None` if `id` doesn't exist or is already in
+    /// `destination` (no move happened). Otherwise returns `Some(new_id)`.
     /// This is the canonical zone-mover — combat, effects, and SBAs
     /// all route through it.
     pub fn move_object_to_zone(
@@ -313,10 +374,10 @@ impl GameState {
         id: ObjectId,
         destination: Zone,
         cause: crate::events::MoveCause,
-    ) {
-        let Some(obj) = self.objects.get(id) else { return; };
+    ) -> Option<ObjectId> {
+        let Some(obj) = self.objects.get(id) else { return None; };
         let from = obj.zone;
-        if from == destination { return; }
+        if from == destination { return None; }
 
         let was_creature_or_pw = obj.is_creature() || obj.is_planeswalker();
         let from_battlefield = from.is_battlefield();
@@ -330,38 +391,68 @@ impl GameState {
             });
         }
 
-        // Maintain library ordering: if leaving a library, remove from
-        // the owner's library order; if entering one, append to the bottom.
-        // Callers wanting top-of-library placement (Brainstorm) should
-        // use [`put_on_top_of_library`] after the move.
+        // Maintain library ordering: if leaving a library, drop the old id.
         if let Zone::Library(p) = from {
             let lib = &mut self.player_mut(p).library_top_to_bottom;
             lib.retain(|&o| o != id);
         }
 
-        let obj_mut = self.objects.get_mut(id).unwrap();
-        obj_mut.zone = destination;
-        obj_mut.reset_on_zone_change();
+        // Pull the object out of the arena, snapshot it as LKI, then
+        // re-insert under a fresh id with its per-zone fields reset.
+        let mut obj = self.objects.remove(id)
+            .expect("move_object_to_zone: object vanished between lookup and remove");
+        // Attachments are maintained bidirectionally; if this object
+        // had an `attached_to`, `reset_on_zone_change` clears it but
+        // the target's `attachments` vec still references the old id.
+        // Clean that up before we lose the old id.
+        if let Some(host) = obj.attached_to {
+            if let Some(host_obj) = self.objects.get_mut(host) {
+                host_obj.attachments.retain(|&a| a != id);
+            }
+        }
+        for &child in obj.attachments.clone().iter() {
+            if let Some(child_obj) = self.objects.get_mut(child) {
+                child_obj.attached_to = None;
+            }
+        }
+        self.store_lki(obj.clone());
 
+        let new_id = self.allocate_object_id();
+        obj.id = new_id;
+        obj.zone = destination;
+        obj.reset_on_zone_change();
+        // Controller defaults back to owner on zone change unless the
+        // caller adjusts it post-move (CR 110.2a — a permanent's
+        // controller is the player who put it onto the battlefield;
+        // elsewhere, its controller equals its owner).
+        if !to_battlefield {
+            obj.controller = obj.owner;
+        }
+        self.objects.insert(obj);
+
+        // Library ordering: append to the destination library's bottom
+        // under the NEW id.
         if let Zone::Library(p) = destination {
-            self.player_mut(p).library_top_to_bottom.push(id);
+            self.player_mut(p).library_top_to_bottom.push(new_id);
         }
 
         self.emit(GameEvent::ZoneChange {
-            object_id: id, from, to: destination, new_id: id, cause,
+            object_id: id, from, to: destination, new_id, cause,
         });
         if from_battlefield && to_graveyard && was_creature_or_pw {
             self.emit(GameEvent::Dies { object_id: id });
         }
         if to_graveyard {
-            self.emit(GameEvent::PutIntoGraveyard { object_id: id, from });
+            self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
         } else if to_exile {
-            self.emit(GameEvent::Exiled { object_id: id, from });
+            self.emit(GameEvent::Exiled { object_id: new_id, from });
         } else if to_battlefield {
             self.emit(GameEvent::EntersBattlefield {
-                object_id: id, from_zone: from, was_cast: false,
+                object_id: new_id, from_zone: from, was_cast: false,
             });
         }
+
+        Some(new_id)
     }
 
     // --- library ordering / drawing ----------------------------------------

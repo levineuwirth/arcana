@@ -487,7 +487,8 @@ mod tests {
         // Put a -1/-1 counter on it → effective toughness 0.
         s.objects.get_mut(c).unwrap().add_counters(CounterKind::MinusOneMinusOne, 1);
         apply_state_based_actions(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
         assert!(s.event_log.iter().any(|e| matches!(e,
             GameEvent::Dies { object_id } if *object_id == c)));
     }
@@ -498,7 +499,9 @@ mod tests {
         let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
         s.objects.get_mut(c).unwrap().mark_damage(2);
         apply_state_based_actions(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert!(s.event_log.iter().any(|e| matches!(e,
+            GameEvent::Dies { object_id } if *object_id == c)));
     }
 
     #[test]
@@ -555,7 +558,8 @@ mod tests {
             },
         });
         apply_state_based_actions(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
     }
 
     // --- 704.5i: planeswalker ----------------------------------------------
@@ -565,7 +569,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let pw = put_pw(&mut s, 0, 0);
         apply_state_based_actions(&mut s);
-        assert_eq!(s.objects.get(pw).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|e| matches!(e,
             GameEvent::Dies { object_id } if *object_id == pw)));
     }
@@ -713,7 +717,8 @@ mod tests {
         s.objects.get_mut(c).unwrap().add_counters(CounterKind::MinusOneMinusOne, 2);
         // Base (1) + 1 − 2 = 0 toughness after annihilation.
         apply_state_based_actions(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
     }
 
     // --- has_pending_state_based_actions -----------------------------------
@@ -735,7 +740,9 @@ mod tests {
         let bear = put_creature(&mut s, 1, Zone::Battlefield, 2, 2);
         s.deal_damage(99, crate::events::DamageTarget::Object(bear), 3, false);
         apply_state_based_actions(&mut s);
-        assert_eq!(s.objects.get(bear).unwrap().zone, Zone::Graveyard(1));
+        assert_eq!(s.zone_count(Zone::Graveyard(1)), 1);
+        assert!(s.event_log.iter().any(|e| matches!(e,
+            GameEvent::Dies { object_id } if *object_id == bear)));
     }
 
     #[test]

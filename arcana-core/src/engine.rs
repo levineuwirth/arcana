@@ -650,17 +650,13 @@ fn apply_choice_follow_up(
             destination, reveal, shuffle_library_owner,
         } => {
             for id in chosen {
-                state.move_object_to_zone(
+                let new_id = state.move_object_to_zone(
                     *id, destination, MoveCause::SpellResolution);
                 if reveal {
-                    let owner = state.objects.get(*id).map(|o| o.owner);
-                    if let Some(o) = owner {
+                    if let Some(visible_id) = new_id {
                         for p in 0..state.num_players() {
-                            state.player_mut(p).known_cards.insert(*id);
+                            state.player_mut(p).known_cards.insert(visible_id);
                         }
-                        // A self-reveal suffices — `known_cards` tracks
-                        // per-player visibility.
-                        let _ = o;
                     }
                 }
             }
@@ -672,13 +668,18 @@ fn apply_choice_follow_up(
             controller, tapped, shuffle_library_owner,
         } => {
             for id in chosen {
+                // Set controller pre-move so the move preserves it on
+                // entry to the battlefield.
                 if let Some(obj) = state.objects.get_mut(*id) {
                     obj.controller = controller;
                 }
-                state.move_object_to_zone(
+                let new_id = state.move_object_to_zone(
                     *id, Zone::Battlefield, MoveCause::SpellResolution);
-                if tapped {
-                    let _ = state.objects.get_mut(*id).map(|o| o.tap());
+                if let Some(bf_id) = new_id {
+                    if let Some(obj) = state.objects.get_mut(bf_id) {
+                        obj.controller = controller;
+                        if tapped { obj.tap(); }
+                    }
                 }
             }
             if let Some(p) = shuffle_library_owner {
@@ -696,8 +697,11 @@ fn apply_choice_follow_up(
         }
         ChoiceFollowUp::Discard { player } => {
             for id in chosen {
-                state.move_object_to_zone(
+                let _ = state.move_object_to_zone(
                     *id, Zone::Graveyard(player), MoveCause::Cost);
+                // `Discarded` refers to the pre-move id — that matches
+                // the old behavior and is what trigger filters compare
+                // against via LKI.
                 state.emit(GameEvent::Discarded { player, object_id: *id });
             }
         }
@@ -921,7 +925,7 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
     for _ in 0..MAX_SETTLE_ITERATIONS {
         // 1. SBAs — CR 704.3.
         apply_state_based_actions(state);
-        if state.is_game_over() { return; }
+        if state.is_game_over() { state.clear_lki(); return; }
 
         // 2. Collect triggers from events since the last scan. We
         //    snapshot the cursor, advance it to the current tail, and
@@ -934,6 +938,7 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
         let end = state.event_log.len();
         if start == end {
             // Nothing new happened; scanner has nothing to do.
+            state.clear_lki();
             return;
         }
         let new_events: Vec<crate::events::GameEvent> =
@@ -941,6 +946,12 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
         state.trigger_event_cursor = end;
 
         let pending = collect_pending_triggers(state, registry, &new_events);
+
+        // LKI served this pass's trigger scan; drop it before we
+        // head into the next iteration's SBAs so subsequent moves
+        // don't accumulate on top of stale entries.
+        state.clear_lki();
+
         if pending.is_empty() { return; }
 
         // 3. Push each pending trigger as a TriggeredAbility stack
@@ -984,15 +995,23 @@ fn collect_pending_triggers(
 ) -> Vec<crate::triggers::PendingTrigger> {
     let mut pending: Vec<crate::triggers::PendingTrigger> = Vec::new();
 
-    // 1. Registered permanents' triggers. Snapshot ids first so we
-    //    don't hold a borrow into `state.objects` while iterating.
-    let permanent_ids: Vec<(ObjectId, crate::types::CardId, PlayerId)> =
+    // 1. Registered triggers from permanents currently in a zone that
+    //    can produce triggers, PLUS last-known-information snapshots
+    //    of objects that already moved this sweep. LKI makes dies /
+    //    leaves-the-battlefield triggers fire for the OLD id the
+    //    event carries, per CR 603.10 / 400.7. We snapshot first so
+    //    we don't hold a borrow while iterating.
+    let mut trigger_sources: Vec<(ObjectId, crate::types::CardId, PlayerId)> =
         state.objects.iter()
             .map(|o| (o.id, o.card_id, o.controller))
             .collect();
+    // LKI entries are keyed by the pre-move id — which is the id the
+    // leaving/dying events carry — so their triggers correctly match.
+    trigger_sources.extend(
+        state.lki.iter().map(|(id, o)| (*id, o.card_id, o.controller)));
 
     for event in events {
-        for &(source, card_id, controller) in &permanent_ids {
+        for &(source, card_id, controller) in &trigger_sources {
             let Some(def) = registry.get(card_id) else { continue; };
             for ability in &def.triggered_abilities {
                 if let Some(pt) = ability.should_fire(
@@ -2175,9 +2194,9 @@ mod resolution_choice_framework_tests {
     fn legend_rule_agent_picks_keeper_rest_sacrificed() {
         use crate::zones::Zone;
         let mut s = GameState::new(2, 0);
-        let a = put_legendary_creature(&mut s, 0, 42);
+        let _a = put_legendary_creature(&mut s, 0, 42);
         let b = put_legendary_creature(&mut s, 0, 42);
-        let c = put_legendary_creature(&mut s, 0, 42);
+        let _c = put_legendary_creature(&mut s, 0, 42);
 
         crate::sba::apply_state_based_actions(&mut s);
 
@@ -2188,10 +2207,12 @@ mod resolution_choice_framework_tests {
             ChoiceResponse::PickCards { picked: vec![b] });
 
         assert!(s.pending_choice.is_none());
+        // `b` didn't move, so its id is stable. `a` and `c` re-id'd
+        // on the way to the graveyard.
         assert_eq!(s.objects.get(b).unwrap().zone, Zone::Battlefield,
             "chosen keeper stays in play");
-        assert_eq!(s.objects.get(a).unwrap().zone, Zone::Graveyard(0));
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Battlefield), 1);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 2);
     }
 
     /// Two simultaneous legend conflicts (different names) produce two
@@ -2235,10 +2256,14 @@ mod resolution_choice_framework_tests {
             ChoiceResponse::PickCards { picked: vec![b2] });
 
         assert!(s.pending_choice.is_none());
+        // Survivors (a1, b2) did not move → ids stable. a2 and b1
+        // re-id'd on their way to their graveyards.
         assert_eq!(s.objects.get(a1).unwrap().zone, Zone::Battlefield);
-        assert_eq!(s.objects.get(a2).unwrap().zone, Zone::Graveyard(0));
-        assert_eq!(s.objects.get(b1).unwrap().zone, Zone::Graveyard(0));
         assert_eq!(s.objects.get(b2).unwrap().zone, Zone::Battlefield);
+        assert!(s.objects.get(a2).is_none());
+        assert!(s.objects.get(b1).is_none());
+        assert_eq!(s.zone_count(Zone::Battlefield), 2);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 2);
     }
 
     /// No duplicates → no choice pushed, SBAs settle cleanly.
@@ -2275,8 +2300,13 @@ mod resolution_choice_framework_tests {
                 (ids[2], CardDestination::Graveyard),
             ] });
 
+        // The three milled cards are re-id'd into the graveyard; the
+        // old ids no longer resolve in the arena. Bottom two stay in
+        // library with their original ids.
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 3);
         for id in &ids[..3] {
-            assert_eq!(s.objects.get(*id).unwrap().zone, Zone::Graveyard(0));
+            assert!(s.objects.get(*id).is_none(),
+                "old library id should be gone after re-id to graveyard");
         }
         assert_eq!(s.player(0).library_top_to_bottom, ids[3..].to_vec());
     }
@@ -2316,7 +2346,10 @@ mod resolution_choice_framework_tests {
                 (ids[1], CardDestination::Graveyard),
             ] });
 
-        assert_eq!(s.objects.get(ids[1]).unwrap().zone, Zone::Graveyard(0));
+        // Milled card is re-id'd; kept-in-library cards preserve their
+        // ids (never went through a zone transition).
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert!(s.objects.get(ids[1]).is_none());
         assert_eq!(s.player(0).library_top_to_bottom,
             vec![ids[2], ids[0], ids[3], ids[4]]);
     }
@@ -2366,7 +2399,9 @@ mod resolution_choice_framework_tests {
             ChoiceResponse::PickCards { picked: vec![beast] });
 
         assert!(s.pending_choice.is_none());
-        assert_eq!(s.objects.get(beast).unwrap().zone, Zone::Hand(0));
+        // Beast re-id'd when it moved to hand.
+        assert!(s.objects.get(beast).is_none());
+        assert_eq!(s.zone_count(Zone::Hand(0)), 1);
         assert!(s.event_log.iter().any(|e|
             matches!(e, crate::events::GameEvent::LibraryShuffled { player: 0 })));
     }
@@ -2414,8 +2449,12 @@ mod resolution_choice_framework_tests {
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PickCards { picked: vec![beast] });
 
-        assert!(s.player(0).known_cards.contains(&beast));
-        assert!(s.player(1).known_cards.contains(&beast));
+        // The revealed card re-id'd on move; its NEW id (the card now
+        // in hand) should be in every player's known_cards.
+        let hand_id = s.objects.objects_in_zone(Zone::Hand(0))
+            .next().unwrap().id;
+        assert!(s.player(0).known_cards.contains(&hand_id));
+        assert!(s.player(1).known_cards.contains(&hand_id));
     }
 
     #[test]
@@ -2436,8 +2475,10 @@ mod resolution_choice_framework_tests {
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PickCards { picked: vec![beast] });
 
-        assert_eq!(s.objects.get(beast).unwrap().zone, Zone::Battlefield);
-        assert!(s.objects.get(beast).unwrap().is_tapped());
+        assert!(s.objects.get(beast).is_none());
+        let bf_obj = s.objects.objects_in_zone(Zone::Battlefield)
+            .next().unwrap();
+        assert!(bf_obj.is_tapped());
         assert!(s.event_log.iter().any(|e|
             matches!(e, crate::events::GameEvent::LibraryShuffled { player: 0 })));
     }
@@ -2460,9 +2501,12 @@ mod resolution_choice_framework_tests {
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PickCards { picked: vec![beast] });
 
-        assert_eq!(s.objects.get(beast).unwrap().zone, Zone::Battlefield);
-        assert_eq!(s.objects.get(beast).unwrap().controller, 0,
+        assert!(s.objects.get(beast).is_none(), "graveyard id consumed by re-id");
+        let bf_obj = s.objects.objects_in_zone(Zone::Battlefield)
+            .next().unwrap();
+        assert_eq!(bf_obj.controller, 0,
             "reanimated permanent comes under the reanimator's control");
+        assert_eq!(bf_obj.owner, 1, "owner stays the opponent");
     }
 
     #[test]
@@ -2488,8 +2532,12 @@ mod resolution_choice_framework_tests {
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PickCards { picked: vec![h2] });
 
+        // h1 stayed put; h2 re-id'd into graveyard.
         assert_eq!(s.objects.get(h1).unwrap().zone, Zone::Hand(0));
-        assert_eq!(s.objects.get(h2).unwrap().zone, Zone::Graveyard(0));
+        assert!(s.objects.get(h2).is_none());
+        assert_eq!(s.zone_count(Zone::Hand(0)), 1);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        // Discarded event carries the pre-move id.
         assert!(s.event_log.iter().any(|e|
             matches!(e, crate::events::GameEvent::Discarded { object_id, .. }
                 if *object_id == h2)));
@@ -2516,7 +2564,8 @@ mod resolution_choice_framework_tests {
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PickCards { picked: vec![h1] });
 
-        assert_eq!(s.objects.get(h1).unwrap().zone, Zone::Graveyard(0));
+        assert!(s.objects.get(h1).is_none());
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
     }
 
     #[test]
@@ -2539,8 +2588,11 @@ mod resolution_choice_framework_tests {
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PickCards { picked: vec![b] });
 
+        // a stayed put, b re-id'd into the graveyard.
         assert_eq!(s.objects.get(a).unwrap().zone, Zone::Battlefield);
-        assert_eq!(s.objects.get(b).unwrap().zone, Zone::Graveyard(0));
+        assert!(s.objects.get(b).is_none());
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        // Sacrifice event carries the pre-move id.
         assert!(s.event_log.iter().any(|e|
             matches!(e, crate::events::GameEvent::Sacrifice { object_id, .. }
                 if *object_id == b)));
@@ -2676,9 +2728,10 @@ mod resolution_choice_framework_tests {
             ChoiceResponse::PayOrDecline { pay: false });
 
         // Spell countered: ends up in caster's graveyard with a
-        // SpellCountered event.
-        assert_eq!(s.objects.get(spell).unwrap().zone,
-            crate::zones::Zone::Graveyard(0));
+        // SpellCountered event that still references the stack id.
+        assert!(s.objects.get(spell).is_none(),
+            "stack id is consumed on re-id into graveyard");
+        assert_eq!(s.zone_count(crate::zones::Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|e|
             matches!(e, crate::events::GameEvent::SpellCountered { object_id }
                 if *object_id == spell)));
@@ -3131,7 +3184,11 @@ mod tests {
         state.objects.insert(GameObject::new(
             id, 0, Zone::Hand(0), card,
             def.base_characteristics.clone()));
-        state.move_object_to_zone(id, Zone::Battlefield, MoveCause::SpellResolution);
+        // Re-id on the hand→battlefield move; capture the new id so
+        // the trigger-source assertion can compare against the id
+        // currently on the battlefield.
+        let battlefield_id = state.move_object_to_zone(
+            id, Zone::Battlefield, MoveCause::SpellResolution).unwrap();
 
         // Run the scanner. Should push the ETB trigger onto the stack.
         run_sba_and_triggers(&mut state, &registry);
@@ -3140,7 +3197,7 @@ mod tests {
             "scanner should have pushed the ETB trigger");
         let entry = state.top_of_stack().unwrap();
         assert!(entry.is_triggered());
-        assert_eq!(entry.source, id);
+        assert_eq!(entry.source, battlefield_id);
     }
 
     #[test]
@@ -3254,7 +3311,8 @@ mod tests {
         };
         spend_mana_plan(&mut s, 0, &plan);
 
-        assert_eq!(s.objects.get(gy_card).unwrap().zone, Zone::Exile);
+        assert_eq!(s.zone_count(Zone::Exile), 1);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0);
     }
 
     #[test]
@@ -3302,7 +3360,8 @@ mod tests {
             perm, 0, Zone::Battlefield, 0, creature_chars(1, 1)));
         let costs = vec![crate::actions::AdditionalCostPayment::Sacrifice(perm)];
         apply_additional_costs(&mut s, 0, &costs);
-        assert_eq!(s.objects.get(perm).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
     }
 
     #[test]
@@ -3313,7 +3372,7 @@ mod tests {
             card, 0, Zone::Hand(0), 0, Characteristics::default()));
         let costs = vec![crate::actions::AdditionalCostPayment::Discard(card)];
         apply_additional_costs(&mut s, 0, &costs);
-        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|e|
             matches!(e, GameEvent::Discarded { player: 0, object_id }
                 if *object_id == card)));
@@ -3411,11 +3470,10 @@ mod tests {
         let (state, yld) = step(
             state, Action::BottomCards(vec![pick]), &reg());
 
-        // Card moved hand → library bottom.
-        assert_eq!(
-            state.objects.get(pick).unwrap().zone,
-            Zone::Library(0),
-        );
+        // Card moved hand → library bottom. Re-id means the library
+        // bottom carries a new id, but hand/library counts still add
+        // up and the old id is gone from the arena.
+        assert!(state.objects.get(pick).is_none());
         assert_eq!(
             state.objects.count_in_zone(Zone::Hand(0)),
             hand_size_before - 1,
@@ -3424,11 +3482,8 @@ mod tests {
             state.player(0).library_top_to_bottom.len(),
             lib_size_before + 1,
         );
-        assert_eq!(
-            *state.player(0).library_top_to_bottom.last().unwrap(),
-            pick,
-            "bottomed card should be at the library's bottom",
-        );
+        let bottom_id = *state.player(0).library_top_to_bottom.last().unwrap();
+        assert_eq!(state.objects.get(bottom_id).unwrap().zone, Zone::Library(0));
 
         // Player 1 should now be the one deciding mulligans.
         match yld {
@@ -3513,7 +3568,11 @@ mod tests {
             Action::PlayLand { object_id: land_id },
             &reg(),
         );
-        assert_eq!(state_after.objects.get(land_id).unwrap().zone, Zone::Battlefield);
+        // Re-id on the hand→battlefield move; locate the new land.
+        assert!(state_after.objects.get(land_id).is_none());
+        let bf_land_count = state_after.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.is_land()).count();
+        assert_eq!(bf_land_count, 1);
         assert_eq!(state_after.player(0).land_plays_remaining, 0);
 
         // Original untouched.
@@ -3597,18 +3656,21 @@ mod tests {
         // Stack has one entry or — after everyone passes — has
         // resolved. Since we didn't auto-pass, the stack should hold
         // the bolt and priority returned to P0 (the active player).
-        // Pass twice in succession to resolve.
+        // The stack id is a fresh re-id from the hand card.
         assert_eq!(state.stack_size(), 1);
+        let stack_id = state.top_of_stack().unwrap().id;
+        assert_ne!(stack_id, bolt_id);
         assert!(state.event_log.iter().any(|e|
-            matches!(e, GameEvent::SpellCast { object_id, .. } if *object_id == bolt_id)));
+            matches!(e, GameEvent::SpellCast { object_id, .. } if *object_id == stack_id)));
 
         let (state, _) = step(state, Action::PassPriority, &reg());
         let (state, _) = step(state, Action::PassPriority, &reg());
-        // Stack resolved → bolt in P0's graveyard.
+        // Stack resolved → bolt in P0's graveyard under yet another new id.
         assert_eq!(state.stack_size(), 0);
         assert_eq!(
-            state.objects.get(bolt_id).unwrap().zone,
-            Zone::Graveyard(0),
+            state.objects.objects_in_zone(Zone::Graveyard(0))
+                .filter(|o| o.is_instant()).count(),
+            1,
             "instant should be in its owner's graveyard post-resolve"
         );
     }

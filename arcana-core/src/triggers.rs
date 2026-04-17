@@ -355,14 +355,16 @@ pub enum TriggerFrequency {
 }
 
 // Helper: apply an ObjectFilter to an id, handling missing objects as
-// a non-match.
+// a non-match. Consults LKI as a fallback so leaves-the-battlefield
+// triggers can filter on the pre-move characteristics of a permanent
+// that has already been re-id'd into its new zone (CR 603.10 / 400.7).
 fn match_filter_on(
     state: &GameState,
     id: ObjectId,
     filter: &ObjectFilter,
     source_controller: PlayerId,
 ) -> bool {
-    state.objects.get(id)
+    state.object_or_lki(id)
         .is_some_and(|o| filter.matches(o, state, source_controller))
 }
 

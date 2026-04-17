@@ -383,16 +383,23 @@ impl Effect {
             }
             Effect::PutOnTopOfLibrary { target } => {
                 if let Some(owner) = owner_of(state, *target) {
-                    state.move_object_to_zone(*target, Zone::Library(owner),
-                        MoveCause::SpellResolution);
-                    state.put_on_top_of_library(*target, owner);
+                    // move_object_to_zone re-ids the object and
+                    // appends it to the library's bottom; lift it
+                    // back to the top using the NEW id it returns.
+                    if let Some(new_id) = state.move_object_to_zone(
+                        *target, Zone::Library(owner),
+                        MoveCause::SpellResolution)
+                    {
+                        state.put_on_top_of_library(new_id, owner);
+                    }
                 }
             }
             Effect::PutOnBottomOfLibrary { target } => {
                 if let Some(owner) = owner_of(state, *target) {
+                    // move_object_to_zone appends to the library's
+                    // bottom under a fresh id — that's what we want.
                     state.move_object_to_zone(*target, Zone::Library(owner),
                         MoveCause::SpellResolution);
-                    state.put_on_bottom_of_library(*target, owner);
                 }
             }
             Effect::ReturnFromGraveyardToBattlefield { target } => {
@@ -1092,8 +1099,11 @@ fn manifest_top_of_library(state: &mut GameState, p: PlayerId) {
     if !valid_player(state, p) { return; }
     let top = state.player(p).library_top_to_bottom.first().copied();
     let Some(id) = top else { return; };
-    state.move_object_to_zone(id, Zone::Battlefield, MoveCause::SpellResolution);
-    let Some(obj) = state.objects.get_mut(id) else { return; };
+    // Re-id happens on the move; address the resulting battlefield
+    // object by the new id the mover returns.
+    let Some(new_id) = state.move_object_to_zone(
+        id, Zone::Battlefield, MoveCause::SpellResolution) else { return; };
+    let Some(obj) = state.objects.get_mut(new_id) else { return; };
     obj.status.face_down = true;
     obj.status.summoning_sick = true;
     // Save the original characteristics for when the card flips back
@@ -1669,14 +1679,14 @@ mod tests {
 
         Effect::Manifest { player: 0 }.execute(&mut s);
 
-        let obj = s.objects.get(top).unwrap();
-        assert_eq!(obj.zone, Zone::Battlefield);
+        let obj = s.objects.objects_in_zone(Zone::Battlefield).next().unwrap();
         assert!(obj.status.face_down);
         assert!(obj.is_creature());
         assert_eq!(obj.characteristics.power, Some(PtValue::Fixed(2)));
         assert_eq!(obj.characteristics.toughness, Some(PtValue::Fixed(2)));
-        // Library no longer has the card on top.
-        assert!(!s.player(0).library_top_to_bottom.contains(&top));
+        // Library empty; the old id is gone from the arena (re-id'd).
+        assert!(s.player(0).library_top_to_bottom.is_empty());
+        assert!(s.objects.get(top).is_none());
     }
 
     #[test]
@@ -1712,14 +1722,14 @@ mod tests {
 
         s.objects.get_mut(c).unwrap().mark_damage(5);
         crate::sba::apply_state_based_actions(&mut s);
-        // First lethal: regenerated.
+        // First lethal: regenerated (no zone change → id stable).
         assert_eq!(s.objects.get(c).unwrap().zone, Zone::Battlefield);
-        // Untap so damage can be re-applied (tapped doesn't prevent).
         // Re-damage lethally.
         s.objects.get_mut(c).unwrap().mark_damage(5);
         crate::sba::apply_state_based_actions(&mut s);
-        // Shield was consumed → creature now dies.
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Graveyard(0));
+        // Shield was consumed → creature now dies and is re-id'd.
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
     }
 
     #[test]
@@ -1747,7 +1757,8 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
         Effect::DestroyPermanent { target: c }.execute(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
         assert!(s.event_log.iter().any(|e| matches!(e,
             GameEvent::Dies { object_id } if *object_id == c)));
         assert!(s.event_log.iter().any(|e| matches!(e,
@@ -1759,9 +1770,10 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
         Effect::ExilePermanent { target: c }.execute(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Exile);
+        assert_eq!(s.zone_count(Zone::Exile), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
         assert!(s.event_log.iter().any(|e| matches!(e,
-            GameEvent::Exiled { object_id, from: Zone::Battlefield } if *object_id == c)));
+            GameEvent::Exiled { from: Zone::Battlefield, .. })));
     }
 
     #[test]
@@ -1769,7 +1781,8 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 1, Zone::Battlefield, 2, 2);
         Effect::ReturnToHand { target: c }.execute(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Hand(1));
+        assert_eq!(s.zone_count(Zone::Hand(1)), 1);
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
     }
 
     #[test]
@@ -1824,10 +1837,16 @@ mod tests {
         let existing = seed_library(&mut s, 0, 3);
         let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
         Effect::PutOnBottomOfLibrary { target: c }.execute(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Library(0));
         let lib = &s.player(0).library_top_to_bottom;
-        assert_eq!(lib.last(), Some(&c));
+        // Re-id means the bottom card has a new id; the card at that
+        // slot is the only library object not from the seeded set.
+        assert_eq!(lib.len(), 4);
         assert_eq!(&lib[..3], &existing[..]);
+        let new_bottom = *lib.last().unwrap();
+        assert!(!existing.contains(&new_bottom));
+        assert_eq!(s.objects.get(new_bottom).unwrap().zone, Zone::Library(0));
+        // Old id is gone from arena.
+        assert!(s.objects.get(c).is_none());
     }
 
     #[test]
@@ -1926,10 +1945,10 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature_in_graveyard(&mut s, 0, 2, 2);
         Effect::ReturnFromGraveyardToBattlefield { target: c }.execute(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Battlefield);
+        assert_eq!(s.zone_count(Zone::Battlefield), 1);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0);
         assert!(s.event_log.iter().any(|e| matches!(e,
-            GameEvent::EntersBattlefield { object_id, was_cast: false, .. }
-                if *object_id == c)));
+            GameEvent::EntersBattlefield { was_cast: false, .. })));
     }
 
     #[test]
@@ -1944,9 +1963,10 @@ mod tests {
     #[test]
     fn return_from_graveyard_to_hand_sends_to_owner_hand() {
         let mut s = GameState::new(2, 0);
-        let c = put_creature_in_graveyard(&mut s, 1, 2, 2);
-        Effect::ReturnFromGraveyardToHand { target: c }.execute(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Hand(1));
+        let _c = put_creature_in_graveyard(&mut s, 1, 2, 2);
+        Effect::ReturnFromGraveyardToHand { target: _c }.execute(&mut s);
+        assert_eq!(s.zone_count(Zone::Hand(1)), 1);
+        assert_eq!(s.zone_count(Zone::Graveyard(1)), 0);
     }
 
     #[test]
@@ -1960,12 +1980,12 @@ mod tests {
     #[test]
     fn exile_from_graveyard_moves_to_exile() {
         let mut s = GameState::new(2, 0);
-        let c = put_creature_in_graveyard(&mut s, 0, 2, 2);
-        Effect::ExileFromGraveyard { target: c }.execute(&mut s);
-        assert_eq!(s.objects.get(c).unwrap().zone, Zone::Exile);
+        let _c = put_creature_in_graveyard(&mut s, 0, 2, 2);
+        Effect::ExileFromGraveyard { target: _c }.execute(&mut s);
+        assert_eq!(s.zone_count(Zone::Exile), 1);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0);
         assert!(s.event_log.iter().any(|e| matches!(e,
-            GameEvent::Exiled { object_id, from: Zone::Graveyard(0) }
-                if *object_id == c)));
+            GameEvent::Exiled { from: Zone::Graveyard(0), .. })));
     }
 
     #[test]
@@ -2503,12 +2523,15 @@ mod tests {
 
         Effect::CastFromHandFree { player: 0, target: card }.execute(&mut s);
 
-        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Stack);
+        // Hand → stack re-ids the card; the stack entry carries the new id.
         assert_eq!(s.stack_size(), 1);
+        let stack_id = s.top_of_stack().unwrap().id;
+        assert_eq!(s.objects.get(stack_id).unwrap().zone, Zone::Stack);
+        assert!(s.objects.get(card).is_none(), "old id must be gone from arena");
         // Mana pool untouched (cast was free).
         assert_eq!(s.player(0).mana_pool, before_mana);
         assert!(s.event_log.iter().any(|e|
-            matches!(e, GameEvent::SpellCast { object_id, .. } if *object_id == card)));
+            matches!(e, GameEvent::SpellCast { object_id, .. } if *object_id == stack_id)));
     }
 
     #[test]
@@ -2526,9 +2549,12 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_instant(&mut s, 0, Zone::Graveyard(0));
         Effect::CastFromGraveyard { player: 0, target: card }.execute(&mut s);
-        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Stack);
+        assert_eq!(s.stack_size(), 1);
+        let stack_id = s.top_of_stack().unwrap().id;
+        assert_eq!(s.objects.get(stack_id).unwrap().zone, Zone::Stack);
+        assert!(s.objects.get(card).is_none());
         assert!(s.event_log.iter().any(|e|
-            matches!(e, GameEvent::SpellCast { object_id, .. } if *object_id == card)));
+            matches!(e, GameEvent::SpellCast { object_id, .. } if *object_id == stack_id)));
     }
 
     #[test]
@@ -2560,14 +2586,15 @@ mod tests {
     fn counter_removes_stack_spell_and_emits_countered() {
         let mut s = GameState::new(2, 0);
         let card = put_instant(&mut s, 0, Zone::Hand(0));
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
         assert_eq!(s.stack_size(), 1);
 
-        Effect::Counter { target: card }.execute(&mut s);
+        Effect::Counter { target: stack_id }.execute(&mut s);
         assert!(s.stack_is_empty());
-        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|e|
-            matches!(e, GameEvent::SpellCountered { object_id } if *object_id == card)));
+            matches!(e, GameEvent::SpellCountered { object_id } if *object_id == stack_id)));
     }
 
     #[test]
@@ -2587,10 +2614,11 @@ mod tests {
     #[test]
     fn mill_moves_top_of_library_to_graveyard() {
         let mut s = GameState::new(2, 0);
-        let a = put_instant(&mut s, 0, Zone::Library(0));
+        let _a = put_instant(&mut s, 0, Zone::Library(0));
         let _b = put_instant(&mut s, 0, Zone::Library(0));
         Effect::Mill { player: 0, count: 1 }.execute(&mut s);
-        assert_eq!(s.objects.get(a).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Library(0)), 1);
     }
 
     // --- Search / Tutor / Sacrifice --------------------------------------
@@ -2697,18 +2725,15 @@ mod tests {
     fn discard_random_picks_without_yielding() {
         use crate::effects::DiscardChoice;
         let mut s = GameState::new(2, 0);
-        let h1 = put_instant(&mut s, 0, Zone::Hand(0));
-        let h2 = put_instant(&mut s, 0, Zone::Hand(0));
+        let _h1 = put_instant(&mut s, 0, Zone::Hand(0));
+        let _h2 = put_instant(&mut s, 0, Zone::Hand(0));
         Effect::Discard {
             player: 0, count: 1, choice: DiscardChoice::Random,
         }.execute(&mut s);
         assert!(s.pending_choice.is_none(),
             "random discard uses engine RNG, no agent decision");
-        let in_graveyard = [h1, h2].iter()
-            .filter(|id| s.objects.get(**id).map(|o|
-                o.zone == Zone::Graveyard(0)).unwrap_or(false))
-            .count();
-        assert_eq!(in_graveyard, 1);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
+        assert_eq!(s.zone_count(Zone::Hand(0)), 1);
     }
 
     #[test]
@@ -2764,11 +2789,15 @@ mod tests {
     fn copy_spell_adds_new_stack_entry() {
         let mut s = GameState::new(2, 0);
         let card = put_instant(&mut s, 0, Zone::Hand(0));
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
-        Effect::CopySpell { target: card }.execute(&mut s);
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
+        Effect::CopySpell { target: stack_id }.execute(&mut s);
         assert_eq!(s.stack_size(), 2);
         let ids: Vec<_> = s.stack_entries().iter().map(|e| e.id).collect();
-        assert!(ids.iter().any(|id| *id != card));
+        // Two distinct ids on the stack, and neither is the pre-cast
+        // hand id (that one got re-id'd away on announce).
+        assert!(ids.iter().all(|id| *id != card));
+        assert_ne!(ids[0], ids[1]);
     }
 
     #[test]

@@ -347,36 +347,41 @@ impl GameState {
         modes: Vec<ModeChoice>,
         x_value: Option<u32>,
     ) -> ObjectId {
-        let obj = self.objects.get(object_id)
+        // CR 400.7: the card becomes a new object on the stack. We
+        // remove it from the arena, snapshot its pre-cast state as
+        // LKI, allocate a fresh id, and reinsert under that id.
+        let mut obj = self.objects.remove(object_id)
             .unwrap_or_else(|| panic!(
                 "announce_spell_on_stack: object {object_id} not in arena"));
-
         let from = obj.zone;
         let card_id = obj.card_id;
+        self.lki.insert(object_id, obj.clone());
+
+        let new_id = self.allocate_object_id();
+        obj.id = new_id;
+        obj.zone = Zone::Stack;
+        obj.controller = controller;
+        // Stack objects don't carry per-zone status (tapped, sick, etc.)
+        obj.reset_on_zone_change();
         let characteristics = obj.characteristics.clone();
+        self.objects.insert(obj);
 
-        // Mutate the arena object: new zone, new controller.
-        let obj_mut = self.objects.get_mut(object_id).unwrap();
-        obj_mut.zone = Zone::Stack;
-        obj_mut.controller = controller;
-
-        // Build and push the stack entry.
+        // Build and push the stack entry using the new id.
         let entry = StackEntry::new_spell(
-            object_id, controller, card_id, characteristics,
+            new_id, controller, card_id, characteristics,
             targets, modes, x_value,
         );
         self.stack.push(entry);
 
-        // Emit ZoneChange — `new_id == object_id` for Phase 1.
         self.emit(GameEvent::ZoneChange {
             object_id,
             from,
             to: Zone::Stack,
-            new_id: object_id,
+            new_id,
             cause: MoveCause::Cast,
         });
 
-        object_id
+        new_id
     }
 
     /// CR 601.2e — the spell has been cast. Emits
@@ -457,6 +462,14 @@ impl GameState {
     /// spells enter the battlefield. Emits the appropriate zone-change
     /// events and [`GameEvent::SpellResolved`].
     ///
+    /// Per CR 400.7 the object is re-id'd on the stack-to-destination
+    /// transition: LKI is snapshotted under the old id, a fresh id is
+    /// allocated, and the arriving-side events
+    /// (`EntersBattlefield::object_id`, `SpellResolved::object_id`,
+    /// `PutIntoGraveyard::object_id`, `ZoneChange::new_id`) carry the
+    /// new id. `ZoneChange::object_id` still carries the old (stack)
+    /// id for symmetry with the leaving side.
+    ///
     /// Takes the stack entry by value — the caller is expected to have
     /// already popped it via [`Self::pop_stack_entry`].
     pub fn finalize_resolved_spell(&mut self, entry: StackEntry) {
@@ -464,46 +477,59 @@ impl GameState {
         let chars = entry.characteristics().cloned().unwrap_or_else(||
             panic!("finalize_resolved_spell: entry {id} is not a spell"));
 
+        // Pull the object out of the arena; owner decides graveyard
+        // routing for instants/sorceries.
+        let mut obj = self.objects.remove(id)
+            .unwrap_or_else(|| panic!(
+                "finalize_resolved_spell: object {id} vanished from arena"));
+        let from = obj.zone;
+        let owner = obj.owner;
         let destination = if chars.is_permanent() {
             Zone::Battlefield
         } else {
-            // Instants / sorceries → owner's graveyard. Owner is the
-            // arena object's owner, not the stack entry controller.
-            let owner = self.objects.get(id)
-                .unwrap_or_else(|| panic!(
-                    "finalize_resolved_spell: object {id} vanished from arena"))
-                .owner;
             Zone::Graveyard(owner)
         };
+        // Snapshot the stack-side object as LKI before we reassign the id.
+        self.lki.insert(id, obj.clone());
 
-        let obj = self.objects.get_mut(id).unwrap();
-        let from = obj.zone;
+        let new_id = self.allocate_object_id();
+        obj.id = new_id;
         obj.zone = destination;
-        // Entering the battlefield from the stack; a fresh ETB means
-        // summoning sickness applies for creatures (CR 302.1).
         if destination == Zone::Battlefield {
             obj.controller = controller;
+            obj.status = crate::types::PermanentStatus::default();
             obj.status.summoning_sick = true;
         } else {
             obj.reset_on_zone_change();
+            obj.controller = owner;
         }
+        self.objects.insert(obj);
 
         self.emit(GameEvent::ZoneChange {
             object_id: id,
             from,
             to: destination,
-            new_id: id,
+            new_id,
             cause: MoveCause::SpellResolution,
         });
 
         if destination == Zone::Battlefield {
             self.emit(GameEvent::EntersBattlefield {
-                object_id: id,
+                object_id: new_id,
                 from_zone: from,
                 was_cast: true,
             });
+        } else if matches!(destination, Zone::Graveyard(_)) {
+            self.emit(GameEvent::PutIntoGraveyard {
+                object_id: new_id,
+                from,
+            });
         }
 
+        // `SpellResolved` references the stack-entry id so consumers
+        // can correlate it with the preceding `SpellCast` event. The
+        // stack entry is the spell-as-it-resolved, not the post-move
+        // object.
         self.emit(GameEvent::SpellResolved { object_id: id });
     }
 
@@ -524,26 +550,37 @@ impl GameState {
     /// Use this when [`Self::recheck_and_classify_resolution`]
     /// returned [`ResolutionOutcome::CounteredIllegalTargets`], or
     /// when a Counterspell-type effect resolves against this entry.
+    ///
+    /// Applies the CR 400.7 re-id on the stack-to-graveyard move: LKI
+    /// is snapshotted under the old stack id, a fresh id is allocated
+    /// for the graveyard object, and the events carry ids accordingly
+    /// (see [`Self::finalize_resolved_spell`] for the pattern).
     pub fn counter_resolved_spell(&mut self, entry: StackEntry) {
         assert!(entry.is_spell(), "counter_resolved_spell requires a spell entry");
         let id = entry.id;
-        let owner = self.objects.get(id)
+        let mut obj = self.objects.remove(id)
             .unwrap_or_else(|| panic!(
-                "counter_resolved_spell: object {id} vanished from arena"))
-            .owner;
-
-        let obj = self.objects.get_mut(id).unwrap();
+                "counter_resolved_spell: object {id} vanished from arena"));
         let from = obj.zone;
-        obj.zone = Zone::Graveyard(owner);
+        let owner = obj.owner;
+        let destination = Zone::Graveyard(owner);
+        self.lki.insert(id, obj.clone());
+
+        let new_id = self.allocate_object_id();
+        obj.id = new_id;
+        obj.zone = destination;
         obj.reset_on_zone_change();
+        obj.controller = owner;
+        self.objects.insert(obj);
 
         self.emit(GameEvent::ZoneChange {
             object_id: id,
             from,
-            to: Zone::Graveyard(owner),
-            new_id: id,
+            to: destination,
+            new_id,
             cause: MoveCause::SpellResolution,
         });
+        self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
         self.emit(GameEvent::SpellCountered { object_id: id });
     }
 
@@ -785,16 +822,18 @@ mod tests {
         let id = s.announce_spell_on_stack(
             card, /*controller=*/ 0,
             TargetSelection::new(), vec![], None);
-        assert_eq!(id, card);
-        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Stack);
-        assert_eq!(s.top_of_stack().map(|e| e.id), Some(card));
+        // CR 400.7: the card becomes a new object on the stack.
+        assert_ne!(id, card);
+        assert!(s.objects.get(card).is_none(), "old id must be gone from arena");
+        assert_eq!(s.objects.get(id).unwrap().zone, Zone::Stack);
+        assert_eq!(s.top_of_stack().map(|e| e.id), Some(id));
 
         let zone_change_emitted = s.event_log.iter().any(|ev| matches!(
             ev,
-            GameEvent::ZoneChange { object_id, from: Zone::Hand(0), to: Zone::Stack, cause: MoveCause::Cast, .. }
-                if *object_id == card
+            GameEvent::ZoneChange { object_id, from: Zone::Hand(0), to: Zone::Stack, new_id, cause: MoveCause::Cast }
+                if *object_id == card && *new_id == id
         ));
-        assert!(zone_change_emitted, "announce should emit Hand→Stack ZoneChange(Cast)");
+        assert!(zone_change_emitted, "announce should emit Hand→Stack ZoneChange(Cast) with old→new id");
     }
 
     #[test]
@@ -802,9 +841,9 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         // Pretend someone else (player 1) is casting — Yesterlock / control-steal.
-        s.announce_spell_on_stack(
+        let id = s.announce_spell_on_stack(
             card, 1, TargetSelection::new(), vec![], None);
-        assert_eq!(s.objects.get(card).unwrap().controller, 1);
+        assert_eq!(s.objects.get(id).unwrap().controller, 1);
         assert_eq!(s.top_of_stack().unwrap().controller, 1);
     }
 
@@ -821,14 +860,15 @@ mod tests {
     fn emit_spell_cast_writes_event() {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
 
         let before = s.event_log.len();
-        s.emit_spell_cast(card);
+        s.emit_spell_cast(stack_id);
         assert_eq!(s.event_log.len(), before + 1);
         assert!(matches!(
             s.event_log.last().unwrap(),
-            GameEvent::SpellCast { object_id, .. } if *object_id == card
+            GameEvent::SpellCast { object_id, .. } if *object_id == stack_id
         ));
     }
 
@@ -967,38 +1007,42 @@ mod tests {
     fn finalize_instant_goes_to_owner_graveyard() {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
         let entry = s.pop_stack_entry().unwrap();
 
         s.finalize_resolved_spell(entry);
-        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|ev|
-            matches!(ev, GameEvent::SpellResolved { object_id } if *object_id == card)));
+            matches!(ev, GameEvent::SpellResolved { object_id } if *object_id == stack_id)));
     }
 
     #[test]
     fn finalize_creature_enters_battlefield_with_summoning_sickness() {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), creature_chars(2, 2));
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
         let entry = s.pop_stack_entry().unwrap();
 
         s.finalize_resolved_spell(entry);
-        let obj = s.objects.get(card).unwrap();
-        assert_eq!(obj.zone, Zone::Battlefield);
+        let obj = s.objects.objects_in_zone(Zone::Battlefield).next().unwrap();
         assert!(obj.status.summoning_sick);
 
         let etb = s.event_log.iter().any(|ev|
-            matches!(ev, GameEvent::EntersBattlefield { object_id, was_cast: true, .. }
-                if *object_id == card));
+            matches!(ev, GameEvent::EntersBattlefield { was_cast: true, .. })
+        );
         assert!(etb, "expected EntersBattlefield event");
+        // The stack-side id becomes LKI; its zone was Stack at that point.
+        assert_eq!(s.lki(stack_id).unwrap().zone, Zone::Stack);
     }
 
     #[test]
     fn finalize_spell_emits_zone_change_stack_to_graveyard() {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
         let entry = s.pop_stack_entry().unwrap();
 
         s.finalize_resolved_spell(entry);
@@ -1008,7 +1052,7 @@ mod tests {
             GameEvent::ZoneChange {
                 object_id, from: Zone::Stack, to: Zone::Graveyard(0),
                 cause: MoveCause::SpellResolution, ..
-            } if *object_id == card
+            } if *object_id == stack_id
         ));
         assert!(found, "expected Stack→Graveyard ZoneChange(SpellResolution)");
     }
@@ -1019,13 +1063,14 @@ mod tests {
     fn counter_resolved_spell_moves_to_graveyard_and_emits_event() {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
         let entry = s.pop_stack_entry().unwrap();
 
         s.counter_resolved_spell(entry);
-        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|ev|
-            matches!(ev, GameEvent::SpellCountered { object_id } if *object_id == card)));
+            matches!(ev, GameEvent::SpellCountered { object_id } if *object_id == stack_id)));
     }
 
     #[test]
@@ -1066,8 +1111,10 @@ mod tests {
     fn damage_target_stack_entry_check() {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
-        s.announce_spell_on_stack(card, 0, TargetSelection::new(), vec![], None);
-        assert!(damage_target_is_stack_entry(DamageTarget::Object(card), &s));
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None);
+        assert!(damage_target_is_stack_entry(DamageTarget::Object(stack_id), &s));
+        assert!(!damage_target_is_stack_entry(DamageTarget::Object(card), &s));
         assert!(!damage_target_is_stack_entry(DamageTarget::Object(999), &s));
         assert!(!damage_target_is_stack_entry(DamageTarget::Player(0), &s));
     }
@@ -1084,9 +1131,9 @@ mod tests {
         s.objects.get_mut(creature).unwrap().controller = 1;
         let spell = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
 
-        s.announce_spell_on_stack(
+        let stack_id = s.announce_spell_on_stack(
             spell, 0, one_creature_target(creature), vec![], None);
-        s.emit_spell_cast(spell);
+        s.emit_spell_cast(stack_id);
 
         let entry = s.pop_stack_entry().unwrap();
         let req = TargetRequirement {
@@ -1102,7 +1149,7 @@ mod tests {
         }
         s.finalize_resolved_spell(entry);
 
-        assert_eq!(s.objects.get(spell).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.stack_is_empty());
     }
 
@@ -1112,9 +1159,9 @@ mod tests {
         let creature = put_object(&mut s, 1, Zone::Battlefield, creature_chars(2, 2));
         let spell = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
 
-        s.announce_spell_on_stack(
+        let stack_id = s.announce_spell_on_stack(
             spell, 0, one_creature_target(creature), vec![], None);
-        s.emit_spell_cast(spell);
+        s.emit_spell_cast(stack_id);
 
         // In between casting and resolution, target dies.
         s.objects.get_mut(creature).unwrap().zone = Zone::Graveyard(1);
@@ -1126,9 +1173,9 @@ mod tests {
             _ => panic!("expected CounteredIllegalTargets"),
         }
         s.counter_resolved_spell(entry);
-        assert_eq!(s.objects.get(spell).unwrap().zone, Zone::Graveyard(0));
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|ev|
-            matches!(ev, GameEvent::SpellCountered { object_id } if *object_id == spell)));
+            matches!(ev, GameEvent::SpellCountered { object_id } if *object_id == stack_id)));
     }
 
     // --- serde roundtrip of a StackEntry (spell) ---------------------------

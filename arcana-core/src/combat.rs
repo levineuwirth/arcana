@@ -1613,7 +1613,9 @@ mod tests {
         // 1 damage from deathtouch source; 1 < 5 toughness but lethal.
         s.deal_damage(src, DamageTarget::Object(tgt), 1, true);
         crate::sba::apply_state_based_actions(&mut s);
-        assert!(s.objects.get(tgt).is_some_and(|o| o.zone.is_graveyard()));
+        assert_eq!(s.zone_count(crate::zones::Zone::Graveyard(1)), 1);
+        assert!(s.event_log.iter().any(|e| matches!(e,
+            crate::events::GameEvent::Dies { object_id } if *object_id == tgt)));
     }
 
     #[test]
