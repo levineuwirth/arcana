@@ -1,0 +1,7 @@
+[package]
+name = "arcana-cards"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arcana-core = { path = "../arcana-core" }

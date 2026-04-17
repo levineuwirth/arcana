@@ -1,0 +1,11 @@
+[package]
+name = "arcana-gen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arcana-core = { path = "../arcana-core" }
+arcana-cards = { path = "../arcana-cards" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }

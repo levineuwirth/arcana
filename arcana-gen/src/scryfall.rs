@@ -1,0 +1,1 @@
+//! Scryfall bulk data parser.

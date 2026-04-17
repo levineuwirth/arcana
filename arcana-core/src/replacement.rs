@@ -1,0 +1,1024 @@
+//! Replacement effects — CR 614.
+//!
+//! Phase 1 Task #18. Depends on tasks 5 (events), 6 (state),
+//! 9 (targets), 13 (effects), 16 (combat — the `deal_damage` hook).
+//!
+//! # Model (CR 614)
+//!
+//! A **replacement effect** intercepts a would-be event before it
+//! happens and modifies or cancels it. "Instead" text (614.1a) and
+//! "would" text (614.1b) are the two grammatical forms. Unlike
+//! triggered abilities, replacements don't stack — they apply as
+//! part of the event itself.
+//!
+//! Key rules:
+//! - **CR 614.5**: each replacement applies at most once to a given
+//!   event.
+//! - **CR 614.15**: self-replacement effects (coming from the
+//!   affected object itself) apply before other replacements.
+//! - When multiple replacements would apply to the same event, the
+//!   affected player or controller chooses which to apply first
+//!   (this Phase 1 impl picks by ordering within gathered
+//!   candidates; the engine will upgrade to a real agent decision).
+//!
+//! # API
+//!
+//! - `ReplacementEffect` is registered via
+//!   [`GameState::add_replacement_effect`] and tracked in
+//!   `state.replacement_effects`.
+//! - The **damage replacement pipeline** (the one wired in for
+//!   Phase 1) runs transparently inside
+//!   [`GameState::deal_damage`] — callers don't need to know. It
+//!   accepts a proposed (source, target, amount) and returns the
+//!   post-replacement tuple or `None` for full prevention.
+//! - The **ETB replacement collector** gathers modifications
+//!   (additional counters, enter-tapped) for an object about to
+//!   enter the battlefield. The `move_object_to_zone` hook that
+//!   folds these in arrives with the engine task (Task #20).
+//!
+//! # Fn-pointer policy
+//!
+//! [`ReplacementKind`] is a tagged enum for the common cases
+//! (prevention, reduction, redirection, doubling, ETB-with-counters,
+//! ETB-tapped, exile-instead-of-die). [`ReplacementKind::Custom`] and
+//! [`ReplacementCondition::Custom`] retain `fn` pointers as escape
+//! hatches. Serde roundtrip covers everything except the two
+//! `Custom` variants — same `ConditionFnId` migration plan
+//! (addendum Section 12).
+
+use crate::combat::DamageTarget;
+use crate::objects::ObjectId;
+use crate::state::GameState;
+use crate::targets::{ObjectFilter, TargetChoice, TargetFilter};
+use crate::types::*;
+
+// =============================================================================
+// ReplacementEffect
+// =============================================================================
+
+// TODO(serialize): `ReplacementCondition::Custom` and
+// `ReplacementKind::Custom` carry bare `fn` pointers. Migrate per
+// addendum Section 12 in Phase 3.
+#[derive(Clone, Debug)]
+pub struct ReplacementEffect {
+    /// Object that created this effect (Circle of Protection's
+    /// permanent, Kalonian Hydra for its self-replacement, etc.).
+    pub source: ObjectId,
+    /// Monotonic id — doubles as the timestamp for ordering within
+    /// a single resolution pass. Assigned by
+    /// [`GameState::add_replacement_effect`].
+    pub id: u64,
+    pub condition: ReplacementCondition,
+    pub kind: ReplacementKind,
+    /// Per CR 614.15, a self-replacement from the affected object
+    /// applies before other replacements. Kalonian Hydra's "enters
+    /// with four +1/+1 counters" is self-replacement;
+    /// Hardened Scales's "another +1/+1 counter" is not.
+    pub is_self_replacement: bool,
+    pub duration: ReplacementDuration,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ReplacementDuration {
+    /// No automatic expiry — lives until explicitly removed.
+    Permanent,
+    /// Removed at the cleanup step (CR 514.2).
+    EndOfTurn,
+    /// Removed when `source` leaves the battlefield.
+    WhileSourceOnBattlefield,
+}
+
+// =============================================================================
+// ReplacementCondition
+// =============================================================================
+
+/// What kind of would-be event can this replacement intercept?
+#[derive(Clone, Debug)]
+pub enum ReplacementCondition {
+    /// "If a [source] would deal damage to [target], …"
+    WouldDealDamage {
+        source_filter: ObjectFilter,
+        target_filter: TargetFilter,
+    },
+    /// "If a source would deal damage to `target` specifically, …"
+    /// Used by spell-installed prevention/redirection shields (Healing
+    /// Salve on a particular creature, Palisade Giant-style redirects).
+    /// Matches regardless of damage source.
+    WouldDealDamageToSpecific {
+        target: DamageTarget,
+    },
+    /// "If a [matching] creature would enter the battlefield, …"
+    WouldEnterBattlefield {
+        object_filter: ObjectFilter,
+    },
+    /// "If a [matching] creature would die, …"
+    WouldDie {
+        object_filter: ObjectFilter,
+    },
+    /// "If this specific creature would die, …" — used by
+    /// [`ReplacementKind::RegenerateShield`] and other single-entity
+    /// die-time replacements.
+    WouldDieSpecific {
+        object_id: ObjectId,
+    },
+    /// "If a [matching] spell would be countered, …"
+    WouldBeCountered {
+        spell_filter: ObjectFilter,
+    },
+    /// "Whenever [player] would draw a card, …"
+    WouldDrawCard {
+        player: crate::targets::ControllerConstraint,
+    },
+    /// "At the beginning of [player]'s next turn, …"
+    WouldBeginTurn {
+        player: PlayerId,
+    },
+    /// "Whenever [controller] would create a token, …"
+    WouldCreateToken {
+        token_filter: ObjectFilter,
+    },
+    /// Custom predicate.
+    Custom(fn(&ReplacementEvent, &GameState) -> bool),
+}
+
+impl ReplacementCondition {
+    /// Does this condition match the in-flight event?
+    pub fn matches(
+        &self,
+        event: &ReplacementEvent,
+        source_controller: PlayerId,
+        state: &GameState,
+    ) -> bool {
+        use ReplacementCondition::*;
+        match (self, event) {
+            (
+                WouldDealDamage { source_filter, target_filter },
+                ReplacementEvent::Damage { source, target, .. },
+            ) => {
+                let src_obj = state.objects.get(*source);
+                let src_ok = match src_obj {
+                    Some(o) => source_filter.matches(o, state, source_controller),
+                    // If the source is gone, pass no filter by default.
+                    None => source_filter_matches_by_default(source_filter),
+                };
+                if !src_ok { return false; }
+                let target_choice = match target {
+                    DamageTarget::Object(id) => TargetChoice::Object(*id),
+                    DamageTarget::Player(p) => TargetChoice::Player(*p),
+                };
+                target_filter.matches(&target_choice, state, source_controller)
+            }
+
+            (
+                WouldDealDamageToSpecific { target: shielded },
+                ReplacementEvent::Damage { target, .. },
+            ) => shielded == target,
+
+            (
+                WouldEnterBattlefield { object_filter },
+                ReplacementEvent::EnterBattlefield { object_id },
+            ) => {
+                state.objects.get(*object_id)
+                    .is_some_and(|o| object_filter.matches(o, state, source_controller))
+            }
+
+            (
+                WouldDie { object_filter },
+                ReplacementEvent::Die { object_id },
+            ) => {
+                state.objects.get(*object_id)
+                    .is_some_and(|o| object_filter.matches(o, state, source_controller))
+            }
+
+            (
+                WouldDieSpecific { object_id: shielded },
+                ReplacementEvent::Die { object_id },
+            ) => shielded == object_id,
+
+            (
+                WouldBeCountered { spell_filter },
+                ReplacementEvent::CounterSpell { stack_entry_id },
+            ) => {
+                state.objects.get(*stack_entry_id)
+                    .is_some_and(|o| spell_filter.matches(o, state, source_controller))
+            }
+
+            (WouldDrawCard { player }, ReplacementEvent::DrawCard { player: p }) => {
+                player.matches(*p, source_controller)
+            }
+
+            (WouldBeginTurn { player: p1 }, ReplacementEvent::BeginTurn { player: p2 }) => {
+                *p1 == *p2
+            }
+
+            (
+                WouldCreateToken { token_filter },
+                ReplacementEvent::CreateToken { object_id },
+            ) => {
+                state.objects.get(*object_id)
+                    .is_some_and(|o| token_filter.matches(o, state, source_controller))
+            }
+
+            (Custom(f), _) => f(event, state),
+
+            _ => false,
+        }
+    }
+}
+
+/// A filter with no constraints passes everything — but if the source
+/// object is gone entirely we conservatively treat a default
+/// ObjectFilter as matching (so effects like "prevent all damage to
+/// you" still fire when the damage source doesn't exist in the arena).
+fn source_filter_matches_by_default(f: &ObjectFilter) -> bool {
+    f.types.is_none() && f.not_types.is_none() && f.colors.is_none()
+        && f.subtypes.is_none() && f.controller.is_none()
+        && f.cmc_condition.is_none() && f.power_condition.is_none()
+        && f.toughness_condition.is_none() && f.name.is_none()
+        && f.is_token.is_none() && f.has_counter.is_none()
+        && f.custom.is_none()
+}
+
+// =============================================================================
+// ReplacementKind
+// =============================================================================
+
+/// What the replacement does. The damage pipeline knows how to apply
+/// each variant to a [`ReplacementEvent::Damage`]; other variants
+/// pass through unchanged for damage events.
+// TODO(serialize): `Custom` carries a fn pointer.
+#[derive(Clone, Debug)]
+pub enum ReplacementKind {
+    // --- Damage-event kinds ---
+    /// "Prevent all damage that would be dealt by / to …"
+    PreventAllDamage,
+    /// "Prevent the next N damage …" (Healing Salve style).
+    PreventDamageUpTo(u32),
+    /// "Damage dealt by this source is doubled" (Furnace of Rath).
+    DoubleDamage,
+    /// "Instead, that damage is dealt to [target]" (Palisade Giant).
+    RedirectDamageTo(DamageTarget),
+
+    // --- ETB-event kinds ---
+    /// "X enters the battlefield with N [counters]" (Kalonian Hydra).
+    EtbWithCounters { kind: CounterKind, count: u32 },
+    /// "X enters the battlefield tapped" (tap-lands).
+    EtbTapped,
+
+    // --- Die-event kinds ---
+    /// "If a [matching] creature would die, exile it instead"
+    /// (Rest in Peace).
+    ExileInsteadOfDying,
+    /// CR 701.25 — Regenerate shield. Fires once, then the shield is
+    /// consumed. Effects of regenerating are applied by the caller:
+    /// remove all damage, tap, remove from combat. The replacement
+    /// effect itself is removed from `state.replacement_effects`
+    /// after it fires. Typically used on a one-shot basis as
+    /// [`ReplacementDuration::EndOfTurn`].
+    RegenerateShield,
+
+    // --- Draw-event kinds ---
+    /// "If you would draw a card, draw two cards instead" (Howling Mine
+    /// style; simplified).
+    DrawAdditional(u32),
+    /// "You don't draw for the turn".
+    SkipDraw,
+
+    /// Custom escape hatch. Takes the current event and state, returns
+    /// the replaced event (or `None` for full cancellation).
+    Custom(fn(&ReplacementEvent, &GameState) -> Option<ReplacementEvent>),
+}
+
+// =============================================================================
+// ReplacementEvent — what the pipeline passes around
+// =============================================================================
+
+/// A snapshot of the would-be event flowing through the replacement
+/// pipeline. Mutations by successive replacements build up here
+/// before committing.
+#[derive(Clone, Debug)]
+pub enum ReplacementEvent {
+    Damage {
+        source: ObjectId,
+        target: DamageTarget,
+        amount: u32,
+    },
+    EnterBattlefield {
+        object_id: ObjectId,
+    },
+    Die {
+        object_id: ObjectId,
+    },
+    CounterSpell {
+        stack_entry_id: ObjectId,
+    },
+    DrawCard {
+        player: PlayerId,
+    },
+    BeginTurn {
+        player: PlayerId,
+    },
+    CreateToken {
+        object_id: ObjectId,
+    },
+}
+
+// =============================================================================
+// ETB replacement collector output
+// =============================================================================
+
+/// Accumulated ETB replacements for an object about to enter the
+/// battlefield. The caller folds these into the ETB commit.
+#[derive(Clone, Debug, Default)]
+pub struct EtbReplacements {
+    /// Counters to add as the object enters.
+    pub additional_counters: Vec<(CounterKind, u32)>,
+    /// Object should enter tapped.
+    pub enter_tapped: bool,
+    /// Object should be exiled instead of entering. (Rare; e.g.
+    /// Mirror Gallery counter-scenarios.) Deferred — no variant yet.
+    pub exile_instead: bool,
+}
+
+// =============================================================================
+// GameState integration
+// =============================================================================
+
+impl GameState {
+    /// Register a replacement effect. Assigns a fresh id so the
+    /// pipeline can track "already used this event" per CR 614.5.
+    pub fn add_replacement_effect(&mut self, mut effect: ReplacementEffect) {
+        effect.id = self.next_timestamp();
+        self.replacement_effects.push(effect);
+    }
+
+    /// Remove every replacement effect matching `pred`. Returns count.
+    pub fn remove_replacement_effects<F>(&mut self, mut pred: F) -> usize
+    where F: FnMut(&ReplacementEffect) -> bool,
+    {
+        let before = self.replacement_effects.len();
+        let mut keep = Vec::with_capacity(before);
+        for e in self.replacement_effects.drain(..) {
+            if pred(&e) {
+                // discard
+            } else {
+                keep.push(e);
+            }
+        }
+        self.replacement_effects = keep;
+        before - self.replacement_effects.len()
+    }
+
+    /// Expire end-of-turn replacement effects. Called at cleanup.
+    pub fn expire_end_of_turn_replacements(&mut self) {
+        self.remove_replacement_effects(|e|
+            matches!(e.duration, ReplacementDuration::EndOfTurn));
+    }
+
+    /// Expire replacements sourced from a leaving object.
+    pub fn expire_replacements_from_source(&mut self, source: ObjectId) {
+        self.remove_replacement_effects(|e|
+            e.source == source
+            && matches!(e.duration, ReplacementDuration::WhileSourceOnBattlefield));
+    }
+
+    /// Route (source, target, amount) through all applicable
+    /// replacement effects. Returns the post-replacement tuple, or
+    /// `None` if damage is fully prevented.
+    ///
+    /// Algorithm (CR 614.15 + 614.5):
+    /// - Loop: find all applicable replacements that haven't been
+    ///   used for this event yet; pick one, apply it; repeat until
+    ///   no more apply.
+    /// - Within each round, self-replacement effects are chosen
+    ///   before others. Otherwise picks by registration order (a
+    ///   Phase 1 stand-in for the affected-player-chooses rule).
+    pub fn replace_damage(
+        &self,
+        source: ObjectId,
+        target: DamageTarget,
+        amount: u32,
+    ) -> Option<(ObjectId, DamageTarget, u32)> {
+        let mut current = ReplacementEvent::Damage { source, target, amount };
+        let mut used: std::collections::HashSet<u64> = std::collections::HashSet::new();
+
+        loop {
+            let affected_controller = affected_controller_of(&current, self);
+            let candidates: Vec<&ReplacementEffect> = self.replacement_effects.iter()
+                .filter(|e|
+                    !used.contains(&e.id)
+                    && e.condition.matches(&current, affected_controller, self))
+                .collect();
+            if candidates.is_empty() { break; }
+
+            // CR 614.15: self-replacement first.
+            let pick = candidates.iter()
+                .find(|e| e.is_self_replacement)
+                .copied()
+                .or_else(|| candidates.first().copied());
+            let Some(effect) = pick else { break; };
+
+            used.insert(effect.id);
+            current = match apply_kind_to_event(&effect.kind, &current, self) {
+                Some(new_event) => new_event,
+                None => return None, // event fully cancelled
+            };
+        }
+
+        match current {
+            ReplacementEvent::Damage { source, target, amount } =>
+                Some((source, target, amount)),
+            _ => None, // morphed into a different event kind (unusual)
+        }
+    }
+
+    /// Collect ETB replacement modifications for an object about to
+    /// enter the battlefield. Does NOT mutate state — the caller
+    /// commits the modifications.
+    pub fn collect_etb_replacements(&self, object_id: ObjectId) -> EtbReplacements {
+        let mut out = EtbReplacements::default();
+        let affected_controller = self.objects.get(object_id)
+            .map(|o| o.controller).unwrap_or(0);
+        let event = ReplacementEvent::EnterBattlefield { object_id };
+
+        let mut applicable: Vec<&ReplacementEffect> = self.replacement_effects.iter()
+            .filter(|e| e.condition.matches(&event, affected_controller, self))
+            .collect();
+        // Self-replacements first, then others; within each, by id.
+        applicable.sort_by_key(|e| (!e.is_self_replacement, e.id));
+
+        for effect in applicable {
+            match &effect.kind {
+                ReplacementKind::EtbWithCounters { kind, count } => {
+                    out.additional_counters.push((kind.clone(), *count));
+                }
+                ReplacementKind::EtbTapped => {
+                    out.enter_tapped = true;
+                }
+                _ => {} // not an ETB replacement
+            }
+        }
+        out
+    }
+
+    /// Run a would-die event through replacements. Returns `Some(id)`
+    /// if the creature still dies (possibly a different id if a
+    /// replacement redirected); `None` if the death was replaced
+    /// (e.g. exiled instead).
+    ///
+    /// The caller is responsible for performing whatever alternate
+    /// action the replacement dictated — see
+    /// [`EtbReplacements`] / the doc on `ReplacementKind` for
+    /// what variants may do. For Phase 1, only
+    /// [`ReplacementKind::ExileInsteadOfDying`] is wired, and it
+    /// returns `None` (caller routes the object to exile).
+    pub fn replace_die(&mut self, object_id: ObjectId) -> DieOutcome {
+        let affected_controller = self.objects.get(object_id)
+            .map(|o| o.controller).unwrap_or(0);
+        let event = ReplacementEvent::Die { object_id };
+
+        let mut applicable_ids: Vec<u64> = self.replacement_effects.iter()
+            .filter(|e| e.condition.matches(&event, affected_controller, self))
+            .map(|e| e.id)
+            .collect();
+        // Sort by (not-self-replacement, id) to prioritize self-replacement.
+        applicable_ids.sort_by_key(|id| {
+            let e = self.replacement_effects.iter().find(|e| e.id == *id).unwrap();
+            (!e.is_self_replacement, *id)
+        });
+
+        for id in applicable_ids {
+            let kind = self.replacement_effects.iter()
+                .find(|e| e.id == id).map(|e| e.kind.clone());
+            match kind {
+                Some(ReplacementKind::ExileInsteadOfDying) => {
+                    return DieOutcome::ExileInstead;
+                }
+                Some(ReplacementKind::RegenerateShield) => {
+                    // Shield fires and is consumed.
+                    self.replacement_effects.retain(|e| e.id != id);
+                    return DieOutcome::Regenerated;
+                }
+                _ => {}
+            }
+        }
+        DieOutcome::StillDies
+    }
+}
+
+/// Outcome of a death-replacement pipeline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DieOutcome {
+    /// Nothing overrode the death — proceed with move to graveyard.
+    StillDies,
+    /// Route the object to exile instead.
+    ExileInstead,
+    /// CR 701.25 — regenerate: clear damage, tap, remove from combat,
+    /// stay on the battlefield.
+    Regenerated,
+}
+
+// =============================================================================
+// Apply-kind helpers
+// =============================================================================
+
+/// Apply a [`ReplacementKind`] to a [`ReplacementEvent`]. Returns the
+/// new event, or `None` if it was cancelled.
+fn apply_kind_to_event(
+    kind: &ReplacementKind,
+    event: &ReplacementEvent,
+    state: &GameState,
+) -> Option<ReplacementEvent> {
+    use ReplacementEvent::*;
+    use ReplacementKind::*;
+    match (kind, event) {
+        (PreventAllDamage, Damage { .. }) => None,
+
+        (PreventDamageUpTo(n), Damage { source, target, amount }) => {
+            let new_amt = amount.saturating_sub(*n);
+            if new_amt == 0 { None }
+            else { Some(Damage { source: *source, target: *target, amount: new_amt }) }
+        }
+
+        (DoubleDamage, Damage { source, target, amount }) => {
+            let new_amt = amount.saturating_mul(2);
+            Some(Damage { source: *source, target: *target, amount: new_amt })
+        }
+
+        (RedirectDamageTo(new_target), Damage { source, amount, .. }) => {
+            Some(Damage { source: *source, target: *new_target, amount: *amount })
+        }
+
+        (DrawAdditional(n), DrawCard { player }) => {
+            // Modelled as the same event with an "n additional draws"
+            // semantic — but since DrawCard is identity-by-player, the
+            // caller (effects.rs) is expected to interpret this via
+            // explicit follow-up draws. For now, pass the event
+            // through unchanged.
+            let _ = (n, player);
+            Some(event.clone())
+        }
+
+        (SkipDraw, DrawCard { .. }) => None,
+
+        (Custom(f), _) => f(event, state),
+
+        // ETB / Die kinds are handled by their dedicated collectors
+        // (`collect_etb_replacements`, `replace_die`) — pass through
+        // here since they don't modify a single ReplacementEvent.
+        _ => Some(event.clone()),
+    }
+}
+
+/// Which player "chose" the replacement at this event? Per CR 614.4
+/// it's the affected player (for player-targeted damage) or
+/// controller (for object-targeted). For Phase 1 we just use a
+/// best-effort; a sensible default suffices because we pick
+/// deterministically among candidates anyway.
+fn affected_controller_of(event: &ReplacementEvent, state: &GameState) -> PlayerId {
+    match event {
+        ReplacementEvent::Damage { target, .. } => match target {
+            DamageTarget::Player(p) => *p,
+            DamageTarget::Object(id) =>
+                state.objects.get(*id).map(|o| o.controller).unwrap_or(0),
+        },
+        ReplacementEvent::EnterBattlefield { object_id }
+        | ReplacementEvent::Die { object_id }
+        | ReplacementEvent::CreateToken { object_id }
+        | ReplacementEvent::CounterSpell { stack_entry_id: object_id } =>
+            state.objects.get(*object_id).map(|o| o.controller).unwrap_or(0),
+        ReplacementEvent::DrawCard { player } => *player,
+        ReplacementEvent::BeginTurn { player } => *player,
+    }
+}
+
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mana::ManaCost;
+    use crate::objects::{Characteristics, GameObject};
+    use crate::targets::ControllerConstraint;
+    use crate::zones::Zone;
+
+    // --- helpers -----------------------------------------------------------
+
+    fn creature_chars(p: i32, t: i32) -> Characteristics {
+        Characteristics {
+            mana_cost: Some(ManaCost::parse("{G}").unwrap()),
+            colors: ColorSet::green(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(p)),
+            toughness: Some(PtValue::Fixed(t)),
+            ..Default::default()
+        }
+    }
+
+    fn red_creature_chars(p: i32, t: i32) -> Characteristics {
+        Characteristics {
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(p)),
+            toughness: Some(PtValue::Fixed(t)),
+            ..Default::default()
+        }
+    }
+
+    fn put_creature(s: &mut GameState, owner: PlayerId, p: i32, t: i32) -> ObjectId {
+        let id = s.allocate_object_id();
+        let mut obj = GameObject::new(id, owner, Zone::Battlefield, 1, creature_chars(p, t));
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    fn put_red_creature(s: &mut GameState, owner: PlayerId, p: i32, t: i32) -> ObjectId {
+        let id = s.allocate_object_id();
+        let mut obj = GameObject::new(id, owner, Zone::Battlefield, 1,
+            red_creature_chars(p, t));
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    fn base_effect(
+        source: ObjectId,
+        condition: ReplacementCondition,
+        kind: ReplacementKind,
+    ) -> ReplacementEffect {
+        ReplacementEffect {
+            source,
+            id: 0,
+            condition,
+            kind,
+            is_self_replacement: false,
+            duration: ReplacementDuration::Permanent,
+        }
+    }
+
+    // --- Damage: prevent all ----------------------------------------------
+
+    #[test]
+    fn prevent_all_damage_cancels() {
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(base_effect(
+            /*source=*/ 0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventAllDamage,
+        ));
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        assert!(out.is_none());
+    }
+
+    #[test]
+    fn prevent_damage_up_to_reduces_amount() {
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventDamageUpTo(2),
+        ));
+        let out = s.replace_damage(99, DamageTarget::Player(1), 5);
+        assert_eq!(out, Some((99, DamageTarget::Player(1), 3)));
+    }
+
+    #[test]
+    fn prevent_damage_up_to_fully_absorbs_smaller_damage() {
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventDamageUpTo(5),
+        ));
+        let out = s.replace_damage(99, DamageTarget::Player(1), 3);
+        assert!(out.is_none());
+    }
+
+    // --- Damage: double ---------------------------------------------------
+
+    #[test]
+    fn double_damage_applies() {
+        let mut s = GameState::new(2, 0);
+        let _src = put_red_creature(&mut s, 0, 3, 3);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::DoubleDamage,
+        ));
+        let out = s.replace_damage(99, DamageTarget::Player(1), 3);
+        assert_eq!(out, Some((99, DamageTarget::Player(1), 6)));
+    }
+
+    // --- Damage: redirect --------------------------------------------------
+
+    #[test]
+    fn redirect_damage_target() {
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::RedirectDamageTo(DamageTarget::Player(1)),
+        ));
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        assert_eq!(out, Some((99, DamageTarget::Player(1), 3)));
+    }
+
+    // --- Damage: source / target filters -----------------------------------
+
+    #[test]
+    fn damage_replacement_respects_source_filter() {
+        // Prevent only damage from red sources.
+        let mut s = GameState::new(2, 0);
+        let red_src = put_red_creature(&mut s, 0, 2, 2);
+        let green_src = put_creature(&mut s, 0, 2, 2);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::new().with_colors(ColorSet::red()),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventAllDamage,
+        ));
+
+        assert!(s.replace_damage(red_src, DamageTarget::Player(1), 3).is_none());
+        assert_eq!(s.replace_damage(green_src, DamageTarget::Player(1), 3),
+            Some((green_src, DamageTarget::Player(1), 3)));
+    }
+
+    #[test]
+    fn damage_replacement_with_no_filters_passes_through() {
+        let s = GameState::new(2, 0);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 4);
+        assert_eq!(out, Some((99, DamageTarget::Player(0), 4)));
+    }
+
+    // --- Chained replacements ---------------------------------------------
+
+    #[test]
+    fn two_prevent_up_to_effects_stack() {
+        let mut s = GameState::new(2, 0);
+        for n in [1, 2] {
+            s.add_replacement_effect(base_effect(
+                0,
+                ReplacementCondition::WouldDealDamage {
+                    source_filter: ObjectFilter::default(),
+                    target_filter: TargetFilter::Player,
+                },
+                ReplacementKind::PreventDamageUpTo(n),
+            ));
+        }
+        // Total reduction: 3 points from 5 → 2 remaining.
+        let out = s.replace_damage(99, DamageTarget::Player(0), 5);
+        assert_eq!(out.map(|t| t.2), Some(2));
+    }
+
+    #[test]
+    fn each_replacement_applies_at_most_once_per_event() {
+        // With a single PreventDamageUpTo(1) registered, 3 damage
+        // must become 2 — not 0 (which would happen if the replacement
+        // fired repeatedly).
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventDamageUpTo(1),
+        ));
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        assert_eq!(out.map(|t| t.2), Some(2));
+    }
+
+    // --- Self-replacement ordering (CR 614.15) ----------------------------
+
+    #[test]
+    fn self_replacement_applies_before_others_for_same_event() {
+        // Two applicable replacements: one self-replacement that
+        // doubles damage, one non-self that prevents 5. If double
+        // applies first: 3 → 6, then prevent-5 → 1. If prevent
+        // applies first: 3 → (prevented), None. We register the
+        // non-self first so insertion order favors it — but CR 614.15
+        // says the self-replacement still goes first.
+        let mut s = GameState::new(2, 0);
+        let mut other = base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventDamageUpTo(5),
+        );
+        other.is_self_replacement = false;
+        s.add_replacement_effect(other);
+
+        let mut self_repl = base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::DoubleDamage,
+        );
+        self_repl.is_self_replacement = true;
+        s.add_replacement_effect(self_repl);
+
+        // Self-first ordering: double to 6, then prevent 5 → 1.
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        assert_eq!(out.map(|t| t.2), Some(1));
+    }
+
+    // --- Custom ------------------------------------------------------------
+
+    #[test]
+    fn custom_replacement_fires() {
+        fn shrink(
+            event: &ReplacementEvent,
+            _: &GameState,
+        ) -> Option<ReplacementEvent> {
+            match event {
+                ReplacementEvent::Damage { source, target, amount } if *amount > 1 =>
+                    Some(ReplacementEvent::Damage {
+                        source: *source, target: *target, amount: amount - 1,
+                    }),
+                _ => Some(event.clone()),
+            }
+        }
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::Custom(shrink),
+        ));
+        let out = s.replace_damage(99, DamageTarget::Player(0), 5);
+        assert_eq!(out.map(|t| t.2), Some(4));
+    }
+
+    // --- Duration / expiry -------------------------------------------------
+
+    #[test]
+    fn expire_end_of_turn_drops_only_eot_replacements() {
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(ReplacementEffect {
+            duration: ReplacementDuration::EndOfTurn,
+            ..base_effect(0,
+                ReplacementCondition::WouldDealDamage {
+                    source_filter: ObjectFilter::default(),
+                    target_filter: TargetFilter::Player,
+                },
+                ReplacementKind::PreventAllDamage)
+        });
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventDamageUpTo(1),
+        ));
+        s.expire_end_of_turn_replacements();
+        assert_eq!(s.replacement_effects.len(), 1);
+    }
+
+    #[test]
+    fn expire_from_source_drops_while_on_bf_effects() {
+        let mut s = GameState::new(2, 0);
+        let src_a = 10;
+        let src_b = 20;
+        s.add_replacement_effect(ReplacementEffect {
+            source: src_a,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            ..base_effect(src_a,
+                ReplacementCondition::WouldDealDamage {
+                    source_filter: ObjectFilter::default(),
+                    target_filter: TargetFilter::Player,
+                },
+                ReplacementKind::PreventAllDamage)
+        });
+        s.add_replacement_effect(ReplacementEffect {
+            source: src_b,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            ..base_effect(src_b,
+                ReplacementCondition::WouldDealDamage {
+                    source_filter: ObjectFilter::default(),
+                    target_filter: TargetFilter::Player,
+                },
+                ReplacementKind::PreventAllDamage)
+        });
+        s.expire_replacements_from_source(src_a);
+        assert_eq!(s.replacement_effects.len(), 1);
+        assert_eq!(s.replacement_effects[0].source, src_b);
+    }
+
+    // --- ETB collector -----------------------------------------------------
+
+    #[test]
+    fn collect_etb_enters_with_counters() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.add_replacement_effect(base_effect(
+            c, // source is the creature entering
+            ReplacementCondition::WouldEnterBattlefield {
+                object_filter: ObjectFilter::creature(),
+            },
+            ReplacementKind::EtbWithCounters {
+                kind: CounterKind::PlusOnePlusOne,
+                count: 2,
+            },
+        ));
+        let r = s.collect_etb_replacements(c);
+        assert_eq!(r.additional_counters.len(), 1);
+        assert_eq!(r.additional_counters[0].0, CounterKind::PlusOnePlusOne);
+        assert_eq!(r.additional_counters[0].1, 2);
+    }
+
+    #[test]
+    fn collect_etb_enters_tapped() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.add_replacement_effect(base_effect(
+            c,
+            ReplacementCondition::WouldEnterBattlefield {
+                object_filter: ObjectFilter::default(),
+            },
+            ReplacementKind::EtbTapped,
+        ));
+        let r = s.collect_etb_replacements(c);
+        assert!(r.enter_tapped);
+        assert!(r.additional_counters.is_empty());
+    }
+
+    #[test]
+    fn collect_etb_no_effects_returns_default() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        let r = s.collect_etb_replacements(c);
+        assert!(r.additional_counters.is_empty());
+        assert!(!r.enter_tapped);
+    }
+
+    // --- Die replacement ---------------------------------------------------
+
+    #[test]
+    fn exile_instead_of_dying_returns_exile_outcome() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDie {
+                object_filter: ObjectFilter::creature(),
+            },
+            ReplacementKind::ExileInsteadOfDying,
+        ));
+        assert_eq!(s.replace_die(c), DieOutcome::ExileInstead);
+    }
+
+    #[test]
+    fn die_without_matching_replacement_still_dies() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        assert_eq!(s.replace_die(c), DieOutcome::StillDies);
+    }
+
+    // --- DrawCard skip ----------------------------------------------------
+
+    #[test]
+    fn skip_draw_event_is_cancelled() {
+        // Not wired into draw pipeline yet — test the pipeline predicate.
+        let mut s = GameState::new(2, 0);
+        s.add_replacement_effect(base_effect(
+            0,
+            ReplacementCondition::WouldDrawCard { player: ControllerConstraint::Any },
+            ReplacementKind::SkipDraw,
+        ));
+        let cond_matches = s.replacement_effects[0].condition.matches(
+            &ReplacementEvent::DrawCard { player: 0 },
+            /*source_controller=*/ 0,
+            &s,
+        );
+        assert!(cond_matches);
+    }
+}

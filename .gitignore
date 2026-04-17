@@ -1,0 +1,29 @@
+/target
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+CLAUDE.md
+*.pdf
+*.tex
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Generated card data (large, can be regenerated)
+# arcana-cards/src/generated/*.rs
+# Uncomment above if you want to exclude generated card code from git

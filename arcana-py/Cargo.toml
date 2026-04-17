@@ -1,0 +1,15 @@
+[package]
+name = "arcana-py"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "arcana_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+arcana-core = { path = "../arcana-core" }
+arcana-cards = { path = "../arcana-cards" }
+arcana-ai = { path = "../arcana-ai" }
+# pyo3 = { version = "0.22", features = ["extension-module"] }
+# Uncomment when ready to build Python bindings

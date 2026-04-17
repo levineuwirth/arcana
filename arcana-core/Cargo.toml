@@ -1,0 +1,22 @@
+[package]
+name = "arcana-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+im = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+smallvec = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
+serde_json = { workspace = true }
+
+[[bench]]
+name = "simulation"
+harness = false

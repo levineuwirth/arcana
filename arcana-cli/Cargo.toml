@@ -1,0 +1,10 @@
+[package]
+name = "arcana-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arcana-core = { path = "../arcana-core" }
+arcana-cards = { path = "../arcana-cards" }
+arcana-ai = { path = "../arcana-ai" }
+anyhow = { workspace = true }
