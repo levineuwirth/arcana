@@ -477,11 +477,12 @@ impl GameState {
         let mut used: std::collections::HashSet<u64> = std::collections::HashSet::new();
 
         loop {
-            let affected_controller = affected_controller_of(&current, self);
             let candidates: Vec<&ReplacementEffect> = self.replacement_effects.iter()
-                .filter(|e|
-                    !used.contains(&e.id)
-                    && e.condition.matches(&current, affected_controller, self))
+                .filter(|e| {
+                    if used.contains(&e.id) { return false; }
+                    let source_ctrl = source_controller_of(e, self);
+                    e.condition.matches(&current, source_ctrl, self)
+                })
                 .collect();
             if candidates.is_empty() { break; }
 
@@ -601,12 +602,13 @@ impl GameState {
     /// commits the modifications.
     pub fn collect_etb_replacements(&self, object_id: ObjectId) -> EtbReplacements {
         let mut out = EtbReplacements::default();
-        let affected_controller = self.objects.get(object_id)
-            .map(|o| o.controller).unwrap_or(0);
         let event = ReplacementEvent::EnterBattlefield { object_id };
 
         let mut applicable: Vec<&ReplacementEffect> = self.replacement_effects.iter()
-            .filter(|e| e.condition.matches(&event, affected_controller, self))
+            .filter(|e| {
+                let source_ctrl = source_controller_of(e, self);
+                e.condition.matches(&event, source_ctrl, self)
+            })
             .collect();
         // Self-replacements first, then others; within each, by id.
         applicable.sort_by_key(|e| (!e.is_self_replacement, e.id));
@@ -637,12 +639,13 @@ impl GameState {
     /// [`ReplacementKind::ExileInsteadOfDying`] is wired, and it
     /// returns `None` (caller routes the object to exile).
     pub fn replace_die(&mut self, object_id: ObjectId) -> DieOutcome {
-        let affected_controller = self.objects.get(object_id)
-            .map(|o| o.controller).unwrap_or(0);
         let event = ReplacementEvent::Die { object_id };
 
         let mut applicable_ids: Vec<u64> = self.replacement_effects.iter()
-            .filter(|e| e.condition.matches(&event, affected_controller, self))
+            .filter(|e| {
+                let source_ctrl = source_controller_of(e, self);
+                e.condition.matches(&event, source_ctrl, self)
+            })
             .map(|e| e.id)
             .collect();
         // Sort by (not-self-replacement, id) to prioritize self-replacement.
@@ -753,32 +756,10 @@ fn source_controller_of(effect: &ReplacementEffect, state: &GameState) -> Player
     state.objects.get(effect.source).map(|o| o.controller).unwrap_or(0)
 }
 
-/// Which player "chose" the replacement at this event? Per CR 614.4
-/// it's the affected player (for player-targeted damage) or
-/// controller (for object-targeted). For Phase 1 we just use a
-/// best-effort; a sensible default suffices because we pick
-/// deterministically among candidates anyway.
-fn affected_controller_of(event: &ReplacementEvent, state: &GameState) -> PlayerId {
-    match event {
-        ReplacementEvent::Damage { target, .. } => match target {
-            DamageTarget::Player(p) => *p,
-            DamageTarget::Object(id) =>
-                state.objects.get(*id).map(|o| o.controller).unwrap_or(0),
-        },
-        ReplacementEvent::EnterBattlefield { object_id }
-        | ReplacementEvent::Die { object_id }
-        | ReplacementEvent::CreateToken { object_id }
-        | ReplacementEvent::CounterSpell { stack_entry_id: object_id } =>
-            state.objects.get(*object_id).map(|o| o.controller).unwrap_or(0),
-        ReplacementEvent::DrawCard { player } => *player,
-        ReplacementEvent::BeginTurn { player } => *player,
-        ReplacementEvent::PlaceCounters { target, .. } => match target {
-            CounterTarget::Object(id) =>
-                state.objects.get(*id).map(|o| o.controller).unwrap_or(0),
-            CounterTarget::Player(p) => *p,
-        },
-    }
-}
+// NOTE: the "affected player" of a replacement event — the one who
+// chooses ordering among multiple applicable replacements per CR 616.1
+// — is distinct from `source_controller_of`. We don't model that yet;
+// it comes in as part of agent-choice replacement ordering (Phase 2-B).
 
 
 // =============================================================================
@@ -1609,5 +1590,94 @@ mod tests {
             4,
             "Modular 3 + Hardened Scales: ETB self-replacement places 3 +1/+1 \
              counters, that placement is itself replaced to 3+1 = 4");
+    }
+
+    // =====================================================================
+    // source_controller sweep regression tests — "You" in a replacement's
+    // filter resolves against the REPLACEMENT's source controller, not
+    // the affected party. These tests would fail under the old
+    // affected_controller_of semantic for damage / ETB / die pipelines.
+    // =====================================================================
+
+    /// Helper: install a permanent controlled by `owner` and return its id.
+    /// Used as a stand-in "source" object for a replacement effect so the
+    /// pipeline has something to compute source_controller_of against.
+    fn install_replacement_source(s: &mut GameState, owner: PlayerId) -> ObjectId {
+        put_creature(s, owner, 1, 1)
+    }
+
+    #[test]
+    fn damage_replacement_source_filter_resolves_you_against_replacement_controller() {
+        // "Prevent all damage dealt by a creature you control." Installed
+        // by player 0's permanent. Player 0's attacker → prevented;
+        // player 1's attacker → still deals damage.
+        let mut s = GameState::new(2, 0);
+        let my_perm = install_replacement_source(&mut s, 0);
+        let my_attacker = put_creature(&mut s, 0, 2, 2);
+        let enemy_attacker = put_creature(&mut s, 1, 2, 2);
+        s.add_replacement_effect(base_effect(
+            /*source=*/ my_perm,
+            ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::creature()
+                    .controlled_by(ControllerConstraint::You),
+                target_filter: TargetFilter::Player,
+            },
+            ReplacementKind::PreventAllDamage,
+        ));
+        assert!(
+            s.replace_damage(my_attacker, DamageTarget::Player(1), 3).is_none(),
+            "my creature's damage to opponent should be prevented");
+        assert_eq!(
+            s.replace_damage(enemy_attacker, DamageTarget::Player(0), 3),
+            Some((enemy_attacker, DamageTarget::Player(0), 3)),
+            "opponent's creature is not 'you control' — damage passes through");
+    }
+
+    #[test]
+    fn etb_replacement_object_filter_resolves_you_against_replacement_controller() {
+        // "Creatures you control enter tapped." Installed by player 0's
+        // permanent. Player 1's creature entering should NOT be tapped.
+        let mut s = GameState::new(2, 0);
+        let my_perm = install_replacement_source(&mut s, 0);
+        s.add_replacement_effect(base_effect(
+            /*source=*/ my_perm,
+            ReplacementCondition::WouldEnterBattlefield {
+                object_filter: ObjectFilter::creature()
+                    .controlled_by(ControllerConstraint::You),
+            },
+            ReplacementKind::EtbTapped,
+        ));
+        // Opponent's creature entering via move_object_to_zone.
+        let enemy = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            enemy, 1, Zone::Hand(1), 1, creature_chars(2, 2)));
+        let new_id = s.move_object_to_zone(
+            enemy, Zone::Battlefield,
+            crate::events::MoveCause::SpellResolution,
+        ).unwrap();
+        assert!(
+            !s.objects.get(new_id).unwrap().is_tapped(),
+            "opponent's creature is not 'you control' — should not enter tapped");
+    }
+
+    #[test]
+    fn die_replacement_object_filter_resolves_you_against_replacement_controller() {
+        // "If a creature you control would die, exile it instead."
+        // Installed by player 0. Opponent's creature dying → still dies.
+        let mut s = GameState::new(2, 0);
+        let my_perm = install_replacement_source(&mut s, 0);
+        s.add_replacement_effect(base_effect(
+            /*source=*/ my_perm,
+            ReplacementCondition::WouldDie {
+                object_filter: ObjectFilter::creature()
+                    .controlled_by(ControllerConstraint::You),
+            },
+            ReplacementKind::ExileInsteadOfDying,
+        ));
+        let enemy = put_creature(&mut s, 1, 2, 2);
+        assert_eq!(
+            s.replace_die(enemy),
+            DieOutcome::StillDies,
+            "opponent's creature dying is not 'you control' — no exile swap");
     }
 }
