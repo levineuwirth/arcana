@@ -351,6 +351,54 @@ fn apply_cast_spell(
         }
     }
 
+    // Improvise validation (CR 702.127). Each id must be: caster-
+    // controlled artifact permanent, on the battlefield, untapped,
+    // distinct. Count bounded by the post-delve generic total.
+    // Summoning sickness is irrelevant (artifact creatures like
+    // Ornithopter with sickness can still tap for improvise — CR
+    // 302.1 restricts tap-for-mana and combat only).
+    let improvise_taps_vec = cost_reductions.improvise_taps.clone().unwrap_or_default();
+    if !improvise_taps_vec.is_empty() {
+        if !has_improvise(state, object_id) { return; }
+        let mut seen_artifacts = std::collections::HashSet::new();
+        for &art_id in &improvise_taps_vec {
+            if !seen_artifacts.insert(art_id) { return; }
+            let Some(obj) = state.objects.get(art_id) else { return; };
+            if obj.controller != controller { return; }
+            if obj.zone != crate::zones::Zone::Battlefield { return; }
+            if !obj.characteristics.types.is_artifact() { return; }
+            if obj.is_tapped() { return; }
+        }
+        // Bound: improvise taps + delve exiles must not exceed the
+        // spell's generic component. Flashback adjusts the base cost.
+        let cost_opt = match cast_modifier {
+            crate::actions::CastModifier::None => state.objects.get(object_id)
+                .and_then(|o| o.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::Flashback =>
+                flashback_cost_for(state, object_id),
+        };
+        let generic_total: u32 = cost_opt.as_ref()
+            .map(|c| c.components.iter().filter_map(|comp|
+                if let crate::mana::ManaCostComponent::Generic(n) = comp {
+                    Some(*n)
+                } else { None }).sum())
+            .unwrap_or(0);
+        let used_generic = delve_exiles_vec.len() as u32
+            + improvise_taps_vec.len() as u32;
+        if used_generic > generic_total { return; }
+    }
+
+    // 1b-improvise. Tap improvise artifacts (CR 702.127). Another
+    //     cost-payment sub-event alongside delve exiles and convoke
+    //     taps.
+    for &art_id in &improvise_taps_vec {
+        if let Some(obj) = state.objects.get_mut(art_id) {
+            if obj.tap() {
+                state.emit(GameEvent::Tapped { object_id: art_id });
+            }
+        }
+    }
+
     // 1c. Spend the mana payment. `mana_payment` is already sized
     //     against the delve-reduced and convoke-reduced cost —
     //     legal_actions solves mana against the post-reduction cost,
@@ -441,6 +489,14 @@ pub(crate) fn has_delve(state: &GameState, object_id: ObjectId) -> bool {
 pub(crate) fn has_convoke(state: &GameState, object_id: ObjectId) -> bool {
     state.effective_keywords(object_id).into_iter()
         .any(|kw| matches!(kw, crate::effects::KeywordAbility::Convoke))
+}
+
+/// Layer-aware check: does `object_id` currently have the Improvise
+/// keyword (CR 702.127)? Walks [`GameState::effective_keywords`]
+/// so granted improvise is honored alongside the printed keyword.
+pub(crate) fn has_improvise(state: &GameState, object_id: ObjectId) -> bool {
+    state.effective_keywords(object_id).into_iter()
+        .any(|kw| matches!(kw, crate::effects::KeywordAbility::Improvise))
 }
 
 /// Valid [`crate::actions::ConvokePayment`] options for a creature
@@ -5050,6 +5106,7 @@ mod tests {
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(vec![g1, g2, g3]),
                 convoke_taps: None,
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5089,6 +5146,7 @@ mod tests {
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(gids),
                 convoke_taps: None,
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5322,6 +5380,7 @@ mod tests {
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(vec![g1, g2]),
                 convoke_taps: None,
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5370,6 +5429,7 @@ mod tests {
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(vec![g1, g1]),
                 convoke_taps: None,
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5477,6 +5537,7 @@ mod tests {
                         payment: crate::actions::ConvokePayment::Generic,
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5519,6 +5580,7 @@ mod tests {
                             crate::types::ManaColor::Blue),
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5558,6 +5620,7 @@ mod tests {
                             crate::types::ManaColor::Blue),
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5596,6 +5659,7 @@ mod tests {
                         payment: crate::actions::ConvokePayment::Generic,
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5633,6 +5697,7 @@ mod tests {
                         payment: crate::actions::ConvokePayment::Generic,
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5674,6 +5739,7 @@ mod tests {
                         payment: crate::actions::ConvokePayment::Generic,
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5796,6 +5862,7 @@ mod tests {
                             crate::types::ManaColor::White),
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5836,6 +5903,7 @@ mod tests {
                         payment: crate::actions::ConvokePayment::Generic,
                     },
                 ]),
+                improvise_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5892,6 +5960,7 @@ mod tests {
                 cost_reductions: crate::actions::CostReductions {
                     delve_exiles,
                     convoke_taps,
+                    ..
                 },
                 ..
             } = a {
@@ -6071,5 +6140,584 @@ mod tests {
             } if *object_id == src && !v.is_empty())).collect();
         assert!(!convoke_actions.is_empty(),
             "granted-convoke card must offer convoke actions");
+    }
+
+    // =========================================================================
+    // Improvise (CR 702.127)
+    // =========================================================================
+
+    /// Register an improvise spell with the given printed cost.
+    fn register_improvise_spell(
+        registry: &mut CardRegistry,
+        name: &str,
+        printed_cost: &str,
+    ) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        fn noop_effect(
+            _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> { vec![] }
+        let cost = ManaCost::parse(printed_cost).unwrap();
+        let interned = registry.interner_mut().intern(name);
+        let mut def = CardDefinition::new(interned, Characteristics {
+            mana_cost: Some(cost.clone()),
+            colors: cost.colors(),
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Improvise. Does nothing.".into(),
+            target_requirements: vec![],
+            effect: noop_effect,
+        });
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Improvise);
+        registry.register(def)
+    }
+
+    /// Put an artifact on the battlefield for a player. Colors set
+    /// to empty (artifacts are typically colorless). Returns object id.
+    fn put_artifact(
+        state: &mut GameState,
+        player: PlayerId,
+    ) -> ObjectId {
+        let obj_id = state.allocate_object_id();
+        let chars = Characteristics {
+            colors: crate::types::ColorSet::new(),
+            types: TypeLine::ARTIFACT.into(),
+            ..Default::default()
+        };
+        state.objects.insert(crate::objects::GameObject::new(
+            obj_id, player, Zone::Battlefield, 0, chars));
+        obj_id
+    }
+
+    /// Put an artifact creature on the battlefield (for sickness and
+    /// convoke+improvise joint-eligibility tests).
+    fn put_artifact_creature(
+        state: &mut GameState,
+        player: PlayerId,
+    ) -> ObjectId {
+        let obj_id = state.allocate_object_id();
+        let chars = Characteristics {
+            colors: crate::types::ColorSet::new(),
+            types: crate::types::TypeLine(
+                TypeLine::ARTIFACT | TypeLine::CREATURE),
+            power: Some(crate::types::PtValue::Fixed(1)),
+            toughness: Some(crate::types::PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        state.objects.insert(crate::objects::GameObject::new(
+            obj_id, player, Zone::Battlefield, 0, chars));
+        obj_id
+    }
+
+    #[test]
+    fn improvise_taps_artifacts_pays_generic() {
+        // {3}{U} spell, 3 artifacts + {U} mana.
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{3}{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        let a1 = put_artifact(&mut s, 0);
+        let a2 = put_artifact(&mut s, 0);
+        let a3 = put_artifact(&mut s, 0);
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan {
+                assignments: vec![crate::actions::ManaAssignment {
+                    pool_index: 0, cost_index: 0,
+                }],
+                ..Default::default()
+            },
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: None,
+                improvise_taps: Some(vec![a1, a2, a3]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(!s.stack_is_empty(),
+            "improvise spell must be on stack");
+        assert!(s.objects.get(a1).unwrap().is_tapped());
+        assert!(s.objects.get(a2).unwrap().is_tapped());
+        assert!(s.objects.get(a3).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn improvise_cannot_use_tapped_artifact() {
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        let artifact = put_artifact(&mut s, 0);
+        s.objects.get_mut(artifact).unwrap().tap();
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: None,
+                improvise_taps: Some(vec![artifact]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "already-tapped artifact must be rejected");
+    }
+
+    #[test]
+    fn improvise_cannot_use_non_artifact() {
+        // Creature (not an artifact) — reject.
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        let creature = put_creature(&mut s, 0, crate::types::ColorSet::white());
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: None,
+                improvise_taps: Some(vec![creature]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "non-artifact creature must be rejected for improvise");
+        assert!(!s.objects.get(creature).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn improvise_cannot_use_opponent_artifact() {
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        let opp_art = put_artifact(&mut s, /*player=*/ 1);
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: None,
+                improvise_taps: Some(vec![opp_art]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "opponent's artifact must be rejected");
+    }
+
+    #[test]
+    fn improvise_duplicate_artifact_rejected() {
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{2}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        let a1 = put_artifact(&mut s, 0);
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: None,
+                improvise_taps: Some(vec![a1, a1]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "duplicate artifact id must be rejected");
+    }
+
+    #[test]
+    fn improvise_over_generic_not_legal() {
+        // Cost {1}, agent tries to tap 2 artifacts — reject.
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        let a1 = put_artifact(&mut s, 0);
+        let a2 = put_artifact(&mut s, 0);
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: None,
+                improvise_taps: Some(vec![a1, a2]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "improvise count > generic must be rejected");
+    }
+
+    #[test]
+    fn improvise_zero_artifacts_equivalent_to_normal_cast() {
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        put_artifact(&mut s, 0);
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let zero = actions.iter().find(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    improvise_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && v.is_empty()))
+            .expect("zero-improvise cast must be legal")
+            .clone();
+        let (s, _) = step(s, zero, &registry);
+        assert!(!s.stack_is_empty());
+    }
+
+    #[test]
+    fn improvise_with_summoning_sick_artifact_creature() {
+        // Artifact creature with sickness: tap-as-cost is unaffected.
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        let art_creature = put_artifact_creature(&mut s, 0);
+        s.objects.get_mut(art_creature).unwrap().status.summoning_sick = true;
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: None,
+                improvise_taps: Some(vec![art_creature]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(!s.stack_is_empty(),
+            "sickness must not block improvise");
+        assert!(s.objects.get(art_creature).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn legal_actions_enumerates_improvise_subsets() {
+        // {2} spell, 2 distinct-id artifacts → expect k=0, 1, 2
+        // actions all enumerated (k=0 from delve track baseline,
+        // k=1, 2 from improvise track).
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{2}");
+        let a1_card = {
+            use crate::registry::CardDefinition;
+            let name = registry.interner_mut().intern("A1");
+            let def = CardDefinition::new(name, Characteristics {
+                colors: crate::types::ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                ..Default::default()
+            });
+            registry.register(def)
+        };
+        let a2_card = {
+            use crate::registry::CardDefinition;
+            let name = registry.interner_mut().intern("A2");
+            let def = CardDefinition::new(name, Characteristics {
+                colors: crate::types::ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                ..Default::default()
+            });
+            registry.register(def)
+        };
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        state_allocate_creature(&mut s, 0, a1_card, &registry);
+        state_allocate_creature(&mut s, 0, a2_card, &registry);
+        // Mana covers the post-reduction cost at every k (0, 1, 2).
+        give_mana(&mut s, 0, "{2}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let imp_non_empty: Vec<_> = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    improvise_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && !v.is_empty())).collect();
+        // Two distinct artifacts + {2} cost → at least k=1 (two
+        // separate card_ids → two subsets at k=1) + k=2 (one subset).
+        assert!(imp_non_empty.len() >= 2,
+            "expect multiple improvise actions (got {})", imp_non_empty.len());
+    }
+
+    #[test]
+    fn improvise_dedup_identical_artifacts() {
+        // 3 identical artifacts, cost {3}. k=1 → 1 action (not 3).
+        let mut registry = CardRegistry::new();
+        let imp_card = register_improvise_spell(
+            &mut registry, "Imp-Sorc", "{3}");
+        let art_card = {
+            use crate::registry::CardDefinition;
+            let name = registry.interner_mut().intern("Identical-Art");
+            let def = CardDefinition::new(name, Characteristics {
+                colors: crate::types::ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                ..Default::default()
+            });
+            registry.register(def)
+        };
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, imp_card);
+        for _ in 0..3 {
+            state_allocate_creature(&mut s, 0, art_card, &registry);
+        }
+        // Mana to cover the post-reduction cost so k=1 is feasible.
+        give_mana(&mut s, 0, "{2}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let k1: usize = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    improvise_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && v.len() == 1)).count();
+        assert_eq!(k1, 1, "3 identical artifacts must dedup to k=1 single action");
+    }
+
+    #[test]
+    fn snapcaster_style_granted_improvise() {
+        use crate::layers::{ContinuousEffect, Duration};
+        let mut registry = CardRegistry::new();
+        let plain = {
+            use crate::mana::ManaCost;
+            use crate::registry::{CardDefinition, SpellAbilityDef};
+            fn noop(
+                _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+            ) -> Vec<crate::effects::Effect> { vec![] }
+            let name = registry.interner_mut().intern("Plain-Improvise-Grant");
+            let def = CardDefinition::new(name, Characteristics {
+                mana_cost: Some(ManaCost::parse("{2}").unwrap()),
+                colors: crate::types::ColorSet::new(),
+                types: TypeLine::SORCERY.into(),
+                ..Default::default()
+            }).with_spell_ability(SpellAbilityDef {
+                text: "Does nothing.".into(),
+                target_requirements: vec![],
+                effect: noop,
+            });
+            registry.register(def)
+        };
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, plain);
+        put_artifact(&mut s, 0);
+        s.add_continuous_effect(ContinuousEffect::grant_keyword(
+            /*source=*/ 999, src,
+            crate::effects::KeywordAbility::Improvise,
+            Duration::EndOfTurn,
+        ));
+        give_mana(&mut s, 0, "{1}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let imp_actions: Vec<_> = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    improvise_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && !v.is_empty())).collect();
+        assert!(!imp_actions.is_empty(),
+            "granted-improvise card must offer improvise actions");
+    }
+
+    #[test]
+    fn improvise_with_delve_not_enumerated_jointly() {
+        let mut registry = CardRegistry::new();
+        let dual_id = {
+            use crate::mana::ManaCost;
+            use crate::registry::{CardDefinition, SpellAbilityDef};
+            fn noop(
+                _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+            ) -> Vec<crate::effects::Effect> { vec![] }
+            let name = registry.interner_mut().intern("Delve+Improvise");
+            let mut def = CardDefinition::new(name, Characteristics {
+                mana_cost: Some(ManaCost::parse("{2}").unwrap()),
+                colors: crate::types::ColorSet::new(),
+                types: TypeLine::SORCERY.into(),
+                ..Default::default()
+            }).with_spell_ability(SpellAbilityDef {
+                text: "Delve. Improvise.".into(),
+                target_requirements: vec![],
+                effect: noop,
+            });
+            def.base_characteristics.keywords.push(
+                crate::effects::KeywordAbility::Delve);
+            def.base_characteristics.keywords.push(
+                crate::effects::KeywordAbility::Improvise);
+            registry.register(def)
+        };
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, dual_id);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        put_artifact(&mut s, 0);
+        give_mana(&mut s, 0, "{2}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        for a in &actions {
+            if let Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    delve_exiles, improvise_taps, ..
+                },
+                ..
+            } = a {
+                if *object_id != src { continue; }
+                let d = delve_exiles.as_ref().is_some_and(|v| !v.is_empty());
+                let i = improvise_taps.as_ref().is_some_and(|v| !v.is_empty());
+                assert!(!(d && i),
+                    "v1 must not enumerate joint delve+improvise actions");
+            }
+        }
+    }
+
+    #[test]
+    fn improvise_with_convoke_not_enumerated_jointly() {
+        // Artifact creature qualifies for both — but v1 enumerates
+        // neither track when both keywords are present (mutual
+        // exclusion across all three cost-reduction tracks).
+        let mut registry = CardRegistry::new();
+        let dual_id = {
+            use crate::mana::ManaCost;
+            use crate::registry::{CardDefinition, SpellAbilityDef};
+            fn noop(
+                _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+            ) -> Vec<crate::effects::Effect> { vec![] }
+            let name = registry.interner_mut().intern("Convoke+Improvise");
+            let mut def = CardDefinition::new(name, Characteristics {
+                mana_cost: Some(ManaCost::parse("{2}").unwrap()),
+                colors: crate::types::ColorSet::new(),
+                types: TypeLine::SORCERY.into(),
+                ..Default::default()
+            }).with_spell_ability(SpellAbilityDef {
+                text: "Convoke. Improvise.".into(),
+                target_requirements: vec![],
+                effect: noop,
+            });
+            def.base_characteristics.keywords.push(
+                crate::effects::KeywordAbility::Convoke);
+            def.base_characteristics.keywords.push(
+                crate::effects::KeywordAbility::Improvise);
+            registry.register(def)
+        };
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, dual_id);
+        put_artifact_creature(&mut s, 0);
+        give_mana(&mut s, 0, "{2}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        for a in &actions {
+            if let Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    convoke_taps, improvise_taps, ..
+                },
+                ..
+            } = a {
+                if *object_id != src { continue; }
+                let c = convoke_taps.as_ref().is_some_and(|v| !v.is_empty());
+                let i = improvise_taps.as_ref().is_some_and(|v| !v.is_empty());
+                assert!(!(c && i),
+                    "v1 must not enumerate joint convoke+improvise actions");
+            }
+        }
     }
 }

@@ -885,7 +885,7 @@ pub enum KeywordAbility {
     /// sources that match the quality.
     Protection(ProtectionQuality),
     // Returning / frequent
-    Convoke, Delve, Prowess, Affinity(SubtypeFilter),
+    Convoke, Delve, Improvise, Prowess, Affinity(SubtypeFilter),
     Equip(crate::mana::ManaCost), Enchant(EnchantFilter),
     Cycling(crate::mana::ManaCost), Flashback(crate::mana::ManaCost),
     Kicker(crate::mana::ManaCost), Madness(crate::mana::ManaCost),

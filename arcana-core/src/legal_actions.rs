@@ -471,18 +471,22 @@ fn legal_priority_actions(
             .unwrap_or_default();
         let target_selections = enumerate_target_selections(&reqs, state, player);
 
-        // Cost reductions: delve (CR 702.66) and convoke (CR 702.51).
-        // These compose at the rules level but are enumerated
-        // separately here for v1 — no printed card has both, and
-        // joint-enumeration would combinatorially cross-product.
+        // Cost reductions: delve (CR 702.66), convoke (CR 702.51),
+        // improvise (CR 702.127). These compose at the rules level
+        // but are enumerated as independent tracks for v1 — no
+        // printed card has more than one, and joint-enumeration
+        // would combinatorially cross-product.
         //
-        //   delve_available && !convoke → emit delve-only actions
-        //   convoke_available && !delve → emit convoke-only actions
-        //   neither → emit a single plain-cast action
-        //   both → emit both families (delve-only + convoke-only)
-        //   but NOT joint. Joint-enumeration is a Phase 2-B follow-up.
+        //   each track emitted when its keyword is present
+        //   no joint (delve+convoke / delve+improvise / convoke+
+        //   improvise / all-three) enumeration in v1
+        //
+        // When a real card combines keywords, extend here to either
+        // emit joint products with careful dedup, or switch to the
+        // Shape B-full substep pipeline.
         let delve_available = crate::engine::has_delve(state, id);
         let convoke_available = crate::engine::has_convoke(state, id);
+        let improvise_available = crate::engine::has_improvise(state, id);
         let gen_cap = generic_total(&cost);
 
         // --- Delve track (only generic pips reducible) ----------
@@ -517,6 +521,7 @@ fn legal_priority_actions(
                                 None
                             },
                             convoke_taps: None,
+                            improvise_taps: None,
                         },
                     });
                 }
@@ -527,7 +532,7 @@ fn legal_priority_actions(
         // Only runs when the card has convoke AND no delve (to avoid
         // double-emitting the "no cost reduction" baseline — the
         // delve track already covered it above).
-        if convoke_available && !delve_available {
+        if convoke_available && !delve_available && !improvise_available {
             let pip_cap = total_pips(&cost) as usize;
             let convoke_subsets = if pip_cap > 0 {
                 enumerate_convoke_subsets(state, player, pip_cap)
@@ -575,9 +580,48 @@ fn legal_priority_actions(
                                         delve_exiles: None,
                                         convoke_taps: Some(
                                             convoke_taps.clone()),
+                                        improvise_taps: None,
                                     },
                             });
                         }
+                    }
+                }
+            }
+        }
+
+        // --- Improvise track ------------------------------------
+        // Only runs when improvise is present AND neither delve nor
+        // convoke is — same mutual-exclusion policy as convoke.
+        if improvise_available && !delve_available && !convoke_available {
+            let improvise_subsets = if gen_cap > 0 {
+                enumerate_improvise_subsets(state, player, gen_cap as usize)
+            } else {
+                vec![Vec::new()]
+            };
+            for subset in &improvise_subsets {
+                let reduced_cost = if subset.is_empty() {
+                    cost.clone()
+                } else {
+                    reduce_generic_cost(&cost, subset.len() as u32)
+                };
+                let plans = enumerate_payment_plans(
+                    &reduced_cost, &state.player(player).mana_pool, None, &ctx);
+                for plan in plans {
+                    for targets in &target_selections {
+                        actions.push(Action::CastSpell {
+                            object_id: id,
+                            targets: targets.clone(),
+                            modes: Vec::new(),
+                            mana_payment: plan.clone(),
+                            additional_costs: Vec::new(),
+                            x_value: None,
+                            cast_modifier: crate::actions::CastModifier::None,
+                            cost_reductions: crate::actions::CostReductions {
+                                delve_exiles: None,
+                                convoke_taps: None,
+                                improvise_taps: Some(subset.clone()),
+                            },
+                        });
                     }
                 }
             }
@@ -1031,6 +1075,43 @@ fn total_pips(cost: &crate::mana::ManaCost) -> u32 {
         // bound as 1-per-component.
         _ => 1,
     }).sum()
+}
+
+// ----- Improvise (CR 702.127) enumeration helpers ---------------------
+
+/// Candidate artifacts for improvise: the caster's untapped artifact
+/// permanents (artifact creatures qualify — artifact-ness is what
+/// matters, not creature-ness). Sorted by object id.
+fn improvise_candidate_artifacts(
+    state: &GameState,
+    player: PlayerId,
+) -> Vec<ObjectId> {
+    state.objects.ids_in_zone_sorted(Zone::Battlefield)
+        .into_iter()
+        .filter(|&id| {
+            state.objects.get(id).is_some_and(|obj|
+                obj.controller == player
+                && obj.characteristics.types.is_artifact()
+                && !obj.is_tapped())
+        })
+        .collect()
+}
+
+/// Enumerate improvise artifact subsets for a caster, bounded by
+/// `max_generic` (improvise can only reduce generic pips, same
+/// constraint as delve). Uses the same `object_equivalence_key`
+/// dedup as delve — artifacts with same (card_id, effective
+/// keywords) collapse to per-count axis.
+fn enumerate_improvise_subsets(
+    state: &GameState,
+    player: PlayerId,
+    max_generic: usize,
+) -> Vec<Vec<ObjectId>> {
+    let candidates = improvise_candidate_artifacts(state, player);
+    enumerate_equivalence_subsets(
+        &candidates, max_generic,
+        |&id| object_equivalence_key(state, id),
+    )
 }
 
 /// Emit one [`Action::ActivateAbility`] per (permanent, ability,

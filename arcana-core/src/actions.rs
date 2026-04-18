@@ -83,6 +83,12 @@ pub struct CostReductions {
     /// names the creature and which pip it pays for. `None` = card
     /// has no convoke; `Some(vec![])` = has convoke, chose none.
     pub convoke_taps: Option<Vec<ConvokeAssignment>>,
+    /// Artifacts to tap for improvise (CR 702.127). Each tapped
+    /// artifact satisfies `{1}` generic. No assignment needed (all
+    /// pay generic only; improvise can never pay colored pips).
+    /// `None` = card has no improvise; `Some(vec![])` = has
+    /// improvise, chose none.
+    pub improvise_taps: Option<Vec<ObjectId>>,
 }
 
 /// One creature's contribution to a convoke payment (CR 702.51b).
