@@ -135,7 +135,7 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
             object_id, targets, modes, mana_payment, additional_costs, x_value,
         } => {
             apply_cast_spell(
-                state, object_id, targets, modes,
+                state, registry, object_id, targets, modes,
                 mana_payment, additional_costs, x_value,
             );
         }
@@ -216,6 +216,7 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
 
 fn apply_cast_spell(
     state: &mut GameState,
+    registry: &CardRegistry,
     object_id: ObjectId,
     targets: crate::targets::TargetSelection,
     modes: Vec<crate::stack::ModeChoice>,
@@ -235,9 +236,16 @@ fn apply_cast_spell(
     apply_additional_costs(state, controller, &additional_costs);
 
     // 3. Announce on the stack (CR 601.2a). Moves card Hand→Stack,
-    //    emits ZoneChange(Cast).
+    //    emits ZoneChange(Cast). Snapshots the spell's targeting
+    //    requirements onto the entry so copies (storm / CopySpell)
+    //    can push ChooseTargets without registry access.
+    let target_requirements = state.objects.get(object_id)
+        .and_then(|o| registry.get(o.card_id))
+        .and_then(|def| def.spell_ability.as_ref())
+        .map(|sa| sa.target_requirements.clone())
+        .unwrap_or_default();
     let entry_id = state.announce_spell_on_stack(
-        object_id, controller, targets, modes, x_value);
+        object_id, controller, targets, modes, x_value, target_requirements);
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
     state.emit_spell_cast(entry_id);
@@ -447,6 +455,56 @@ pub(crate) fn apply_resolution_choice(
             }
         }
 
+        // --- YesNo mid-resolution: cascade may-cast (CR 702.85) ------
+        (
+            ChoiceKind::YesNo { .. },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::YesNo { answer },
+        ) if state.pending_cascade.is_some() => {
+            let pc = state.pending_cascade.take().unwrap();
+            if *answer {
+                // Yes: cast the hit for free; other_exiled goes to
+                // the bottom in random order.
+                cast_cascade_hit(state, pc.controller, pc.hit);
+                crate::effects::cascade_shuffle_to_bottom(
+                    state, pc.controller, pc.other_exiled);
+            } else {
+                // No: hit joins the rest on the bottom.
+                let mut all = pc.other_exiled;
+                all.push(pc.hit);
+                crate::effects::cascade_shuffle_to_bottom(
+                    state, pc.controller, all);
+            }
+        }
+
+        // --- ChooseTargets mid-resolution (storm copies, CopySpell) --
+        // The pushing effect stashed an
+        // `ApplyTargetsToStackEntry` follow-up naming the entry
+        // whose targets to overwrite. Clears the requirements slot.
+        (
+            ChoiceKind::ChooseTargets { .. },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::ChooseTargets { selection },
+        ) => {
+            state.pending_target_requirements = None;
+            let follow_up = state.pending_choice_follow_up.take()
+                .expect("apply_resolution_choice: ChooseTargets needs \
+                         a pending_choice_follow_up");
+            match follow_up {
+                crate::actions::ChoiceFollowUp::ApplyTargetsToStackEntry {
+                    entry_id,
+                } => {
+                    if let Some(entry) =
+                        state.stack.iter_mut().find(|e| e.id == entry_id)
+                    {
+                        entry.targets = selection.clone();
+                    }
+                }
+                other => panic!(
+                    "ChooseTargets dispatch: unexpected follow-up {other:?}"),
+            }
+        }
+
         // --- Mismatched response kinds: hard error (spec §41.6 R4) ---
         _ => {
             panic!(
@@ -579,6 +637,22 @@ fn apply_order_cards(
     }
 }
 
+/// Cast `hit` from exile for free (CR 702.85 cascade). No targets or
+/// modes are selected (Phase 2-A simplification, same as
+/// `cast_from_zone_free`); a targeted cascaded spell resolves with
+/// empty targets and gets rules-countered. When resolution-time
+/// ChooseTargets lands for the cascade cast path, thread it through
+/// here.
+fn cast_cascade_hit(state: &mut GameState, player: PlayerId, hit: ObjectId) {
+    let Some(obj) = state.objects.get(hit) else { return; };
+    if obj.zone != crate::zones::Zone::Exile { return; }
+    if obj.is_land() { return; }
+    let entry_id = state.announce_spell_on_stack(
+        hit, player, crate::targets::TargetSelection::new(),
+        Vec::new(), None, Vec::new());
+    state.emit_spell_cast(entry_id);
+}
+
 /// Greedily deduct `cost` from `player`'s mana pool. Called when an
 /// agent answers `true` to a PayOrDecline (Ward, for now).
 ///
@@ -706,6 +780,12 @@ fn apply_choice_follow_up(
                 // against via LKI.
                 state.emit(GameEvent::Discarded { player, object_id: *id });
             }
+        }
+        ChoiceFollowUp::ApplyTargetsToStackEntry { .. } => {
+            // PickCards path can never produce this follow-up (it pairs
+            // with ChooseTargets responses, dispatched separately).
+            panic!("apply_choice_follow_up: ApplyTargetsToStackEntry is for \
+                    ChooseTargets, not PickCards");
         }
     }
 }
@@ -1263,6 +1343,8 @@ fn next_turn(state: &mut GameState) {
         None => crate::priority::next_in_turn_order(ap, state.num_players()),
     };
     state.turn.start_next_turn(next_ap);
+    // CR 702.40a: storm count resets between turns.
+    state.storm_count = 0;
     state.emit(GameEvent::TurnBegins {
         player: next_ap, turn_number: state.turn.turn_number,
     });
@@ -1499,7 +1581,25 @@ fn resolution_effects(
             };
             (ability.effect)(state, &ctx, registry)
         }
-        crate::stack::StackEntryKind::TriggeredAbility { .. } => Vec::new(),
+        crate::stack::StackEntryKind::TriggeredAbility {
+            trigger_id, trigger_event, ..
+        } => {
+            let source = entry.source;
+            let Some(obj) = state.objects.get(source)
+                .or_else(|| state.lki.get(&source))
+                else { return Vec::new(); };
+            let Some(def) = registry.get(obj.card_id) else { return Vec::new(); };
+            let Some(ability) = def.triggered_abilities.iter()
+                .find(|a| a.id == *trigger_id)
+                else { return Vec::new(); };
+            let pt = crate::triggers::PendingTrigger {
+                source,
+                trigger_id: *trigger_id,
+                controller: entry.controller,
+                trigger_event: trigger_event.clone(),
+            };
+            (ability.effect)(state, &pt, &())
+        }
     }
 }
 
@@ -3866,5 +3966,408 @@ mod tests {
             state.objects.count_in_zone(Zone::Hand(ap)), 4,
             "custom max_hand_size = 4 should cap hand at 4",
         );
+    }
+
+    // =====================================================================
+    // Storm & Cascade (CR 702.40 / 702.85)
+    // =====================================================================
+
+    /// Register a Grapeshot-shape spell: {R} instant, "deal 1 damage to
+    /// target player" + storm. (We use target-player rather than
+    /// "any target" to keep the test on the canonical Player branch of
+    /// the target filter.)
+    fn register_grapeshot(registry: &mut CardRegistry) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        use crate::targets::TargetRequirement;
+        fn grapeshot_effect(
+            _: &GameState,
+            entry: &crate::stack::StackEntry,
+            _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> {
+            let Some(t) = entry.targets.targets.first() else { return vec![]; };
+            let target = match t {
+                crate::targets::TargetChoice::Object(id) =>
+                    crate::events::DamageTarget::Object(*id),
+                crate::targets::TargetChoice::Player(p) =>
+                    crate::events::DamageTarget::Player(*p),
+                crate::targets::TargetChoice::ObjectOrPlayer(op) => match op {
+                    crate::targets::ObjectOrPlayer::Object(id) =>
+                        crate::events::DamageTarget::Object(*id),
+                    crate::targets::ObjectOrPlayer::Player(p) =>
+                        crate::events::DamageTarget::Player(*p),
+                },
+            };
+            vec![crate::effects::Effect::DealDamage {
+                source: entry.source, target, amount: 1,
+            }]
+        }
+        let name = registry.interner_mut().intern("Grapeshot");
+        let mut def = CardDefinition::new(name, Characteristics {
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Deal 1 damage to target player. Storm.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            effect: grapeshot_effect,
+        });
+        def.triggered_abilities.push(
+            crate::keywords::storm_trigger_def(1));
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Storm);
+        registry.register(def)
+    }
+
+    /// Register a Tendrils-shape spell: {B}{B} sorcery, "target player
+    /// loses 2 life" + storm. Single-target storm.
+    fn register_tendrils(registry: &mut CardRegistry) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        use crate::targets::TargetRequirement;
+        fn tendrils_effect(
+            _: &GameState,
+            entry: &crate::stack::StackEntry,
+            _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> {
+            let Some(t) = entry.targets.targets.first() else { return vec![]; };
+            let player = match t {
+                crate::targets::TargetChoice::Player(p) => *p,
+                _ => return vec![],
+            };
+            vec![crate::effects::Effect::LoseLife { player, amount: 2 }]
+        }
+        let name = registry.interner_mut().intern("Tendrils");
+        let mut def = CardDefinition::new(name, Characteristics {
+            mana_cost: Some(ManaCost::parse("{B}{B}").unwrap()),
+            colors: ColorSet::black(),
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Target player loses 2 life. Storm.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            effect: tendrils_effect,
+        });
+        def.triggered_abilities.push(
+            crate::keywords::storm_trigger_def(1));
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Storm);
+        registry.register(def)
+    }
+
+    /// Harness: put a spell on the stack as if cast at storm count N-1.
+    /// Primes `state.storm_count = prior_spells`, then announces the
+    /// spell (incrementing storm_count to prior_spells+1 and snapshotting
+    /// prior_spells on the entry).
+    fn announce_as_nth_spell(
+        state: &mut GameState,
+        registry: &CardRegistry,
+        controller: PlayerId,
+        card_id: crate::types::CardId,
+        targets: crate::targets::TargetSelection,
+        prior_spells: u32,
+    ) -> ObjectId {
+        state.storm_count = prior_spells;
+        let obj_id = state.allocate_object_id();
+        let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+        state.objects.insert(crate::objects::GameObject::new(
+            obj_id, controller,
+            crate::zones::Zone::Hand(controller),
+            card_id, chars,
+        ));
+        let reqs = registry.get(card_id).unwrap().spell_ability.as_ref()
+            .map(|sa| sa.target_requirements.clone()).unwrap_or_default();
+        state.announce_spell_on_stack(
+            obj_id, controller, targets, vec![], None, reqs)
+    }
+
+    #[test]
+    fn storm_trigger_creates_n_copies_on_stack() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        let mut registry = CardRegistry::new();
+        let card = register_tendrils(&mut registry);
+        let mut s = GameState::new(2, 0);
+        // Prior storm count = 3 (three spells already cast).
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, card, targets, 3);
+        s.emit_spell_cast(cast_id);
+        run_sba_and_triggers(&mut s, &registry);
+        // Resolve the storm trigger, which enqueues 3 CopySpell
+        // effects. The first one pushes ChooseTargets and parks.
+        resolve_top_of_stack(&mut s, &registry);
+        assert!(s.pending_choice.is_some(),
+            "first copy's ChooseTargets should be pending");
+    }
+
+    #[test]
+    fn storm_copies_resolve_per_copy_targets_and_deal_right_damage() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        let mut registry = CardRegistry::new();
+        let card = register_grapeshot(&mut registry);
+        let mut s = GameState::new(2, 0);
+        // Cast Grapeshot targeting player 1. Prior = 3.
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, card, targets, 3);
+        let p1_start = s.player(1).life;
+        s.emit_spell_cast(cast_id);
+        run_sba_and_triggers(&mut s, &registry);
+
+        // Resolve storm trigger: enqueues 3 CopySpell effects, each
+        // parking for ChooseTargets.
+        resolve_top_of_stack(&mut s, &registry);
+
+        // Drive three per-copy target choices. All targets = player 1.
+        for _ in 0..3 {
+            let pending = s.pending_choice.as_ref()
+                .expect("expected per-copy ChooseTargets").clone();
+            let mut sel = TargetSelection::new();
+            sel.targets.push(TargetChoice::Player(1));
+            apply_resolution_choice(&mut s, pending.id,
+                crate::actions::ChoiceResponse::ChooseTargets { selection: sel });
+        }
+
+        // Resolve 3 copies + the original = 4 damage events.
+        while !s.stack_is_empty() {
+            resolve_top_of_stack(&mut s, &registry);
+            run_sba_and_triggers(&mut s, &registry);
+        }
+
+        assert_eq!(p1_start - s.player(1).life, 4,
+            "3 storm copies + original Grapeshot = 4 damage to player 1");
+    }
+
+    #[test]
+    fn storm_copies_do_not_increment_storm_count_for_later_spells() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        let mut registry = CardRegistry::new();
+        let card = register_tendrils(&mut registry);
+        let mut s = GameState::new(2, 0);
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, card, targets, 2);
+        // After announce, storm_count should be 3 (2 prior + this cast).
+        assert_eq!(s.storm_count, 3);
+        s.emit_spell_cast(cast_id);
+        run_sba_and_triggers(&mut s, &registry);
+        // Resolve storm trigger -> 2 copies (prior=2 before cast).
+        resolve_top_of_stack(&mut s, &registry);
+
+        // After trigger resolution, copies are on the stack + original.
+        // state.storm_count must still be 3 — copies don't increment.
+        assert_eq!(s.storm_count, 3,
+            "copies on the stack don't go through announce_spell_on_stack \
+             and must not increment storm_count");
+    }
+
+    #[test]
+    fn effect_copy_spell_pushes_choose_targets_when_original_has_targets() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        let mut registry = CardRegistry::new();
+        let card = register_grapeshot(&mut registry);
+        let mut s = GameState::new(2, 0);
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, card, targets, 0);
+        crate::effects::Effect::CopySpell { target: cast_id }.execute(&mut s);
+        assert!(s.pending_choice.is_some(),
+            "CopySpell on a targeted spell must push a ChooseTargets prompt");
+        assert!(s.pending_target_requirements.is_some());
+    }
+
+    // -------------------- Cascade --------------------
+
+    /// Build a simple cascade card: {3}{R} sorcery, "deal 1 to any target".
+    /// MV=4, so cascade hits a nonland with MV<4.
+    fn register_cascade_card(registry: &mut CardRegistry) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        use crate::targets::TargetRequirement;
+        fn nada(
+            _: &GameState,
+            _: &crate::stack::StackEntry,
+            _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> { vec![] }
+        let name = registry.interner_mut().intern("CascadeCard");
+        let mut def = CardDefinition::new(name, Characteristics {
+            mana_cost: Some(ManaCost::parse("{3}{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Cascade. (No other effect for this test card.)".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            effect: nada,
+        });
+        def.triggered_abilities.push(
+            crate::keywords::cascade_trigger_def(1));
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Cascade);
+        registry.register(def)
+    }
+
+    /// Seed `player`'s library top-to-bottom with cards of the given
+    /// characteristics (index 0 = top).
+    fn seed_library(
+        state: &mut GameState,
+        player: PlayerId,
+        cards: Vec<Characteristics>,
+    ) -> Vec<ObjectId> {
+        let mut ids = Vec::new();
+        for chars in cards {
+            let id = state.allocate_object_id();
+            state.objects.insert(crate::objects::GameObject::new(
+                id, player, crate::zones::Zone::Library(player), 0, chars));
+            state.player_mut(player).library_top_to_bottom.push(id);
+            ids.push(id);
+        }
+        ids
+    }
+
+    fn basic_land_chars() -> Characteristics {
+        Characteristics {
+            mana_cost: None,
+            types: TypeLine::LAND.into(),
+            ..Default::default()
+        }
+    }
+
+    fn cmc1_instant_chars() -> Characteristics {
+        use crate::mana::ManaCost;
+        Characteristics {
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn cascade_no_valid_hit_sends_lands_to_bottom() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        let mut registry = CardRegistry::new();
+        let card = register_cascade_card(&mut registry);
+        let mut s = GameState::new(2, 0);
+        // Library top-to-bottom: 2 lands, then empty. No valid hit.
+        seed_library(&mut s, 0, vec![basic_land_chars(), basic_land_chars()]);
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, card, targets, 0);
+        s.emit_spell_cast(cast_id);
+        run_sba_and_triggers(&mut s, &registry);
+
+        // Resolve cascade trigger.
+        resolve_top_of_stack(&mut s, &registry);
+
+        // No pending choice (no valid hit → no may-cast prompt).
+        assert!(s.pending_choice.is_none());
+        assert!(s.pending_cascade.is_none());
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 2,
+            "both lands returned to bottom");
+    }
+
+    #[test]
+    fn cascade_may_cast_yes_casts_the_hit_for_free() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        let mut registry = CardRegistry::new();
+        let card = register_cascade_card(&mut registry);
+        let mut s = GameState::new(2, 0);
+        // Top: land, then MV-1 instant. Cascade (MV 4) hits the instant.
+        seed_library(&mut s, 0,
+            vec![basic_land_chars(), cmc1_instant_chars()]);
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, card, targets, 0);
+        s.emit_spell_cast(cast_id);
+        run_sba_and_triggers(&mut s, &registry);
+
+        // Resolve cascade trigger → exile land, exile instant, prompt.
+        resolve_top_of_stack(&mut s, &registry);
+        assert!(s.pending_choice.is_some(), "may-cast YesNo should be pending");
+
+        // Answer yes.
+        let pid = s.pending_choice.as_ref().unwrap().id;
+        apply_resolution_choice(&mut s, pid,
+            crate::actions::ChoiceResponse::YesNo { answer: true });
+
+        // The instant should now be on the stack as a cast spell.
+        let has_instant_on_stack = s.stack.iter()
+            .any(|e| matches!(e.kind,
+                crate::stack::StackEntryKind::Spell { .. }
+                if e.id != cast_id));
+        assert!(has_instant_on_stack,
+            "hit must be cast (on stack) after may-cast yes");
+        // Land goes to bottom.
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 1);
+    }
+
+    #[test]
+    fn cascade_may_cast_no_sends_hit_to_bottom_with_rest() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        let mut registry = CardRegistry::new();
+        let card = register_cascade_card(&mut registry);
+        let mut s = GameState::new(2, 0);
+        seed_library(&mut s, 0,
+            vec![basic_land_chars(), cmc1_instant_chars()]);
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, card, targets, 0);
+        s.emit_spell_cast(cast_id);
+        run_sba_and_triggers(&mut s, &registry);
+        resolve_top_of_stack(&mut s, &registry);
+
+        let pid = s.pending_choice.as_ref().unwrap().id;
+        apply_resolution_choice(&mut s, pid,
+            crate::actions::ChoiceResponse::YesNo { answer: false });
+
+        // Nothing should be on the stack from cascade (aside from the
+        // original cascade spell — which still sits where it was).
+        let stack_spells: Vec<_> = s.stack.iter()
+            .filter(|e| matches!(e.kind,
+                crate::stack::StackEntryKind::Spell { .. }))
+            .collect();
+        assert_eq!(stack_spells.len(), 1,
+            "only the original cascade spell remains on the stack");
+        // Library now has both exiled cards back at the bottom.
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 2);
+    }
+
+    #[test]
+    fn cascade_is_deterministic_with_same_seed() {
+        // Two identical games, same seed, same cascade action sequence
+        // — the bottom-shuffle order must be identical.
+        use crate::targets::{TargetChoice, TargetSelection};
+        fn run(seed: u64) -> Vec<ObjectId> {
+            let mut registry = CardRegistry::new();
+            let card = register_cascade_card(&mut registry);
+            let mut s = GameState::new(2, seed);
+            seed_library(&mut s, 0, vec![
+                basic_land_chars(), basic_land_chars(), basic_land_chars(),
+                cmc1_instant_chars(),
+            ]);
+            let mut targets = TargetSelection::new();
+            targets.targets.push(TargetChoice::Player(1));
+            let cast_id = announce_as_nth_spell(
+                &mut s, &registry, 0, card, targets, 0);
+            s.emit_spell_cast(cast_id);
+            run_sba_and_triggers(&mut s, &registry);
+            resolve_top_of_stack(&mut s, &registry);
+            // Decline the may-cast so all 4 cards land at the bottom.
+            let pid = s.pending_choice.as_ref().unwrap().id;
+            apply_resolution_choice(&mut s, pid,
+                crate::actions::ChoiceResponse::YesNo { answer: false });
+            s.player(0).library_top_to_bottom.clone()
+        }
+        assert_eq!(run(42), run(42),
+            "same seed → same cascade bottom order");
     }
 }

@@ -328,6 +328,17 @@ pub enum ChoiceKind {
     PickPlayer {
         candidates: Vec<PlayerId>,
     },
+    /// Pick targets at resolution time (storm copies, copy-spell
+    /// effects). The actual list of targeting clauses lives on
+    /// [`crate::state::GameState::pending_target_requirements`] —
+    /// stored there because [`crate::targets::TargetRequirement`]
+    /// carries fn-pointer-bearing filters and isn't Hash/Eq/Serialize.
+    /// Answer: [`ChoiceResponse::ChooseTargets`] with selection length
+    /// equal to that requirement vector's length.
+    /// `source` is the stack object on whose behalf targets are chosen.
+    ChooseTargets {
+        source: ObjectId,
+    },
 }
 
 /// Destinations a card can be placed during an `OrderCards` choice.
@@ -384,6 +395,11 @@ pub enum ChoiceResponse {
     YesNo { answer: bool },
     /// Reply to [`ChoiceKind::PickPlayer`].
     PickPlayer { picked: PlayerId },
+    /// Reply to [`ChoiceKind::ChooseTargets`]: the chosen selection
+    /// over the requirements. Selection length must match the number
+    /// of requirements; each `TargetChoice` is validated at the
+    /// dispatcher (legality is rechecked per CR 608.2b).
+    ChooseTargets { selection: crate::targets::TargetSelection },
 }
 
 /// A spell/ability resolution that yielded mid-way to push a
@@ -419,13 +435,11 @@ pub struct PendingResolution {
 }
 
 /// Effect-supplied follow-up the dispatcher runs after an agent answers
-/// a [`ChoiceKind::PickCards`] prompt. The pushing effect stashes its
-/// semantics in [`crate::state::GameState::pending_choice_follow_up`];
-/// the dispatcher consumes it alongside the choice answer and applies
-/// the named operation to the chosen ids.
-///
-/// Only `PickCards` prompts carry a follow-up today — `OrderCards`
-/// answers are self-describing (each card names its own destination).
+/// a [`ChoiceKind::PickCards`] or [`ChoiceKind::ChooseTargets`] prompt.
+/// The pushing effect stashes its semantics in
+/// [`crate::state::GameState::pending_choice_follow_up`]; the
+/// dispatcher consumes it alongside the choice answer and applies the
+/// named operation to the chosen ids / targets.
 #[derive(Clone, Debug)]
 pub enum ChoiceFollowUp {
     /// Move each picked card to `destination`. `reveal` marks the card
@@ -452,6 +466,11 @@ pub enum ChoiceFollowUp {
     /// Discard each picked card from hand (move to graveyard, emit
     /// [`crate::events::GameEvent::Discarded`]).
     Discard { player: PlayerId },
+    /// Pair with a [`ChoiceKind::ChooseTargets`] response: overwrite
+    /// the named stack entry's `targets` with the answered selection.
+    /// Used by storm copies and by `Effect::CopySpell` to attach
+    /// per-copy chosen targets (CR 706.10).
+    ApplyTargetsToStackEntry { entry_id: ObjectId },
 }
 
 // =============================================================================

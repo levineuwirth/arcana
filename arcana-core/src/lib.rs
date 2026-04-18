@@ -13,6 +13,7 @@ pub mod layers;
 pub mod replacement;
 pub mod triggers;
 pub mod effects;
+pub mod keywords;
 pub mod targets;
 pub mod actions;
 pub mod format;

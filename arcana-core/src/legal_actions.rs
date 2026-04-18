@@ -173,6 +173,23 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 });
             }
         }
+        ChoiceKind::ChooseTargets { source } => {
+            // Requirements live on the companion state slot (kept off
+            // the ChoiceKind variant because TargetRequirement carries
+            // fn-pointer filters and isn't Hash/Eq/Serialize).
+            if let Some(reqs) = state.pending_target_requirements.as_ref() {
+                let source_controller = state.objects.get(*source)
+                    .map(|o| o.controller).unwrap_or(0);
+                for selection in
+                    enumerate_target_selections(reqs, state, source_controller)
+                {
+                    out.push(Action::SubmitResolutionChoice {
+                        id,
+                        response: ChoiceResponse::ChooseTargets { selection },
+                    });
+                }
+            }
+        }
     }
 
     // Concede is always legal (spec §41.6 R3).
@@ -774,7 +791,7 @@ mod tests {
         set_main_phase(&mut s);
         put(&mut s, 0, Zone::Hand(0), land_chars());
         let stack_card = put(&mut s, 0, Zone::Hand(0), instant_chars());
-        s.announce_spell_on_stack(stack_card, 0, TargetSelection::new(), vec![], None);
+        s.announce_spell_on_stack(stack_card, 0, TargetSelection::new(), vec![], None, vec![]);
         let actions = legal_actions(&s, &CardRegistry::new());
         assert!(!actions.iter().any(|a| matches!(a, Action::PlayLand { .. })));
     }

@@ -124,6 +124,15 @@ pub enum Effect {
     CopySpell { target: ObjectId },
     CopyPermanent { target: ObjectId },
 
+    // --- cascade (CR 702.85) -----------------------------------------------
+    /// Exile cards off the top of `controller`'s library until a
+    /// nonland card with mana value strictly less than `source`'s
+    /// mana value appears (or the library runs out). Prompt a may-cast
+    /// for the hit (if any) via a [`crate::actions::ChoiceKind::YesNo`];
+    /// on yes, cast the hit for free. All non-cast exiled cards go to
+    /// the bottom of the library in seeded-random order.
+    Cascade { source: ObjectId, controller: PlayerId },
+
     // --- counters ----------------------------------------------------------
     AddCounters { target: ObjectId, kind: CounterKind, count: u32 },
     RemoveCounters { target: ObjectId, kind: CounterKind, count: u32 },
@@ -502,9 +511,6 @@ impl Effect {
                 create_token(state, *controller, token);
             }
             Effect::CopySpell { target } => {
-                // TODO(decision): copies on the stack may choose new
-                // targets. For Phase 1 we clone the entry wholesale with
-                // the same targets.
                 copy_spell_on_stack(state, *target);
             }
             Effect::CopyPermanent { target } => {
@@ -512,6 +518,9 @@ impl Effect {
                 // token/nontoken, etc. For Phase 1 we produce a token
                 // copy with the same characteristics.
                 copy_permanent(state, *target);
+            }
+            Effect::Cascade { source, controller } => {
+                cascade_resolve(state, *source, *controller);
             }
 
             // --- counters ------------------------------------------------
@@ -886,6 +895,18 @@ pub enum KeywordAbility {
     Foretell(crate::mana::ManaCost), Learn, Connive,
     Discover(u32), Bargain, Offspring(crate::mana::ManaCost),
     Impending { mana_cost: crate::mana::ManaCost, time_counters: u32 },
+    /// CR 702.40 — Storm. "When you cast this spell, copy it for each
+    /// other spell that was cast before it this turn." Wired as a
+    /// [`crate::triggers::TriggeredAbilityDef`] via
+    /// [`crate::keywords::storm_trigger_def`].
+    Storm,
+    /// CR 702.85 — Cascade. "When you cast this spell, exile cards
+    /// from the top of your library until you exile a nonland card
+    /// with mana value less than this spell's. You may cast that
+    /// card without paying its mana cost. Put the exiled cards on
+    /// the bottom of your library in a random order." Wired via
+    /// [`crate::keywords::cascade_trigger_def`].
+    Cascade,
     Custom { name: String, implementation: KeywordImpl },
 }
 
@@ -1199,14 +1220,153 @@ fn create_emblem(
                                 // when it grows an emblem path.
 }
 
+/// Push a copy of `target` onto the stack. If the original has any
+/// target requirements, push a [`crate::actions::ChoiceKind::ChooseTargets`]
+/// so the controller picks new targets per CR 706.10. Otherwise the
+/// copy resolves immediately with empty targets.
 fn copy_spell_on_stack(state: &mut GameState, target: ObjectId) {
     let Some(entry) = state.find_stack_entry(target).cloned() else { return; };
     let new_id = state.allocate_object_id();
+    // Mirror the original's GameObject in the arena under the new id so
+    // resolution/counter paths (which look up via state.objects) find
+    // the copy. Copies are tokens that cease to exist when leaving the
+    // stack (CR 112.7), but Phase 2 parks them in the graveyard-path
+    // just like any other spell — that path needs the arena entry.
+    let Some(src_obj) = state.objects.get(target).cloned() else { return; };
+    let mut copy_obj = GameObject::new(
+        new_id, src_obj.controller, Zone::Stack, src_obj.card_id,
+        src_obj.characteristics.clone());
+    copy_obj.owner = src_obj.owner;
+    state.objects.insert(copy_obj);
     let mut copy = entry;
     copy.id = new_id;
     copy.source = new_id;
+    let copy_controller = copy.controller;
+    let requirements = copy.target_requirements.clone();
     state.push_stack_entry(copy);
     state.emit(GameEvent::CopyCreated { object_id: new_id, copying: target });
+
+    if !requirements.is_empty() {
+        state.pending_target_requirements = Some(requirements);
+        state.pending_choice_follow_up = Some(
+            crate::actions::ChoiceFollowUp::ApplyTargetsToStackEntry {
+                entry_id: new_id,
+            });
+        state.push_pending_choice(
+            copy_controller,
+            crate::actions::ChoiceContext::ResolvingStack(new_id),
+            crate::actions::ChoiceKind::ChooseTargets { source: new_id },
+        );
+    }
+}
+
+/// CR 702.85 — cascade resolution.
+///
+/// Exile cards off the top of `controller`'s library until a nonland
+/// with mana value strictly less than `source`'s MV appears (or the
+/// library runs out). If found, stash a [`crate::state::PendingCascade`]
+/// and push a [`crate::actions::ChoiceKind::YesNo`] may-cast prompt.
+/// The dispatcher's YesNo-in-cascade-context arm handles both
+/// outcomes, including the seeded-random bottom shuffle of the
+/// non-cast exiles.
+///
+/// If no valid hit exists (e.g. all remaining library cards are
+/// lands, or library ran out), all exiled cards go directly to the
+/// bottom in random order without a prompt.
+fn cascade_resolve(
+    state: &mut GameState,
+    source: ObjectId,
+    controller: PlayerId,
+) {
+    if !valid_player(state, controller) { return; }
+
+    // Source mana value — read from the source stack entry's
+    // characteristics (for spells) or from the source object.
+    let source_mv = state.stack.iter()
+        .find(|e| e.id == source)
+        .and_then(|e| match &e.kind {
+            crate::stack::StackEntryKind::Spell { characteristics, .. } =>
+                characteristics.mana_cost.as_ref().map(|c| c.mana_value()),
+            _ => None,
+        })
+        .or_else(|| state.objects.get(source).map(|o| o.characteristics.mana_value()))
+        .unwrap_or(0);
+
+    let mut other_exiled: Vec<ObjectId> = Vec::new();
+    let mut hit: Option<ObjectId> = None;
+
+    // Exile off the top until a valid hit or library empties.
+    while !state.player(controller).library_top_to_bottom.is_empty() {
+        let top_id = state.player_mut(controller)
+            .library_top_to_bottom.remove(0);
+        let (is_land, mv) = state.objects.get(top_id)
+            .map(|o| (o.is_land(), o.characteristics.mana_value()))
+            .unwrap_or((false, 0));
+        // Exile the card (move to Zone::Exile via the standard path so
+        // zone-change triggers fire and LKI is maintained).
+        let new_id = state.move_object_to_zone(
+            top_id, Zone::Exile, crate::events::MoveCause::SpellResolution,
+        );
+        let exiled_id = new_id.unwrap_or(top_id);
+        if !is_land && mv < source_mv {
+            hit = Some(exiled_id);
+            break;
+        }
+        other_exiled.push(exiled_id);
+    }
+
+    match hit {
+        Some(hit_id) => {
+            state.pending_cascade = Some(crate::state::PendingCascade {
+                controller,
+                hit: hit_id,
+                other_exiled,
+            });
+            // Emit the may-cast prompt. The dispatcher consumes
+            // pending_cascade on the YesNo response.
+            state.push_pending_choice(
+                controller,
+                crate::actions::ChoiceContext::ResolvingStack(source),
+                crate::actions::ChoiceKind::YesNo {
+                    prompt: /*interned text hook — 0 is "cascade may-cast"*/ 0,
+                },
+            );
+        }
+        None => {
+            // No valid hit — all exiled go to the bottom in random order.
+            cascade_shuffle_to_bottom(state, controller, other_exiled);
+        }
+    }
+}
+
+/// Seeded-random bottom shuffle for cascade's non-cast exiles.
+/// Advances `state.rng_seed` like [`GameState::shuffle_library`] does
+/// so two cascades in the same game produce independent orderings.
+pub(crate) fn cascade_shuffle_to_bottom(
+    state: &mut GameState,
+    controller: PlayerId,
+    mut exiled: Vec<ObjectId>,
+) {
+    if exiled.is_empty() { return; }
+    use rand::seq::SliceRandom;
+    use rand::SeedableRng;
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(
+        state.rng_seed.wrapping_add(controller as u64 + 0x5A));
+    state.rng_seed = state.rng_seed.wrapping_add(1);
+    exiled.shuffle(&mut rng);
+    // Move each to the bottom of the library in shuffled order.
+    for id in exiled {
+        // The card is in Zone::Exile; move to Library.
+        let new_id = state.move_object_to_zone(
+            id, Zone::Library(controller),
+            crate::events::MoveCause::SpellResolution,
+        );
+        // move_object_to_zone pushes onto the back of the library
+        // via swap_to_zone_reid's default placement — which for
+        // Library appends. Since we're iterating in shuffle order,
+        // the final order respects the shuffle.
+        let _ = new_id;
+    }
 }
 
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
@@ -1251,7 +1411,7 @@ fn cast_from_zone_free<F: Fn(Zone) -> bool>(
     if obj.is_land() { return; } // Lands aren't cast (CR 305.1).
     let entry_id = state.announce_spell_on_stack(
         target, player, crate::targets::TargetSelection::new(),
-        Vec::new(), None);
+        Vec::new(), None, vec![]);
     state.emit_spell_cast(entry_id);
 }
 
@@ -2605,7 +2765,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_instant(&mut s, 0, Zone::Hand(0));
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
         assert_eq!(s.stack_size(), 1);
 
         Effect::Counter { target: stack_id }.execute(&mut s);
@@ -2808,7 +2968,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_instant(&mut s, 0, Zone::Hand(0));
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
         Effect::CopySpell { target: stack_id }.execute(&mut s);
         assert_eq!(s.stack_size(), 2);
         let ids: Vec<_> = s.stack_entries().iter().map(|e| e.id).collect();

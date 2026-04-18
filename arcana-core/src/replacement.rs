@@ -1267,7 +1267,7 @@ mod tests {
         s.objects.insert(GameObject::new(
             c, 0, Zone::Hand(0), 1, creature_chars(2, 2)));
         let stack_id = s.announce_spell_on_stack(
-            c, 0, TargetSelection::new(), vec![], None);
+            c, 0, TargetSelection::new(), vec![], None, vec![]);
         let entry = s.pop_stack_entry().unwrap();
         assert_eq!(entry.id, stack_id);
         s.finalize_resolved_spell(entry);

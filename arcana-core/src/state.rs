@@ -93,6 +93,14 @@ pub struct GameState {
     /// Seed for the deterministic RNG. Task #20 will replace this with a
     /// full `ChaCha8Rng` once we need to draw / shuffle.
     pub rng_seed: u64,
+    /// Number of spells cast this turn. Incremented in
+    /// [`Self::announce_spell_on_stack`] (cast path); copies do NOT
+    /// increment per CR 707.10. Reset to 0 in
+    /// [`crate::turn::TurnState::start_next_turn`]. Storm reads the
+    /// snapshot taken on the cast spell's
+    /// [`crate::stack::StackEntry::storm_count_at_cast`] — the value
+    /// AT cast time (not at resolution).
+    pub storm_count: u32,
     /// Monotonic counter for unique object ids. Use
     /// [`allocate_object_id`](Self::allocate_object_id) to draw.
     pub next_object_id: ObjectId,
@@ -134,6 +142,23 @@ pub struct GameState {
     /// takes and applies it to the answered ids. `None` is valid when
     /// the PickCards handler is hardcoded (e.g. Legend-rule SBA).
     pub pending_choice_follow_up: Option<crate::actions::ChoiceFollowUp>,
+    /// Companion slot to a pending
+    /// [`crate::actions::ChoiceKind::ChooseTargets`]: the actual
+    /// requirements the agent's submitted [`crate::targets::TargetSelection`]
+    /// must satisfy. Lives outside `ChoiceKind` because
+    /// [`crate::targets::TargetRequirement`] carries fn-pointer
+    /// filters (so it can't be Hash/Eq/Serialize). Set when the
+    /// pipeline pushes the choice; cleared when the response is
+    /// applied (or on Concede).
+    pub pending_target_requirements: Option<Vec<crate::targets::TargetRequirement>>,
+    /// Companion slot to a pending [`crate::actions::ChoiceKind::YesNo`]
+    /// emitted during cascade (CR 702.85). Populated by
+    /// [`crate::effects::Effect::Cascade`] just before pushing the
+    /// may-cast prompt. The dispatcher consumes it on response: yes →
+    /// cast `hit` for free + bottom-shuffle `other_exiled`; no →
+    /// bottom-shuffle the full exiled list (incl. `hit`) via the
+    /// engine's seeded RNG.
+    pub pending_cascade: Option<PendingCascade>,
     /// Last-known-information table (CR 603.10 / 400.7). When an
     /// object changes zones it becomes a new object with a new
     /// [`ObjectId`]; any ability that must "look back" at the
@@ -149,6 +174,21 @@ pub struct GameState {
     /// pass is the CR-mandated retention window for LKI used by
     /// triggers that watch zone changes.
     pub lki: HashMap<ObjectId, GameObject>,
+}
+
+/// Parked cascade state between exile-and-prompt and the YesNo
+/// response. See [`GameState::pending_cascade`] for semantics.
+#[derive(Clone, Debug)]
+pub struct PendingCascade {
+    pub controller: PlayerId,
+    /// The card currently offered to cast for free. On yes-response,
+    /// cast via the free-cast path; on no-response, joins
+    /// `other_exiled` in the bottom shuffle.
+    pub hit: ObjectId,
+    /// The lands (and any other cards) exiled before the hit. These
+    /// always go to the bottom in seeded-random order regardless of
+    /// the may-cast answer.
+    pub other_exiled: Vec<ObjectId>,
 }
 
 impl GameState {
@@ -188,6 +228,9 @@ impl GameState {
             trigger_event_cursor: 0,
             format,
             rng_seed,
+            storm_count: 0,
+            pending_target_requirements: None,
+            pending_cascade: None,
             next_object_id: FIRST_OBJECT_ID,
             result: None,
             event_log: Vec::new(),

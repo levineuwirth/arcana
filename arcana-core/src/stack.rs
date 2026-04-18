@@ -89,6 +89,30 @@ pub struct StackEntry {
     pub modes: Vec<ModeChoice>,
     /// Chosen value of `{X}` if the spell or cost had one.
     pub x_value: Option<u32>,
+    /// Snapshot of [`crate::state::GameState::storm_count`] at the
+    /// moment this entry was put on the stack via the *cast* path
+    /// (CR 702.40a). Storm reads this directly — N copies = the
+    /// snapshot value (= "spells cast before this one this turn").
+    /// Copies pushed via [`crate::effects::Effect::CopySpell`] inherit
+    /// the original's value but never trigger storm again because
+    /// they don't go through [`GameState::announce_spell_on_stack`].
+    /// Non-spell entries (activated/triggered abilities) leave this 0.
+    pub storm_count_at_cast: u32,
+    /// Snapshot of the spell's targeting clauses, populated by
+    /// [`GameState::announce_spell_on_stack`] from the registry. Lets
+    /// [`crate::effects::Effect::CopySpell`] (and storm copies) push
+    /// a [`crate::actions::ChoiceKind::ChooseTargets`] without needing
+    /// registry access at effect-execution time. Empty for spells with
+    /// no targets and for non-spell entries.
+    ///
+    /// Skipped by serde: [`crate::targets::TargetRequirement`] carries
+    /// fn-pointer filters and isn't serializable. A deserialized
+    /// stack entry comes back with this empty — copies made of it
+    /// won't push a target-choice prompt. Replay paths that copy
+    /// spells across a serialize boundary need to re-derive from the
+    /// registry; Phase 2 doesn't exercise that path.
+    #[serde(skip)]
+    pub target_requirements: Vec<crate::targets::TargetRequirement>,
 }
 
 impl StackEntry {
@@ -110,6 +134,11 @@ impl StackEntry {
             targets,
             modes,
             x_value,
+            // Caller (announce_spell_on_stack) overwrites with the
+            // pre-cast snapshot of state.storm_count.
+            storm_count_at_cast: 0,
+            // Caller (announce_spell_on_stack) populates from registry.
+            target_requirements: Vec::new(),
         }
     }
 
@@ -132,6 +161,8 @@ impl StackEntry {
             targets,
             modes,
             x_value,
+            storm_count_at_cast: 0,
+            target_requirements: Vec::new(),
         }
     }
 
@@ -158,6 +189,8 @@ impl StackEntry {
             targets,
             modes,
             x_value: None,
+            storm_count_at_cast: 0,
+            target_requirements: Vec::new(),
         }
     }
 
@@ -346,6 +379,7 @@ impl GameState {
         targets: TargetSelection,
         modes: Vec<ModeChoice>,
         x_value: Option<u32>,
+        target_requirements: Vec<crate::targets::TargetRequirement>,
     ) -> ObjectId {
         if !self.objects.contains(object_id) {
             panic!("announce_spell_on_stack: object {object_id} not in arena");
@@ -360,10 +394,17 @@ impl GameState {
             (obj.card_id, obj.characteristics.clone())
         };
 
-        let entry = StackEntry::new_spell(
+        let mut entry = StackEntry::new_spell(
             new_id, controller, card_id, characteristics,
             targets, modes, x_value,
         );
+        // CR 702.40a: snapshot BEFORE incrementing — N copies for storm
+        // = "spells cast before this one this turn".
+        entry.storm_count_at_cast = self.storm_count;
+        self.storm_count = self.storm_count.saturating_add(1);
+        // Snapshot of the spell's targeting clauses so copies (storm,
+        // CopySpell) can push ChooseTargets without registry access.
+        entry.target_requirements = target_requirements;
         self.stack.push(entry);
 
         self.emit(GameEvent::ZoneChange {
@@ -801,7 +842,7 @@ mod tests {
 
         let id = s.announce_spell_on_stack(
             card, /*controller=*/ 0,
-            TargetSelection::new(), vec![], None);
+            TargetSelection::new(), vec![], None, vec![]);
         // CR 400.7: the card becomes a new object on the stack.
         assert_ne!(id, card);
         assert!(s.objects.get(card).is_none(), "old id must be gone from arena");
@@ -822,7 +863,7 @@ mod tests {
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         // Pretend someone else (player 1) is casting — Yesterlock / control-steal.
         let id = s.announce_spell_on_stack(
-            card, 1, TargetSelection::new(), vec![], None);
+            card, 1, TargetSelection::new(), vec![], None, vec![]);
         assert_eq!(s.objects.get(id).unwrap().controller, 1);
         assert_eq!(s.top_of_stack().unwrap().controller, 1);
     }
@@ -831,7 +872,7 @@ mod tests {
     #[should_panic(expected = "not in arena")]
     fn announce_missing_object_panics() {
         let mut s = GameState::new(2, 0);
-        s.announce_spell_on_stack(999, 0, TargetSelection::new(), vec![], None);
+        s.announce_spell_on_stack(999, 0, TargetSelection::new(), vec![], None, vec![]);
     }
 
     // --- CR 601.2e: SpellCast event ----------------------------------------
@@ -841,7 +882,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
 
         let before = s.event_log.len();
         s.emit_spell_cast(stack_id);
@@ -869,7 +910,7 @@ mod tests {
         let c = put_object(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
         let spell = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         s.announce_spell_on_stack(
-            spell, 0, one_creature_target(c), vec![], None);
+            spell, 0, one_creature_target(c), vec![], None, vec![]);
 
         let entry = s.top_of_stack().unwrap().clone();
         let out = s.recheck_and_classify_resolution(&entry, &[target_creature()]);
@@ -888,7 +929,7 @@ mod tests {
         let c = put_object(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
         let spell = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         s.announce_spell_on_stack(
-            spell, 0, one_creature_target(c), vec![], None);
+            spell, 0, one_creature_target(c), vec![], None, vec![]);
 
         // Creature leaves the battlefield mid-stack.
         s.objects.get_mut(c).unwrap().zone = Zone::Exile;
@@ -988,7 +1029,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
         let entry = s.pop_stack_entry().unwrap();
 
         s.finalize_resolved_spell(entry);
@@ -1002,7 +1043,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), creature_chars(2, 2));
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
         let entry = s.pop_stack_entry().unwrap();
 
         s.finalize_resolved_spell(entry);
@@ -1022,7 +1063,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
         let entry = s.pop_stack_entry().unwrap();
 
         s.finalize_resolved_spell(entry);
@@ -1044,7 +1085,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
         let entry = s.pop_stack_entry().unwrap();
 
         s.counter_resolved_spell(entry);
@@ -1092,7 +1133,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         let stack_id = s.announce_spell_on_stack(
-            card, 0, TargetSelection::new(), vec![], None);
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
         assert!(damage_target_is_stack_entry(DamageTarget::Object(stack_id), &s));
         assert!(!damage_target_is_stack_entry(DamageTarget::Object(card), &s));
         assert!(!damage_target_is_stack_entry(DamageTarget::Object(999), &s));
@@ -1112,7 +1153,7 @@ mod tests {
         let spell = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
 
         let stack_id = s.announce_spell_on_stack(
-            spell, 0, one_creature_target(creature), vec![], None);
+            spell, 0, one_creature_target(creature), vec![], None, vec![]);
         s.emit_spell_cast(stack_id);
 
         let entry = s.pop_stack_entry().unwrap();
@@ -1140,7 +1181,7 @@ mod tests {
         let spell = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
 
         let stack_id = s.announce_spell_on_stack(
-            spell, 0, one_creature_target(creature), vec![], None);
+            spell, 0, one_creature_target(creature), vec![], None, vec![]);
         s.emit_spell_cast(stack_id);
 
         // In between casting and resolution, target dies.
