@@ -4122,13 +4122,28 @@ mod tests {
         }
     }
 
+    /// Register a stub land and return `size` copies of its CardId.
+    /// The tests that use this don't care about the card's abilities —
+    /// only that a registered card can be used to build a deck.
     fn register_mountain_deck(
         registry: &mut crate::registry::CardRegistry,
         size: u32,
     ) -> Vec<crate::types::CardId> {
-        let _ = crate::sample_cards::register_mountain(registry);
-        let id = registry.card_id_by_name("Mountain").unwrap();
+        let id = register_stub_land(registry);
         vec![id; size as usize]
+    }
+
+    fn register_stub_land(
+        registry: &mut crate::registry::CardRegistry,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern("Mountain");
+        let chars = crate::objects::Characteristics {
+            name,
+            types: crate::types::TypeLine::LAND.into(),
+            ..Default::default()
+        };
+        registry.register(
+            crate::registry::CardDefinition::new(name, chars))
     }
 
     #[test]
@@ -4169,8 +4184,8 @@ mod tests {
         // Both entry points should produce states with identical
         // formats for the same seed.
         let mut registry = crate::registry::CardRegistry::new();
-        let _ = crate::sample_cards::register_mountain(&mut registry);
-        let deck = vec![registry.card_id_by_name("Mountain").unwrap(); 60];
+        let id = register_stub_land(&mut registry);
+        let deck = vec![id; 60];
         let (a, _) = new_game(vec![deck.clone(), deck.clone()], &registry, 42);
         let (b, _) = new_game_with_format(
             vec![deck.clone(), deck],

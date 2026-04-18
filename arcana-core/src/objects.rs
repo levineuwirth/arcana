@@ -112,8 +112,10 @@ pub struct GameObject {
     pub owner: PlayerId,
     pub controller: PlayerId,
     pub zone: Zone,
-    /// Key into [`arcana_cards::CardRegistry`]. The registry holds the
-    /// printed card data (spell abilities, triggers, etc.).
+    /// Key into [`crate::registry::CardRegistry`]. The registry holds
+    /// the printed card data (spell abilities, triggers, etc.). Real
+    /// card definitions live in the `arcana-cards` catalog crate,
+    /// which registers them against this same `CardRegistry` type.
     pub card_id: CardId,
     /// Current computed characteristics (after the layer system applies, in
     /// the fully-implemented engine). For now, this is the base

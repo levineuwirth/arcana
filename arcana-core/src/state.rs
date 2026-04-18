@@ -1054,11 +1054,23 @@ mod tests {
 
     // --- spec-match new_game / new_game_with_format ------------------------
 
+    fn register_stub_land(
+        registry: &mut crate::registry::CardRegistry,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern("Mountain");
+        let chars = crate::objects::Characteristics {
+            name,
+            types: crate::types::TypeLine::LAND.into(),
+            ..Default::default()
+        };
+        registry.register(
+            crate::registry::CardDefinition::new(name, chars))
+    }
+
     #[test]
     fn new_game_associated_fn_matches_engine_new_game() {
         let mut registry = crate::registry::CardRegistry::new();
-        let _ = crate::sample_cards::register_mountain(&mut registry);
-        let card = registry.card_id_by_name("Mountain").unwrap();
+        let card = register_stub_land(&mut registry);
         let deck = vec![card; 60];
         let from_state = GameState::new_game(
             vec![deck.clone(), deck.clone()], &registry, 7);
@@ -1075,8 +1087,7 @@ mod tests {
     #[test]
     fn new_game_with_format_associated_fn_uses_custom_format() {
         let mut registry = crate::registry::CardRegistry::new();
-        let _ = crate::sample_cards::register_mountain(&mut registry);
-        let card = registry.card_id_by_name("Mountain").unwrap();
+        let card = register_stub_land(&mut registry);
         let deck = vec![card; 100];
         let s = GameState::new_game_with_format(
             vec![deck.clone(), deck],

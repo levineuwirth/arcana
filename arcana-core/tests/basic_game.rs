@@ -9,9 +9,9 @@
 //!   - bounds turn count below a sanity cap
 //!   - doesn't panic under a deep random policy
 
+use arcana_cards::register_seed;
 use arcana_core::engine::new_game;
 use arcana_core::registry::build_deck;
-use arcana_core::sample_cards::register_all_phase1_samples;
 use arcana_core::state::GameResult;
 use arcana_core::{step, Action, CardRegistry, EngineYield, GameState};
 
@@ -86,8 +86,7 @@ fn lightning_bolt_game_exercises_real_gameplay() {
 /// legal-action policy keyed off `seed`, and return the final state.
 fn run_game(seed: u64) -> GameState {
     let mut registry = CardRegistry::new();
-    let ids = register_all_phase1_samples(&mut registry);
-    let _ = ids;
+    let _ids = register_seed(&mut registry);
 
     // P0: 10 Mountain, 4 Lightning Bolt, 4 Grizzly Bears
     // P1: 10 Forest, 8 Grizzly Bears

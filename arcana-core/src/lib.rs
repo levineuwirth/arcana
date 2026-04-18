@@ -19,7 +19,6 @@ pub mod actions;
 pub mod format;
 pub mod legal_actions;
 pub mod registry;
-pub mod sample_cards;
 pub mod engine;
 
 // Re-export core types for convenience
