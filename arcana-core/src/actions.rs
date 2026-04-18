@@ -79,6 +79,34 @@ pub struct CostReductions {
     /// Cards to exile from the caster's graveyard as delve payment
     /// (CR 702.66). Each exile satisfies `{1}` generic.
     pub delve_exiles: Option<Vec<ObjectId>>,
+    /// Creatures to tap for convoke (CR 702.51). Each assignment
+    /// names the creature and which pip it pays for. `None` = card
+    /// has no convoke; `Some(vec![])` = has convoke, chose none.
+    pub convoke_taps: Option<Vec<ConvokeAssignment>>,
+}
+
+/// One creature's contribution to a convoke payment (CR 702.51b).
+/// The agent must make both choices explicitly: *which* creature to
+/// tap, and *which pip* that tap pays for. A multicolored creature
+/// can offer more than one color; the agent picks one per cast.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConvokeAssignment {
+    pub creature: ObjectId,
+    pub payment: ConvokePayment,
+}
+
+/// What pip a convoke-tapped creature covers.
+///
+/// Per CR 702.51b, each tapped creature pays either `{1}` generic or
+/// one mana of any of its colors. Colorless creatures pay generic
+/// only; multicolored creatures can pay any of their colors.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ConvokePayment {
+    /// This creature's tap satisfies one `{1}` generic pip.
+    Generic,
+    /// This creature's tap satisfies one colored pip of this color.
+    /// Only legal if the creature has this color.
+    Color(crate::types::ManaColor),
 }
 use crate::priority::SpecialAction;
 use crate::stack::ModeChoice;

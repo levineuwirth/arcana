@@ -471,21 +471,27 @@ fn legal_priority_actions(
             .unwrap_or_default();
         let target_selections = enumerate_target_selections(&reqs, state, player);
 
-        // Delve (CR 702.66). When the card has delve and the cost has
-        // a generic component, enumerate exile subsets up to the
-        // generic count (with characteristic-equivalence dedup). The
-        // empty subset reproduces the normal cast. When the card has
-        // no delve, we emit a single "no-delve" path with
-        // `delve_exiles: None`.
+        // Cost reductions: delve (CR 702.66) and convoke (CR 702.51).
+        // These compose at the rules level but are enumerated
+        // separately here for v1 — no printed card has both, and
+        // joint-enumeration would combinatorially cross-product.
+        //
+        //   delve_available && !convoke → emit delve-only actions
+        //   convoke_available && !delve → emit convoke-only actions
+        //   neither → emit a single plain-cast action
+        //   both → emit both families (delve-only + convoke-only)
+        //   but NOT joint. Joint-enumeration is a Phase 2-B follow-up.
         let delve_available = crate::engine::has_delve(state, id);
+        let convoke_available = crate::engine::has_convoke(state, id);
         let gen_cap = generic_total(&cost);
+
+        // --- Delve track (only generic pips reducible) ----------
         let delve_subsets: Vec<Vec<ObjectId>> =
             if delve_available && gen_cap > 0 {
                 enumerate_delve_subsets(state, player, gen_cap as usize)
             } else {
                 vec![Vec::new()]
             };
-
         for subset in &delve_subsets {
             let reduced_cost = if subset.is_empty() {
                 cost.clone()
@@ -510,8 +516,69 @@ fn legal_priority_actions(
                             } else {
                                 None
                             },
+                            convoke_taps: None,
                         },
                     });
+                }
+            }
+        }
+
+        // --- Convoke track --------------------------------------
+        // Only runs when the card has convoke AND no delve (to avoid
+        // double-emitting the "no cost reduction" baseline — the
+        // delve track already covered it above).
+        if convoke_available && !delve_available {
+            let pip_cap = total_pips(&cost) as usize;
+            let convoke_subsets = if pip_cap > 0 {
+                enumerate_convoke_subsets(state, player, pip_cap)
+            } else {
+                vec![Vec::new()]
+            };
+            for c_subset in &convoke_subsets {
+                // Empty subset is the normal cast; the delve track
+                // already emitted it (delve_available=false branch
+                // produces convoke_taps=None and delve_exiles=None).
+                // Here we emit Some(vec![]) as "has convoke, chose
+                // zero creatures" for the empty subset — that's the
+                // convoke-branch baseline.
+                let assignments = enumerate_convoke_assignments(state, c_subset);
+                for assignment in assignments {
+                    let Some(reduced_cost) =
+                        reduce_cost_by_convoke(&cost, &assignment)
+                    else { continue; };
+                    let plans = enumerate_payment_plans(
+                        &reduced_cost, &state.player(player).mana_pool,
+                        None, &ctx);
+                    if plans.is_empty() { continue; }
+                    // Build the ConvokeAssignment list from
+                    // (creature, payment) pairs.
+                    let convoke_taps: Vec<crate::actions::ConvokeAssignment> =
+                        c_subset.iter().zip(assignment.iter())
+                            .map(|(&creature, &payment)|
+                                crate::actions::ConvokeAssignment {
+                                    creature, payment,
+                                })
+                            .collect();
+                    for plan in &plans {
+                        for targets in &target_selections {
+                            actions.push(Action::CastSpell {
+                                object_id: id,
+                                targets: targets.clone(),
+                                modes: Vec::new(),
+                                mana_payment: plan.clone(),
+                                additional_costs: Vec::new(),
+                                x_value: None,
+                                cast_modifier:
+                                    crate::actions::CastModifier::None,
+                                cost_reductions:
+                                    crate::actions::CostReductions {
+                                        delve_exiles: None,
+                                        convoke_taps: Some(
+                                            convoke_taps.clone()),
+                                    },
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -789,6 +856,181 @@ fn enumerate_delve_subsets(
         &candidates, max_generic,
         |&id| object_equivalence_key(state, id),
     )
+}
+
+// ----- Convoke (CR 702.51) enumeration helpers -----------------------
+
+/// Candidate creatures for convoke: the caster's untapped creature
+/// permanents. Sorted by object id for stable enumeration.
+fn convoke_candidate_creatures(
+    state: &GameState,
+    player: PlayerId,
+) -> Vec<ObjectId> {
+    state.objects.ids_in_zone_sorted(Zone::Battlefield)
+        .into_iter()
+        .filter(|&id| {
+            state.objects.get(id).is_some_and(|obj|
+                obj.controller == player
+                && obj.characteristics.is_creature()
+                && !obj.is_tapped())
+        })
+        .collect()
+}
+
+/// Equivalence key for a battlefield creature from the perspective
+/// of convoke dedup. Two creatures with the same key are
+/// interchangeable for tap-as-cost: they offer the same payment
+/// options and leave equivalent game state when tapped.
+///
+/// Key = (card_id, colors, sorted effective keywords). Does NOT
+/// include counters or attachments — two creatures that differ only
+/// in counters/attachments still collapse in this key, which
+/// over-dedups in edge cases. **Phase 2 limitation**: when a counter-
+/// or aura-mattering card lands, extend this key.
+fn convoke_creature_key(
+    state: &GameState,
+    id: ObjectId,
+) -> (crate::types::CardId, Vec<crate::types::Color>, Vec<crate::effects::KeywordAbility>) {
+    let obj = state.objects.get(id);
+    let card_id = obj.map(|o| o.card_id).unwrap_or(0);
+    let mut colors: Vec<crate::types::Color> = obj
+        .map(|o| o.characteristics.colors.iter().collect())
+        .unwrap_or_default();
+    colors.sort_by_key(|c| format!("{c:?}"));
+    let mut kws = state.effective_keywords(id);
+    kws.sort_by_key(|k| format!("{k:?}"));
+    (card_id, colors, kws)
+}
+
+/// Enumerate creature subsets for convoke, bounded by `max_pips`
+/// (total pips in the spell's cost — convoke can never tap more
+/// creatures than there are pips). Uses characteristic-equivalence
+/// dedup, so identical creatures collapse to a per-count axis.
+fn enumerate_convoke_subsets(
+    state: &GameState,
+    player: PlayerId,
+    max_pips: usize,
+) -> Vec<Vec<ObjectId>> {
+    let candidates = convoke_candidate_creatures(state, player);
+    enumerate_equivalence_subsets(
+        &candidates, max_pips,
+        |&id| convoke_creature_key(state, id),
+    )
+}
+
+/// Enumerate every payment assignment over `subset`. Each creature
+/// in the subset independently chooses one of its eligible payment
+/// options (Generic, or Color(c) for each of its colors). Returns
+/// the full Cartesian product — the caller filters by pip-coherence.
+///
+/// A multicolored creature contributes multiple options, which is
+/// the AI's real decision ("save the multicolor for flexibility vs.
+/// pay the colored pip with it"). Do NOT canonicalize here.
+fn enumerate_convoke_assignments(
+    state: &GameState,
+    subset: &[ObjectId],
+) -> Vec<Vec<crate::actions::ConvokePayment>> {
+    use crate::actions::ConvokePayment;
+    let per_creature: Vec<Vec<ConvokePayment>> = subset.iter()
+        .map(|&id| {
+            state.objects.get(id)
+                .map(|o| crate::engine::convoke_eligible_payments(&o.characteristics))
+                .unwrap_or_else(|| vec![ConvokePayment::Generic])
+        })
+        .collect();
+
+    let mut out: Vec<Vec<ConvokePayment>> = vec![Vec::new()];
+    for options in &per_creature {
+        let mut next = Vec::with_capacity(out.len() * options.len());
+        for partial in &out {
+            for opt in options {
+                let mut extended = partial.clone();
+                extended.push(*opt);
+                next.push(extended);
+            }
+        }
+        out = next;
+    }
+    out
+}
+
+/// Subtract a convoke assignment's payments from `cost`. Returns
+/// `None` if the assignment over-pays (pays more of some color than
+/// the cost has, or more generic than the cost has). Otherwise
+/// returns the post-convoke cost, which still needs mana-solving.
+///
+/// Phase 2 limit: only simple costs (Generic + Colored) are
+/// supported. Hybrid / Phyrexian / monohybrid costs return `None` —
+/// the convoke-hybrid case is flagged as a Phase 2-B follow-up.
+fn reduce_cost_by_convoke(
+    cost: &crate::mana::ManaCost,
+    assignment: &[crate::actions::ConvokePayment],
+) -> Option<crate::mana::ManaCost> {
+    use crate::actions::ConvokePayment;
+    use crate::mana::ManaCostComponent;
+
+    let mut generic_paid: u32 = 0;
+    let mut color_paid: std::collections::HashMap<crate::types::ManaColor, u32> =
+        std::collections::HashMap::new();
+    for p in assignment {
+        match p {
+            ConvokePayment::Generic => generic_paid += 1,
+            ConvokePayment::Color(c) => {
+                *color_paid.entry(*c).or_insert(0) += 1;
+            }
+        }
+    }
+
+    let mut out = cost.clone();
+    // Reduce generic first.
+    let mut remaining_generic = generic_paid;
+    out.components.retain_mut(|c| {
+        if remaining_generic == 0 { return true; }
+        if let ManaCostComponent::Generic(n) = c {
+            if *n <= remaining_generic {
+                remaining_generic -= *n;
+                false
+            } else {
+                *n -= remaining_generic;
+                remaining_generic = 0;
+                true
+            }
+        } else {
+            true
+        }
+    });
+    if remaining_generic > 0 { return None; }
+
+    // Reduce colored pips per color.
+    for (mana_color, count) in &color_paid {
+        let mut to_remove = *count;
+        let target_color = mana_color.as_color()?;
+        out.components.retain_mut(|c| {
+            if to_remove == 0 { return true; }
+            if let ManaCostComponent::Colored(cc) = c {
+                if *cc == target_color {
+                    to_remove -= 1;
+                    return false;
+                }
+            }
+            true
+        });
+        if to_remove > 0 { return None; }
+    }
+
+    Some(out)
+}
+
+/// Total non-X pip count in `cost`. Used as upper bound on convoke
+/// subset size.
+fn total_pips(cost: &crate::mana::ManaCost) -> u32 {
+    cost.components.iter().map(|c| match c {
+        crate::mana::ManaCostComponent::Generic(n) => *n,
+        crate::mana::ManaCostComponent::Colored(_) => 1,
+        // Other variants don't cleanly accept convoke; conservative
+        // bound as 1-per-component.
+        _ => 1,
+    }).sum()
 }
 
 /// Emit one [`Action::ActivateAbility`] per (permanent, ability,

@@ -288,20 +288,73 @@ fn apply_cast_spell(
         if (delve_exiles_vec.len() as u32) > generic_total { return; }
     }
 
+    // Convoke validation (CR 702.51). Each assignment's creature
+    // must be: caster-controlled, on the battlefield, a creature,
+    // untapped. Payment must match the creature's effective colors
+    // (Generic is always legal; Color(c) requires the creature to
+    // actually be c). Duplicate creature ids are rejected —
+    // a creature can only tap once per cast. Summoning sickness is
+    // *not* a barrier: CR 302.1 restricts tap-for-mana and combat,
+    // not tap-as-cost for non-mana abilities.
+    let convoke_taps_vec = cost_reductions.convoke_taps.clone().unwrap_or_default();
+    if !convoke_taps_vec.is_empty() {
+        if !has_convoke(state, object_id) { return; }
+        let mut seen_creatures = std::collections::HashSet::new();
+        for assignment in &convoke_taps_vec {
+            if !seen_creatures.insert(assignment.creature) { return; }
+            let Some(creature) = state.objects.get(assignment.creature) else {
+                return;
+            };
+            if creature.controller != controller { return; }
+            if creature.zone != crate::zones::Zone::Battlefield { return; }
+            if !creature.characteristics.is_creature() { return; }
+            if creature.is_tapped() { return; }
+            // Color check: a Color(c) payment requires the creature
+            // to be that color. Layer-aware via effective colors
+            // (creature's printed colors may be overridden).
+            if let crate::actions::ConvokePayment::Color(mana_color) = assignment.payment {
+                let Some(color) = mana_color.as_color() else {
+                    // Colorless ManaColor shouldn't appear in a
+                    // Color(c) variant — reject.
+                    return;
+                };
+                if !creature.characteristics.colors.contains(color) {
+                    return;
+                }
+            }
+        }
+    }
+
     // 1a. Exile delve payment (CR 702.66, CR 601.2f-h). This is a
-    //     cost-payment sub-event alongside `spend_mana_plan`; both
-    //     happen in the same logical step. We emit the exiles first
-    //     so event log ordering is deterministic, but they belong to
-    //     the same atomic "pay total cost" step semantically.
+    //     cost-payment sub-event alongside `spend_mana_plan` and
+    //     convoke taps; all happen in the same logical step. We emit
+    //     the exiles first so event log ordering is deterministic,
+    //     but they belong to the same atomic "pay total cost" step
+    //     semantically.
     for &exile_id in &delve_exiles_vec {
         state.move_object_to_zone(
             exile_id, crate::zones::Zone::Exile,
             crate::events::MoveCause::Cost);
     }
 
-    // 1b. Spend the mana payment. `mana_payment` is already sized
-    //     against the delve-reduced generic requirement — legal_actions
-    //     solves mana against `cost_minus_delve`, not the printed cost.
+    // 1b. Tap convoke creatures (CR 702.51). Each tap is a cost-
+    //     payment sub-event. The agent's chosen (creature, payment)
+    //     pairs were already validated above; this just applies the
+    //     tap and emits `Tapped`.
+    for assignment in &convoke_taps_vec {
+        if let Some(obj) = state.objects.get_mut(assignment.creature) {
+            if obj.tap() {
+                state.emit(GameEvent::Tapped {
+                    object_id: assignment.creature,
+                });
+            }
+        }
+    }
+
+    // 1c. Spend the mana payment. `mana_payment` is already sized
+    //     against the delve-reduced and convoke-reduced cost —
+    //     legal_actions solves mana against the post-reduction cost,
+    //     not the printed cost.
     spend_mana_plan(state, controller, &mana_payment);
 
     // 2. Pay additional costs (sacrifice, discard, life, etc.).
@@ -380,6 +433,34 @@ pub(crate) fn all_flashback_costs_for(
 pub(crate) fn has_delve(state: &GameState, object_id: ObjectId) -> bool {
     state.effective_keywords(object_id).into_iter()
         .any(|kw| matches!(kw, crate::effects::KeywordAbility::Delve))
+}
+
+/// Layer-aware check: does `object_id` currently have the Convoke
+/// keyword (CR 702.51)? Walks [`GameState::effective_keywords`] so
+/// granted convoke is honored alongside the printed keyword.
+pub(crate) fn has_convoke(state: &GameState, object_id: ObjectId) -> bool {
+    state.effective_keywords(object_id).into_iter()
+        .any(|kw| matches!(kw, crate::effects::KeywordAbility::Convoke))
+}
+
+/// Valid [`crate::actions::ConvokePayment`] options for a creature
+/// with the given characteristics (CR 702.51b).
+///
+/// Every creature can pay `Generic`. Colored creatures additionally
+/// offer `Color(c)` for each of their colors. Colorless creatures
+/// return just `[Generic]`. Multicolored creatures return one
+/// `Color(c)` per color in addition to `Generic`, so a G/U creature
+/// returns `[Generic, Color(Green), Color(Blue)]` (order is stable
+/// but not ManaColor-enum order — iterate the creature's ColorSet).
+pub(crate) fn convoke_eligible_payments(
+    chars: &crate::objects::Characteristics,
+) -> Vec<crate::actions::ConvokePayment> {
+    use crate::actions::ConvokePayment;
+    let mut out = vec![ConvokePayment::Generic];
+    for color in chars.colors.iter() {
+        out.push(ConvokePayment::Color(color.to_mana()));
+    }
+    out
 }
 
 fn apply_activate_ability(
@@ -4968,6 +5049,7 @@ mod tests {
             cast_modifier: crate::actions::CastModifier::None,
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(vec![g1, g2, g3]),
+                convoke_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5006,6 +5088,7 @@ mod tests {
             cast_modifier: crate::actions::CastModifier::None,
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(gids),
+                convoke_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5238,6 +5321,7 @@ mod tests {
             cast_modifier: crate::actions::CastModifier::None,
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(vec![g1, g2]),
+                convoke_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
@@ -5285,11 +5369,707 @@ mod tests {
             cast_modifier: crate::actions::CastModifier::None,
             cost_reductions: crate::actions::CostReductions {
                 delve_exiles: Some(vec![g1, g1]),
+                convoke_taps: None,
             },
         };
         let (s, _) = step(s, cast, &registry);
         assert!(s.stack_is_empty(),
             "duplicate delve-exile id must be rejected");
         assert_eq!(s.zone_count(Zone::Exile), 0);
+    }
+
+    // =========================================================================
+    // Convoke (CR 702.51)
+    // =========================================================================
+
+    /// Register a convoke spell with the given printed cost.
+    fn register_convoke_spell(
+        registry: &mut CardRegistry,
+        name: &str,
+        printed_cost: &str,
+    ) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        fn noop_effect(
+            _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> { vec![] }
+        let cost = ManaCost::parse(printed_cost).unwrap();
+        let interned = registry.interner_mut().intern(name);
+        let mut def = CardDefinition::new(interned, Characteristics {
+            mana_cost: Some(cost.clone()),
+            colors: cost.colors(),
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Convoke. Does nothing.".into(),
+            target_requirements: vec![],
+            effect: noop_effect,
+        });
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Convoke);
+        registry.register(def)
+    }
+
+    /// Put a simple creature on the battlefield for a given player
+    /// with the given colors. Returns the new object id.
+    fn put_creature(
+        state: &mut GameState,
+        player: PlayerId,
+        colors: crate::types::ColorSet,
+    ) -> ObjectId {
+        let obj_id = state.allocate_object_id();
+        let chars = Characteristics {
+            colors,
+            types: TypeLine::CREATURE.into(),
+            power: Some(crate::types::PtValue::Fixed(1)),
+            toughness: Some(crate::types::PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        state.objects.insert(crate::objects::GameObject::new(
+            obj_id, player, Zone::Battlefield, 0, chars));
+        obj_id
+    }
+
+    #[test]
+    fn convoke_taps_creatures_pays_generic() {
+        // Convoke spell {3}{U}, 3 white creatures on battlefield
+        // (each pays Generic), {U} in mana pool. Cast with convoke
+        // covering all 3 generic pips.
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-Sorc", "{3}{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        let c1 = put_creature(&mut s, 0, crate::types::ColorSet::white());
+        let c2 = put_creature(&mut s, 0, crate::types::ColorSet::white());
+        let c3 = put_creature(&mut s, 0, crate::types::ColorSet::white());
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan {
+                assignments: vec![crate::actions::ManaAssignment {
+                    pool_index: 0, cost_index: 0,
+                }],
+                ..Default::default()
+            },
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature: c1,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                    crate::actions::ConvokeAssignment {
+                        creature: c2,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                    crate::actions::ConvokeAssignment {
+                        creature: c3,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(!s.stack_is_empty(), "convoke spell must be on stack");
+        assert!(s.objects.get(c1).unwrap().is_tapped(),
+            "c1 must be tapped");
+        assert!(s.objects.get(c2).unwrap().is_tapped());
+        assert!(s.objects.get(c3).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn convoke_colored_creature_pays_colored_pip() {
+        // Convoke spell {U}, one blue creature. Tap it for blue to
+        // cover the colored pip.
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-U", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        let blue_creature = put_creature(
+            &mut s, 0, crate::types::ColorSet::blue());
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature: blue_creature,
+                        payment: crate::actions::ConvokePayment::Color(
+                            crate::types::ManaColor::Blue),
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(!s.stack_is_empty(),
+            "convoke blue creature for blue pip must succeed");
+        assert!(s.objects.get(blue_creature).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn convoke_cannot_pay_mismatched_color() {
+        // Green creature attempts to pay {U} — reject.
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-U", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        let green_creature = put_creature(
+            &mut s, 0, crate::types::ColorSet::green());
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature: green_creature,
+                        payment: crate::actions::ConvokePayment::Color(
+                            crate::types::ManaColor::Blue),
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "green creature paying {{U}} must be rejected");
+        assert!(!s.objects.get(green_creature).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn convoke_cannot_use_tapped_creature() {
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        let creature = put_creature(&mut s, 0, crate::types::ColorSet::white());
+        // Tap the creature before the cast.
+        s.objects.get_mut(creature).unwrap().tap();
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "already-tapped creature must be rejected");
+    }
+
+    #[test]
+    fn convoke_cannot_use_opponent_creature() {
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        // Opponent's creature.
+        let opp_creature = put_creature(
+            &mut s, /*player=*/ 1, crate::types::ColorSet::white());
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature: opp_creature,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "opponent's creature must be rejected");
+        assert!(!s.objects.get(opp_creature).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn convoke_duplicate_creature_rejected() {
+        // Agent passes the same creature id twice — reject.
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-Sorc", "{2}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        let c1 = put_creature(&mut s, 0, crate::types::ColorSet::white());
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature: c1,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                    crate::actions::ConvokeAssignment {
+                        creature: c1,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "duplicate creature id must be rejected");
+    }
+
+    #[test]
+    fn convoke_zero_creatures_equivalent_to_normal_cast() {
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-Sorc", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        put_creature(&mut s, 0, crate::types::ColorSet::blue());
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let zero_convoke = actions.iter().find(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    convoke_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && v.is_empty()))
+            .expect("zero-convoke cast must be among legal actions")
+            .clone();
+        let (s, _) = step(s, zero_convoke, &registry);
+        assert!(!s.stack_is_empty());
+    }
+
+    #[test]
+    fn convoke_multicolor_creature_pays_either_color() {
+        // G/U creature casting a spell with a {G} pip OR a {U} pip.
+        // Both (multicolor, pay G) and (multicolor, pay U) must be
+        // enumerable as distinct actions.
+        let mut registry = CardRegistry::new();
+        // Two separate spell cards, one per color, so we can verify
+        // the multicolor creature covers either.
+        let gu_spell = register_convoke_spell(
+            &mut registry, "Convoke-GU", "{G}{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, gu_spell);
+        // One G/U creature. With 2 pips in cost it taps once,
+        // covering either G or U.
+        let mut colors = crate::types::ColorSet::green();
+        colors = colors | crate::types::ColorSet::blue();
+        put_creature(&mut s, 0, colors);
+        // Give exactly one U in mana pool so the OTHER pip must come
+        // from convoke. This forces the enumerator to produce two
+        // actions: (creature pays G, mana pays U) AND (creature pays
+        // U, mana pays G). The second is infeasible (no G mana), so
+        // only the first should appear — verify that.
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let convoke_actions: Vec<_> = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    convoke_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && !v.is_empty())).collect();
+        // Creature pays G; mana pays U → 1 action.
+        // Creature pays U; mana pays G → 0 actions (no G mana).
+        // Creature pays Generic: no generic pips; → 0 actions.
+        assert_eq!(convoke_actions.len(), 1,
+            "exactly one convoke action for (creature=G, mana=U)");
+        let (cast_payment, ) = if let Action::CastSpell {
+            cost_reductions: crate::actions::CostReductions {
+                convoke_taps: Some(v), ..
+            }, ..
+        } = convoke_actions[0] {
+            (v[0].payment,)
+        } else { panic!() };
+        assert_eq!(cast_payment,
+            crate::actions::ConvokePayment::Color(
+                crate::types::ManaColor::Green),
+            "creature must be paying Green (the pip not covered by mana)");
+    }
+
+    #[test]
+    fn convoke_colorless_creature_pays_generic_only() {
+        // Colorless creature: convoke_eligible_payments → [Generic].
+        // Attempting Color(W) must be rejected.
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-W", "{W}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        // Colorless creature.
+        let colorless = put_creature(
+            &mut s, 0, crate::types::ColorSet::new());
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature: colorless,
+                        payment: crate::actions::ConvokePayment::Color(
+                            crate::types::ManaColor::White),
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "colorless creature can't pay colored pip");
+    }
+
+    #[test]
+    fn convoke_with_summoning_sick_creature() {
+        // Creature with summoning sickness: convoke tap-as-cost is
+        // not a mana ability and not combat (CR 302.1), so sickness
+        // is irrelevant.
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-Sorc", "{1}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        let creature = put_creature(&mut s, 0, crate::types::ColorSet::white());
+        // Explicitly mark the creature as summoning-sick.
+        s.objects.get_mut(creature).unwrap().status.summoning_sick = true;
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: None,
+                convoke_taps: Some(vec![
+                    crate::actions::ConvokeAssignment {
+                        creature,
+                        payment: crate::actions::ConvokePayment::Generic,
+                    },
+                ]),
+            },
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(!s.stack_is_empty(),
+            "sickness must not block convoke tap-as-cost");
+        assert!(s.objects.get(creature).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn convoke_with_delve_not_enumerated_jointly() {
+        // A card hypothetically with both delve AND convoke: v1 does
+        // not enumerate joint (delve+convoke) actions. We check that
+        // no legal action carries both Some(non-empty-delve) AND
+        // Some(non-empty-convoke).
+        let mut registry = CardRegistry::new();
+        let spell_id = {
+            use crate::mana::ManaCost;
+            use crate::registry::{CardDefinition, SpellAbilityDef};
+            fn noop(
+                _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+            ) -> Vec<crate::effects::Effect> { vec![] }
+            let name = registry.interner_mut().intern("Delve+Convoke");
+            let mut def = CardDefinition::new(name, Characteristics {
+                mana_cost: Some(ManaCost::parse("{2}{U}").unwrap()),
+                colors: ColorSet::blue(),
+                types: TypeLine::SORCERY.into(),
+                ..Default::default()
+            }).with_spell_ability(SpellAbilityDef {
+                text: "Delve. Convoke.".into(),
+                target_requirements: vec![],
+                effect: noop,
+            });
+            def.base_characteristics.keywords.push(
+                crate::effects::KeywordAbility::Delve);
+            def.base_characteristics.keywords.push(
+                crate::effects::KeywordAbility::Convoke);
+            registry.register(def)
+        };
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, spell_id);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        put_creature(&mut s, 0, crate::types::ColorSet::blue());
+        give_mana(&mut s, 0, "{2}{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        // For every CastSpell on this source, assert we don't have
+        // both non-empty delve AND non-empty convoke.
+        for a in &actions {
+            if let Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    delve_exiles,
+                    convoke_taps,
+                },
+                ..
+            } = a {
+                if *object_id != src { continue; }
+                let delve_non_empty = delve_exiles.as_ref()
+                    .is_some_and(|v| !v.is_empty());
+                let convoke_non_empty = convoke_taps.as_ref()
+                    .is_some_and(|v| !v.is_empty());
+                assert!(!(delve_non_empty && convoke_non_empty),
+                    "v1 must not enumerate joint delve+convoke actions");
+            }
+        }
+    }
+
+    #[test]
+    fn legal_actions_enumerates_convoke_subsets() {
+        // Convoke spell {1}{U}, 2 untapped blue creatures, no mana.
+        // Expect multiple convoke actions covering different
+        // assignments (both generic, one generic + one U, both U).
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-1U", "{1}{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        // Two distinct-card-id blue creatures so they don't dedup.
+        let c1_id = {
+            use crate::registry::CardDefinition;
+            let name = registry.interner_mut().intern("Distinct-A");
+            let def = CardDefinition::new(name, Characteristics {
+                colors: crate::types::ColorSet::blue(),
+                types: TypeLine::CREATURE.into(),
+                power: Some(crate::types::PtValue::Fixed(1)),
+                toughness: Some(crate::types::PtValue::Fixed(1)),
+                ..Default::default()
+            });
+            registry.register(def)
+        };
+        let c2_id = {
+            use crate::registry::CardDefinition;
+            let name = registry.interner_mut().intern("Distinct-B");
+            let def = CardDefinition::new(name, Characteristics {
+                colors: crate::types::ColorSet::blue(),
+                types: TypeLine::CREATURE.into(),
+                power: Some(crate::types::PtValue::Fixed(1)),
+                toughness: Some(crate::types::PtValue::Fixed(1)),
+                ..Default::default()
+            });
+            registry.register(def)
+        };
+        for card_id in [c1_id, c2_id] {
+            let obj = state_allocate_creature(&mut s, 0, card_id, &registry);
+            let _ = obj;
+        }
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let convoke_non_empty: Vec<_> = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    convoke_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && !v.is_empty())).collect();
+        assert!(convoke_non_empty.len() >= 2,
+            "multiple convoke actions must be enumerated (got {})",
+            convoke_non_empty.len());
+    }
+
+    fn state_allocate_creature(
+        state: &mut GameState,
+        player: PlayerId,
+        card_id: crate::types::CardId,
+        registry: &CardRegistry,
+    ) -> ObjectId {
+        let obj_id = state.allocate_object_id();
+        let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+        state.objects.insert(crate::objects::GameObject::new(
+            obj_id, player, Zone::Battlefield, card_id, chars));
+        obj_id
+    }
+
+    #[test]
+    fn convoke_dedup_identical_creatures() {
+        // Three identical white creatures (same card_id). Convoke
+        // spell {3}. At k=1, dedup collapses to 1 action (not 3).
+        let mut registry = CardRegistry::new();
+        let convoke_card = register_convoke_spell(
+            &mut registry, "Convoke-3", "{3}");
+        // Build a proper creature card with a card_id so dedup sees
+        // identical keys across the three copies.
+        let creature_card = {
+            use crate::registry::CardDefinition;
+            let name = registry.interner_mut().intern("Identical-W");
+            let def = CardDefinition::new(name, Characteristics {
+                colors: crate::types::ColorSet::white(),
+                types: TypeLine::CREATURE.into(),
+                power: Some(crate::types::PtValue::Fixed(1)),
+                toughness: Some(crate::types::PtValue::Fixed(1)),
+                ..Default::default()
+            });
+            registry.register(def)
+        };
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, convoke_card);
+        for _ in 0..3 {
+            state_allocate_creature(&mut s, 0, creature_card, &registry);
+        }
+        // Mana to cover the remaining generic after convoke reduces
+        // it by up to 3. Without this, k=1 / k=2 are infeasible at
+        // mana-solve time and get filtered out.
+        give_mana(&mut s, 0, "{2}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        // k=1 actions: one convoke tap (Generic, since no colored
+        // pips in cost). Three identical creatures → 1 action.
+        let k1: usize = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    convoke_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && v.len() == 1)).count();
+        assert_eq!(k1, 1, "3 identical creatures must dedup at k=1");
+    }
+
+    #[test]
+    fn snapcaster_style_granted_convoke() {
+        use crate::layers::{ContinuousEffect, Duration};
+        let mut registry = CardRegistry::new();
+        let plain_card = {
+            use crate::mana::ManaCost;
+            use crate::registry::{CardDefinition, SpellAbilityDef};
+            fn noop(
+                _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+            ) -> Vec<crate::effects::Effect> { vec![] }
+            let name = registry.interner_mut().intern("Plain-Convoke-Grant");
+            let def = CardDefinition::new(name, Characteristics {
+                mana_cost: Some(ManaCost::parse("{2}").unwrap()),
+                colors: crate::types::ColorSet::new(),
+                types: TypeLine::SORCERY.into(),
+                ..Default::default()
+            }).with_spell_ability(SpellAbilityDef {
+                text: "Does nothing.".into(),
+                target_requirements: vec![],
+                effect: noop,
+            });
+            registry.register(def)
+        };
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, plain_card);
+        put_creature(&mut s, 0, crate::types::ColorSet::white());
+        s.add_continuous_effect(ContinuousEffect::grant_keyword(
+            /*source=*/ 999, src,
+            crate::effects::KeywordAbility::Convoke,
+            Duration::EndOfTurn,
+        ));
+        give_mana(&mut s, 0, "{1}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let convoke_actions: Vec<_> = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    convoke_taps: Some(v), ..
+                },
+                ..
+            } if *object_id == src && !v.is_empty())).collect();
+        assert!(!convoke_actions.is_empty(),
+            "granted-convoke card must offer convoke actions");
     }
 }
