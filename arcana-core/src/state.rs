@@ -481,6 +481,16 @@ impl GameState {
             self.emit(GameEvent::LeavesBattlefield {
                 object_id: id, destination,
             });
+            // Expire continuous effects sourced from this object with
+            // Duration::WhileSourceOnBattlefield. CR 611.2e: effects
+            // that reference a permanent's presence end when that
+            // permanent leaves the battlefield. Without this hook,
+            // anthems, Pacifism-style "can't attack" effects, and
+            // other source-bound effects persist past their source's
+            // death — surfaced by the Glorious Anthem integration
+            // test when the enchantment was sent to the graveyard
+            // but its +1/+1 stayed on the board.
+            self.expire_effects_from_source(id);
         }
 
         let (new_id, from) = self.swap_to_zone_reid(id, destination)?;
