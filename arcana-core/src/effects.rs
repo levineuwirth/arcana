@@ -176,6 +176,16 @@ pub enum Effect {
         keyword: KeywordAbility,
         duration: Duration,
     },
+    /// Install an arbitrary [`crate::layers::ContinuousEffect`] on
+    /// the state. The escape hatch for permanent-based anthems and
+    /// other static-ability effects whose source must be a specific
+    /// object id (so cleanup at source-leave-battlefield works
+    /// correctly). Prefer the narrower `Anthem`, `GrantKeyword`,
+    /// etc. variants when they fit; reach for this only when you
+    /// need [`Duration::WhileSourceOnBattlefield`] bound to a real
+    /// permanent id.
+    InstallContinuousEffect { effect: crate::layers::ContinuousEffect },
+
     /// "Target becomes P/T" (Humility, Turn to Frog, Song of the
     /// Damned). Layer 7b — overrides the base characteristic.
     SetBasePT {
@@ -581,6 +591,9 @@ impl Effect {
                     crate::layers::ContinuousEffect::anthem(
                         /*source=*/ crate::objects::NULL_OBJECT_ID,
                         *controller, *power, *toughness, *duration));
+            }
+            Effect::InstallContinuousEffect { effect } => {
+                state.add_continuous_effect(effect.clone());
             }
             Effect::GrantKeyword { target, keyword, duration } => {
                 state.add_continuous_effect(

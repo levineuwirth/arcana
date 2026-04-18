@@ -31,13 +31,18 @@
 //! *and* a tap spell — so it's rejected.
 
 pub mod lea;
+pub mod lrw;
+pub mod isd;
+pub mod po2;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
 
-/// The Tier 1 seed set: five basic lands + Lightning Bolt + Grizzly
-/// Bears. Minimum surface for mana production, creature combat, and
-/// a targeted instant. `CardId`s returned for test convenience.
+/// The Tier 1+2 seed set. Tier 1 = five basic lands + Lightning Bolt
+/// + Grizzly Bears (mana, combat, targeted instant). Tier 2 adds
+/// Counterspell (stack targeting), Murder (destroy), Elvish
+/// Visionary (ETB-draw trigger), Glorious Anthem (layer-7c static).
+/// `CardId`s returned for test convenience.
 #[derive(Clone, Copy, Debug)]
 pub struct SeedIds {
     pub plains: CardId,
@@ -47,9 +52,13 @@ pub struct SeedIds {
     pub forest: CardId,
     pub grizzly_bears: CardId,
     pub lightning_bolt: CardId,
+    pub counterspell: CardId,
+    pub murder: CardId,
+    pub elvish_visionary: CardId,
+    pub glorious_anthem: CardId,
 }
 
-/// Register every Tier 1 card. Convenience for tests and tooling;
+/// Register every seed card. Convenience for tests and tooling;
 /// production code can register selectively per set/module.
 pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
     SeedIds {
@@ -60,6 +69,10 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         forest: lea::forest::register(reg),
         grizzly_bears: lea::grizzly_bears::register(reg),
         lightning_bolt: lea::lightning_bolt::register(reg),
+        counterspell: lea::counterspell::register(reg),
+        murder: isd::murder::register(reg),
+        elvish_visionary: lrw::elvish_visionary::register(reg),
+        glorious_anthem: po2::glorious_anthem::register(reg),
     }
 }
 
