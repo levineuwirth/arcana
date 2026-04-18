@@ -494,10 +494,7 @@ impl GameState {
             let Some(effect) = pick else { break; };
 
             used.insert(effect.id);
-            current = match apply_kind_to_event(&effect.kind, &current, self) {
-                Some(new_event) => new_event,
-                None => return None, // event fully cancelled
-            };
+            current = apply_kind_to_event(&effect.kind, &current, self)?;
         }
 
         match current {
@@ -559,13 +556,10 @@ impl GameState {
             let Some(pick_id) = pick else { break; };
 
             used.insert(pick_id);
-            let kind_clone = self.replacement_effects.iter()
-                .find(|e| e.id == pick_id).map(|e| e.kind.clone());
-            let Some(rk) = kind_clone else { break; };
-            current = match apply_kind_to_event(&rk, &current, self) {
-                Some(new_event) => new_event,
-                None => return None,
-            };
+            let Some(rk) = self.replacement_effects.iter()
+                .find(|e| e.id == pick_id).map(|e| e.kind.clone())
+            else { break; };
+            current = apply_kind_to_event(&rk, &current, self)?;
         }
 
         let (final_target, final_kind, final_count) = match current {
@@ -577,7 +571,7 @@ impl GameState {
 
         match final_target {
             CounterTarget::Object(id) => {
-                let Some(obj) = self.objects.get_mut(id) else { return None; };
+                let obj = self.objects.get_mut(id)?;
                 obj.add_counters(final_kind, final_count);
                 self.emit(GameEvent::CounterAdded {
                     object_id: id, kind: final_kind, count: final_count,

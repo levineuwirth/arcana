@@ -951,8 +951,7 @@ fn proliferate(state: &mut GameState) {
         .objects_in_zone(Zone::Battlefield)
         .filter_map(|o| {
             if o.counters.is_empty() { return None; }
-            let mut kinds: Vec<CounterKind> = o.counters.iter()
-                .map(|(k, _)| *k).collect();
+            let mut kinds: Vec<CounterKind> = o.counters.keys().copied().collect();
             // Deterministic order so triggers replay identically.
             kinds.sort_by_key(|k| format!("{:?}", k));
             Some((o.id, kinds))
