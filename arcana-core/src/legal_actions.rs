@@ -456,10 +456,7 @@ fn legal_priority_actions(
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
         if !is_instant_speed && !sorcery_speed_ok { continue; }
 
-        let Some(cost) = obj.characteristics.mana_cost.clone() else { continue; };
-        // TODO(x-enumeration): skip X-costed spells until we enumerate
-        // plausible X values (Task #14 follow-up).
-        if cost.x_count() > 0 { continue; }
+        let Some(printed_cost) = obj.characteristics.mana_cost.clone() else { continue; };
 
         let ctx = SpendContext::for_spell(
             obj.characteristics.types, obj.characteristics.colors);
@@ -470,6 +467,22 @@ fn legal_priority_actions(
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
         let target_selections = enumerate_target_selections(&reqs, state, player);
+
+        // X-value enumeration (CR 107.3 / 601.2b). If the cost has
+        // `{X}`, the caster picks a non-negative integer at cast
+        // time. Upper bound: total mana in pool (a safe over-
+        // approximation — the mana solver filters infeasible
+        // expansions when the colored fixed-portion leaves
+        // insufficient generic room). Each X value becomes a
+        // distinct emitted action — X=5 and X=6 produce different
+        // game outcomes since effects reference the X variable.
+        let has_x = printed_cost.x_count() > 0;
+        let x_values: Vec<u32> = if has_x {
+            let max_x = state.player(player).mana_pool.total() as u32;
+            (0..=max_x).collect()
+        } else {
+            vec![0]  // sentinel; x_value field set to None below
+        };
 
         // Cost reductions: delve (CR 702.66), convoke (CR 702.51),
         // improvise (CR 702.127). These compose at the rules level
@@ -487,118 +500,28 @@ fn legal_priority_actions(
         let delve_available = crate::engine::has_delve(state, id);
         let convoke_available = crate::engine::has_convoke(state, id);
         let improvise_available = crate::engine::has_improvise(state, id);
-        let gen_cap = generic_total(&cost);
 
-        // --- Delve track (only generic pips reducible) ----------
-        let delve_subsets: Vec<Vec<ObjectId>> =
-            if delve_available && gen_cap > 0 {
-                enumerate_delve_subsets(state, player, gen_cap as usize)
+        for &x in &x_values {
+            // Expand X into Generic(x) before cost-reduction tracks
+            // see the cost. Delve / improvise reduce generic; X
+            // expansion creates generic to reduce, so the ordering
+            // is X-first-then-reductions.
+            let cost = if has_x {
+                printed_cost.with_x_expanded(x)
             } else {
-                vec![Vec::new()]
+                printed_cost.clone()
             };
-        for subset in &delve_subsets {
-            let reduced_cost = if subset.is_empty() {
-                cost.clone()
-            } else {
-                reduce_generic_cost(&cost, subset.len() as u32)
-            };
-            let plans = enumerate_payment_plans(
-                &reduced_cost, &state.player(player).mana_pool, None, &ctx);
-            for plan in plans {
-                for targets in &target_selections {
-                    actions.push(Action::CastSpell {
-                        object_id: id,
-                        targets: targets.clone(),
-                        modes: Vec::new(),
-                        mana_payment: plan.clone(),
-                        additional_costs: Vec::new(),
-                        x_value: None,
-                        cast_modifier: crate::actions::CastModifier::None,
-                        cost_reductions: crate::actions::CostReductions {
-                            delve_exiles: if delve_available {
-                                Some(subset.clone())
-                            } else {
-                                None
-                            },
-                            convoke_taps: None,
-                            improvise_taps: None,
-                        },
-                    });
-                }
-            }
-        }
+            let x_value = if has_x { Some(x) } else { None };
+            let gen_cap = generic_total(&cost);
 
-        // --- Convoke track --------------------------------------
-        // Only runs when the card has convoke AND no delve (to avoid
-        // double-emitting the "no cost reduction" baseline — the
-        // delve track already covered it above).
-        if convoke_available && !delve_available && !improvise_available {
-            let pip_cap = total_pips(&cost) as usize;
-            let convoke_subsets = if pip_cap > 0 {
-                enumerate_convoke_subsets(state, player, pip_cap)
-            } else {
-                vec![Vec::new()]
-            };
-            for c_subset in &convoke_subsets {
-                // Empty subset is the normal cast; the delve track
-                // already emitted it (delve_available=false branch
-                // produces convoke_taps=None and delve_exiles=None).
-                // Here we emit Some(vec![]) as "has convoke, chose
-                // zero creatures" for the empty subset — that's the
-                // convoke-branch baseline.
-                let assignments = enumerate_convoke_assignments(state, c_subset);
-                for assignment in assignments {
-                    let Some(reduced_cost) =
-                        reduce_cost_by_convoke(&cost, &assignment)
-                    else { continue; };
-                    let plans = enumerate_payment_plans(
-                        &reduced_cost, &state.player(player).mana_pool,
-                        None, &ctx);
-                    if plans.is_empty() { continue; }
-                    // Build the ConvokeAssignment list from
-                    // (creature, payment) pairs.
-                    let convoke_taps: Vec<crate::actions::ConvokeAssignment> =
-                        c_subset.iter().zip(assignment.iter())
-                            .map(|(&creature, &payment)|
-                                crate::actions::ConvokeAssignment {
-                                    creature, payment,
-                                })
-                            .collect();
-                    for plan in &plans {
-                        for targets in &target_selections {
-                            actions.push(Action::CastSpell {
-                                object_id: id,
-                                targets: targets.clone(),
-                                modes: Vec::new(),
-                                mana_payment: plan.clone(),
-                                additional_costs: Vec::new(),
-                                x_value: None,
-                                cast_modifier:
-                                    crate::actions::CastModifier::None,
-                                cost_reductions:
-                                    crate::actions::CostReductions {
-                                        delve_exiles: None,
-                                        convoke_taps: Some(
-                                            convoke_taps.clone()),
-                                        improvise_taps: None,
-                                    },
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- Improvise track ------------------------------------
-        // Only runs when improvise is present AND neither delve nor
-        // convoke is — same mutual-exclusion policy as convoke.
-        if improvise_available && !delve_available && !convoke_available {
-            let improvise_subsets = if gen_cap > 0 {
-                enumerate_improvise_subsets(state, player, gen_cap as usize)
-            } else {
-                vec![Vec::new()]
-            };
-            for subset in &improvise_subsets {
+            // --- Delve track (only generic pips reducible) ----------
+            let delve_subsets: Vec<Vec<ObjectId>> =
+                if delve_available && gen_cap > 0 {
+                    enumerate_delve_subsets(state, player, gen_cap as usize)
+                } else {
+                    vec![Vec::new()]
+                };
+            for subset in &delve_subsets {
                 let reduced_cost = if subset.is_empty() {
                     cost.clone()
                 } else {
@@ -614,14 +537,104 @@ fn legal_priority_actions(
                             modes: Vec::new(),
                             mana_payment: plan.clone(),
                             additional_costs: Vec::new(),
-                            x_value: None,
+                            x_value,
                             cast_modifier: crate::actions::CastModifier::None,
                             cost_reductions: crate::actions::CostReductions {
-                                delve_exiles: None,
+                                delve_exiles: if delve_available {
+                                    Some(subset.clone())
+                                } else {
+                                    None
+                                },
                                 convoke_taps: None,
-                                improvise_taps: Some(subset.clone()),
+                                improvise_taps: None,
                             },
                         });
+                    }
+                }
+            }
+
+            // --- Convoke track --------------------------------------
+            if convoke_available && !delve_available && !improvise_available {
+                let pip_cap = total_pips(&cost) as usize;
+                let convoke_subsets = if pip_cap > 0 {
+                    enumerate_convoke_subsets(state, player, pip_cap)
+                } else {
+                    vec![Vec::new()]
+                };
+                for c_subset in &convoke_subsets {
+                    let assignments = enumerate_convoke_assignments(state, c_subset);
+                    for assignment in assignments {
+                        let Some(reduced_cost) =
+                            reduce_cost_by_convoke(&cost, &assignment)
+                        else { continue; };
+                        let plans = enumerate_payment_plans(
+                            &reduced_cost, &state.player(player).mana_pool,
+                            None, &ctx);
+                        if plans.is_empty() { continue; }
+                        let convoke_taps: Vec<crate::actions::ConvokeAssignment> =
+                            c_subset.iter().zip(assignment.iter())
+                                .map(|(&creature, &payment)|
+                                    crate::actions::ConvokeAssignment {
+                                        creature, payment,
+                                    })
+                                .collect();
+                        for plan in &plans {
+                            for targets in &target_selections {
+                                actions.push(Action::CastSpell {
+                                    object_id: id,
+                                    targets: targets.clone(),
+                                    modes: Vec::new(),
+                                    mana_payment: plan.clone(),
+                                    additional_costs: Vec::new(),
+                                    x_value,
+                                    cast_modifier:
+                                        crate::actions::CastModifier::None,
+                                    cost_reductions:
+                                        crate::actions::CostReductions {
+                                            delve_exiles: None,
+                                            convoke_taps: Some(
+                                                convoke_taps.clone()),
+                                            improvise_taps: None,
+                                        },
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- Improvise track ------------------------------------
+            if improvise_available && !delve_available && !convoke_available {
+                let improvise_subsets = if gen_cap > 0 {
+                    enumerate_improvise_subsets(state, player, gen_cap as usize)
+                } else {
+                    vec![Vec::new()]
+                };
+                for subset in &improvise_subsets {
+                    let reduced_cost = if subset.is_empty() {
+                        cost.clone()
+                    } else {
+                        reduce_generic_cost(&cost, subset.len() as u32)
+                    };
+                    let plans = enumerate_payment_plans(
+                        &reduced_cost, &state.player(player).mana_pool, None, &ctx);
+                    for plan in plans {
+                        for targets in &target_selections {
+                            actions.push(Action::CastSpell {
+                                object_id: id,
+                                targets: targets.clone(),
+                                modes: Vec::new(),
+                                mana_payment: plan.clone(),
+                                additional_costs: Vec::new(),
+                                x_value,
+                                cast_modifier: crate::actions::CastModifier::None,
+                                cost_reductions: crate::actions::CostReductions {
+                                    delve_exiles: None,
+                                    convoke_taps: None,
+                                    improvise_taps: Some(subset.clone()),
+                                },
+                            });
+                        }
                     }
                 }
             }
@@ -653,9 +666,7 @@ fn legal_priority_actions(
             .unwrap_or_default();
         let target_selections = enumerate_target_selections(&reqs, state, player);
 
-        for cost in flashback_costs {
-            // TODO(x-enumeration): mirror the hand-path skip for now.
-            if cost.x_count() > 0 { continue; }
+        for printed_fb_cost in flashback_costs {
             // TODO(delve-on-flashback): no card in current Standard has
             // both flashback and delve, but composition is legal per
             // the CR. When a card arrives, enumerate delve subsets
@@ -665,20 +676,42 @@ fn legal_priority_actions(
             // Stack).
             let ctx = SpendContext::for_spell(
                 obj.characteristics.types, obj.characteristics.colors);
-            let plans = enumerate_payment_plans(
-                &cost, &state.player(player).mana_pool, None, &ctx);
-            for plan in plans {
-                for targets in &target_selections {
-                    actions.push(Action::CastSpell {
-                        object_id: id,
-                        targets: targets.clone(),
-                        modes: Vec::new(),
-                        mana_payment: plan.clone(),
-                        additional_costs: Vec::new(),
-                        x_value: None,
-                        cast_modifier: crate::actions::CastModifier::Flashback,
-                        cost_reductions: crate::actions::CostReductions::default(),
-                    });
+
+            // Flashback-cost X enumeration mirrors the hand-cast
+            // block. The granted flashback cost may carry its own
+            // `{X}` (uncommon but legal — e.g. hypothetical granted
+            // flashback on an X-cost spell via Snapcaster-style
+            // effects).
+            let has_x = printed_fb_cost.x_count() > 0;
+            let x_values: Vec<u32> = if has_x {
+                let max_x = state.player(player).mana_pool.total() as u32;
+                (0..=max_x).collect()
+            } else {
+                vec![0]
+            };
+
+            for &x in &x_values {
+                let cost = if has_x {
+                    printed_fb_cost.with_x_expanded(x)
+                } else {
+                    printed_fb_cost.clone()
+                };
+                let x_value = if has_x { Some(x) } else { None };
+                let plans = enumerate_payment_plans(
+                    &cost, &state.player(player).mana_pool, None, &ctx);
+                for plan in plans {
+                    for targets in &target_selections {
+                        actions.push(Action::CastSpell {
+                            object_id: id,
+                            targets: targets.clone(),
+                            modes: Vec::new(),
+                            mana_payment: plan.clone(),
+                            additional_costs: Vec::new(),
+                            x_value,
+                            cast_modifier: crate::actions::CastModifier::Flashback,
+                            cost_reductions: crate::actions::CostReductions::default(),
+                        });
+                    }
                 }
             }
         }
@@ -1476,12 +1509,26 @@ mod tests {
     }
 
     #[test]
-    fn x_cost_spells_are_skipped_for_now() {
+    fn x_cost_spells_enumerate_one_action_per_x_value() {
+        // Cost is {X}{R}. With 5 red in the pool, feasible X values
+        // are 0..=4 (X=5 would need 6 red total). Each enumerable
+        // X produces at least one emitted cast action.
         let mut s = GameState::new(2, 0);
         put(&mut s, 0, Zone::Hand(0), x_instant_chars());
         add_mana(&mut s, 0, ManaColor::Red, 5);
         let actions = legal_actions(&s, &CardRegistry::new());
-        assert!(!actions.iter().any(|a| matches!(a, Action::CastSpell { .. })));
+        let x_values: std::collections::HashSet<u32> = actions.iter()
+            .filter_map(|a| match a {
+                Action::CastSpell { x_value: Some(x), .. } => Some(*x),
+                _ => None,
+            }).collect();
+        for x in 0..=4 {
+            assert!(x_values.contains(&x),
+                "expected X={x} to be among enumerated cast actions");
+        }
+        // X=5 not feasible: leaves no mana for the fixed {R}.
+        assert!(!x_values.contains(&5),
+            "X=5 infeasible with {{X}}{{R}} and 5 red total");
     }
 
     #[test]

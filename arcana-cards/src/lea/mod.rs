@@ -10,3 +10,4 @@ pub mod forest;
 pub mod grizzly_bears;
 pub mod lightning_bolt;
 pub mod counterspell;
+pub mod disintegrate;

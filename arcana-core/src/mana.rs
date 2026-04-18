@@ -155,6 +155,21 @@ impl ManaCost {
             .count() as u32
     }
 
+    /// Substitute every `{X}` component with `Generic(x)`. Returns the
+    /// cost with X resolved; non-X components are unchanged.
+    ///
+    /// Used by [`crate::legal_actions`] to fold X into the cost
+    /// upstream of cost-reduction enumeration (delve / convoke /
+    /// improvise), and by the mana solver when `x_value` is supplied.
+    pub fn with_x_expanded(&self, x: u32) -> ManaCost {
+        ManaCost {
+            components: self.components.iter().map(|c| match c {
+                ManaCostComponent::X => ManaCostComponent::Generic(x),
+                other => *other,
+            }).collect(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool { self.components.is_empty() }
     pub fn len(&self) -> usize { self.components.len() }
 
