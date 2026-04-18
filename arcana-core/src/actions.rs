@@ -28,6 +28,33 @@ use serde::{Deserialize, Serialize};
 
 use crate::combat::{AttackerDeclaration, BlockerDeclaration, DamageAssignment};
 use crate::objects::ObjectId;
+
+/// Alternative or cost-modifying cast path for [`Action::CastSpell`].
+///
+/// Per CR 601.2f, a spell can use at most one alternative cost — that
+/// constraint is expressed at the type level by the single-slot
+/// `Option`-style shape of this enum on the action. Additional costs
+/// (kicker, buyback, emerge's sacrifice) are orthogonal and live in
+/// [`Action::CastSpell::additional_costs`].
+///
+/// Variants are expected to grow as keyword-style alt-cost mechanics
+/// land (foretell, adventure, madness, spectacle, …). Keep this a
+/// marker enum — look up the *live* cost via
+/// [`crate::state::GameState::effective_keywords`] at cast time so
+/// cost reductions and Snapcaster-style temporary grants work.
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CastModifier {
+    /// The default — pay the printed mana cost from the normal cast
+    /// zone (hand for spells, etc.). No zone override, no
+    /// exile-on-leave.
+    #[default]
+    None,
+    /// CR 702.33 — cast from the graveyard for the flashback cost.
+    /// The stack entry is flagged so that leaving the stack (resolve /
+    /// counter / fizzle) routes to exile rather than the owner's
+    /// graveyard.
+    Flashback,
+}
 use crate::priority::SpecialAction;
 use crate::stack::ModeChoice;
 use crate::targets::TargetSelection;
@@ -66,6 +93,12 @@ pub enum Action {
         additional_costs: Vec<AdditionalCostPayment>,
         /// Chosen value for `{X}` when the spell has one; `None` otherwise.
         x_value: Option<u32>,
+        /// Alternative or cost-modifying cast path ([`CastModifier`]).
+        /// Default [`CastModifier::None`] means paying the card's
+        /// printed mana cost from the usual zone (hand). Other variants
+        /// pay a different cost and may change zone restrictions or
+        /// post-resolution routing (e.g. flashback → exile-on-leave).
+        cast_modifier: CastModifier,
     },
 
     /// Activate an ability on `source`. `ability_index` is the 0-based
@@ -586,6 +619,7 @@ mod tests {
             mana_payment: pay_nothing(),
             additional_costs: vec![],
             x_value: None,
+            cast_modifier: CastModifier::None,
         }
     }
 
@@ -749,6 +783,7 @@ mod tests {
             mana_payment: pay_nothing(),
             additional_costs: vec![AdditionalCostPayment::PayLife(2)],
             x_value: Some(3),
+            cast_modifier: CastModifier::None,
         };
         let json = serde_json::to_string(&a).expect("serialize");
         let back: Action = serde_json::from_str(&json).expect("deserialize");

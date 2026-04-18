@@ -482,6 +482,7 @@ fn legal_priority_actions(
                     mana_payment: plan.clone(),
                     additional_costs: Vec::new(),
                     x_value: None,
+                    cast_modifier: crate::actions::CastModifier::None,
                 });
             }
         }
@@ -490,7 +491,50 @@ fn legal_priority_actions(
     // Activated abilities of controlled permanents.
     actions.extend(enumerate_activation_actions(state, player, registry));
 
-    // TODO(flashback/foretell): enumerate casts from graveyard/exile.
+    // Flashback casts from the player's own graveyard (CR 702.33).
+    // Timing reuses the same sorcery/instant check as the hand path —
+    // flashback does not grant flash.
+    for id in sorted_ids_in_zone(state, Zone::Graveyard(player)) {
+        let obj = state.objects.get(id).unwrap();
+        if obj.is_land() { continue; }
+        let is_instant_speed = obj.is_instant()
+            || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
+        if !is_instant_speed && !sorcery_speed_ok { continue; }
+
+        // Layer-aware lookup: honors Snapcaster-style granted flashback.
+        // If a card ever has multiple flashback keywords (grants stack,
+        // CR 702.33c), enumerate each separately.
+        let flashback_costs = crate::engine::all_flashback_costs_for(state, id);
+        if flashback_costs.is_empty() { continue; }
+
+        let reqs: Vec<TargetRequirement> = registry.get(obj.card_id)
+            .and_then(|def| def.spell_ability.as_ref())
+            .map(|sa| sa.target_requirements.clone())
+            .unwrap_or_default();
+        let target_selections = enumerate_target_selections(&reqs, state, player);
+
+        for cost in flashback_costs {
+            // TODO(x-enumeration): mirror the hand-path skip for now.
+            if cost.x_count() > 0 { continue; }
+            let ctx = SpendContext::for_spell(
+                obj.characteristics.types, obj.characteristics.colors);
+            let plans = enumerate_payment_plans(
+                &cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in plans {
+                for targets in &target_selections {
+                    actions.push(Action::CastSpell {
+                        object_id: id,
+                        targets: targets.clone(),
+                        modes: Vec::new(),
+                        mana_payment: plan.clone(),
+                        additional_costs: Vec::new(),
+                        x_value: None,
+                        cast_modifier: crate::actions::CastModifier::Flashback,
+                    });
+                }
+            }
+        }
+    }
 
     actions
 }

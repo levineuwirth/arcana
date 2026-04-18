@@ -133,10 +133,11 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
 
         Action::CastSpell {
             object_id, targets, modes, mana_payment, additional_costs, x_value,
+            cast_modifier,
         } => {
             apply_cast_spell(
                 state, registry, object_id, targets, modes,
-                mana_payment, additional_costs, x_value,
+                mana_payment, additional_costs, x_value, cast_modifier,
             );
         }
 
@@ -223,8 +224,29 @@ fn apply_cast_spell(
     mana_payment: crate::actions::ManaPaymentPlan,
     additional_costs: Vec<crate::actions::AdditionalCostPayment>,
     x_value: Option<u32>,
+    cast_modifier: crate::actions::CastModifier,
 ) {
     let controller = state.priority_player();
+
+    // Alt-cost / zone validation. Belt-and-suspenders — legal_actions
+    // is expected to filter invalid combinations, but bogus agent
+    // input shouldn't corrupt state. Each branch rejects silently
+    // (returns early) if the zone/keyword pairing is wrong.
+    match cast_modifier {
+        crate::actions::CastModifier::None => {
+            // Normal cast: source must be in the caster's hand (lands
+            // go through PlayLand, not CastSpell).
+            let from_hand = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Hand(controller));
+            if !from_hand { return; }
+        }
+        crate::actions::CastModifier::Flashback => {
+            let from_own_yard = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Graveyard(controller));
+            if !from_own_yard { return; }
+            if flashback_cost_for(state, object_id).is_none() { return; }
+        }
+    }
 
     // 1. Spend the mana payment (pool units + convoke taps + delve
     //    exiles + Phyrexian life). Note: convoke and delve reduce
@@ -247,11 +269,58 @@ fn apply_cast_spell(
     let entry_id = state.announce_spell_on_stack(
         object_id, controller, targets, modes, x_value, target_requirements);
 
+    // Stamp the entry with the cast modifier so leave-the-stack paths
+    // (resolve / counter / fizzle) can route Flashback casts to exile.
+    if let Some(entry) = state.stack.iter_mut().find(|e| e.id == entry_id) {
+        entry.cast_modifier = cast_modifier;
+    }
+
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
     state.emit_spell_cast(entry_id);
 
     // 5. Record the action (priority retained, pass counter reset).
     state.priority.record_action();
+}
+
+/// Return the currently-granted flashback cost for `object_id`, if any.
+/// Walks [`GameState::effective_keywords`] so that layer-6 grants
+/// (Snapcaster Mage-style "gains flashback until end of turn") are
+/// honored — `base_characteristics.keywords` alone would miss them.
+///
+/// Cost reductions are a Phase 2-B concern; this helper returns the
+/// keyword's carried cost verbatim for now. When cost-reduction
+/// effects land, apply them here so `legal_actions` and
+/// `apply_cast_spell` stay in sync (both go through this helper).
+///
+/// Returns the *first* Flashback keyword found; if a card ends up
+/// with multiple (multiple grants stack, per CR 702.33c) the caller
+/// is responsible for enumerating each via
+/// [`all_flashback_costs_for`].
+pub(crate) fn flashback_cost_for(
+    state: &GameState,
+    object_id: ObjectId,
+) -> Option<crate::mana::ManaCost> {
+    state.effective_keywords(object_id).into_iter()
+        .find_map(|kw| match kw {
+            crate::effects::KeywordAbility::Flashback(cost) => Some(cost),
+            _ => None,
+        })
+}
+
+/// Enumerate every granted flashback cost on `object_id`. Usually a
+/// one-element Vec (printed flashback) or empty (none). A card
+/// gaining a second flashback via Snapcaster-on-a-flashback-card is
+/// rare but legal; CR 702.33c says the caster picks one.
+pub(crate) fn all_flashback_costs_for(
+    state: &GameState,
+    object_id: ObjectId,
+) -> Vec<crate::mana::ManaCost> {
+    state.effective_keywords(object_id).into_iter()
+        .filter_map(|kw| match kw {
+            crate::effects::KeywordAbility::Flashback(cost) => Some(cost),
+            _ => None,
+        })
+        .collect()
 }
 
 fn apply_activate_ability(
@@ -3753,6 +3822,7 @@ mod tests {
             },
             additional_costs: Vec::new(),
             x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
         };
         let (state, _) = step(state, cast, &reg());
         // Stack has one entry or — after everyone passes — has
@@ -4369,5 +4439,367 @@ mod tests {
         }
         assert_eq!(run(42), run(42),
             "same seed → same cascade bottom order");
+    }
+
+    // =====================================================================
+    // Flashback (CR 702.33)
+    // =====================================================================
+
+    /// Register a flashback test card: {R} instant, "deal 1 damage to
+    /// target player", flashback {2}{R}.
+    fn register_flashback_bolt(registry: &mut CardRegistry) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        use crate::targets::TargetRequirement;
+        fn fb_bolt_effect(
+            _: &GameState,
+            entry: &crate::stack::StackEntry,
+            _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> {
+            let Some(t) = entry.targets.targets.first() else { return vec![]; };
+            let player = match t {
+                crate::targets::TargetChoice::Player(p) => *p,
+                _ => return vec![],
+            };
+            vec![crate::effects::Effect::DealDamage {
+                source: entry.source,
+                target: crate::events::DamageTarget::Player(player),
+                amount: 1,
+            }]
+        }
+        let name = registry.interner_mut().intern("Flashback-Bolt");
+        let mut def = CardDefinition::new(name, Characteristics {
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Deal 1 damage to target player. Flashback {2}{R}.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            effect: fb_bolt_effect,
+        });
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Flashback(
+                ManaCost::parse("{2}{R}").unwrap()));
+        registry.register(def)
+    }
+
+    fn register_flashback_sorcery(registry: &mut CardRegistry) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        use crate::targets::TargetRequirement;
+        fn fb_sorcery_effect(
+            _: &GameState,
+            _: &crate::stack::StackEntry,
+            _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> { vec![] }
+        let name = registry.interner_mut().intern("Flashback-Sorcery");
+        let mut def = CardDefinition::new(name, Characteristics {
+            mana_cost: Some(ManaCost::parse("{1}{B}").unwrap()),
+            colors: ColorSet::black(),
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Flashback {3}{B}.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            effect: fb_sorcery_effect,
+        });
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Flashback(
+                crate::mana::ManaCost::parse("{3}{B}").unwrap()));
+        registry.register(def)
+    }
+
+    /// Put a card into `player`'s graveyard as if it had been cast and
+    /// gone to yard normally.
+    fn put_in_graveyard(
+        state: &mut GameState,
+        registry: &CardRegistry,
+        player: PlayerId,
+        card_id: crate::types::CardId,
+    ) -> ObjectId {
+        let obj_id = state.allocate_object_id();
+        let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+        state.objects.insert(crate::objects::GameObject::new(
+            obj_id, player, Zone::Graveyard(player), card_id, chars));
+        obj_id
+    }
+
+    fn give_mana(state: &mut GameState, player: PlayerId, cost: &str) {
+        let cost = crate::mana::ManaCost::parse(cost).unwrap();
+        for c in cost.components.iter() {
+            use crate::types::ManaColor;
+            match c {
+                crate::mana::ManaCostComponent::Colored(color) => {
+                    let mc = match color {
+                        Color::White => ManaColor::White,
+                        Color::Blue => ManaColor::Blue,
+                        Color::Black => ManaColor::Black,
+                        Color::Red => ManaColor::Red,
+                        Color::Green => ManaColor::Green,
+                    };
+                    state.player_mut(player).mana_pool.add_mana(mc, 1, 0);
+                }
+                crate::mana::ManaCostComponent::Generic(n) => {
+                    state.player_mut(player).mana_pool
+                        .add_mana(ManaColor::Red, *n, 0);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn flashback_cast_pays_flashback_cost_and_resolves() {
+        let mut registry = CardRegistry::new();
+        let card = register_flashback_bolt(&mut registry);
+        let mut s = GameState::new(2, 0);
+        let gy_id = put_in_graveyard(&mut s, &registry, 0, card);
+        give_mana(&mut s, 0, "{2}{R}");
+        let p1_start = s.player(1).life;
+
+        // Look up the flashback action from legal_actions.
+        s.priority.give_to(0);
+        // Set phase to main so sorcery-speed check passes. (It's an
+        // instant, but we mirror the normal cast flow.)
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        // Pick the flashback action that targets player 1 specifically
+        // (enumerate_target_selections yields one action per legal
+        // target; we want the one aimed at the opponent).
+        let fb_action = actions.iter().find(|a| matches!(a,
+            Action::CastSpell { object_id, cast_modifier, targets, .. }
+            if *object_id == gy_id
+                && matches!(cast_modifier, crate::actions::CastModifier::Flashback)
+                && targets.targets.first()
+                    == Some(&crate::targets::TargetChoice::Player(1))))
+            .expect("legal_actions should offer the flashback cast at player 1")
+            .clone();
+
+        let (s, _) = step(s, fb_action, &registry);
+        // Bolt is on the stack. Resolve it.
+        let mut s = s;
+        let pending_targets = s.pending_choice.is_some();
+        assert!(!pending_targets, "flashback bolt with target already chosen");
+        while !s.stack_is_empty() {
+            resolve_top_of_stack(&mut s, &registry);
+            run_sba_and_triggers(&mut s, &registry);
+        }
+
+        // 1 damage dealt.
+        assert_eq!(p1_start - s.player(1).life, 1);
+        // Card is in Exile, not Graveyard.
+        assert_eq!(s.zone_count(Zone::Exile), 1,
+            "flashback spell should land in exile");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0);
+    }
+
+    #[test]
+    fn flashback_counter_sends_card_to_exile() {
+        let mut registry = CardRegistry::new();
+        let card = register_flashback_bolt(&mut registry);
+        let mut s = GameState::new(2, 0);
+        let gy_id = put_in_graveyard(&mut s, &registry, 0, card);
+
+        // Directly build the cast action with cast_modifier = Flashback.
+        let mut targets = crate::targets::TargetSelection::new();
+        targets.targets.push(crate::targets::TargetChoice::Player(1));
+        let cast = Action::CastSpell {
+            object_id: gy_id, targets,
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::Flashback,
+        };
+        give_mana(&mut s, 0, "{2}{R}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let (s, _) = step(s, cast, &registry);
+        let mut s = s;
+        let stack_id = s.top_of_stack().unwrap().id;
+        let entry = s.remove_stack_entry_by_id(stack_id).unwrap();
+        s.counter_resolved_spell(entry);
+        assert_eq!(s.zone_count(Zone::Exile), 1,
+            "countered flashback spell must go to exile");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0);
+    }
+
+    #[test]
+    fn flashback_fizzle_sends_card_to_exile() {
+        // Cast flashback bolt targeting player 1, then remove player 1
+        // from the game… not supported. Simulate by tampering: set the
+        // chosen target to an invalid player id. The resolution-time
+        // recheck will rules-counter the spell and route via
+        // counter_resolved_spell — which respects the flashback flag.
+        let mut registry = CardRegistry::new();
+        let card = register_flashback_bolt(&mut registry);
+        let mut s = GameState::new(2, 0);
+        let gy_id = put_in_graveyard(&mut s, &registry, 0, card);
+        give_mana(&mut s, 0, "{2}{R}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let mut targets = crate::targets::TargetSelection::new();
+        targets.targets.push(crate::targets::TargetChoice::Player(1));
+        let cast = Action::CastSpell {
+            object_id: gy_id, targets,
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::Flashback,
+        };
+        let (s, _) = step(s, cast, &registry);
+        let mut s = s;
+        // Invalidate the target: mark player 1 as lost.
+        s.player_mut(1).has_lost = true;
+        // Resolve — recheck should classify as CounteredIllegalTargets.
+        resolve_top_of_stack(&mut s, &registry);
+        // Card goes to exile via counter_resolved_spell.
+        assert_eq!(s.zone_count(Zone::Exile), 1,
+            "fizzled flashback spell must go to exile");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0);
+    }
+
+    #[test]
+    fn legal_actions_does_not_offer_flashback_from_exile() {
+        let mut registry = CardRegistry::new();
+        let card = register_flashback_bolt(&mut registry);
+        let mut s = GameState::new(2, 0);
+        let obj_id = s.allocate_object_id();
+        let chars = registry.get(card).unwrap().base_characteristics.clone();
+        s.objects.insert(crate::objects::GameObject::new(
+            obj_id, 0, Zone::Exile, card, chars));
+        give_mana(&mut s, 0, "{2}{R}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let fb_actions = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell { cast_modifier, .. }
+                if matches!(cast_modifier,
+                    crate::actions::CastModifier::Flashback))).count();
+        assert_eq!(fb_actions, 0,
+            "flashback offered only from graveyard, not exile");
+    }
+
+    #[test]
+    fn legal_actions_does_not_offer_flashback_without_mana() {
+        let mut registry = CardRegistry::new();
+        let card = register_flashback_bolt(&mut registry);
+        let mut s = GameState::new(2, 0);
+        put_in_graveyard(&mut s, &registry, 0, card);
+        // Only one red mana — not enough for {2}{R}.
+        give_mana(&mut s, 0, "{R}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let fb_actions = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell { cast_modifier, .. }
+                if matches!(cast_modifier,
+                    crate::actions::CastModifier::Flashback))).count();
+        assert_eq!(fb_actions, 0, "no mana → no flashback enumeration");
+    }
+
+    #[test]
+    fn legal_actions_respects_sorcery_speed_for_flashback_sorcery() {
+        let mut registry = CardRegistry::new();
+        let card = register_flashback_sorcery(&mut registry);
+        let mut s = GameState::new(2, 0);
+        put_in_graveyard(&mut s, &registry, 0, card);
+        give_mana(&mut s, 0, "{3}{B}");
+        // Opponent's turn: sorcery speed is denied even with mana.
+        s.turn.active_player = 1;
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let fb_actions = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell { cast_modifier, .. }
+                if matches!(cast_modifier,
+                    crate::actions::CastModifier::Flashback))).count();
+        assert_eq!(fb_actions, 0,
+            "flashback sorcery on opponent's turn must not be legal");
+    }
+
+    #[test]
+    fn flashback_cast_modifier_none_does_not_pay_flashback_cost() {
+        // Mutual-exclusion pin: if the agent passes CastModifier::None
+        // on a card in the graveyard, apply_cast_spell does not treat
+        // it as a flashback cast and — since no non-flashback cast
+        // path exists from graveyard — silently rejects. (A hand cast
+        // with the same cast_modifier=None would succeed; this test
+        // specifically asserts "from graveyard with None is a no-op".)
+        let mut registry = CardRegistry::new();
+        let card = register_flashback_bolt(&mut registry);
+        let mut s = GameState::new(2, 0);
+        let gy_id = put_in_graveyard(&mut s, &registry, 0, card);
+        give_mana(&mut s, 0, "{R}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let mut targets = crate::targets::TargetSelection::new();
+        targets.targets.push(crate::targets::TargetChoice::Player(1));
+        let cast = Action::CastSpell {
+            object_id: gy_id, targets,
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+        };
+        let (s, _) = step(s, cast, &registry);
+        // Cast modifier = None but source is graveyard — nothing
+        // should move to the stack.
+        assert!(s.stack_is_empty(),
+            "None modifier shouldn't let a graveyard cast sneak through");
+    }
+
+    #[test]
+    fn snapcaster_style_granted_flashback_is_offered_by_legal_actions() {
+        // Test fixture: a non-flashback instant gains flashback via a
+        // layer-6 continuous effect (stand-in for Snapcaster Mage's
+        // "target instant or sorcery gains flashback until end of
+        // turn"). legal_actions should discover it via
+        // state.effective_keywords and offer the flashback cast.
+        use crate::layers::{ContinuousEffect, Duration};
+        let mut registry = CardRegistry::new();
+        // Plain instant with NO printed flashback.
+        let name = registry.interner_mut().intern("Plain-Bolt");
+        let def = crate::registry::CardDefinition::new(name, Characteristics {
+            mana_cost: Some(crate::mana::ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        });
+        let card = registry.register(def);
+
+        let mut s = GameState::new(2, 0);
+        let gy_id = put_in_graveyard(&mut s, &registry, 0, card);
+
+        // Grant flashback via a continuous effect until end of turn.
+        let granted_cost = crate::mana::ManaCost::parse("{2}{R}").unwrap();
+        s.add_continuous_effect(ContinuousEffect::grant_keyword(
+            /*source=*/ 999, gy_id,
+            crate::effects::KeywordAbility::Flashback(granted_cost),
+            Duration::EndOfTurn,
+        ));
+        give_mana(&mut s, 0, "{2}{R}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let fb_actions = actions.iter().filter(|a| matches!(a,
+            Action::CastSpell { cast_modifier, .. }
+                if matches!(cast_modifier,
+                    crate::actions::CastModifier::Flashback))).count();
+        assert!(fb_actions >= 1,
+            "granted-flashback card must be offered via effective_keywords");
     }
 }

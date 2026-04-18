@@ -113,6 +113,16 @@ pub struct StackEntry {
     /// registry; Phase 2 doesn't exercise that path.
     #[serde(skip)]
     pub target_requirements: Vec<crate::targets::TargetRequirement>,
+    /// Cast-time alternative-cost marker. Set by
+    /// [`crate::engine::apply_cast_spell`] from the `Action::CastSpell`
+    /// field. Controls where the entry goes on leaving the stack —
+    /// [`crate::actions::CastModifier::Flashback`] routes to
+    /// [`Zone::Exile`] via both [`Self::finalize_resolved_spell`] and
+    /// [`Self::counter_resolved_spell`], covering the three exit
+    /// paths (resolve, counter, fizzle — fizzle routes through
+    /// `counter_resolved_spell`).
+    #[serde(default)]
+    pub cast_modifier: crate::actions::CastModifier,
 }
 
 impl StackEntry {
@@ -139,6 +149,8 @@ impl StackEntry {
             storm_count_at_cast: 0,
             // Caller (announce_spell_on_stack) populates from registry.
             target_requirements: Vec::new(),
+            // Caller (apply_cast_spell) stamps any alt-cost marker.
+            cast_modifier: crate::actions::CastModifier::None,
         }
     }
 
@@ -163,6 +175,7 @@ impl StackEntry {
             x_value,
             storm_count_at_cast: 0,
             target_requirements: Vec::new(),
+            cast_modifier: crate::actions::CastModifier::None,
         }
     }
 
@@ -191,6 +204,7 @@ impl StackEntry {
             x_value: None,
             storm_count_at_cast: 0,
             target_requirements: Vec::new(),
+            cast_modifier: crate::actions::CastModifier::None,
         }
     }
 
@@ -514,7 +528,15 @@ impl GameState {
             .unwrap_or_else(|| panic!(
                 "finalize_resolved_spell: object {id} vanished from arena"))
             .owner;
-        let destination = if chars.is_permanent() {
+        // CR 702.33b — a flashback spell leaving the stack goes to
+        // exile, not the graveyard (and not the battlefield, since a
+        // permanent spell cast via flashback is already a degenerate
+        // case — Phase 1 doesn't register any such cards).
+        let destination = if matches!(entry.cast_modifier,
+            crate::actions::CastModifier::Flashback)
+        {
+            Zone::Exile
+        } else if chars.is_permanent() {
             Zone::Battlefield
         } else {
             Zone::Graveyard(owner)
@@ -589,7 +611,18 @@ impl GameState {
             .unwrap_or_else(|| panic!(
                 "counter_resolved_spell: object {id} vanished from arena"))
             .owner;
-        let destination = Zone::Graveyard(owner);
+        // CR 702.33b — flashback spells go to exile on leaving the
+        // stack regardless of reason (counter, fizzle, ward-decline).
+        // Fizzle reaches this path via
+        // [`crate::engine::resolve_top_of_stack`]'s
+        // `CounteredIllegalTargets` branch.
+        let destination = if matches!(entry.cast_modifier,
+            crate::actions::CastModifier::Flashback)
+        {
+            Zone::Exile
+        } else {
+            Zone::Graveyard(owner)
+        };
 
         let (new_id, from) = self.swap_to_zone_reid(id, destination)
             .expect("counter_resolved_spell: swap_to_zone_reid returned None");
@@ -601,7 +634,12 @@ impl GameState {
             new_id,
             cause: MoveCause::SpellResolution,
         });
-        self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
+        // Only emit PutIntoGraveyard if that's actually where it went.
+        if matches!(destination, Zone::Graveyard(_)) {
+            self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
+        } else {
+            self.emit(GameEvent::Exiled { object_id: new_id, from });
+        }
         self.emit(GameEvent::SpellCountered { object_id: id });
     }
 
