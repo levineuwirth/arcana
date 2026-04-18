@@ -516,20 +516,17 @@ impl Effect {
 
             // --- counters ------------------------------------------------
             Effect::AddCounters { target, kind, count } => {
-                let Some(obj) = state.objects.get_mut(*target) else { return; };
-                obj.add_counters(kind.clone(), *count);
-                if *count > 0 {
-                    state.emit(GameEvent::CounterAdded {
-                        object_id: *target, kind: kind.clone(), count: *count,
-                    });
-                }
+                if state.objects.get(*target).is_none() { return; }
+                state.place_counters(
+                    crate::replacement::CounterTarget::Object(*target),
+                    *kind, *count);
             }
             Effect::RemoveCounters { target, kind, count } => {
                 let Some(obj) = state.objects.get_mut(*target) else { return; };
-                let removed = obj.remove_counters(kind.clone(), *count);
+                let removed = obj.remove_counters(*kind, *count);
                 if removed > 0 {
                     state.emit(GameEvent::CounterRemoved {
-                        object_id: *target, kind: kind.clone(), count: removed,
+                        object_id: *target, kind: *kind, count: removed,
                     });
                 }
             }
@@ -542,16 +539,16 @@ impl Effect {
                     || state.objects.get(*to).is_none()
                 { return; }
                 let removed = state.objects.get_mut(*from).unwrap()
-                    .remove_counters(kind.clone(), *count);
+                    .remove_counters(*kind, *count);
                 if removed == 0 { return; }
                 state.emit(GameEvent::CounterRemoved {
-                    object_id: *from, kind: kind.clone(), count: removed,
+                    object_id: *from, kind: *kind, count: removed,
                 });
-                state.objects.get_mut(*to).unwrap()
-                    .add_counters(kind.clone(), removed);
-                state.emit(GameEvent::CounterAdded {
-                    object_id: *to, kind: kind.clone(), count: removed,
-                });
+                // Destination placement routes through the pipeline so
+                // Hardened Scales et al. see it (CR 614).
+                state.place_counters(
+                    crate::replacement::CounterTarget::Object(*to),
+                    *kind, removed);
             }
 
             // --- pump ----------------------------------------------------
@@ -947,37 +944,52 @@ fn valid_player(state: &GameState, p: PlayerId) -> bool {
 /// trigger system grows a poison/energy listener.
 fn proliferate(state: &mut GameState) {
     // --- Permanents on the battlefield ---
-    let targets: Vec<(ObjectId, Vec<(CounterKind, u32)>)> = state.objects
+    // Each (permanent, kind) placement is an independent
+    // would-place-counters event per CR 614 — route each through
+    // `place_counters` individually, not batched.
+    let targets: Vec<(ObjectId, Vec<CounterKind>)> = state.objects
         .objects_in_zone(Zone::Battlefield)
         .filter_map(|o| {
             if o.counters.is_empty() { return None; }
-            let mut kinds: Vec<(CounterKind, u32)> = o.counters.iter()
-                .map(|(k, _)| (k.clone(), 1)).collect();
+            let mut kinds: Vec<CounterKind> = o.counters.iter()
+                .map(|(k, _)| *k).collect();
             // Deterministic order so triggers replay identically.
-            kinds.sort_by_key(|(k, _)| format!("{:?}", k));
+            kinds.sort_by_key(|k| format!("{:?}", k));
             Some((o.id, kinds))
         })
         .collect();
     for (id, kinds) in targets {
-        for (kind, _) in kinds {
-            if let Some(obj) = state.objects.get_mut(id) {
-                obj.add_counters(kind.clone(), 1);
-            }
-            state.emit(GameEvent::CounterAdded {
-                object_id: id, kind, count: 1,
-            });
+        for kind in kinds {
+            state.place_counters(
+                crate::replacement::CounterTarget::Object(id), kind, 1);
         }
     }
 
     // --- Players with counters ---
     // Player-side counter types Phase 1 tracks: poison, energy,
-    // experience. Each gets +1 if currently nonzero. No dedicated
-    // event — emit none for now; revisit when triggers land.
-    for p in 0..state.num_players() {
-        let pl = state.player_mut(p);
-        if pl.poison_counters > 0 { pl.poison_counters += 1; }
-        if pl.energy > 0 { pl.energy += 1; }
-        if pl.experience > 0 { pl.experience += 1; }
+    // experience. Poison/Energy route through `place_counters` so
+    // any future player-target replacements apply uniformly.
+    // `experience` has no `CounterKind` variant yet — incremented
+    // directly until one is added.
+    let np = state.num_players();
+    for p in 0..np {
+        let (has_poison, has_energy, has_experience) = {
+            let pl = state.player(p);
+            (pl.poison_counters > 0, pl.energy > 0, pl.experience > 0)
+        };
+        if has_poison {
+            state.place_counters(
+                crate::replacement::CounterTarget::Player(p),
+                CounterKind::Poison, 1);
+        }
+        if has_energy {
+            state.place_counters(
+                crate::replacement::CounterTarget::Player(p),
+                CounterKind::Energy, 1);
+        }
+        if has_experience {
+            state.player_mut(p).experience += 1;
+        }
     }
 }
 

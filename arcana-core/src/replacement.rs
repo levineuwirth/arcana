@@ -47,10 +47,43 @@
 //! (addendum Section 12).
 
 use crate::combat::DamageTarget;
+use crate::events::GameEvent;
 use crate::objects::ObjectId;
 use crate::state::GameState;
 use crate::targets::{ObjectFilter, TargetChoice, TargetFilter};
 use crate::types::*;
+
+// =============================================================================
+// CounterTarget — unified object-or-player target for counter placement
+// =============================================================================
+
+/// Target of a counter-placement event. Unified so proliferate and
+/// other multi-entity counter effects can route through a single
+/// pipeline regardless of whether the counters land on a permanent or
+/// on a player (poison, energy).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CounterTarget {
+    Object(ObjectId),
+    Player(PlayerId),
+}
+
+/// Filter over the counter kind the replacement cares about.
+/// Hardened Scales uses `Only(PlusOnePlusOne)`; Doubling Season /
+/// Winding Constrictor use `Any`.
+#[derive(Clone, Debug)]
+pub enum CounterKindFilter {
+    Any,
+    Only(CounterKind),
+}
+
+impl CounterKindFilter {
+    pub fn matches(&self, kind: CounterKind) -> bool {
+        match self {
+            CounterKindFilter::Any => true,
+            CounterKindFilter::Only(k) => *k == kind,
+        }
+    }
+}
 
 // =============================================================================
 // ReplacementEffect
@@ -137,6 +170,15 @@ pub enum ReplacementCondition {
     WouldCreateToken {
         token_filter: ObjectFilter,
     },
+    /// "If one or more [kind] counters would be placed on [object], …"
+    /// (Hardened Scales, Doubling Season, Winding Constrictor).
+    /// Matches only object targets — player-counter-placement
+    /// replacements (rare / unused in current Standard) are not
+    /// covered by this variant; add a sibling variant when needed.
+    WouldPlaceCounters {
+        object_filter: ObjectFilter,
+        kinds: CounterKindFilter,
+    },
     /// Custom predicate.
     Custom(fn(&ReplacementEvent, &GameState) -> bool),
 }
@@ -219,6 +261,18 @@ impl ReplacementCondition {
                     .is_some_and(|o| token_filter.matches(o, state, source_controller))
             }
 
+            (
+                WouldPlaceCounters { object_filter, kinds },
+                ReplacementEvent::PlaceCounters { target, kind, .. },
+            ) => {
+                if !kinds.matches(*kind) { return false; }
+                match target {
+                    CounterTarget::Object(id) => state.objects.get(*id)
+                        .is_some_and(|o| object_filter.matches(o, state, source_controller)),
+                    CounterTarget::Player(_) => false,
+                }
+            }
+
             (Custom(f), _) => f(event, state),
 
             _ => false,
@@ -277,6 +331,16 @@ pub enum ReplacementKind {
     /// [`ReplacementDuration::EndOfTurn`].
     RegenerateShield,
 
+    // --- Counter-placement-event kinds ---
+    /// "N additional counters of that kind are placed instead"
+    /// (Hardened Scales = AddAdditionalCounters(1) on +1/+1;
+    /// Winding Constrictor = AddAdditionalCounters(1) on any counter).
+    /// N counters → N + m counters.
+    AddAdditionalCounters(u32),
+    /// "That many times N counters are placed instead"
+    /// (Doubling Season = MultiplyCounters(2)). N counters → N * m.
+    MultiplyCounters(u32),
+
     // --- Draw-event kinds ---
     /// "If you would draw a card, draw two cards instead" (Howling Mine
     /// style; simplified).
@@ -320,6 +384,16 @@ pub enum ReplacementEvent {
     },
     CreateToken {
         object_id: ObjectId,
+    },
+    /// A would-place-counters event. Every counter placement in the
+    /// rules engine (ETB counters, Effect::AddCounters,
+    /// Effect::MoveCounter destination, proliferate) routes through
+    /// this so Hardened Scales / Doubling Season / Winding Constrictor
+    /// can intercept.
+    PlaceCounters {
+        target: CounterTarget,
+        kind: CounterKind,
+        count: u32,
     },
 }
 
@@ -432,6 +506,96 @@ impl GameState {
         }
     }
 
+    /// Route a would-place-counters event through replacements and
+    /// commit the placement.
+    ///
+    /// Hardened Scales ([`ReplacementKind::AddAdditionalCounters`])
+    /// and Doubling Season ([`ReplacementKind::MultiplyCounters`])
+    /// intercept here. Each replacement applies at most once
+    /// (CR 614.5); self-replacements apply before others (CR 614.15);
+    /// agent-choice ordering among genuinely-multiple non-self
+    /// replacements is a Phase 2-B stand-in via id order.
+    ///
+    /// On `Some((kind, count))`: the target has been mutated (for
+    /// object targets) and a [`GameEvent::CounterAdded`] emitted. On
+    /// `None`: the event was fully cancelled — no mutation, no event.
+    ///
+    /// Player targets currently only support the counter kinds the
+    /// engine already tracks (`Poison`, `Energy`). Other kinds on a
+    /// player are a no-op — the pipeline still runs replacements,
+    /// but nothing is committed.
+    pub fn place_counters(
+        &mut self,
+        target: CounterTarget,
+        kind: CounterKind,
+        count: u32,
+    ) -> Option<(CounterKind, u32)> {
+        if count == 0 { return None; }
+        let mut current = ReplacementEvent::PlaceCounters { target, kind, count };
+        let mut used: std::collections::HashSet<u64> = std::collections::HashSet::new();
+
+        loop {
+            let candidates: Vec<u64> = self.replacement_effects.iter()
+                .filter(|e| {
+                    if used.contains(&e.id) { return false; }
+                    // "You" in the filter refers to the replacement's
+                    // own controller (Hardened Scales' controller, not
+                    // the player whose counter is being placed).
+                    let source_ctrl = source_controller_of(e, self);
+                    e.condition.matches(&current, source_ctrl, self)
+                })
+                .map(|e| e.id)
+                .collect();
+            if candidates.is_empty() { break; }
+
+            // CR 614.15: self-replacement first; id order among the rest.
+            let pick = {
+                let self_first = self.replacement_effects.iter()
+                    .find(|e| candidates.contains(&e.id) && e.is_self_replacement)
+                    .map(|e| e.id);
+                self_first.or_else(|| candidates.first().copied())
+            };
+            let Some(pick_id) = pick else { break; };
+
+            used.insert(pick_id);
+            let kind_clone = self.replacement_effects.iter()
+                .find(|e| e.id == pick_id).map(|e| e.kind.clone());
+            let Some(rk) = kind_clone else { break; };
+            current = match apply_kind_to_event(&rk, &current, self) {
+                Some(new_event) => new_event,
+                None => return None,
+            };
+        }
+
+        let (final_target, final_kind, final_count) = match current {
+            ReplacementEvent::PlaceCounters { target, kind, count } =>
+                (target, kind, count),
+            _ => return None, // morphed into a different event (unusual)
+        };
+        if final_count == 0 { return None; }
+
+        match final_target {
+            CounterTarget::Object(id) => {
+                let Some(obj) = self.objects.get_mut(id) else { return None; };
+                obj.add_counters(final_kind, final_count);
+                self.emit(GameEvent::CounterAdded {
+                    object_id: id, kind: final_kind, count: final_count,
+                });
+            }
+            CounterTarget::Player(p) => {
+                let pl = self.player_mut(p);
+                match final_kind {
+                    CounterKind::Poison => pl.poison_counters += final_count,
+                    CounterKind::Energy => pl.energy += final_count,
+                    // Player experience and set-specific player counters
+                    // are not first-class `CounterKind` variants yet.
+                    _ => {}
+                }
+            }
+        }
+        Some((final_kind, final_count))
+    }
+
     /// Collect ETB replacement modifications for an object about to
     /// enter the battlefield. Does NOT mutate state — the caller
     /// commits the modifications.
@@ -450,7 +614,7 @@ impl GameState {
         for effect in applicable {
             match &effect.kind {
                 ReplacementKind::EtbWithCounters { kind, count } => {
-                    out.additional_counters.push((kind.clone(), *count));
+                    out.additional_counters.push((*kind, *count));
                 }
                 ReplacementKind::EtbTapped => {
                     out.enter_tapped = true;
@@ -561,6 +725,17 @@ fn apply_kind_to_event(
 
         (SkipDraw, DrawCard { .. }) => None,
 
+        (AddAdditionalCounters(m), PlaceCounters { target, kind, count }) => {
+            let new_count = count.saturating_add(*m);
+            Some(PlaceCounters { target: *target, kind: *kind, count: new_count })
+        }
+
+        (MultiplyCounters(m), PlaceCounters { target, kind, count }) => {
+            let new_count = count.saturating_mul(*m);
+            if new_count == 0 { None }
+            else { Some(PlaceCounters { target: *target, kind: *kind, count: new_count }) }
+        }
+
         (Custom(f), _) => f(event, state),
 
         // ETB / Die kinds are handled by their dedicated collectors
@@ -568,6 +743,14 @@ fn apply_kind_to_event(
         // here since they don't modify a single ReplacementEvent.
         _ => Some(event.clone()),
     }
+}
+
+/// The controller of the replacement effect's source object. Used to
+/// resolve `ControllerConstraint::You` inside the replacement's own
+/// filters (e.g. "creature **you** control" on Hardened Scales). If
+/// the source object is gone from the arena, falls back to 0.
+fn source_controller_of(effect: &ReplacementEffect, state: &GameState) -> PlayerId {
+    state.objects.get(effect.source).map(|o| o.controller).unwrap_or(0)
 }
 
 /// Which player "chose" the replacement at this event? Per CR 614.4
@@ -589,6 +772,11 @@ fn affected_controller_of(event: &ReplacementEvent, state: &GameState) -> Player
             state.objects.get(*object_id).map(|o| o.controller).unwrap_or(0),
         ReplacementEvent::DrawCard { player } => *player,
         ReplacementEvent::BeginTurn { player } => *player,
+        ReplacementEvent::PlaceCounters { target, .. } => match target {
+            CounterTarget::Object(id) =>
+                state.objects.get(*id).map(|o| o.controller).unwrap_or(0),
+            CounterTarget::Player(p) => *p,
+        },
     }
 }
 
@@ -1151,31 +1339,275 @@ mod tests {
             "the copy enters tapped; the pre-existing source is untapped");
     }
 
-    /// Canonical trap case from the Phase 2 ETB design discussion:
-    /// Modular N + Hardened Scales should produce N+1 +1/+1 counters.
-    ///
-    /// Modular is a card-inherent self-replacement: "this enters with
-    /// N +1/+1 counters on it" (CR 614.1c / 614.13). When that
-    /// self-replacement applies, it generates a *would place counters*
-    /// event, which is itself subject to counter-placement
-    /// replacements. Hardened Scales is a counter-placement
-    /// replacement: "if one or more +1/+1 counters would be placed on
-    /// a creature you control, that many plus one are placed instead."
-    ///
-    /// These are two distinct pipelines, and conflating them into one
-    /// ETB-event pipeline produces the right answer for N=3 only by
-    /// id-order accident; it breaks the moment two non-self ETB
-    /// replacements actually collide.
-    ///
-    /// This test is ignored until the counter-placement replacement
-    /// pipeline lands. It also implies card-inherent self-replacement
-    /// representation (Modular itself), which requires per-card
-    /// replacement hooks on `CardDefinition` — also Phase 3 work.
+    // =====================================================================
+    // Counter-placement pipeline (Hardened Scales, Doubling Season,
+    // Winding Constrictor). Every production counter-placement routes
+    // through `GameState::place_counters`.
+    // =====================================================================
+
+    fn install_hardened_scales(s: &mut GameState) {
+        // "If one or more +1/+1 counters would be placed on a creature
+        // you control, that many plus one +1/+1 counters are placed
+        // instead."
+        s.add_replacement_effect(base_effect(
+            /*source=*/ 999,
+            ReplacementCondition::WouldPlaceCounters {
+                object_filter: ObjectFilter::creature()
+                    .controlled_by(ControllerConstraint::You),
+                kinds: CounterKindFilter::Only(CounterKind::PlusOnePlusOne),
+            },
+            ReplacementKind::AddAdditionalCounters(1),
+        ));
+    }
+
+    fn install_winding_constrictor(s: &mut GameState) {
+        // "If one or more counters would be placed on an artifact or
+        // creature you control, one more of each of those kinds of
+        // counter is placed on that permanent instead." Phase 1 approx:
+        // any counter on a creature you control (artifact filter
+        // combinator not needed for the tests here).
+        s.add_replacement_effect(base_effect(
+            /*source=*/ 998,
+            ReplacementCondition::WouldPlaceCounters {
+                object_filter: ObjectFilter::creature()
+                    .controlled_by(ControllerConstraint::You),
+                kinds: CounterKindFilter::Any,
+            },
+            ReplacementKind::AddAdditionalCounters(1),
+        ));
+    }
+
+    fn install_doubling_season(s: &mut GameState) {
+        // "If one or more counters would be placed on a permanent you
+        // control, twice that many of those counters are placed instead."
+        s.add_replacement_effect(base_effect(
+            /*source=*/ 997,
+            ReplacementCondition::WouldPlaceCounters {
+                object_filter: ObjectFilter::default()
+                    .controlled_by(ControllerConstraint::You),
+                kinds: CounterKindFilter::Any,
+            },
+            ReplacementKind::MultiplyCounters(2),
+        ));
+    }
+
     #[test]
-    #[ignore = "requires counter-placement replacement pipeline (Phase 2+) \
-                and card-inherent self-replacement representation (Phase 3)"]
+    fn hardened_scales_adds_one_counter() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        install_hardened_scales(&mut s);
+        let out = s.place_counters(
+            CounterTarget::Object(c), CounterKind::PlusOnePlusOne, 1);
+        assert_eq!(out, Some((CounterKind::PlusOnePlusOne, 2)));
+        assert_eq!(
+            s.objects.get(c).unwrap().count_counters(CounterKind::PlusOnePlusOne),
+            2);
+    }
+
+    #[test]
+    fn doubling_season_doubles_counters() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        install_doubling_season(&mut s);
+        let out = s.place_counters(
+            CounterTarget::Object(c), CounterKind::PlusOnePlusOne, 2);
+        assert_eq!(out, Some((CounterKind::PlusOnePlusOne, 4)));
+    }
+
+    #[test]
+    fn hardened_scales_plus_winding_constrictor_both_fire() {
+        // Both AddAdditionalCounters(1). They commute (both +1), so
+        // order-independent. N=1 → 1+1+1 = 3.
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        install_hardened_scales(&mut s);
+        install_winding_constrictor(&mut s);
+        let out = s.place_counters(
+            CounterTarget::Object(c), CounterKind::PlusOnePlusOne, 1);
+        assert_eq!(out, Some((CounterKind::PlusOnePlusOne, 3)),
+            "each replacement fires once per CR 614.5");
+    }
+
+    #[test]
+    fn hardened_scales_does_not_apply_to_loyalty_counters() {
+        // Kind filter: Hardened Scales only affects +1/+1, not loyalty.
+        let mut s = GameState::new(2, 0);
+        let pw = put_creature(&mut s, 0, 2, 2); // stand-in permanent
+        install_hardened_scales(&mut s);
+        let out = s.place_counters(
+            CounterTarget::Object(pw), CounterKind::Loyalty, 3);
+        assert_eq!(out, Some((CounterKind::Loyalty, 3)),
+            "Hardened Scales only rewrites +1/+1 placements");
+    }
+
+    #[test]
+    fn hardened_scales_respects_controller_filter() {
+        // Opponent's creature, player-0's Hardened Scales. Should NOT
+        // fire (filter is "creature you control" = controller-You
+        // relative to the replacement's source/controller).
+        let mut s = GameState::new(2, 0);
+        let enemy = put_creature(&mut s, 1, 2, 2);
+        // Hardened Scales installed by source 999, controller defaults.
+        // The base_effect helper uses source=0 which is player 0's
+        // controller context. So "You" = player 0 here.
+        install_hardened_scales(&mut s);
+        let out = s.place_counters(
+            CounterTarget::Object(enemy), CounterKind::PlusOnePlusOne, 1);
+        assert_eq!(out, Some((CounterKind::PlusOnePlusOne, 1)),
+            "Hardened Scales should not apply to a creature you don't control");
+    }
+
+    /// Non-commuting pair — pins the current 2-A id-order behavior.
+    /// Hardened Scales (AddAdditional(1)) + Doubling Season (Multiply(2))
+    /// on a 1-counter placement:
+    ///
+    /// - HS first, then DS: 1 → 2 → 4
+    /// - DS first, then HS: 1 → 2 → 3
+    ///
+    /// CR 616.1 says the affected controller chooses. Until agent-choice
+    /// ordering lands (Phase 2-B), we pick by registration id, so HS
+    /// (registered first) applies first → 4 counters.
+    ///
+    /// If agent-choice ordering lands and this test starts failing,
+    /// update it to explicitly pick an order rather than deleting it —
+    /// it's the regression anchor for the ordering contract.
+    #[test]
+    fn hardened_scales_then_doubling_season_pins_id_order() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        install_hardened_scales(&mut s);   // id lower → applied first
+        install_doubling_season(&mut s);
+        let out = s.place_counters(
+            CounterTarget::Object(c), CounterKind::PlusOnePlusOne, 1);
+        assert_eq!(out, Some((CounterKind::PlusOnePlusOne, 4)),
+            "Phase 2-A: id-order picks HS first (1+1=2), then DS (×2=4). \
+             Agent-choice ordering in 2-B will make this a player decision.");
+    }
+
+    #[test]
+    fn self_replacement_applies_before_others_on_counter_placement() {
+        // Self-replacement that MultiplyCounters(3) + non-self
+        // AddAdditional(1). Non-self registered first so insertion order
+        // would prefer it, but self must go first per CR 614.15.
+        //   Self-first: 1 → 3 (×3) → 4 (+1)
+        //   Other-first: 1 → 2 (+1) → 6 (×3)   [wrong]
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        let mut other = base_effect(
+            0,
+            ReplacementCondition::WouldPlaceCounters {
+                object_filter: ObjectFilter::default()
+                    .controlled_by(ControllerConstraint::You),
+                kinds: CounterKindFilter::Any,
+            },
+            ReplacementKind::AddAdditionalCounters(1),
+        );
+        other.is_self_replacement = false;
+        s.add_replacement_effect(other);
+        let mut selfrep = base_effect(
+            0,
+            ReplacementCondition::WouldPlaceCounters {
+                object_filter: ObjectFilter::default()
+                    .controlled_by(ControllerConstraint::You),
+                kinds: CounterKindFilter::Any,
+            },
+            ReplacementKind::MultiplyCounters(3),
+        );
+        selfrep.is_self_replacement = true;
+        s.add_replacement_effect(selfrep);
+        let out = s.place_counters(
+            CounterTarget::Object(c), CounterKind::PlusOnePlusOne, 1);
+        assert_eq!(out, Some((CounterKind::PlusOnePlusOne, 4)));
+    }
+
+    #[test]
+    fn effect_add_counters_routes_through_pipeline() {
+        use crate::effects::Effect;
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        install_hardened_scales(&mut s);
+        Effect::AddCounters {
+            target: c, kind: CounterKind::PlusOnePlusOne, count: 2,
+        }.execute(&mut s);
+        assert_eq!(
+            s.objects.get(c).unwrap().count_counters(CounterKind::PlusOnePlusOne),
+            3,
+            "Effect::AddCounters must route through place_counters");
+    }
+
+    #[test]
+    fn proliferate_routes_through_pipeline() {
+        use crate::effects::Effect;
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        // Seed a +1/+1 counter directly so proliferate has a kind to add.
+        s.objects.get_mut(c).unwrap()
+            .add_counters(CounterKind::PlusOnePlusOne, 1);
+        install_hardened_scales(&mut s);
+        Effect::Proliferate.execute(&mut s);
+        assert_eq!(
+            s.objects.get(c).unwrap().count_counters(CounterKind::PlusOnePlusOne),
+            1 /* seeded */ + 2 /* proliferate's +1, then HS +1 */,
+            "proliferate's placement must route through place_counters");
+    }
+
+    /// Modular N + Hardened Scales → N + 1 +1/+1 counters.
+    ///
+    /// This test uses a TEST-ONLY FIXTURE `register_test_modular_etb` to
+    /// stand in for card-inherent Modular (which requires Phase 3
+    /// per-card replacement hooks on `CardDefinition`). When the real
+    /// Modular keyword lands, delete that fixture and point the test at
+    /// the actual card.
+    ///
+    /// The contract being tested here is that ETB-event self-replacements
+    /// (Modular-shaped "enters with N counters") cascade into the
+    /// counter-placement pipeline so downstream replacements
+    /// (Hardened Scales) apply to the resulting placement. That is, two
+    /// distinct pipelines chain in the correct order.
+    #[test]
     fn modular_plus_hardened_scales_yields_four_counters() {
-        // See doc comment above. Placeholder to keep the gap visible.
-        unimplemented!("counter-placement pipeline not yet implemented");
+        // TEST-ONLY FIXTURE: Modular-on-entering, as a self-replacement
+        // scoped to a specific object-id. Real Modular will be a card-
+        // inherent replacement (Phase 3, per-card `CardDefinition`
+        // replacement hooks). grep for "TEST-ONLY FIXTURE" to find it.
+        fn register_test_modular_etb(
+            s: &mut GameState,
+            object_id: ObjectId,
+            n: u32,
+        ) {
+            let mut e = base_effect(
+                /*source=*/ object_id,
+                ReplacementCondition::WouldEnterBattlefield {
+                    object_filter: ObjectFilter::default(),
+                },
+                ReplacementKind::EtbWithCounters {
+                    kind: CounterKind::PlusOnePlusOne,
+                    count: n,
+                },
+            );
+            e.is_self_replacement = true; // CR 614.15: self-first
+            s.add_replacement_effect(e);
+        }
+
+        let mut s = GameState::new(2, 0);
+        install_hardened_scales(&mut s);
+
+        // Object enters from the graveyard as a "Modular 3" creature.
+        let c = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            c, 0, Zone::Graveyard(0), 1, creature_chars(2, 2)));
+        register_test_modular_etb(&mut s, c, 3);
+
+        let new_id = s.move_object_to_zone(
+            c, Zone::Battlefield,
+            crate::events::MoveCause::SpellResolution,
+        ).unwrap();
+
+        assert_eq!(
+            s.objects.get(new_id).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            4,
+            "Modular 3 + Hardened Scales: ETB self-replacement places 3 +1/+1 \
+             counters, that placement is itself replaced to 3+1 = 4");
     }
 }

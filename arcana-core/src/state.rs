@@ -373,10 +373,14 @@ impl GameState {
     /// Phase 3 work and out of scope here.
     pub fn after_enter_battlefield(&mut self, id: ObjectId) {
         let replacements = self.collect_etb_replacements(id);
+        // Route ETB-event counter placement through the counter-placement
+        // pipeline so downstream replacements (Hardened Scales et al.) can
+        // intercept. This is the Modular + Hardened Scales handoff.
+        for (kind, count) in replacements.additional_counters {
+            self.place_counters(
+                crate::replacement::CounterTarget::Object(id), kind, count);
+        }
         if let Some(obj) = self.objects.get_mut(id) {
-            for (kind, count) in &replacements.additional_counters {
-                obj.add_counters(*kind, *count);
-            }
             if replacements.enter_tapped {
                 obj.tap();
             }
