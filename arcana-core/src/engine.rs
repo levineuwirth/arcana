@@ -133,12 +133,12 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
 
         Action::CastSpell {
             object_id, targets, modes, mana_payment, additional_costs, x_value,
-            cast_modifier, delve_exiles,
+            cast_modifier, cost_reductions,
         } => {
             apply_cast_spell(
                 state, registry, object_id, targets, modes,
                 mana_payment, additional_costs, x_value, cast_modifier,
-                delve_exiles,
+                cost_reductions,
             );
         }
 
@@ -231,7 +231,7 @@ fn apply_cast_spell(
     additional_costs: Vec<crate::actions::AdditionalCostPayment>,
     x_value: Option<u32>,
     cast_modifier: crate::actions::CastModifier,
-    delve_exiles: Option<Vec<ObjectId>>,
+    cost_reductions: crate::actions::CostReductions,
 ) {
     let controller = state.priority_player();
 
@@ -260,7 +260,7 @@ fn apply_cast_spell(
     // Both reach cost payment with no exile side effect. `Some(list)`
     // must pass: card has delve, every id is in caster's graveyard,
     // ids are distinct, count ≤ the spell's printed generic component.
-    let delve_exiles_vec = delve_exiles.unwrap_or_default();
+    let delve_exiles_vec = cost_reductions.delve_exiles.clone().unwrap_or_default();
     if !delve_exiles_vec.is_empty() {
         if !has_delve(state, object_id) { return; }
         let mut seen = std::collections::HashSet::new();
@@ -3882,7 +3882,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
-            delve_exiles: None,
+            cost_reductions: crate::actions::CostReductions::default(),
         };
         let (state, _) = step(state, cast, &reg());
         // Stack has one entry or — after everyone passes — has
@@ -4672,7 +4672,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::Flashback,
-            delve_exiles: None,
+            cost_reductions: crate::actions::CostReductions::default(),
         };
         give_mana(&mut s, 0, "{2}{R}");
         s.priority.give_to(0);
@@ -4713,7 +4713,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::Flashback,
-            delve_exiles: None,
+            cost_reductions: crate::actions::CostReductions::default(),
         };
         let (s, _) = step(s, cast, &registry);
         let mut s = s;
@@ -4815,7 +4815,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
-            delve_exiles: None,
+            cost_reductions: crate::actions::CostReductions::default(),
         };
         let (s, _) = step(s, cast, &registry);
         // Cast modifier = None but source is graveyard — nothing
@@ -4923,8 +4923,13 @@ mod tests {
         // `list.len() == k`. `None` means "card has no delve" and is
         // a different action shape entirely — never counted here.
         actions.iter().filter(|a| match a {
-            Action::CastSpell { object_id, delve_exiles: Some(list), .. }
-                if *object_id == source => list.len() == k,
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    delve_exiles: Some(list), ..
+                },
+                ..
+            } if *object_id == source => list.len() == k,
             _ => false,
         }).count()
     }
@@ -4961,7 +4966,9 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
-            delve_exiles: Some(vec![g1, g2, g3]),
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: Some(vec![g1, g2, g3]),
+            },
         };
         let (s, _) = step(s, cast, &registry);
         // 3 cards went to exile, source is on stack.
@@ -4997,7 +5004,9 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
-            delve_exiles: Some(gids),
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: Some(gids),
+            },
         };
         let (s, _) = step(s, cast, &registry);
         // Exceeds generic (3) — apply_cast_spell bails, no exile,
@@ -5024,8 +5033,13 @@ mod tests {
 
         let actions = crate::legal_actions::legal_actions(&s, &registry);
         let zero_delve = actions.iter().find(|a| matches!(a,
-            Action::CastSpell { object_id, delve_exiles: Some(v), .. }
-                if *object_id == src && v.is_empty()))
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    delve_exiles: Some(v), ..
+                },
+                ..
+            } if *object_id == src && v.is_empty()))
             .expect("zero-delve cast must be among legal actions")
             .clone();
         let (s, _) = step(s, zero_delve, &registry);
@@ -5134,7 +5148,13 @@ mod tests {
         s.turn.step = crate::turn::Step::Main;
         let actions = crate::legal_actions::legal_actions(&s, &registry);
         let has_delve_field = actions.iter().any(|a| matches!(a,
-            Action::CastSpell { object_id, delve_exiles: Some(_), .. }
+            Action::CastSpell {
+                object_id,
+                cost_reductions: crate::actions::CostReductions {
+                    delve_exiles: Some(_), ..
+                },
+                ..
+            }
                 if *object_id == src));
         assert!(!has_delve_field,
             "card without delve must never get Some(delve_exiles)");
@@ -5216,7 +5236,9 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
-            delve_exiles: Some(vec![g1, g2]),
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: Some(vec![g1, g2]),
+            },
         };
         let (s, _) = step(s, cast, &registry);
         // Both delve cards ended up exiled. (Zone changes re-id
@@ -5261,7 +5283,9 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
-            delve_exiles: Some(vec![g1, g1]),
+            cost_reductions: crate::actions::CostReductions {
+                delve_exiles: Some(vec![g1, g1]),
+            },
         };
         let (s, _) = step(s, cast, &registry);
         assert!(s.stack_is_empty(),

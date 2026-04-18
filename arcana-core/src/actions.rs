@@ -55,6 +55,31 @@ pub enum CastModifier {
     /// graveyard.
     Flashback,
 }
+
+/// Bundle of *cost-reduction* choices (CR 601.2f category: "cost
+/// reductions") carried on every [`Action::CastSpell`]. Distinct
+/// from:
+/// * [`CastModifier`] — *alternative* costs (flashback, foretell).
+///   At most one applies (CR 601.2f).
+/// * `additional_costs` — *additional* costs (kicker extra cost,
+///   sacrifice, discard). Orthogonal to both.
+///
+/// Cost reductions compose. Delve and convoke on the same spell is
+/// legal (rules-wise, even though no printed card has both), and
+/// improvise joins as another sibling field when it lands. Grouping
+/// them here keeps validation in one place and keeps the
+/// [`Action::CastSpell`] field list from sprawling.
+///
+/// Every field is `Option`-wrapped: `None` = the keyword is absent
+/// from this cast; `Some(vec![])` = keyword present, chose to use
+/// zero. The distinction catches "agent passes data for a keyword
+/// the card doesn't have" as invalid at the type level.
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CostReductions {
+    /// Cards to exile from the caster's graveyard as delve payment
+    /// (CR 702.66). Each exile satisfies `{1}` generic.
+    pub delve_exiles: Option<Vec<ObjectId>>,
+}
 use crate::priority::SpecialAction;
 use crate::stack::ModeChoice;
 use crate::targets::TargetSelection;
@@ -99,17 +124,10 @@ pub enum Action {
         /// pay a different cost and may change zone restrictions or
         /// post-resolution routing (e.g. flashback → exile-on-leave).
         cast_modifier: CastModifier,
-        /// Cards to exile from the caster's graveyard as delve payment
-        /// (CR 702.66). Each exiled card pays for `{1}` generic, so
-        /// `mana_payment` covers only the colored requirement and any
-        /// un-delved generic. `None` = card has no delve (distinct from
-        /// `Some(vec![])`, which means "has delve, chose not to use
-        /// it"). Compositional with `cast_modifier`: delve is a cost
-        /// reduction, not an alternative cost. Future cost-modifiers
-        /// (convoke, improvise) will be sibling fields — a group
-        /// `CostChoices` struct is the planned refactor once a second
-        /// such field lands (addendum §6.2, Shape B-full deferral).
-        delve_exiles: Option<Vec<ObjectId>>,
+        /// Cost-reduction keyword choices (delve exiles today; convoke
+        /// taps and improvise artifact-taps on the roadmap). See
+        /// [`CostReductions`] for the compositional rules.
+        cost_reductions: CostReductions,
     },
 
     /// Activate an ability on `source`. `ability_index` is the 0-based
@@ -614,25 +632,19 @@ pub enum DecisionContext {
 /// storm copies, cascade hits, future alt-costs. Doing it piecemeal
 /// per new mechanic would leak inconsistent shapes into the codebase.
 ///
-/// Gating: do the refactor when **either** condition hits:
-/// 1. A second non-mana cost-modifier lands alongside delve — convoke
-///    (CR 702.51) or improvise (CR 702.127). With two in hand plus
-///    delve, the substep pipeline has three concrete shapes to design
-///    against rather than one. At that point, group the compositional
-///    fields on [`Action::CastSpell`] (`delve_exiles`,
-///    `convoke_creatures`, `improvise_artifacts`) into a single
-///    `CostChoices` struct.
-/// 2. AI action-space enumeration becomes a bottleneck in training.
-///    With characteristic-equivalence dedup, delve-heavy casts stay
-///    well under the spec's P99 target of 500 actions — but if
-///    profiling shows otherwise the substep yield is the answer.
+/// Gating: do the refactor when AI action-space enumeration becomes a
+/// bottleneck in training. With characteristic-equivalence dedup,
+/// delve-heavy casts stay well under the spec's P99 target of 500
+/// actions — but if profiling shows otherwise the substep yield is
+/// the answer.
 ///
-/// Until then: the compositional-fields pattern (`delve_exiles` etc.
-/// bundled into [`Action::CastSpell`]) is the correct shape. It
-/// matches CR 601.2f-h's "simultaneous cost payment" framing directly;
-/// Shape B would model those sub-events as sequential round-trips,
-/// which is a *less* rules-faithful execution model unless carefully
-/// re-collapsed at cost-payment emit time.
+/// Until then: the compositional-fields pattern (cost-reduction
+/// choices bundled into [`CostReductions`] on [`Action::CastSpell`])
+/// is the correct shape. It matches CR 601.2f-h's "simultaneous cost
+/// payment" framing directly; Shape B would model those sub-events
+/// as sequential round-trips, which is a *less* rules-faithful
+/// execution model unless carefully re-collapsed at cost-payment
+/// emit time.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CastSubStep {
     ChooseModes,
@@ -666,7 +678,7 @@ mod tests {
             additional_costs: vec![],
             x_value: None,
             cast_modifier: CastModifier::None,
-            delve_exiles: None,
+            cost_reductions: CostReductions::default(),
         }
     }
 
@@ -831,7 +843,7 @@ mod tests {
             additional_costs: vec![AdditionalCostPayment::PayLife(2)],
             x_value: Some(3),
             cast_modifier: CastModifier::None,
-            delve_exiles: None,
+            cost_reductions: CostReductions::default(),
         };
         let json = serde_json::to_string(&a).expect("serialize");
         let back: Action = serde_json::from_str(&json).expect("deserialize");

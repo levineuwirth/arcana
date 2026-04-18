@@ -504,10 +504,12 @@ fn legal_priority_actions(
                         additional_costs: Vec::new(),
                         x_value: None,
                         cast_modifier: crate::actions::CastModifier::None,
-                        delve_exiles: if delve_available {
-                            Some(subset.clone())
-                        } else {
-                            None
+                        cost_reductions: crate::actions::CostReductions {
+                            delve_exiles: if delve_available {
+                                Some(subset.clone())
+                            } else {
+                                None
+                            },
                         },
                     });
                 }
@@ -564,7 +566,7 @@ fn legal_priority_actions(
                         additional_costs: Vec::new(),
                         x_value: None,
                         cast_modifier: crate::actions::CastModifier::Flashback,
-                        delve_exiles: None,
+                        cost_reductions: crate::actions::CostReductions::default(),
                     });
                 }
             }
