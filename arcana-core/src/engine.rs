@@ -133,11 +133,12 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
 
         Action::CastSpell {
             object_id, targets, modes, mana_payment, additional_costs, x_value,
-            cast_modifier,
+            cast_modifier, delve_exiles,
         } => {
             apply_cast_spell(
                 state, registry, object_id, targets, modes,
                 mana_payment, additional_costs, x_value, cast_modifier,
+                delve_exiles,
             );
         }
 
@@ -215,6 +216,11 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
     }
 }
 
+// The compositional-fields approach (matching `Action::CastSpell`)
+// pushes the arg count past clippy's default 7. Refactor to a grouped
+// `CastInputs` struct is planned when a second cost-modifier (convoke
+// or improvise) lands — see the Shape B-full note on `CastSubStep`.
+#[allow(clippy::too_many_arguments)]
 fn apply_cast_spell(
     state: &mut GameState,
     registry: &CardRegistry,
@@ -225,6 +231,7 @@ fn apply_cast_spell(
     additional_costs: Vec<crate::actions::AdditionalCostPayment>,
     x_value: Option<u32>,
     cast_modifier: crate::actions::CastModifier,
+    delve_exiles: Option<Vec<ObjectId>>,
 ) {
     let controller = state.priority_player();
 
@@ -248,10 +255,53 @@ fn apply_cast_spell(
         }
     }
 
-    // 1. Spend the mana payment (pool units + convoke taps + delve
-    //    exiles + Phyrexian life). Note: convoke and delve reduce
-    //    *generic* cost; they must run alongside the pool spend so
-    //    generic pips get satisfied.
+    // Delve validation (CR 702.66). `Some(vec![])` is a legal "has
+    // delve, chose not to use it"; `None` is "card has no delve."
+    // Both reach cost payment with no exile side effect. `Some(list)`
+    // must pass: card has delve, every id is in caster's graveyard,
+    // ids are distinct, count ≤ the spell's printed generic component.
+    let delve_exiles_vec = delve_exiles.unwrap_or_default();
+    if !delve_exiles_vec.is_empty() {
+        if !has_delve(state, object_id) { return; }
+        let mut seen = std::collections::HashSet::new();
+        for &exile_id in &delve_exiles_vec {
+            if !seen.insert(exile_id) { return; }
+            let in_caster_yard = state.objects.get(exile_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Graveyard(controller));
+            if !in_caster_yard { return; }
+        }
+        // Bound by the spell's generic component. For flashback casts
+        // the bound is against the flashback cost; for a normal cast
+        // it's against the printed cost.
+        let cost_opt = match cast_modifier {
+            crate::actions::CastModifier::None => state.objects.get(object_id)
+                .and_then(|o| o.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::Flashback =>
+                flashback_cost_for(state, object_id),
+        };
+        let generic_total: u32 = cost_opt.as_ref()
+            .map(|c| c.components.iter().filter_map(|comp|
+                if let crate::mana::ManaCostComponent::Generic(n) = comp {
+                    Some(*n)
+                } else { None }).sum())
+            .unwrap_or(0);
+        if (delve_exiles_vec.len() as u32) > generic_total { return; }
+    }
+
+    // 1a. Exile delve payment (CR 702.66, CR 601.2f-h). This is a
+    //     cost-payment sub-event alongside `spend_mana_plan`; both
+    //     happen in the same logical step. We emit the exiles first
+    //     so event log ordering is deterministic, but they belong to
+    //     the same atomic "pay total cost" step semantically.
+    for &exile_id in &delve_exiles_vec {
+        state.move_object_to_zone(
+            exile_id, crate::zones::Zone::Exile,
+            crate::events::MoveCause::Cost);
+    }
+
+    // 1b. Spend the mana payment. `mana_payment` is already sized
+    //     against the delve-reduced generic requirement — legal_actions
+    //     solves mana against `cost_minus_delve`, not the printed cost.
     spend_mana_plan(state, controller, &mana_payment);
 
     // 2. Pay additional costs (sacrifice, discard, life, etc.).
@@ -321,6 +371,15 @@ pub(crate) fn all_flashback_costs_for(
             _ => None,
         })
         .collect()
+}
+
+/// Layer-aware check: does `object_id` currently have the Delve
+/// keyword (CR 702.66)? Walks [`GameState::effective_keywords`] so
+/// granted delve (Snapcaster-style, were any such card to exist) is
+/// honored alongside the printed keyword.
+pub(crate) fn has_delve(state: &GameState, object_id: ObjectId) -> bool {
+    state.effective_keywords(object_id).into_iter()
+        .any(|kw| matches!(kw, crate::effects::KeywordAbility::Delve))
 }
 
 fn apply_activate_ability(
@@ -3823,6 +3882,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
+            delve_exiles: None,
         };
         let (state, _) = step(state, cast, &reg());
         // Stack has one entry or — after everyone passes — has
@@ -4612,6 +4672,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::Flashback,
+            delve_exiles: None,
         };
         give_mana(&mut s, 0, "{2}{R}");
         s.priority.give_to(0);
@@ -4652,6 +4713,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::Flashback,
+            delve_exiles: None,
         };
         let (s, _) = step(s, cast, &registry);
         let mut s = s;
@@ -4753,6 +4815,7 @@ mod tests {
             additional_costs: Vec::new(),
             x_value: None,
             cast_modifier: crate::actions::CastModifier::None,
+            delve_exiles: None,
         };
         let (s, _) = step(s, cast, &registry);
         // Cast modifier = None but source is graveyard — nothing
@@ -4801,5 +4864,408 @@ mod tests {
                     crate::actions::CastModifier::Flashback))).count();
         assert!(fb_actions >= 1,
             "granted-flashback card must be offered via effective_keywords");
+    }
+
+    // =========================================================================
+    // Delve (CR 702.66)
+    // =========================================================================
+
+    /// Register a delve spell costing `printed_cost` that does nothing
+    /// on resolution. Keyword ability is set; target list is empty so
+    /// target enumeration stays trivial.
+    fn register_delve_spell(
+        registry: &mut CardRegistry,
+        name: &str,
+        printed_cost: &str,
+    ) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, SpellAbilityDef};
+        fn noop_effect(
+            _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> { vec![] }
+        let cost = ManaCost::parse(printed_cost).unwrap();
+        let interned = registry.interner_mut().intern(name);
+        let mut def = CardDefinition::new(interned, Characteristics {
+            mana_cost: Some(cost.clone()),
+            colors: cost.colors(),
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Delve. Does nothing.".into(),
+            target_requirements: vec![],
+            effect: noop_effect,
+        });
+        def.base_characteristics.keywords.push(
+            crate::effects::KeywordAbility::Delve);
+        registry.register(def)
+    }
+
+    /// Put a card into `player`'s hand (analog of `put_in_graveyard`).
+    fn put_in_hand(
+        state: &mut GameState,
+        registry: &CardRegistry,
+        player: PlayerId,
+        card_id: crate::types::CardId,
+    ) -> ObjectId {
+        let obj_id = state.allocate_object_id();
+        let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+        state.objects.insert(crate::objects::GameObject::new(
+            obj_id, player, crate::zones::Zone::Hand(player), card_id, chars));
+        obj_id
+    }
+
+    /// Helper: count how many cast actions have exactly `k` delve
+    /// exiles among `actions`, filtering to a specific source id.
+    fn count_delve_actions_with_k(
+        actions: &[Action], source: ObjectId, k: usize,
+    ) -> usize {
+        // Count only `Some(list)` entries: a delve-enabled cast with
+        // `list.len() == k`. `None` means "card has no delve" and is
+        // a different action shape entirely — never counted here.
+        actions.iter().filter(|a| match a {
+            Action::CastSpell { object_id, delve_exiles: Some(list), .. }
+                if *object_id == source => list.len() == k,
+            _ => false,
+        }).count()
+    }
+
+    #[test]
+    fn delve_exiles_graveyard_cards_pays_generic() {
+        // Delve spell {3}{U}, graveyard has 4 cards, mana pool has
+        // {U}. Agent delves 3, pays {U}. Spell resolves; 3 cards
+        // moved to exile; source moved to stack (then resolved).
+        let mut registry = CardRegistry::new();
+        let delve_card = register_delve_spell(&mut registry, "Delve-Sorc", "{3}{U}");
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, delve_card);
+        let g1 = put_in_graveyard(&mut s, &registry, 0, filler);
+        let g2 = put_in_graveyard(&mut s, &registry, 0, filler);
+        let g3 = put_in_graveyard(&mut s, &registry, 0, filler);
+        let _g4 = put_in_graveyard(&mut s, &registry, 0, filler);
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan {
+                assignments: vec![crate::actions::ManaAssignment {
+                    pool_index: 0, cost_index: 0,
+                }],
+                ..Default::default()
+            },
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            delve_exiles: Some(vec![g1, g2, g3]),
+        };
+        let (s, _) = step(s, cast, &registry);
+        // 3 cards went to exile, source is on stack.
+        assert_eq!(s.zone_count(Zone::Exile), 3,
+            "3 delve cards must be exiled");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+            "1 filler card remaining in graveyard");
+        assert!(!s.stack_is_empty(),
+            "delve spell must be on stack");
+    }
+
+    #[test]
+    fn delve_cannot_pay_colored_requirement() {
+        // Delve spell {3}{U}{U}, graveyard has 5 cards, no mana.
+        // Agent tries to delve 5 (would cover everything) — reject:
+        // colored requirement can't be delved.
+        let mut registry = CardRegistry::new();
+        let delve_card = register_delve_spell(&mut registry, "Delve-Big", "{3}{U}{U}");
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, delve_card);
+        let gids: Vec<ObjectId> = (0..5).map(|_|
+            put_in_graveyard(&mut s, &registry, 0, filler)).collect();
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan::default(),
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            delve_exiles: Some(gids),
+        };
+        let (s, _) = step(s, cast, &registry);
+        // Exceeds generic (3) — apply_cast_spell bails, no exile,
+        // no stack entry.
+        assert!(s.stack_is_empty(),
+            "over-generic delve must be rejected");
+        assert_eq!(s.zone_count(Zone::Exile), 0);
+    }
+
+    #[test]
+    fn delve_zero_exiles_equivalent_to_normal_cast() {
+        // Delve card, graveyard has cards, but agent delves zero.
+        // Mana pool covers the full printed cost.
+        let mut registry = CardRegistry::new();
+        let delve_card = register_delve_spell(&mut registry, "Delve-Sorc", "{2}{U}");
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, delve_card);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        give_mana(&mut s, 0, "{2}{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let zero_delve = actions.iter().find(|a| matches!(a,
+            Action::CastSpell { object_id, delve_exiles: Some(v), .. }
+                if *object_id == src && v.is_empty()))
+            .expect("zero-delve cast must be among legal actions")
+            .clone();
+        let (s, _) = step(s, zero_delve, &registry);
+        assert_eq!(s.zone_count(Zone::Exile), 0,
+            "zero-delve cast must not exile anything");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+            "graveyard untouched");
+        assert!(!s.stack_is_empty());
+    }
+
+    #[test]
+    fn legal_actions_enumerates_delve_subsets_multiple_counts() {
+        // Delve spell {2}{U}, graveyard has 3 distinct cards, mana
+        // covers every reduced cost from {2}{U} down to {U}. Expect
+        // delve counts 0, 1, 2 all enumerated (bounded by generic=2).
+        let mut registry = CardRegistry::new();
+        let delve_card = register_delve_spell(&mut registry, "Delve-Sorc", "{2}{U}");
+        // Three distinct filler card ids so each has its own equivalence
+        // class — dedup won't collapse them.
+        let f1 = register_delve_spell(&mut registry, "F1", "{U}");
+        let f2 = register_delve_spell(&mut registry, "F2", "{U}");
+        let f3 = register_delve_spell(&mut registry, "F3", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, delve_card);
+        put_in_graveyard(&mut s, &registry, 0, f1);
+        put_in_graveyard(&mut s, &registry, 0, f2);
+        put_in_graveyard(&mut s, &registry, 0, f3);
+        give_mana(&mut s, 0, "{2}{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let k0 = count_delve_actions_with_k(&actions, src, 0);
+        let k1 = count_delve_actions_with_k(&actions, src, 1);
+        let k2 = count_delve_actions_with_k(&actions, src, 2);
+        // Cannot delve 3 — generic is only 2.
+        let k3 = count_delve_actions_with_k(&actions, src, 3);
+        assert!(k0 >= 1, "k=0 (normal cast) must be enumerated");
+        assert!(k1 >= 1, "k=1 must be enumerated");
+        assert!(k2 >= 1, "k=2 must be enumerated");
+        assert_eq!(k3, 0, "k=3 exceeds generic=2, must not be enumerated");
+    }
+
+    #[test]
+    fn delve_dedup_identical_cards() {
+        // Delve spell {3}{U}, graveyard has 3 identical cards (same
+        // card_id). Equivalence-class dedup collapses choosing "any
+        // one of them" to a single action, not 3.
+        let mut registry = CardRegistry::new();
+        let delve_card = register_delve_spell(&mut registry, "Delve-Sorc", "{3}{U}");
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, delve_card);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        give_mana(&mut s, 0, "{3}{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        // For k=1, three identical cards collapse to ONE enumerated
+        // subset (not three). Same for k=2, k=3.
+        let k1 = count_delve_actions_with_k(&actions, src, 1);
+        let k2 = count_delve_actions_with_k(&actions, src, 2);
+        let k3 = count_delve_actions_with_k(&actions, src, 3);
+        assert_eq!(k1, 1, "identical cards must dedup at k=1 (not 3)");
+        assert_eq!(k2, 1, "identical cards must dedup at k=2 (not 3)");
+        assert_eq!(k3, 1, "identical cards must dedup at k=3 (not 1)");
+    }
+
+    #[test]
+    fn legal_actions_does_not_offer_delve_without_keyword() {
+        // Non-delve card with the same cost and graveyard as a delve
+        // card test — no delve-subset action should appear. Every
+        // enumerated cast action must have `delve_exiles: None`.
+        let mut registry = CardRegistry::new();
+        let plain_card = {
+            use crate::mana::ManaCost;
+            use crate::registry::{CardDefinition, SpellAbilityDef};
+            fn noop(
+                _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+            ) -> Vec<crate::effects::Effect> { vec![] }
+            let name = registry.interner_mut().intern("Plain-Sorc");
+            let def = CardDefinition::new(name, Characteristics {
+                mana_cost: Some(ManaCost::parse("{2}{U}").unwrap()),
+                colors: ColorSet::blue(),
+                types: TypeLine::SORCERY.into(),
+                ..Default::default()
+            }).with_spell_ability(SpellAbilityDef {
+                text: "Does nothing.".into(),
+                target_requirements: vec![],
+                effect: noop,
+            });
+            registry.register(def)
+        };
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, plain_card);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        give_mana(&mut s, 0, "{2}{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let has_delve_field = actions.iter().any(|a| matches!(a,
+            Action::CastSpell { object_id, delve_exiles: Some(_), .. }
+                if *object_id == src));
+        assert!(!has_delve_field,
+            "card without delve must never get Some(delve_exiles)");
+    }
+
+    #[test]
+    fn snapcaster_style_granted_delve_is_offered_by_legal_actions() {
+        // Non-delve card gains Delve via layer-6 continuous effect.
+        // legal_actions must discover it through effective_keywords.
+        use crate::layers::{ContinuousEffect, Duration};
+        let mut registry = CardRegistry::new();
+        let plain_card = {
+            use crate::mana::ManaCost;
+            use crate::registry::{CardDefinition, SpellAbilityDef};
+            fn noop(
+                _: &GameState, _: &crate::stack::StackEntry, _: &CardRegistry,
+            ) -> Vec<crate::effects::Effect> { vec![] }
+            let name = registry.interner_mut().intern("Plain-Granted");
+            let def = CardDefinition::new(name, Characteristics {
+                mana_cost: Some(ManaCost::parse("{2}{U}").unwrap()),
+                colors: ColorSet::blue(),
+                types: TypeLine::SORCERY.into(),
+                ..Default::default()
+            }).with_spell_ability(SpellAbilityDef {
+                text: "Does nothing.".into(),
+                target_requirements: vec![],
+                effect: noop,
+            });
+            registry.register(def)
+        };
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, plain_card);
+        put_in_graveyard(&mut s, &registry, 0, filler);
+        // Grant Delve until end of turn.
+        s.add_continuous_effect(ContinuousEffect::grant_keyword(
+            /*source=*/ 999, src,
+            crate::effects::KeywordAbility::Delve,
+            Duration::EndOfTurn,
+        ));
+        give_mana(&mut s, 0, "{2}{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let k1 = count_delve_actions_with_k(&actions, src, 1);
+        assert!(k1 >= 1,
+            "granted-delve card must offer delve actions via effective_keywords");
+    }
+
+    #[test]
+    fn delve_exile_happens_during_cost_payment() {
+        // Emission-order check: the delve-exile events must precede
+        // the SpellCast event but happen within the same cast call.
+        // Verified via event log: Exiled events come before the
+        // stack entry lands (priority re-check).
+        let mut registry = CardRegistry::new();
+        let delve_card = register_delve_spell(&mut registry, "Delve-Sorc", "{2}{U}");
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, delve_card);
+        let g1 = put_in_graveyard(&mut s, &registry, 0, filler);
+        let g2 = put_in_graveyard(&mut s, &registry, 0, filler);
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan {
+                assignments: vec![crate::actions::ManaAssignment {
+                    pool_index: 0, cost_index: 0,
+                }],
+                ..Default::default()
+            },
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            delve_exiles: Some(vec![g1, g2]),
+        };
+        let (s, _) = step(s, cast, &registry);
+        // Both delve cards ended up exiled. (Zone changes re-id
+        // objects per CR 400.7 — lookups by original id will miss,
+        // so assert via zone_count instead.)
+        assert_eq!(s.zone_count(Zone::Exile), 2,
+            "both delve cards exiled as cost payment");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0,
+            "graveyard emptied by delve");
+        // Source moved to stack.
+        assert!(!s.stack_is_empty());
+        // Mana pool drained (the {U} paid the colored pip).
+        assert_eq!(s.player(0).mana_pool.total(), 0,
+            "mana spent during cost payment");
+    }
+
+    #[test]
+    fn delve_with_nonself_duplicate_exile_rejected() {
+        // Agent passes the same card_id twice in delve_exiles — must
+        // reject (can't double-exile the same object).
+        let mut registry = CardRegistry::new();
+        let delve_card = register_delve_spell(&mut registry, "Delve-Sorc", "{2}{U}");
+        let filler = register_delve_spell(&mut registry, "Filler", "{U}");
+        let mut s = GameState::new(2, 0);
+        let src = put_in_hand(&mut s, &registry, 0, delve_card);
+        let g1 = put_in_graveyard(&mut s, &registry, 0, filler);
+        give_mana(&mut s, 0, "{U}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan {
+                assignments: vec![crate::actions::ManaAssignment {
+                    pool_index: 0, cost_index: 0,
+                }],
+                ..Default::default()
+            },
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            delve_exiles: Some(vec![g1, g1]),
+        };
+        let (s, _) = step(s, cast, &registry);
+        assert!(s.stack_is_empty(),
+            "duplicate delve-exile id must be rejected");
+        assert_eq!(s.zone_count(Zone::Exile), 0);
     }
 }

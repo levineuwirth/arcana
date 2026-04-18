@@ -463,8 +463,6 @@ fn legal_priority_actions(
 
         let ctx = SpendContext::for_spell(
             obj.characteristics.types, obj.characteristics.colors);
-        let plans = enumerate_payment_plans(
-            &cost, &state.player(player).mana_pool, None, &ctx);
 
         // Target requirements (if the registry knows this card).
         let reqs: Vec<TargetRequirement> = registry.get(obj.card_id)
@@ -473,17 +471,46 @@ fn legal_priority_actions(
             .unwrap_or_default();
         let target_selections = enumerate_target_selections(&reqs, state, player);
 
-        for plan in plans {
-            for targets in &target_selections {
-                actions.push(Action::CastSpell {
-                    object_id: id,
-                    targets: targets.clone(),
-                    modes: Vec::new(),
-                    mana_payment: plan.clone(),
-                    additional_costs: Vec::new(),
-                    x_value: None,
-                    cast_modifier: crate::actions::CastModifier::None,
-                });
+        // Delve (CR 702.66). When the card has delve and the cost has
+        // a generic component, enumerate exile subsets up to the
+        // generic count (with characteristic-equivalence dedup). The
+        // empty subset reproduces the normal cast. When the card has
+        // no delve, we emit a single "no-delve" path with
+        // `delve_exiles: None`.
+        let delve_available = crate::engine::has_delve(state, id);
+        let gen_cap = generic_total(&cost);
+        let delve_subsets: Vec<Vec<ObjectId>> =
+            if delve_available && gen_cap > 0 {
+                enumerate_delve_subsets(state, player, gen_cap as usize)
+            } else {
+                vec![Vec::new()]
+            };
+
+        for subset in &delve_subsets {
+            let reduced_cost = if subset.is_empty() {
+                cost.clone()
+            } else {
+                reduce_generic_cost(&cost, subset.len() as u32)
+            };
+            let plans = enumerate_payment_plans(
+                &reduced_cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in plans {
+                for targets in &target_selections {
+                    actions.push(Action::CastSpell {
+                        object_id: id,
+                        targets: targets.clone(),
+                        modes: Vec::new(),
+                        mana_payment: plan.clone(),
+                        additional_costs: Vec::new(),
+                        x_value: None,
+                        cast_modifier: crate::actions::CastModifier::None,
+                        delve_exiles: if delve_available {
+                            Some(subset.clone())
+                        } else {
+                            None
+                        },
+                    });
+                }
             }
         }
     }
@@ -516,6 +543,13 @@ fn legal_priority_actions(
         for cost in flashback_costs {
             // TODO(x-enumeration): mirror the hand-path skip for now.
             if cost.x_count() > 0 { continue; }
+            // TODO(delve-on-flashback): no card in current Standard has
+            // both flashback and delve, but composition is legal per
+            // the CR. When a card arrives, enumerate delve subsets
+            // here — the subtle part is excluding the cast-source
+            // itself from delve candidates (its zone at cost-payment
+            // time in our atomic pipeline is still Graveyard, not
+            // Stack).
             let ctx = SpendContext::for_spell(
                 obj.characteristics.types, obj.characteristics.colors);
             let plans = enumerate_payment_plans(
@@ -530,6 +564,7 @@ fn legal_priority_actions(
                         additional_costs: Vec::new(),
                         x_value: None,
                         cast_modifier: crate::actions::CastModifier::Flashback,
+                        delve_exiles: None,
                     });
                 }
             }
@@ -596,6 +631,162 @@ fn enumerate_target_selections(
     partials.into_iter()
         .map(|targets| TargetSelection { targets })
         .collect()
+}
+
+/// Enumerate every distinct subset of `candidates` of size ≤ `max_size`,
+/// deduplicated by equivalence `key`. Two candidates producing the
+/// same key are considered interchangeable — the enumerator emits
+/// one representative subset per (key, count) multiset rather than
+/// expanding every permutation. This is the difference between
+/// delve-subset enumeration exploding as `C(n,k)` and as the number
+/// of distinct *multisets* of equivalence classes.
+///
+/// Intended for cost-modifier enumeration (delve today, convoke /
+/// improvise when they land — each will project to a different key
+/// while reusing this shape).
+///
+/// Emits the empty subset first, then extends greedily through the
+/// groups. Enumeration order is stable given stable iteration over
+/// `candidates`.
+pub(crate) fn enumerate_equivalence_subsets<T, K, F>(
+    candidates: &[T],
+    max_size: usize,
+    mut key: F,
+) -> Vec<Vec<T>>
+where
+    T: Copy,
+    K: std::hash::Hash + Eq,
+    F: FnMut(&T) -> K,
+{
+    let mut groups: Vec<Vec<T>> = Vec::new();
+    let mut index: std::collections::HashMap<K, usize> =
+        std::collections::HashMap::new();
+    for item in candidates {
+        let k = key(item);
+        match index.get(&k) {
+            Some(&i) => groups[i].push(*item),
+            None => {
+                index.insert(k, groups.len());
+                groups.push(vec![*item]);
+            }
+        }
+    }
+
+    let mut out = Vec::new();
+    let mut current = Vec::new();
+    enumerate_groups(&groups, max_size, 0, &mut current, &mut out);
+    out
+}
+
+fn enumerate_groups<T: Copy>(
+    groups: &[Vec<T>],
+    remaining: usize,
+    gidx: usize,
+    current: &mut Vec<T>,
+    out: &mut Vec<Vec<T>>,
+) {
+    if gidx == groups.len() {
+        out.push(current.clone());
+        return;
+    }
+    let group = &groups[gidx];
+    let max_take = group.len().min(remaining);
+    for take in 0..=max_take {
+        for item in group.iter().take(take) {
+            current.push(*item);
+        }
+        enumerate_groups(groups, remaining - take, gidx + 1, current, out);
+        for _ in 0..take {
+            current.pop();
+        }
+    }
+}
+
+/// Equivalence key for a graveyard object from the perspective of
+/// cost-modifier dedup. Two objects with the same key are
+/// interchangeable for delve / convoke / improvise purposes.
+///
+/// Uses `(card_id, effective keywords)` — card_id covers the common
+/// case, effective_keywords covers layer-granted variations (the
+/// Snapcaster-grants-delve hypothetical). Broader characteristic
+/// differences between two copies of the same card in a graveyard
+/// don't exist in current Standard, but if they do in the future
+/// this key is where to extend.
+fn object_equivalence_key(
+    state: &GameState,
+    object_id: ObjectId,
+) -> (crate::types::CardId, Vec<crate::effects::KeywordAbility>) {
+    let card_id = state.objects.get(object_id)
+        .map(|o| o.card_id).unwrap_or(0);
+    let mut kws = state.effective_keywords(object_id);
+    // Sort for determinism — effective_keywords' ordering is a layer
+    // implementation detail, but dedup must be position-stable.
+    kws.sort_by_key(|k| format!("{k:?}"));
+    (card_id, kws)
+}
+
+/// Return a copy of `cost` with its generic component reduced by
+/// `by`. Drains Generic pips left-to-right, consuming whole pips
+/// first, then partially consuming one if needed. Colored, hybrid,
+/// Phyrexian, X, Colorless, and Snow components are untouched —
+/// delve / convoke / improvise cannot reduce non-generic pips.
+///
+/// If `by` exceeds the total generic, the result has zero generic.
+/// Caller is responsible for bounding `by`; this helper clamps
+/// silently (the bound check lives in [`enumerate_delve_subsets`]).
+fn reduce_generic_cost(cost: &crate::mana::ManaCost, by: u32) -> crate::mana::ManaCost {
+    let mut out = cost.clone();
+    let mut remaining = by;
+    out.components.retain_mut(|c| {
+        if remaining == 0 { return true; }
+        if let crate::mana::ManaCostComponent::Generic(n) = c {
+            if *n <= remaining {
+                remaining -= *n;
+                false
+            } else {
+                *n -= remaining;
+                remaining = 0;
+                true
+            }
+        } else {
+            true
+        }
+    });
+    out
+}
+
+/// Sum of `Generic(n)` components in `cost`. Used as the upper bound
+/// on delve exile count (CR 702.66a: each exiled card pays for `{1}`
+/// generic; you cannot delve colored pips).
+fn generic_total(cost: &crate::mana::ManaCost) -> u32 {
+    cost.components.iter().filter_map(|c| match c {
+        crate::mana::ManaCostComponent::Generic(n) => Some(*n),
+        _ => None,
+    }).sum()
+}
+
+/// Enumerate delve-exile subsets for a given caster's graveyard.
+///
+/// Bounded by `max_generic` (the spell's generic mana requirement —
+/// delve can only reduce generic, never colored). Always includes the
+/// empty subset (zero-delve cast). Applies characteristic-equivalence
+/// dedup so N copies of the same card produce N+1 distinct counts
+/// rather than 2^N subsets.
+///
+/// Returns `Vec::new()` if the graveyard is empty; the single-empty-
+/// subset case (`vec![vec![]]`) means "delve is legal with zero
+/// exiles only," useful when the spell has zero generic cost.
+fn enumerate_delve_subsets(
+    state: &GameState,
+    player: PlayerId,
+    max_generic: usize,
+) -> Vec<Vec<ObjectId>> {
+    let candidates: Vec<ObjectId> =
+        sorted_ids_in_zone(state, Zone::Graveyard(player));
+    enumerate_equivalence_subsets(
+        &candidates, max_generic,
+        |&id| object_equivalence_key(state, id),
+    )
 }
 
 /// Emit one [`Action::ActivateAbility`] per (permanent, ability,

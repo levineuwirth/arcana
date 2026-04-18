@@ -99,6 +99,17 @@ pub enum Action {
         /// pay a different cost and may change zone restrictions or
         /// post-resolution routing (e.g. flashback → exile-on-leave).
         cast_modifier: CastModifier,
+        /// Cards to exile from the caster's graveyard as delve payment
+        /// (CR 702.66). Each exiled card pays for `{1}` generic, so
+        /// `mana_payment` covers only the colored requirement and any
+        /// un-delved generic. `None` = card has no delve (distinct from
+        /// `Some(vec![])`, which means "has delve, chose not to use
+        /// it"). Compositional with `cast_modifier`: delve is a cost
+        /// reduction, not an alternative cost. Future cost-modifiers
+        /// (convoke, improvise) will be sibling fields — a group
+        /// `CostChoices` struct is the planned refactor once a second
+        /// such field lands (addendum §6.2, Shape B-full deferral).
+        delve_exiles: Option<Vec<ObjectId>>,
     },
 
     /// Activate an ability on `source`. `ability_index` is the 0-based
@@ -587,6 +598,41 @@ pub enum DecisionContext {
 /// The six sub-steps of casting a spell (CR 601.2) that the engine may
 /// pause on. Only meaningful within
 /// [`DecisionContext::CastingSpell`] / [`DecisionContext::ActivatingAbility`].
+///
+/// # Deferred: Shape B-full substep pipeline
+///
+/// Phase 1 ships *atomic* casts — every cast decision (targets, modes,
+/// X, mana, additional costs, cost-modifier choices like delve) is
+/// bundled into a single [`Action::CastSpell`] packet. This enum names
+/// the intended substeps but the engine does not currently yield a
+/// [`crate::engine::EngineYield::PendingDecision`] at each one; it
+/// consumes the full action in one step.
+///
+/// When we eventually refactor to a true substep pipeline (yield per
+/// substep, agent responds each time), it will be one change that
+/// touches every cast path simultaneously: hand cast, flashback,
+/// storm copies, cascade hits, future alt-costs. Doing it piecemeal
+/// per new mechanic would leak inconsistent shapes into the codebase.
+///
+/// Gating: do the refactor when **either** condition hits:
+/// 1. A second non-mana cost-modifier lands alongside delve — convoke
+///    (CR 702.51) or improvise (CR 702.127). With two in hand plus
+///    delve, the substep pipeline has three concrete shapes to design
+///    against rather than one. At that point, group the compositional
+///    fields on [`Action::CastSpell`] (`delve_exiles`,
+///    `convoke_creatures`, `improvise_artifacts`) into a single
+///    `CostChoices` struct.
+/// 2. AI action-space enumeration becomes a bottleneck in training.
+///    With characteristic-equivalence dedup, delve-heavy casts stay
+///    well under the spec's P99 target of 500 actions — but if
+///    profiling shows otherwise the substep yield is the answer.
+///
+/// Until then: the compositional-fields pattern (`delve_exiles` etc.
+/// bundled into [`Action::CastSpell`]) is the correct shape. It
+/// matches CR 601.2f-h's "simultaneous cost payment" framing directly;
+/// Shape B would model those sub-events as sequential round-trips,
+/// which is a *less* rules-faithful execution model unless carefully
+/// re-collapsed at cost-payment emit time.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CastSubStep {
     ChooseModes,
@@ -620,6 +666,7 @@ mod tests {
             additional_costs: vec![],
             x_value: None,
             cast_modifier: CastModifier::None,
+            delve_exiles: None,
         }
     }
 
@@ -784,6 +831,7 @@ mod tests {
             additional_costs: vec![AdditionalCostPayment::PayLife(2)],
             x_value: Some(3),
             cast_modifier: CastModifier::None,
+            delve_exiles: None,
         };
         let json = serde_json::to_string(&a).expect("serialize");
         let back: Action = serde_json::from_str(&json).expect("deserialize");
