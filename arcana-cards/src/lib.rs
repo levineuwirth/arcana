@@ -40,6 +40,7 @@ pub mod rav;
 pub mod m11;
 pub mod hou;
 pub mod m15;
+pub mod zen;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
@@ -54,7 +55,9 @@ use arcana_core::types::CardId;
 /// (Flying + Vigilance), Giant Spider (Reach), and Typhoid Rats
 /// (Deathtouch) so the already-wired evergreen combat keywords get
 /// exercised via real seed cards rather than only synthetic combat
-/// tests. `CardId`s returned for test convenience.
+/// tests. Abrade (modal), Chandra, Pyromaster (loyalty), and Burst
+/// Lightning (Kicker) anchor the Phase 2 mechanics each in a real
+/// printed card. `CardId`s returned for test convenience.
 #[derive(Clone, Copy, Debug)]
 pub struct SeedIds {
     pub plains: CardId,
@@ -78,6 +81,7 @@ pub struct SeedIds {
     pub typhoid_rats: CardId,
     pub abrade: CardId,
     pub chandra_pyromaster: CardId,
+    pub burst_lightning: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -105,6 +109,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         typhoid_rats: m11::typhoid_rats::register(reg),
         abrade: hou::abrade::register(reg),
         chandra_pyromaster: m15::chandra_pyromaster::register(reg),
+        burst_lightning: zen::burst_lightning::register(reg),
     }
 }
 
@@ -123,7 +128,7 @@ mod tests {
             ids.glorious_anthem, ids.disintegrate, ids.walking_ballista,
             ids.snapcaster_mage, ids.murktide_regent, ids.chord_of_calling,
             ids.serra_angel, ids.giant_spider, ids.typhoid_rats,
-            ids.abrade, ids.chandra_pyromaster,
+            ids.abrade, ids.chandra_pyromaster, ids.burst_lightning,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),

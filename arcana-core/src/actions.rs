@@ -341,6 +341,16 @@ pub enum AdditionalCostPayment {
         count: u32,
     },
     RevealCard(ObjectId),
+    /// CR 702.32 — Kicker. Zero-payload marker that the caster elected
+    /// the kicked cost. The kicker mana cost is looked up via
+    /// [`crate::effects::KeywordAbility::Kicker`] and added to the
+    /// printed mana cost at enumeration time, so the submitted
+    /// `mana_payment` already covers both the printed and kicker
+    /// portions. Presence of this variant on a cast's
+    /// `additional_costs` flips `StackEntry::kicked`, which resolution-
+    /// time effect fns inspect to branch on the kicked/unkicked
+    /// riders.
+    Kicker,
 }
 
 // =============================================================================

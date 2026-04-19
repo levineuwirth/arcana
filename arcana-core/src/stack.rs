@@ -146,6 +146,16 @@ pub struct StackEntry {
     /// (Murktide Regent).
     #[serde(default)]
     pub delve_count: u32,
+    /// CR 702.32 — Kicker flag. Set by
+    /// [`crate::engine::apply_cast_spell`] when the cast's
+    /// `additional_costs` carries
+    /// [`crate::actions::AdditionalCostPayment::Kicker`]. Resolution-
+    /// time effect fns read this off the stack entry to branch on the
+    /// "if this spell was kicked" rider without needing registry
+    /// access. False for non-kickable spells and for unkicked casts
+    /// of kickable spells.
+    #[serde(default)]
+    pub kicked: bool,
 }
 
 impl StackEntry {
@@ -178,6 +188,8 @@ impl StackEntry {
             enters_with: Vec::new(),
             // Caller (apply_cast_spell) stamps after delve validation.
             delve_count: 0,
+            // Caller (apply_cast_spell) stamps from AdditionalCostPayment::Kicker.
+            kicked: false,
         }
     }
 
@@ -205,6 +217,7 @@ impl StackEntry {
             cast_modifier: crate::actions::CastModifier::None,
             enters_with: Vec::new(),
             delve_count: 0,
+            kicked: false,
         }
     }
 
@@ -236,6 +249,7 @@ impl StackEntry {
             cast_modifier: crate::actions::CastModifier::None,
             enters_with: Vec::new(),
             delve_count: 0,
+            kicked: false,
         }
     }
 

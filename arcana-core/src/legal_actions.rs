@@ -512,6 +512,14 @@ fn legal_priority_actions(
         let delve_available = crate::engine::has_delve(state, id);
         let convoke_available = crate::engine::has_convoke(state, id);
         let improvise_available = crate::engine::has_improvise(state, id);
+        // Kicker availability (CR 702.32). If present, we enumerate an
+        // unkicked and a kicked variant for each (mode, x, reduction)
+        // tuple. The kicker mana cost is concatenated onto the base
+        // cost so the mana solver sizes the plan against the combined
+        // total; the `AdditionalCostPayment::Kicker` flag on the
+        // emitted action is a snapshot marker only (the actual mana
+        // is in `mana_payment`).
+        let kicker_cost_opt = crate::engine::kicker_cost_for(state, id);
 
         for modes in &mode_combos {
             // Effective target requirements for this mode combo.
@@ -532,13 +540,33 @@ fn legal_priority_actions(
             // see the cost. Delve / improvise reduce generic; X
             // expansion creates generic to reduce, so the ordering
             // is X-first-then-reductions.
-            let cost = if has_x {
+            let base_cost = if has_x {
                 printed_cost.with_x_expanded(x)
             } else {
                 printed_cost.clone()
             };
             let x_value = if has_x { Some(x) } else { None };
-            let gen_cap = generic_total(&cost);
+
+            // Kicker fork. For a kickable spell we enumerate both the
+            // unkicked and the kicked track; the kicked variant adds
+            // the kicker cost's components to the base cost and
+            // stamps `AdditionalCostPayment::Kicker` into the emitted
+            // action so the stack entry can be flagged at apply time.
+            let mut kicker_variants: Vec<(
+                crate::mana::ManaCost,
+                Vec<crate::actions::AdditionalCostPayment>,
+            )> = vec![(base_cost.clone(), Vec::new())];
+            if let Some(ref kc) = kicker_cost_opt {
+                let mut kicked_cost = base_cost.clone();
+                kicked_cost.components.extend(kc.components.iter().copied());
+                kicker_variants.push((
+                    kicked_cost,
+                    vec![crate::actions::AdditionalCostPayment::Kicker],
+                ));
+            }
+
+            for (cost, kicker_additional) in &kicker_variants {
+            let gen_cap = generic_total(cost);
 
             // --- Delve track (only generic pips reducible) ----------
             let delve_subsets: Vec<Vec<ObjectId>> =
@@ -551,7 +579,7 @@ fn legal_priority_actions(
                 let reduced_cost = if subset.is_empty() {
                     cost.clone()
                 } else {
-                    reduce_generic_cost(&cost, subset.len() as u32)
+                    reduce_generic_cost(cost, subset.len() as u32)
                 };
                 let plans = enumerate_payment_plans(
                     &reduced_cost, &state.player(player).mana_pool, None, &ctx);
@@ -562,7 +590,7 @@ fn legal_priority_actions(
                             targets: targets.clone(),
                             modes: modes.clone(),
                             mana_payment: plan.clone(),
-                            additional_costs: Vec::new(),
+                            additional_costs: kicker_additional.clone(),
                             x_value,
                             cast_modifier: crate::actions::CastModifier::None,
                             cost_reductions: crate::actions::CostReductions {
@@ -581,7 +609,7 @@ fn legal_priority_actions(
 
             // --- Convoke track --------------------------------------
             if convoke_available && !delve_available && !improvise_available {
-                let pip_cap = total_pips(&cost) as usize;
+                let pip_cap = total_pips(cost) as usize;
                 let convoke_subsets = if pip_cap > 0 {
                     enumerate_convoke_subsets(state, player, pip_cap)
                 } else {
@@ -591,7 +619,7 @@ fn legal_priority_actions(
                     let assignments = enumerate_convoke_assignments(state, c_subset);
                     for assignment in assignments {
                         let Some(reduced_cost) =
-                            reduce_cost_by_convoke(&cost, &assignment)
+                            reduce_cost_by_convoke(cost, &assignment)
                         else { continue; };
                         let plans = enumerate_payment_plans(
                             &reduced_cost, &state.player(player).mana_pool,
@@ -611,7 +639,7 @@ fn legal_priority_actions(
                                     targets: targets.clone(),
                                     modes: modes.clone(),
                                     mana_payment: plan.clone(),
-                                    additional_costs: Vec::new(),
+                                    additional_costs: kicker_additional.clone(),
                                     x_value,
                                     cast_modifier:
                                         crate::actions::CastModifier::None,
@@ -640,7 +668,7 @@ fn legal_priority_actions(
                     let reduced_cost = if subset.is_empty() {
                         cost.clone()
                     } else {
-                        reduce_generic_cost(&cost, subset.len() as u32)
+                        reduce_generic_cost(cost, subset.len() as u32)
                     };
                     let plans = enumerate_payment_plans(
                         &reduced_cost, &state.player(player).mana_pool, None, &ctx);
@@ -651,7 +679,7 @@ fn legal_priority_actions(
                                 targets: targets.clone(),
                                 modes: modes.clone(),
                                 mana_payment: plan.clone(),
-                                additional_costs: Vec::new(),
+                                additional_costs: kicker_additional.clone(),
                                 x_value,
                                 cast_modifier: crate::actions::CastModifier::None,
                                 cost_reductions: crate::actions::CostReductions {
@@ -663,6 +691,7 @@ fn legal_priority_actions(
                         }
                     }
                 }
+            }
             }
         }
         }

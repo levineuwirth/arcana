@@ -443,6 +443,17 @@ fn apply_cast_spell(
         }
     }
 
+    // Kicker validation (CR 702.32). If the agent elected Kicker, the
+    // card must actually have the keyword (layer-aware) and the
+    // `mana_payment` must cover printed + kicker at the solver level.
+    // `legal_actions` solves the summed cost; here we just guard
+    // against bogus agent input. The kicker mana cost is not spent
+    // separately — it's baked into the payment plan before this
+    // function runs. Only the *flag* lives in `additional_costs`.
+    let elected_kicker = additional_costs.iter().any(|c|
+        matches!(c, crate::actions::AdditionalCostPayment::Kicker));
+    if elected_kicker && !has_kicker(state, object_id) { return; }
+
     // 1c. Spend the mana payment. `mana_payment` is already sized
     //     against the delve-reduced and convoke-reduced cost —
     //     legal_actions solves mana against the post-reduction cost,
@@ -483,6 +494,7 @@ fn apply_cast_spell(
         entry.cast_modifier = cast_modifier;
         entry.enters_with = enters_with;
         entry.delve_count = delve_count;
+        entry.kicked = elected_kicker;
     }
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
@@ -556,6 +568,32 @@ pub(crate) fn has_convoke(state: &GameState, object_id: ObjectId) -> bool {
 pub(crate) fn has_improvise(state: &GameState, object_id: ObjectId) -> bool {
     state.effective_keywords(object_id).into_iter()
         .any(|kw| matches!(kw, crate::effects::KeywordAbility::Improvise))
+}
+
+/// Return the currently-granted kicker cost for `object_id`, if any
+/// (CR 702.32). Walks [`GameState::effective_keywords`] so layer-6
+/// grants of `Kicker` are honored. Returns the first Kicker keyword
+/// found; multikicker (multiple Kicker keywords on one card) is not
+/// yet modeled — when it lands, enumerate each via a sibling
+/// `all_kicker_costs_for` helper like flashback does.
+pub(crate) fn kicker_cost_for(
+    state: &GameState,
+    object_id: ObjectId,
+) -> Option<crate::mana::ManaCost> {
+    state.effective_keywords(object_id).into_iter()
+        .find_map(|kw| match kw {
+            crate::effects::KeywordAbility::Kicker(cost) => Some(cost),
+            _ => None,
+        })
+}
+
+/// Layer-aware check: does `object_id` currently have a Kicker
+/// keyword (CR 702.32)? Distinct from [`kicker_cost_for`] in that
+/// it only reports presence — callers that need the cost should use
+/// the cost helper directly.
+pub(crate) fn has_kicker(state: &GameState, object_id: ObjectId) -> bool {
+    state.effective_keywords(object_id).into_iter()
+        .any(|kw| matches!(kw, crate::effects::KeywordAbility::Kicker(_)))
 }
 
 /// Valid [`crate::actions::ConvokePayment`] options for a creature
@@ -2121,6 +2159,14 @@ fn apply_additional_costs(
                 // Phase 2 wires the observer/UI path. The known_cards
                 // HashSet on PlayerState is where a reveal would
                 // ultimately get recorded.
+            }
+            A::Kicker => {
+                // Kicker's cost is mana — already paid as part of the
+                // pre-summed `mana_payment` at the call site (CR
+                // 702.32a). The flag's observable effect is downstream:
+                // `apply_cast_spell` stamps `StackEntry::kicked` from
+                // the presence of this variant so resolution-time
+                // effect fns can branch on the kicked rider.
             }
         }
     }

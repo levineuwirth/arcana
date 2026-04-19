@@ -2196,4 +2196,177 @@ fn pw_minus_ability_removes_loyalty_counters() {
         "PW with 3 loyalty remains on the battlefield");
 }
 
+// ---------------------------------------------------------------------
+// Kicker (CR 702.32) — Burst Lightning
+// ---------------------------------------------------------------------
+//
+// Proves the two legs of the kicker pipeline:
+//
+//  1. Enumeration — given enough mana, legal_actions offers both an
+//     unkicked ({R}) and a kicked ({R}{4}) cast; given only {R},
+//     only the unkicked variant appears.
+//  2. Resolution — the kicked cast flips `StackEntry::kicked`, and
+//     Burst Lightning's effect fn branches to deal 4 damage; the
+//     unkicked cast deals 2. Cover both branches and the mana-gated
+//     negative.
+
+fn burst_lightning_cast_action(
+    actions: &[Action],
+    object_id: ObjectId,
+    kicked: bool,
+) -> Option<Action> {
+    use arcana_core::actions::AdditionalCostPayment;
+    actions.iter().find(|a| {
+        matches!(a, Action::CastSpell {
+            object_id: oid, additional_costs, ..
+        } if *oid == object_id
+            && additional_costs.iter().any(|c|
+                matches!(c, AdditionalCostPayment::Kicker)) == kicked)
+    }).cloned()
+}
+
+#[test]
+fn burst_lightning_unkicked_deals_2_damage() {
+    let (mut s, registry, ids) = fresh_game();
+    let bl = put_in_hand(&mut s, &registry, 0, ids.burst_lightning);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    // Enough for the unkicked cast only: {R}.
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = burst_lightning_cast_action(&actions, bl, /*kicked*/ false)
+        .expect("unkicked cast must be offered with {R} available");
+
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Bears has 2 toughness; 2 damage kills it.
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "unkicked Burst Lightning (2 damage) kills Bears");
+    let _ = bears;
+}
+
+#[test]
+fn burst_lightning_kicked_deals_4_damage_to_player() {
+    let (mut s, registry, ids) = fresh_game();
+    let bl = put_in_hand(&mut s, &registry, 0, ids.burst_lightning);
+    // Kicked target: player 1. Proves both the kicked amount (4) and
+    // that kicker composes with player-typed TargetChoice::any_target.
+    let p1_start = s.player(1).life;
+    // Enough for the kicked total {R}{4} = 5 mana.
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 4);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = burst_lightning_cast_action(&actions, bl, /*kicked*/ true)
+        .expect("kicked cast must be offered when {R}{4} is payable");
+
+    // The cast we replace the target on: pick player 1 deterministically
+    // so the assertion is stable regardless of enumeration order.
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![
+                    arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                        arcana_core::targets::ObjectOrPlayer::Player(1)),
+                ],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    // Verify the stack entry is flagged kicked before resolution.
+    assert!(s.top_of_stack().unwrap().kicked,
+        "kicked cast stamps StackEntry::kicked");
+    let s = resolve_stack(s, &registry);
+
+    assert_eq!(p1_start - s.player(1).life, 4,
+        "kicked Burst Lightning deals 4 damage to target player");
+}
+
+#[test]
+fn burst_lightning_kicked_not_offered_without_kicker_mana() {
+    // Only {R} available — the kicked variant requires {R}{4}, so
+    // legal_actions should not emit it.
+    let (mut s, registry, ids) = fresh_game();
+    let bl = put_in_hand(&mut s, &registry, 0, ids.burst_lightning);
+    let _bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(burst_lightning_cast_action(&actions, bl, /*kicked*/ true)
+        .is_none(),
+        "kicked variant must not be offered without kicker mana");
+    assert!(burst_lightning_cast_action(&actions, bl, /*kicked*/ false)
+        .is_some(),
+        "unkicked variant still legal with only {{R}}");
+}
+
+#[test]
+fn burst_lightning_both_variants_offered_when_affordable() {
+    // With enough mana for either, both tracks appear — caster picks.
+    let (mut s, registry, ids) = fresh_game();
+    let bl = put_in_hand(&mut s, &registry, 0, ids.burst_lightning);
+    let _bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 4);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(burst_lightning_cast_action(&actions, bl, /*kicked*/ false)
+        .is_some(),
+        "unkicked variant legal when both are payable");
+    assert!(burst_lightning_cast_action(&actions, bl, /*kicked*/ true)
+        .is_some(),
+        "kicked variant legal when {{R}}{{4}} is payable");
+}
+
+#[test]
+fn burst_lightning_apply_rejects_kicker_flag_without_keyword() {
+    // Belt-and-suspenders: if an agent hand-crafts a CastSpell with
+    // AdditionalCostPayment::Kicker on a card that lacks the Kicker
+    // keyword (Lightning Bolt), apply_cast_spell silently rejects.
+    // The card stays in hand and no spell reaches the stack.
+    let (mut s, registry, ids) = fresh_game();
+    let bolt = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                arcana_core::targets::ObjectOrPlayer::Object(bears),
+            )],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: 0, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![
+            arcana_core::actions::AdditionalCostPayment::Kicker,
+        ],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+
+    assert!(s.stack_is_empty(),
+        "bogus Kicker on non-kicker card must be rejected — stack stays empty");
+    assert!(s.objects.objects_in_zone(Zone::Hand(0)).any(|o| o.id == bolt),
+        "Lightning Bolt stays in hand after silent rejection");
+}
 
