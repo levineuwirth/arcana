@@ -418,18 +418,26 @@ fn apply_cast_spell(
     //    emits ZoneChange(Cast). Snapshots the spell's targeting
     //    requirements onto the entry so copies (storm / CopySpell)
     //    can push ChooseTargets without registry access.
-    let target_requirements = state.objects.get(object_id)
-        .and_then(|o| registry.get(o.card_id))
+    let card_def = state.objects.get(object_id)
+        .and_then(|o| registry.get(o.card_id));
+    let target_requirements = card_def
         .and_then(|def| def.spell_ability.as_ref())
         .map(|sa| sa.target_requirements.clone())
+        .unwrap_or_default();
+    let enters_with = card_def
+        .map(|def| def.enters_with.clone())
         .unwrap_or_default();
     let entry_id = state.announce_spell_on_stack(
         object_id, controller, targets, modes, x_value, target_requirements);
 
     // Stamp the entry with the cast modifier so leave-the-stack paths
     // (resolve / counter / fizzle) can route Flashback casts to exile.
+    // Same pattern for `enters_with`: finalize_resolved_spell reads
+    // the clauses off the entry to apply CR 121.6a "enters with"
+    // counters/tapped.
     if let Some(entry) = state.stack.iter_mut().find(|e| e.id == entry_id) {
         entry.cast_modifier = cast_modifier;
+        entry.enters_with = enters_with;
     }
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
@@ -918,6 +926,12 @@ fn cast_cascade_hit(state: &mut GameState, player: PlayerId, hit: ObjectId) {
     let Some(obj) = state.objects.get(hit) else { return; };
     if obj.zone != crate::zones::Zone::Exile { return; }
     if obj.is_land() { return; }
+    // Limitation: the cascade may-cast path doesn't currently stamp
+    // `enters_with` on the stack entry, so a cascaded permanent with
+    // fixed "enters with N counters" won't receive them. X-keyed
+    // enters_with is still safe — cascade casts pay no mana, so
+    // `x_value` is `None` either way. Fixing this requires threading
+    // `&CardRegistry` through `apply_resolution_choice`; deferred.
     let entry_id = state.announce_spell_on_stack(
         hit, player, crate::targets::TargetSelection::new(),
         Vec::new(), None, Vec::new());
@@ -1649,7 +1663,7 @@ fn resolve_top_of_stack(state: &mut GameState, registry: &CardRegistry) {
     // unregistered cards and for entries we don't have a definition
     // for — treats all chosen targets as legal, which is the Phase 1
     // fallback).
-    let requirements = resolution_target_requirements(&entry, registry);
+    let requirements = resolution_target_requirements(state, &entry, registry);
     let outcome = state.recheck_and_classify_resolution(&entry, &requirements);
 
     match outcome {
@@ -1799,6 +1813,7 @@ fn resume_parked_resolution(state: &mut GameState) {
 /// registry. Returns an empty vector for unregistered cards or
 /// abilities that don't target.
 fn resolution_target_requirements(
+    state: &GameState,
     entry: &crate::stack::StackEntry,
     registry: &CardRegistry,
 ) -> Vec<crate::targets::TargetRequirement> {
@@ -1809,11 +1824,18 @@ fn resolution_target_requirements(
                 .map(|sa| sa.target_requirements.clone())
                 .unwrap_or_default()
         }
-        crate::stack::StackEntryKind::ActivatedAbility { .. } => {
-            // TODO(task-21 follow-up): route activated-ability
-            // targets through the registry too. Phase 1 non-mana
-            // activated abilities with targets aren't yet used.
-            Vec::new()
+        crate::stack::StackEntryKind::ActivatedAbility { ability_id, .. } => {
+            // Look up the ability on the source permanent's card def
+            // so CR 608.2b can recheck each chosen target against its
+            // requirement (Walking Ballista ping, Prodigal Sorcerer,
+            // planeswalker minus-targeted abilities).
+            let source = entry.source;
+            state.objects.get(source)
+                .and_then(|o| registry.get(o.card_id))
+                .and_then(|def| def.activated_abilities
+                    .get(*ability_id as usize))
+                .map(|a| a.target_requirements.clone())
+                .unwrap_or_default()
         }
         crate::stack::StackEntryKind::TriggeredAbility { .. } => Vec::new(),
     }

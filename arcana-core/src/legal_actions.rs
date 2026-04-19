@@ -1223,6 +1223,13 @@ fn ability_is_activatable(
             return false;
         }
     }
+    // Counter-removal cost: source must have at least `count`
+    // counters of the requested kind.
+    if let Some((kind, count)) = ability.cost.remove_self_counter {
+        if obj.count_counters(kind) < count {
+            return false;
+        }
+    }
     // Mana abilities can be activated at any time a player has
     // priority. Non-mana activated abilities default to sorcery
     // speed for Phase 1 (instants aren't common enough to be worth
@@ -1243,6 +1250,11 @@ fn build_additional_costs(
     }
     if cost.life > 0 {
         v.push(crate::actions::AdditionalCostPayment::PayLife(cost.life));
+    }
+    if let Some((kind, count)) = cost.remove_self_counter {
+        v.push(crate::actions::AdditionalCostPayment::RemoveCounters {
+            source, kind, count,
+        });
     }
     v
 }
@@ -1863,5 +1875,92 @@ mod tests {
         // but the unused-warning check for this import is worth
         // pinning.
         let _unit = ManaUnit::plain(ManaColor::Red, 0);
+    }
+
+    // --- activation with counter-removal cost ----------------------------
+
+    /// Build a permanent with a single activated ability that costs
+    /// "remove N +1/+1 counters" to deal 1 damage to any target.
+    /// The ability is sorcery-speed (non-mana-ability) for simplicity.
+    fn register_walking_ballista_stub(
+        reg: &mut CardRegistry,
+        remove_count: u32,
+    ) -> CardId {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let name = reg.interner_mut().intern("Ballista Stub");
+        let chars = creature_chars(0, 0);
+        reg.register(
+            CardDefinition::new(name, chars)
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: format!(
+                        "Remove {remove_count} +1/+1 counters: deal 1 damage."),
+                    cost: ActivationCost {
+                        remove_self_counter: Some((
+                            CounterKind::PlusOnePlusOne, remove_count)),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    effect: |_, _, _| Vec::new(),
+                })
+        )
+    }
+
+    #[test]
+    fn remove_counter_ability_is_unavailable_without_counters() {
+        let mut reg = CardRegistry::new();
+        let cid = register_walking_ballista_stub(&mut reg, 1);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let mut chars = creature_chars(0, 0);
+        chars.power = Some(PtValue::Fixed(3));
+        chars.toughness = Some(PtValue::Fixed(3));
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, chars, cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+
+        // No counters -> ability is unavailable.
+        let actions = legal_actions(&s, &reg);
+        assert!(!actions.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)),
+            "no remove-counter-cost activation should be legal with 0 counters");
+    }
+
+    #[test]
+    fn remove_counter_ability_available_with_enough_counters() {
+        let mut reg = CardRegistry::new();
+        let cid = register_walking_ballista_stub(&mut reg, 1);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let chars = creature_chars(0, 0);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, chars, cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+        s.objects.get_mut(obj).unwrap()
+            .add_counters(CounterKind::PlusOnePlusOne, 2);
+
+        let actions = legal_actions(&s, &reg);
+        let activation = actions.iter().find(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj));
+        let action = activation.expect("activation should be legal with counters");
+        // Payment carries the RemoveCounters additional-cost entry.
+        let Action::ActivateAbility { additional_costs, .. } = action else {
+            unreachable!()
+        };
+        assert!(additional_costs.iter().any(|c| matches!(c,
+            crate::actions::AdditionalCostPayment::RemoveCounters {
+                source: s, kind: CounterKind::PlusOnePlusOne, count: 1,
+            } if *s == obj)));
+    }
+
+    /// `put` but with a specific registered CardId so ability lookup
+    /// hits `registry.get(obj.card_id)`.
+    fn state_put_with_card(
+        state: &mut GameState, owner: PlayerId, zone: Zone,
+        chars: Characteristics, card_id: CardId,
+    ) -> ObjectId {
+        let id = state.allocate_object_id();
+        let mut obj = GameObject::new(id, owner, zone, card_id, chars);
+        obj.controller = owner;
+        state.objects.insert(obj);
+        id
     }
 }

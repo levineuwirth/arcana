@@ -123,6 +123,20 @@ pub struct StackEntry {
     /// `counter_resolved_spell`).
     #[serde(default)]
     pub cast_modifier: crate::actions::CastModifier,
+    /// Snapshot of the card's `CardDefinition::enters_with` list,
+    /// populated by [`GameState::announce_spell_on_stack`] from the
+    /// registry. Lets [`Self::finalize_resolved_spell`] apply CR
+    /// 121.6a "enters with" clauses without threading `&CardRegistry`
+    /// through the resolution pipeline.
+    ///
+    /// Skipped by serde for the same reason as `target_requirements`:
+    /// the spec currently serializes stack entries for replay without
+    /// modeling fn-pointer/registry data. A deserialized entry comes
+    /// back with this empty; cards with "enters with" clauses won't
+    /// replay their counter-placement across a serialize boundary.
+    /// Phase 2 doesn't exercise that path.
+    #[serde(skip)]
+    pub enters_with: Vec<crate::registry::EntersWithSpec>,
 }
 
 impl StackEntry {
@@ -151,6 +165,8 @@ impl StackEntry {
             target_requirements: Vec::new(),
             // Caller (apply_cast_spell) stamps any alt-cost marker.
             cast_modifier: crate::actions::CastModifier::None,
+            // Caller (announce_spell_on_stack) populates from registry.
+            enters_with: Vec::new(),
         }
     }
 
@@ -176,6 +192,7 @@ impl StackEntry {
             storm_count_at_cast: 0,
             target_requirements: Vec::new(),
             cast_modifier: crate::actions::CastModifier::None,
+            enters_with: Vec::new(),
         }
     }
 
@@ -205,6 +222,7 @@ impl StackEntry {
             storm_count_at_cast: 0,
             target_requirements: Vec::new(),
             cast_modifier: crate::actions::CastModifier::None,
+            enters_with: Vec::new(),
         }
     }
 
@@ -520,8 +538,15 @@ impl GameState {
     ///
     /// Takes the stack entry by value — the caller is expected to have
     /// already popped it via [`Self::pop_stack_entry`].
+    ///
+    /// CR 121.6a "enters with" clauses are read from
+    /// [`StackEntry::enters_with`], populated by
+    /// [`Self::announce_spell_on_stack`] from the card definition.
+    /// They're applied before [`Self::after_enter_battlefield`] so
+    /// that 0/0 creatures with "enters with X +1/+1 counters" don't
+    /// die to SBA between entering and getting their counters.
     pub fn finalize_resolved_spell(&mut self, entry: StackEntry) {
-        let StackEntry { id, controller, .. } = entry;
+        let StackEntry { id, controller, x_value, .. } = entry;
         let chars = entry.characteristics().cloned().unwrap_or_else(||
             panic!("finalize_resolved_spell: entry {id} is not a spell"));
         let owner = self.objects.get(id)
@@ -564,6 +589,15 @@ impl GameState {
         });
 
         if destination == Zone::Battlefield {
+            // Apply card-declared `enters_with` clauses (CR 121.6a)
+            // BEFORE the state-installed ETB replacement pass, so
+            // self-replacement precedence holds (CR 614.15) and the
+            // counters/tapped state are visible to the first SBA
+            // sweep after the event cascade.
+            if !entry.enters_with.is_empty() {
+                apply_enters_with_clauses(
+                    self, new_id, &entry.enters_with, x_value);
+            }
             self.after_enter_battlefield(new_id);
             self.emit(GameEvent::EntersBattlefield {
                 object_id: new_id,
@@ -581,7 +615,47 @@ impl GameState {
         // can correlate it with the preceding `SpellCast` event.
         self.emit(GameEvent::SpellResolved { object_id: id });
     }
+}
 
+/// Apply a card's [`crate::registry::EntersWithSpec`] list to a
+/// freshly-entered permanent. Counter clauses go through
+/// [`GameState::place_counters`] so state-installed modifiers
+/// (Hardened Scales, Doubling Season) still compose. `x_value` is
+/// the X the spell was cast with; clauses keyed on X read zero when
+/// `x_value` is `None` and treat that as a no-op.
+pub(crate) fn apply_enters_with_clauses(
+    state: &mut GameState,
+    object_id: ObjectId,
+    clauses: &[crate::registry::EntersWithSpec],
+    x_value: Option<u32>,
+) {
+    use crate::registry::EntersWithSpec;
+    use crate::replacement::CounterTarget;
+    for spec in clauses {
+        match spec {
+            EntersWithSpec::Counters { kind, count } => {
+                if *count > 0 {
+                    state.place_counters(
+                        CounterTarget::Object(object_id), *kind, *count);
+                }
+            }
+            EntersWithSpec::CountersFromX { kind } => {
+                let x = x_value.unwrap_or(0);
+                if x > 0 {
+                    state.place_counters(
+                        CounterTarget::Object(object_id), *kind, x);
+                }
+            }
+            EntersWithSpec::Tapped => {
+                if let Some(obj) = state.objects.get_mut(object_id) {
+                    obj.tap();
+                }
+            }
+        }
+    }
+}
+
+impl GameState {
     /// Finalize a resolved activated or triggered ability. Abilities
     /// don't have a card to route anywhere — they just emit
     /// [`GameEvent::AbilityResolved`] and disappear.
@@ -1251,5 +1325,95 @@ mod tests {
         assert_eq!(back.id, 1);
         assert!(back.is_spell());
         assert_eq!(back.x_value, Some(3));
+    }
+
+    // --- enters_with clause resolution -------------------------------------
+
+    /// Find the single permanent currently on the battlefield after
+    /// a resolution. Test helper for `enters_with` assertions — the
+    /// post-`finalize_resolved_spell` battlefield id differs from
+    /// the stack id by CR 400.7 re-identification.
+    fn only_battlefield_permanent(s: &GameState) -> crate::objects::ObjectId {
+        let ids = s.objects.ids_in_zone_sorted(Zone::Battlefield);
+        assert_eq!(ids.len(), 1, "expected exactly one permanent on battlefield");
+        ids[0]
+    }
+
+    #[test]
+    fn enters_with_fixed_counters_places_counters_before_sba() {
+        use crate::registry::EntersWithSpec;
+        let mut s = GameState::new(2, 0);
+        // 0/0 creature on the stack; must survive SBA after entering
+        // because enters_with places +1/+1 counters first.
+        let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(0, 0));
+        let mut entry = StackEntry::new_spell(
+            obj, 0, 1, creature_chars(0, 0),
+            TargetSelection::new(), vec![], None,
+        );
+        entry.enters_with = vec![EntersWithSpec::Counters {
+            kind: CounterKind::PlusOnePlusOne,
+            count: 2,
+        }];
+        s.finalize_resolved_spell(entry);
+        let new_id = only_battlefield_permanent(&s);
+        let o = s.objects.get(new_id).unwrap();
+        assert_eq!(o.count_counters(CounterKind::PlusOnePlusOne), 2);
+    }
+
+    #[test]
+    fn enters_with_counters_from_x_reads_entry_x_value() {
+        use crate::registry::EntersWithSpec;
+        let mut s = GameState::new(2, 0);
+        let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(0, 0));
+        let mut entry = StackEntry::new_spell(
+            obj, 0, 1, creature_chars(0, 0),
+            TargetSelection::new(), vec![], Some(5),
+        );
+        entry.enters_with = vec![EntersWithSpec::CountersFromX {
+            kind: CounterKind::PlusOnePlusOne,
+        }];
+        s.finalize_resolved_spell(entry);
+        let new_id = only_battlefield_permanent(&s);
+        assert_eq!(
+            s.objects.get(new_id).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            5,
+        );
+    }
+
+    #[test]
+    fn enters_with_counters_from_x_with_no_x_is_zero_counters() {
+        use crate::registry::EntersWithSpec;
+        let mut s = GameState::new(2, 0);
+        let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(2, 2));
+        let mut entry = StackEntry::new_spell(
+            obj, 0, 1, creature_chars(2, 2),
+            TargetSelection::new(), vec![], None, // no X announced
+        );
+        entry.enters_with = vec![EntersWithSpec::CountersFromX {
+            kind: CounterKind::PlusOnePlusOne,
+        }];
+        s.finalize_resolved_spell(entry);
+        let new_id = only_battlefield_permanent(&s);
+        assert_eq!(
+            s.objects.get(new_id).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            0,
+        );
+    }
+
+    #[test]
+    fn enters_with_tapped_taps_the_permanent() {
+        use crate::registry::EntersWithSpec;
+        let mut s = GameState::new(2, 0);
+        let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(2, 2));
+        let mut entry = StackEntry::new_spell(
+            obj, 0, 1, creature_chars(2, 2),
+            TargetSelection::new(), vec![], None,
+        );
+        entry.enters_with = vec![EntersWithSpec::Tapped];
+        s.finalize_resolved_spell(entry);
+        let new_id = only_battlefield_permanent(&s);
+        assert!(s.objects.get(new_id).unwrap().is_tapped());
     }
 }

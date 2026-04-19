@@ -34,15 +34,18 @@ pub mod lea;
 pub mod lrw;
 pub mod isd;
 pub mod po2;
+pub mod aer;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
 
-/// The Tier 1+2 seed set. Tier 1 = five basic lands + Lightning Bolt
+/// The Tier 1–3 seed set. Tier 1 = five basic lands + Lightning Bolt
 /// + Grizzly Bears (mana, combat, targeted instant). Tier 2 adds
 /// Counterspell (stack targeting), Murder (destroy), Elvish
-/// Visionary (ETB-draw trigger), Glorious Anthem (layer-7c static).
-/// `CardId`s returned for test convenience.
+/// Visionary (ETB-draw trigger), Glorious Anthem (layer-7c static),
+/// Disintegrate (X-cost damage). Tier 3 adds Walking Ballista
+/// (X-in-P/T via `EntersWithSpec::CountersFromX` + counter-removal-
+/// as-activation-cost). `CardId`s returned for test convenience.
 #[derive(Clone, Copy, Debug)]
 pub struct SeedIds {
     pub plains: CardId,
@@ -57,6 +60,7 @@ pub struct SeedIds {
     pub elvish_visionary: CardId,
     pub glorious_anthem: CardId,
     pub disintegrate: CardId,
+    pub walking_ballista: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -75,6 +79,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         elvish_visionary: lrw::elvish_visionary::register(reg),
         glorious_anthem: po2::glorious_anthem::register(reg),
         disintegrate: lea::disintegrate::register(reg),
+        walking_ballista: aer::walking_ballista::register(reg),
     }
 }
 
@@ -90,7 +95,7 @@ mod tests {
             ids.plains, ids.island, ids.swamp, ids.mountain, ids.forest,
             ids.grizzly_bears, ids.lightning_bolt,
             ids.counterspell, ids.murder, ids.elvish_visionary,
-            ids.glorious_anthem, ids.disintegrate,
+            ids.glorious_anthem, ids.disintegrate, ids.walking_ballista,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),

@@ -42,7 +42,7 @@ use crate::stack::StackEntry;
 use crate::state::GameState;
 use crate::targets::{TargetRequirement, TargetSelection};
 use crate::triggers::TriggeredAbilityDef;
-use crate::types::{CardId, PlayerId, SmallString, StringInterner};
+use crate::types::{CardId, CounterKind, PlayerId, SmallString, StringInterner};
 
 // =============================================================================
 // Effect function signatures
@@ -101,6 +101,16 @@ pub struct CardDefinition {
     pub spell_ability: Option<SpellAbilityDef>,
     pub activated_abilities: Vec<ActivatedAbilityDef>,
     pub triggered_abilities: Vec<TriggeredAbilityDef>,
+    /// CR 121.6a "enters with" clauses printed on the card itself
+    /// (not state-installed replacements from other permanents).
+    /// The engine applies these during spell resolution, before
+    /// `after_enter_battlefield` runs SBA, so 0/0 creatures with
+    /// "enters with X +1/+1 counters" survive.
+    ///
+    /// Other-source ETB replacements (Hardened Scales, Doubling
+    /// Season) live on `GameState::replacement_effects` and compose
+    /// through `place_counters`.
+    pub enters_with: Vec<EntersWithSpec>,
 }
 
 impl CardDefinition {
@@ -113,6 +123,7 @@ impl CardDefinition {
             spell_ability: None,
             activated_abilities: Vec::new(),
             triggered_abilities: Vec::new(),
+            enters_with: Vec::new(),
         }
     }
 
@@ -130,6 +141,37 @@ impl CardDefinition {
         self.triggered_abilities.push(ability);
         self
     }
+
+    pub fn with_enters_with(mut self, spec: EntersWithSpec) -> Self {
+        self.enters_with.push(spec);
+        self
+    }
+}
+
+// =============================================================================
+// EntersWithSpec
+// =============================================================================
+
+/// CR 121.6a "this permanent enters the battlefield with …" clauses
+/// printed on the card's face. Processed during resolution of the
+/// spell that creates the permanent.
+#[derive(Clone, Debug)]
+pub enum EntersWithSpec {
+    /// "CARDNAME enters with N [kind] counters on it." `count` is
+    /// known at registration time (Primordial Hydra would not use
+    /// this — it reads X). Routed through `place_counters`, so
+    /// Hardened Scales-style modifiers compose.
+    Counters { kind: CounterKind, count: u32 },
+    /// "CARDNAME enters with X [kind] counters on it." Reads the
+    /// cast's `x_value`; zero `x_value` (e.g. spells cast without
+    /// X, or cast-from-free paths that didn't announce X) places
+    /// zero counters. Walking Ballista, Hangarback Walker,
+    /// Endless One.
+    CountersFromX { kind: CounterKind },
+    /// "CARDNAME enters the battlefield tapped." Tap-lands,
+    /// Cultivator Colossus, etc. Applies after any counters but
+    /// before summoning sickness is stamped.
+    Tapped,
 }
 
 // =============================================================================
@@ -180,6 +222,12 @@ pub struct ActivationCost {
     pub sacrifice: bool,
     /// Life cost; 0 for no life payment.
     pub life: u32,
+    /// "Remove N [kind] counters from ~: …" — the counter always
+    /// comes off the ability's own source. Walking Ballista's
+    /// remove-a-+1/+1-to-ping and planeswalker minus-loyalty costs
+    /// both fit this shape. Legal-action enumeration filters the
+    /// ability out when the source doesn't have enough counters.
+    pub remove_self_counter: Option<(CounterKind, u32)>,
 }
 
 impl ActivationCost {

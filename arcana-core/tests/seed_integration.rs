@@ -598,3 +598,176 @@ fn disintegrate_x_cost_bound_by_pool_not_offered_when_underfunded() {
         "X=1 would need 2 mana total, only 1 available");
 }
 
+// ---------------------------------------------------------------------
+// Walking Ballista — X in P/T + counter-removal-as-activation-cost
+// ---------------------------------------------------------------------
+
+/// Cast Walking Ballista for {X}{X} with X=3. The 0/0 artifact
+/// creature enters with 3 +1/+1 counters via
+/// `EntersWithSpec::CountersFromX`, observable as effective 3/3 P/T
+/// (layer 7d applies counter deltas to the base 0/0).
+#[test]
+fn walking_ballista_x_3_enters_as_3_3() {
+    use arcana_core::types::CounterKind;
+    let (mut s, registry, ids) = fresh_game();
+    let wb = put_in_hand(&mut s, &registry, 0, ids.walking_ballista);
+    // {X}{X} with X=3 costs 2X = 6 generic mana.
+    give_mana(&mut s, 0, ManaColor::Red, 6);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: wb,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        // {X}{X} expands to Generic(3) + Generic(3) at X=3 — both
+        // cost pips accept any color. Assign 3 red to cost_index 0
+        // (first X) and 3 red to cost_index 1 (second X).
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 2, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 3, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 4, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 5, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: Some(3),
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // One creature on P0's battlefield, 3/3 via 3 +1/+1 counters.
+    let on_battlefield: Vec<ObjectId> = s.objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.controller == 0 && o.characteristics.is_creature())
+        .map(|o| o.id)
+        .collect();
+    assert_eq!(on_battlefield.len(), 1,
+        "Walking Ballista should be on P0's battlefield");
+    let id = on_battlefield[0];
+    let counters = s.objects.get(id).unwrap()
+        .count_counters(CounterKind::PlusOnePlusOne);
+    assert_eq!(counters, 3, "X=3 → 3 +1/+1 counters");
+
+    let chars = s.compute_characteristics(id).expect("creature chars");
+    assert_eq!(chars.power, Some(arcana_core::types::PtValue::Fixed(3)),
+        "base 0/0 + 3 +1/+1 counters = effective power 3");
+    assert_eq!(chars.toughness, Some(arcana_core::types::PtValue::Fixed(3)),
+        "base 0/0 + 3 +1/+1 counters = effective toughness 3");
+}
+
+/// Cast Walking Ballista for X=0. It enters as 0/0 with no counters
+/// and immediately dies to SBA (toughness 0 → graveyard).
+#[test]
+fn walking_ballista_x_0_dies_to_sba() {
+    let (mut s, registry, ids) = fresh_game();
+    let wb = put_in_hand(&mut s, &registry, 0, ids.walking_ballista);
+    // {X}{X} with X=0 is free — no mana needed.
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: wb,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan::default(),
+        additional_costs: vec![],
+        x_value: Some(0),
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+        "X=0 Ballista enters 0/0 and dies to SBA immediately");
+    assert_eq!(
+        s.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.characteristics.is_creature()).count(),
+        0,
+        "no creatures on the battlefield");
+}
+
+/// Walking Ballista's ping ability: "Remove a +1/+1 counter from ~:
+/// deals 1 damage to any target." Verify the counter comes off, the
+/// ping fires, and the ability shows up in legal actions only when
+/// a counter is present.
+#[test]
+fn walking_ballista_ping_removes_counter_and_deals_1_damage() {
+    use arcana_core::types::CounterKind;
+    let (mut s, registry, ids) = fresh_game();
+    let wb = put_on_battlefield(&mut s, &registry, 0, ids.walking_ballista);
+    // Simulate "entered with 2 +1/+1 counters" manually — we're
+    // testing the activation, not the cast-time X path.
+    s.objects.get_mut(wb).unwrap()
+        .add_counters(CounterKind::PlusOnePlusOne, 2);
+    s.objects.get_mut(wb).unwrap().status.summoning_sick = false;
+    priority_to_main(&mut s, 0);
+    let p1_start = s.player(1).life;
+
+    // Find the ping activation from legal_actions — exact field
+    // shape isn't easy to hand-build because of ability_index
+    // conventions, and this also exercises the legal-action
+    // pipeline's counter-cost filtering.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let ping = actions.iter().find(|a| matches!(a,
+        Action::ActivateAbility {
+            source,
+            additional_costs,
+            ..
+        }
+        if *source == wb
+            && additional_costs.iter().any(|c| matches!(c,
+                arcana_core::actions::AdditionalCostPayment::RemoveCounters {
+                    kind: CounterKind::PlusOnePlusOne, count: 1, ..
+                }))
+    ))
+    .cloned()
+    .expect("ping-any-target activation should be legal with a counter");
+
+    // Point it at P1 before submitting.
+    let ping_at_p1 = match ping {
+        Action::ActivateAbility {
+            source, ability_index, mana_payment, additional_costs, ..
+        } => Action::ActivateAbility {
+            source,
+            ability_index,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Player(1),
+                )],
+            },
+            mana_payment,
+            additional_costs,
+        },
+        _ => unreachable!(),
+    };
+    let (s, _) = step(s, ping_at_p1, &registry);
+    let s = resolve_stack(s, &registry);
+
+    assert_eq!(p1_start - s.player(1).life, 1, "ping deals exactly 1");
+    assert_eq!(
+        s.objects.get(wb).unwrap().count_counters(CounterKind::PlusOnePlusOne),
+        1,
+        "one counter removed as activation cost",
+    );
+
+    // With zero counters left, the ping disappears from the legal
+    // action set — tests ability_is_activatable's counter gate.
+    let mut s2 = s.clone();
+    s2.objects.get_mut(wb).unwrap()
+        .remove_counters(CounterKind::PlusOnePlusOne, 1);
+    priority_to_main(&mut s2, 0);
+    let post_actions = arcana_core::legal_actions::legal_actions(&s2, &registry);
+    assert!(!post_actions.iter().any(|a| matches!(a,
+        Action::ActivateAbility { source, additional_costs, .. }
+        if *source == wb
+            && additional_costs.iter().any(|c| matches!(c,
+                arcana_core::actions::AdditionalCostPayment::RemoveCounters { .. }))
+    )), "ping should be filtered out when source has zero counters");
+}
+
