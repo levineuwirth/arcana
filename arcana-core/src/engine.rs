@@ -628,12 +628,17 @@ fn apply_activate_ability(
     let controller = state.priority_player();
 
     // Look up the ability. Bail silently on unregistered / invalid —
-    // legal_actions shouldn't have emitted such an action.
-    let (is_mana_ability, is_loyalty_ability, tap, sacrifice, life) = {
+    // legal_actions shouldn't have emitted such an action. Snapshot
+    // `card_id` up front so resolution-time dispatch survives the
+    // source-object re-id'ing that happens when a cost like
+    // sacrifice-self or discard-self moves the card before the
+    // ability resolves (CR 400.7).
+    let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice, life) = {
         let Some(obj) = state.objects.get(source) else { return; };
         let Some(def) = registry.get(obj.card_id) else { return; };
         let Some(ability) = def.activated_abilities.get(ability_index) else { return; };
         (
+            obj.card_id,
             ability.is_mana_ability,
             ability.is_loyalty_ability,
             ability.cost.tap,
@@ -678,7 +683,12 @@ fn apply_activate_ability(
 
     if is_mana_ability {
         // CR 605.3a — mana abilities resolve immediately without
-        // using the stack. Dispatch the effect directly.
+        // using the stack. Dispatch the effect directly via the
+        // snapshotted `card_id` so the dispatch is robust against
+        // the source object having moved zones (won't happen for
+        // mana abilities in practice, but the snapshot is harmless
+        // and keeps the activation-from-non-battlefield story
+        // internally consistent).
         let ctx = crate::registry::ActivationContext {
             source,
             controller,
@@ -686,29 +696,28 @@ fn apply_activate_ability(
             targets,
             x_value: None,
         };
-        let effects: Vec<crate::effects::Effect> = {
-            let def = registry.get(
-                state.objects.get(source).map(|o| o.card_id).unwrap_or(0));
-            match def {
-                Some(d) => d.activated_abilities.get(ability_index)
-                    .map(|a| (a.effect)(state, &ctx, registry))
-                    .unwrap_or_default(),
-                None => Vec::new(),
-            }
+        let effects: Vec<crate::effects::Effect> = match registry.get(card_id) {
+            Some(d) => d.activated_abilities.get(ability_index)
+                .map(|a| (a.effect)(state, &ctx, registry))
+                .unwrap_or_default(),
+            None => Vec::new(),
         };
         for effect in effects {
             effect.execute(state);
         }
     } else {
         // Non-mana activated abilities go on the stack (CR 602.2).
-        // Phase 1: we track the ability_index via the `ability_id`
-        // slot on the stack entry — resolution uses it to look up
-        // the ability definition again.
+        // `card_id` + `ability_index` together look the ability back
+        // up at resolution time, independent of whether the source
+        // object still exists at `source` (it may have moved to
+        // graveyard as part of the activation cost — cycling,
+        // sacrifice-self abilities).
         let entry_id = state.allocate_object_id();
         let entry = crate::stack::StackEntry::new_activated_ability(
             entry_id,
             source,
             controller,
+            card_id,
             ability_index as crate::types::AbilityId,
             /*text=*/ String::new(),
             targets,
@@ -1955,14 +1964,17 @@ fn resolution_target_requirements(
                 .map(|sa| crate::registry::effective_target_requirements(sa, &entry.modes))
                 .unwrap_or_default()
         }
-        crate::stack::StackEntryKind::ActivatedAbility { ability_id, .. } => {
-            // Look up the ability on the source permanent's card def
-            // so CR 608.2b can recheck each chosen target against its
-            // requirement (Walking Ballista ping, Prodigal Sorcerer,
-            // planeswalker minus-targeted abilities).
-            let source = entry.source;
-            state.objects.get(source)
-                .and_then(|o| registry.get(o.card_id))
+        crate::stack::StackEntryKind::ActivatedAbility {
+            card_id, ability_id, ..
+        } => {
+            // Look up the ability via the stack-entry-snapshotted
+            // card_id so CR 608.2b recheck works even if the source
+            // object moved zones as part of the activation cost
+            // (sacrifice-self, cycling's discard-self). The
+            // requirements themselves are on the card def, not the
+            // object, so this is layer-independent.
+            let _ = state;
+            registry.get(*card_id)
                 .and_then(|def| def.activated_abilities
                     .get(*ability_id as usize))
                 .map(|a| a.target_requirements.clone())
@@ -1987,17 +1999,21 @@ fn resolution_effects(
             let Some(sa) = def.spell_ability.as_ref() else { return Vec::new(); };
             (sa.effect)(state, entry, registry)
         }
-        crate::stack::StackEntryKind::ActivatedAbility { ability_id, .. } => {
-            // Re-dispatch through the registry using the source
-            // object's card_id + ability_index packed into ability_id.
-            // Phase 1: ability_id encodes `ability_index` directly.
-            let source = entry.source;
-            let Some(obj) = state.objects.get(source) else { return Vec::new(); };
-            let Some(def) = registry.get(obj.card_id) else { return Vec::new(); };
+        crate::stack::StackEntryKind::ActivatedAbility {
+            card_id, ability_id, ..
+        } => {
+            // Re-dispatch through the registry via the stack-entry-
+            // snapshotted `card_id`. `ability_id` encodes the
+            // activated-ability index directly. The source object's
+            // id is kept in `entry.source` for effects that reference
+            // the source (damage-from-source etc.) — even if the
+            // object has moved zones, the id is the stable handle
+            // the effect was authored against.
+            let Some(def) = registry.get(*card_id) else { return Vec::new(); };
             let idx = *ability_id as usize;
             let Some(ability) = def.activated_abilities.get(idx) else { return Vec::new(); };
             let ctx = crate::registry::ActivationContext {
-                source,
+                source: entry.source,
                 controller: entry.controller,
                 ability_index: idx,
                 targets: entry.targets.clone(),

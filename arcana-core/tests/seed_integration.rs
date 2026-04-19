@@ -2142,6 +2142,8 @@ fn pw_minus_ability_removes_loyalty_counters() {
                     ],
                     is_mana_ability: false,
                     is_loyalty_ability: true,
+                    activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
                     effect: damage_creature,
                 }))
     };
@@ -2368,5 +2370,150 @@ fn burst_lightning_apply_rejects_kicker_flag_without_keyword() {
         "bogus Kicker on non-kicker card must be rejected — stack stays empty");
     assert!(s.objects.objects_in_zone(Zone::Hand(0)).any(|o| o.id == bolt),
         "Lightning Bolt stays in hand after silent rejection");
+}
+
+// ---------------------------------------------------------------------
+// Cycling (CR 702.29) — Tranquil Thicket
+// ---------------------------------------------------------------------
+//
+// Tranquil Thicket has two activated abilities living in different
+// zones:
+//
+//   Battlefield: {T}: Add {G}.        (mana ability)
+//   Hand:        Cycling {2}          (discard + draw)
+//
+// The tests verify that (1) cycling fires end-to-end from hand,
+// (2) it's instant-speed legal, (3) mana-insufficiency filters it
+// out, (4) the tap-for-green ability still works from Battlefield
+// and is NOT offered when the card is in hand, and (5) cycling
+// survives the source's zone change — draw happens after discard
+// has moved the source to graveyard (re-id per CR 400.7).
+
+fn cycling_activation(
+    actions: &[Action],
+    source: ObjectId,
+) -> Option<Action> {
+    // Cycling is the second activated ability on Tranquil Thicket
+    // (ability_index 1). The mana ability is index 0.
+    actions.iter().find(|a| matches!(a,
+        Action::ActivateAbility { source: s, ability_index: 1, .. }
+            if *s == source)).cloned()
+}
+
+fn mana_activation(
+    actions: &[Action],
+    source: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::ActivateAbility { source: s, ability_index: 0, .. }
+            if *s == source)).cloned()
+}
+
+#[test]
+fn tranquil_thicket_cycling_discards_and_draws() {
+    let (mut s, registry, ids) = fresh_game();
+    let thicket = put_in_hand(&mut s, &registry, 0, ids.tranquil_thicket);
+    // Library card to draw — a Bears so we can assert it's visible
+    // in hand post-cycle (as a re-ided Battlefield-free object,
+    // but the zone assertion is what we actually check).
+    let _lib_card = put_in_library(&mut s, &registry, 0, ids.grizzly_bears);
+    // Payment for cycling {2}.
+    give_mana(&mut s, 0, ManaColor::Colorless, 2);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cycle = cycling_activation(&actions, thicket)
+        .expect("cycling action must be offered with {{2}} in pool");
+
+    let (s, _) = step(s, cycle, &registry);
+    // After activation: the thicket cost has already moved the card
+    // to graveyard (discard cost); the draw is on the stack.
+    let s = resolve_stack(s, &registry);
+
+    // Graveyard has the cycled thicket; hand has the drawn card; the
+    // library is now empty.
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+        "cycling puts Thicket in graveyard");
+    assert_eq!(s.zone_count(Zone::Hand(0)), 1,
+        "cycling draws one card into hand");
+    assert_eq!(s.zone_count(Zone::Library(0)), 0,
+        "library was depleted by the draw");
+}
+
+#[test]
+fn tranquil_thicket_cycling_is_instant_speed() {
+    // Opponent's turn, end step: sorcery speed is NOT ok but cycling
+    // still legal (CR 702.29a).
+    let (mut s, registry, ids) = fresh_game();
+    let thicket = put_in_hand(&mut s, &registry, 1, ids.tranquil_thicket);
+    let _lib = put_in_library(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 1, ManaColor::Colorless, 2);
+    // Player 0 is the active player; give player 1 priority during a
+    // non-main phase (end step).
+    s.priority.give_to(1);
+    s.turn.phase = arcana_core::turn::Phase::Ending;
+    s.turn.step = arcana_core::turn::Step::End;
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(cycling_activation(&actions, thicket).is_some(),
+        "cycling must be offered during opponent's end step \
+         (instant speed)");
+}
+
+#[test]
+fn tranquil_thicket_cycling_not_offered_without_mana() {
+    let (mut s, registry, ids) = fresh_game();
+    let thicket = put_in_hand(&mut s, &registry, 0, ids.tranquil_thicket);
+    let _lib = put_in_library(&mut s, &registry, 0, ids.grizzly_bears);
+    // No mana given.
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(cycling_activation(&actions, thicket).is_none(),
+        "no mana → no cycling action enumerated");
+}
+
+#[test]
+fn tranquil_thicket_tap_for_green_works_on_battlefield() {
+    // Sanity: the mana ability is still wired and still activatable
+    // when the card is on the battlefield.
+    let (mut s, registry, ids) = fresh_game();
+    let thicket = put_on_battlefield(&mut s, &registry, 0, ids.tranquil_thicket);
+    // Clear any summoning sickness — lands don't have it anyway, but
+    // be defensive.
+    if let Some(obj) = s.objects.get_mut(thicket) {
+        obj.status.summoning_sick = false;
+    }
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let tap = mana_activation(&actions, thicket)
+        .expect("tap-for-green must be offered from Battlefield");
+
+    let (s, _) = step(s, tap, &registry);
+    // Mana-ability dispatch is immediate (no stack). Green mana is
+    // in the pool.
+    let green = s.player(0).mana_pool.count_color(ManaColor::Green);
+    assert_eq!(green, 1, "tap produced one green mana");
+}
+
+#[test]
+fn tranquil_thicket_only_cycling_offered_from_hand() {
+    // The tap-for-green ability has activation_zone=Battlefield and
+    // must not be offered when the card is in hand.
+    let (mut s, registry, ids) = fresh_game();
+    let thicket = put_in_hand(&mut s, &registry, 0, ids.tranquil_thicket);
+    let _lib = put_in_library(&mut s, &registry, 0, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Colorless, 2);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    // Cycling (index 1) is offered.
+    assert!(cycling_activation(&actions, thicket).is_some(),
+        "cycling (hand ability) is offered");
+    // Tap-for-green (index 0) is NOT offered — wrong zone.
+    assert!(mana_activation(&actions, thicket).is_none(),
+        "tap-for-green (battlefield ability) must not be offered \
+         while the card is in hand");
 }
 

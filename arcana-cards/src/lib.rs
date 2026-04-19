@@ -41,6 +41,7 @@ pub mod m11;
 pub mod hou;
 pub mod m15;
 pub mod zen;
+pub mod ons;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
@@ -82,6 +83,7 @@ pub struct SeedIds {
     pub abrade: CardId,
     pub chandra_pyromaster: CardId,
     pub burst_lightning: CardId,
+    pub tranquil_thicket: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -110,6 +112,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         abrade: hou::abrade::register(reg),
         chandra_pyromaster: m15::chandra_pyromaster::register(reg),
         burst_lightning: zen::burst_lightning::register(reg),
+        tranquil_thicket: ons::tranquil_thicket::register(reg),
     }
 }
 
@@ -129,6 +132,7 @@ mod tests {
             ids.snapcaster_mage, ids.murktide_regent, ids.chord_of_calling,
             ids.serra_angel, ids.giant_spider, ids.typhoid_rats,
             ids.abrade, ids.chandra_pyromaster, ids.burst_lightning,
+            ids.tranquil_thicket,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),

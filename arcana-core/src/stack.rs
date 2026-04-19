@@ -193,11 +193,16 @@ impl StackEntry {
         }
     }
 
-    /// Construct a new activated-ability stack entry.
+    /// Construct a new activated-ability stack entry. `card_id` is the
+    /// registry key for the source card; stored on the entry so
+    /// resolution-time effect dispatch survives the source object
+    /// re-id'ing (CR 400.7) when a cost like sacrifice-self or
+    /// discard-self moves the card before the ability resolves.
     pub fn new_activated_ability(
         id: ObjectId,
         source: ObjectId,
         controller: PlayerId,
+        card_id: CardId,
         ability_id: AbilityId,
         text: String,
         targets: TargetSelection,
@@ -208,7 +213,7 @@ impl StackEntry {
             id,
             source,
             controller,
-            kind: StackEntryKind::ActivatedAbility { ability_id, text },
+            kind: StackEntryKind::ActivatedAbility { card_id, ability_id, text },
             targets,
             modes,
             x_value,
@@ -302,6 +307,11 @@ pub enum StackEntryKind {
         characteristics: Characteristics,
     },
     ActivatedAbility {
+        /// The source card's registry id. Preserved on the stack
+        /// entry so resolution can look up the ability definition
+        /// even if the source object has moved zones (sacrifice-
+        /// self, discard-self) and been re-id'd per CR 400.7.
+        card_id: CardId,
         ability_id: AbilityId,
         /// Oracle-text snippet for logging / debug; the actual effect
         /// dispatch goes through `CardRegistry`.
@@ -918,7 +928,7 @@ mod tests {
             TargetSelection::new(), vec![], None,
         );
         let act = StackEntry::new_activated_ability(
-            2, 10, 0, /*ability=*/ 1, "T: deal 1".into(),
+            2, 10, 0, /*card=*/ 1, /*ability=*/ 1, "T: deal 1".into(),
             TargetSelection::new(), vec![], None,
         );
         let trg = StackEntry::new_triggered_ability(
@@ -1060,7 +1070,8 @@ mod tests {
     fn emit_spell_cast_panics_on_ability_entry() {
         let mut s = GameState::new(2, 0);
         s.push_stack_entry(StackEntry::new_activated_ability(
-            7, 10, 0, 1, "".into(), TargetSelection::new(), vec![], None));
+            7, 10, 0, /*card=*/ 1, /*ability=*/ 1, "".into(),
+            TargetSelection::new(), vec![], None));
         s.emit_spell_cast(7);
     }
 
@@ -1260,7 +1271,7 @@ mod tests {
     fn counter_ability_emits_countered_event_no_zone_change() {
         let mut s = GameState::new(2, 0);
         s.push_stack_entry(StackEntry::new_activated_ability(
-            42, 10, 0, 1, "T: deal 1".into(),
+            42, 10, 0, /*card=*/ 1, /*ability=*/ 1, "T: deal 1".into(),
             TargetSelection::new(), vec![], None));
         let before = s.event_log.len();
         let entry = s.pop_stack_entry().unwrap();

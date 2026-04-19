@@ -131,8 +131,9 @@ per-set mechanics expected to land with their card sets.
 - `Delve` — wired as `AdditionalCostPayment::Delve`
 - `Flashback(cost)` — wired as `CastModifier::Flashback` (alt-cost)
 - `Kicker(cost)` — wired as `AdditionalCostPayment::Kicker`, kicked flag on StackEntry
+- `Cycling(cost)` — wired via `CardDefinition::with_cycling` + `ActivationZone::Hand` + `discard_self` cost
 - `Affinity(SubtypeFilter)`, `Equip(cost)`, `Enchant(filter)`,
-  `Cycling(cost)`, `Madness(cost)`,
+  `Madness(cost)`,
   `Morph(cost)`, `Manifest` (as a keyword vs. the action primitive),
   `Surveil(n)`, `Explore`, `Adapt(n)`, `Foretell(cost)`, `Learn`,
   `Connive`, `Discover(n)`, `Bargain`, `Offspring(cost)`,

@@ -1245,9 +1245,32 @@ fn enumerate_activation_actions(
         && state.turn.is_main_phase()
         && state.stack_is_empty();
 
-    for id in state.objects.ids_in_zone_sorted(Zone::Battlefield) {
-        let obj = state.objects.get(id).unwrap();
-        if obj.controller != player { continue; }
+    // Walk every zone where an activated ability could live:
+    // Battlefield for permanent abilities, Hand for cycling /
+    // channel, Graveyard for future dredge / unearth. Ability-
+    // specific zone matching is done inside `ability_is_activatable`
+    // — the outer loop is a superset so a card in hand isn't
+    // invisible to enumeration just because no one thought to
+    // check Hand for activations.
+    let mut candidate_ids: Vec<ObjectId> = Vec::new();
+    candidate_ids.extend(state.objects.ids_in_zone_sorted(Zone::Battlefield));
+    candidate_ids.extend(state.objects.ids_in_zone_sorted(Zone::Hand(player)));
+    candidate_ids.extend(state.objects.ids_in_zone_sorted(Zone::Graveyard(player)));
+
+    for id in candidate_ids {
+        let Some(obj) = state.objects.get(id) else { continue; };
+        // Controller/owner semantics differ per zone. Battlefield
+        // uses controller; Hand and Graveyard are zone-scoped to the
+        // object's owner — hand-activations by the opponent aren't a
+        // thing in printed cards, and owner == controller for cards
+        // in non-battlefield zones in Phase 2 (no control-changing
+        // effects that reach into hand/graveyard yet).
+        let activating_player = if obj.zone == Zone::Battlefield {
+            obj.controller
+        } else {
+            obj.owner
+        };
+        if activating_player != player { continue; }
         let Some(def) = registry.get(obj.card_id) else { continue; };
 
         for (i, ability) in def.activated_abilities.iter().enumerate() {
@@ -1298,7 +1321,14 @@ fn ability_is_activatable(
     activator: crate::types::PlayerId,
     sorcery_speed_ok: bool,
 ) -> bool {
-    if obj.zone != Zone::Battlefield { return false; }
+    // Zone gate: the ability's declared `activation_zone` must match
+    // the object's current zone (CR 113.6). Cycling (Hand) and the
+    // usual permanent abilities (Battlefield) go through the same
+    // helper — the only axis that varies is which zone the object
+    // lives in right now.
+    if !ability.activation_zone.matches(obj.zone, obj.owner) {
+        return false;
+    }
     if ability.cost.tap {
         if obj.is_tapped() { return false; }
         // Tapping a creature requires no summoning-sickness for
@@ -1320,9 +1350,14 @@ fn ability_is_activatable(
     }
     // Mana abilities can be activated at any time a player has
     // priority. Non-mana activated abilities default to sorcery
-    // speed for Phase 1 (instants aren't common enough to be worth
-    // a per-ability flag until Phase 2).
-    if !ability.is_mana_ability && !sorcery_speed_ok {
+    // speed; `is_instant_speed` lifts that gate (CR 702.29a
+    // Cycling). Loyalty abilities ignore `is_instant_speed` — the
+    // CR 606.3 sorcery-speed rule for loyalty takes precedence and
+    // is checked below.
+    if !ability.is_mana_ability
+        && !ability.is_instant_speed
+        && !sorcery_speed_ok
+    {
         return false;
     }
     // CR 606 — loyalty abilities: only the PW's controller may
@@ -1348,6 +1383,13 @@ fn build_additional_costs(
     let mut v = Vec::new();
     if cost.sacrifice {
         v.push(crate::actions::AdditionalCostPayment::Sacrifice(source));
+    }
+    if cost.discard_self {
+        // CR 702.29a — cycling's "Discard this card" cost. Routed
+        // as the generic Discard additional-cost, which the shared
+        // `apply_additional_costs` moves to graveyard + emits the
+        // Discarded event.
+        v.push(crate::actions::AdditionalCostPayment::Discard(source));
     }
     if cost.life > 0 {
         v.push(crate::actions::AdditionalCostPayment::PayLife(cost.life));
@@ -2008,6 +2050,8 @@ mod tests {
                     target_requirements: vec![],
                     is_mana_ability: false,
                     is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
                     effect: |_, _, _| Vec::new(),
                 })
         )

@@ -146,6 +146,58 @@ impl CardDefinition {
         self.enters_with.push(spec);
         self
     }
+
+    /// CR 702.29 — Cycling. Adds [`KeywordAbility::Cycling(cost)`] to
+    /// the card's base characteristics (if not already present) and
+    /// appends the canonical cycling activated ability: activate from
+    /// hand, pay the cycling cost, discard this card, draw a card.
+    ///
+    /// The keyword copy is load-bearing: future "when you cycle a
+    /// card, …" triggers and Astral Slide-style opponents-respond
+    /// cards both look up the presence of the Cycling keyword via
+    /// [`crate::state::GameState::has_keyword`]. A card that hand-
+    /// rolled the cycling ability without setting the keyword would
+    /// be invisible to those cross-card queries, so the helper
+    /// encapsulates the pair.
+    pub fn with_cycling(mut self, cost: crate::mana::ManaCost) -> Self {
+        use crate::effects::KeywordAbility;
+        let already_has = self.base_characteristics.keywords.iter().any(|kw|
+            matches!(kw, KeywordAbility::Cycling(_)));
+        if !already_has {
+            self.base_characteristics.keywords.push(
+                KeywordAbility::Cycling(cost.clone()));
+        }
+        self.activated_abilities.push(ActivatedAbilityDef {
+            text: format!("Cycling {cost}: Discard this card: Draw a card."),
+            cost: ActivationCost {
+                mana_cost: cost,
+                discard_self: true,
+                ..ActivationCost::default()
+            },
+            target_requirements: Vec::new(),
+            is_mana_ability: false,
+            is_loyalty_ability: false,
+            activation_zone: ActivationZone::Hand,
+            is_instant_speed: true,
+            effect: cycling_draw_one,
+        });
+        self
+    }
+}
+
+/// Canonical cycling effect: the activator draws a card (CR 702.29a).
+/// Shared across every cycling card — the only variation between
+/// printings is the cycling cost, handled by
+/// [`CardDefinition::with_cycling`].
+fn cycling_draw_one(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<crate::effects::Effect> {
+    vec![crate::effects::Effect::DrawCards {
+        player: ctx.controller,
+        count: 1,
+    }]
 }
 
 // =============================================================================
@@ -293,7 +345,58 @@ pub struct ActivatedAbilityDef {
     /// engine trusts this flag rather than re-deriving from the cost
     /// shape.
     pub is_loyalty_ability: bool,
+    /// Zone the card must be in for this ability to be activatable
+    /// (CR 113.6). Most activated abilities are of permanents
+    /// (Battlefield); cycling and channel activate from Hand, and
+    /// dredge/flashback-style activations from Graveyard. Defaults
+    /// to Battlefield via [`ActivationZone::default`].
+    pub activation_zone: ActivationZone,
+    /// CR 702.29a (Cycling) / CR 113.3c (activated abilities with
+    /// "you may activate ... any time you could cast an instant"):
+    /// when true, the sorcery-speed gate in
+    /// [`crate::legal_actions`] is bypassed. Mana abilities are
+    /// implicitly instant-speed via [`Self::is_mana_ability`]; this
+    /// flag is for non-mana abilities that nonetheless may be
+    /// activated at instant speed.
+    pub is_instant_speed: bool,
     pub effect: ActivatedEffectFn,
+}
+
+/// Where the card must be for an activated ability to be legal. Kept
+/// player-agnostic so `ActivatedAbilityDef` can live in the static
+/// `CardRegistry` without baking in a specific player id — the
+/// runtime resolves against the object's actual owner/zone via
+/// [`Self::matches`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ActivationZone {
+    /// The card is a permanent on the battlefield (CR 602.1, default).
+    #[default]
+    Battlefield,
+    /// The card is in the activator's hand (cycling, channel).
+    Hand,
+    /// The card is in the activator's graveyard (dredge, unearth —
+    /// reserved for future keywords; no seed card uses it yet).
+    Graveyard,
+}
+
+impl ActivationZone {
+    /// True if an object in `obj_zone` owned by `owner` matches this
+    /// activation zone. [`Hand`](Self::Hand) and
+    /// [`Graveyard`](Self::Graveyard) match only the owner's
+    /// zone — a card in an opponent's hand can't be cycled by the
+    /// owner.
+    pub fn matches(
+        &self,
+        obj_zone: crate::zones::Zone,
+        owner: crate::types::PlayerId,
+    ) -> bool {
+        use crate::zones::Zone;
+        match self {
+            Self::Battlefield => obj_zone == Zone::Battlefield,
+            Self::Hand => obj_zone == Zone::Hand(owner),
+            Self::Graveyard => obj_zone == Zone::Graveyard(owner),
+        }
+    }
 }
 
 /// Non-target, non-mana costs for activating an ability.
@@ -319,6 +422,12 @@ pub struct ActivationCost {
     /// Season compose for `+1` activations just like they do for
     /// ETB counters.
     pub add_self_counter: Option<(CounterKind, u32)>,
+    /// CR 702.29a (Cycling) — discard the ability's source as part
+    /// of the cost. Legal-action enumeration emits
+    /// [`crate::actions::AdditionalCostPayment::Discard`] with the
+    /// source id; the shared cost-payment path then moves the card
+    /// to its owner's graveyard and emits `Discarded`.
+    pub discard_self: bool,
 }
 
 impl ActivationCost {

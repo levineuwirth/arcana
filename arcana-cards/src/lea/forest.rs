@@ -4,8 +4,8 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, ManaColor, SupertypeSet, TypeLine};
@@ -32,6 +32,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
                 is_mana_ability: true,
                 is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
                 effect: add_green_mana,
             }),
     )

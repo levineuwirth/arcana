@@ -2867,7 +2867,7 @@ mod tests {
     fn counter_on_ability_stack_entry_only_emits_event() {
         let mut s = GameState::new(2, 0);
         s.push_stack_entry(StackEntry::new_activated_ability(
-            42, 10, 0, 1, "T: tap".into(),
+            42, 10, 0, /*card=*/ 1, /*ability=*/ 1, "T: tap".into(),
             TargetSelection::new(), vec![ModeChoice::empty()], None));
         Effect::Counter { target: 42 }.execute(&mut s);
         assert!(s.stack_is_empty());

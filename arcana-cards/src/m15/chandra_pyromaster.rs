@@ -71,6 +71,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement::target_player()],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                is_instant_speed: false,
                 effect: plus_one_damage,
             }),
     )
