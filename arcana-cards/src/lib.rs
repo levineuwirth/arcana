@@ -46,6 +46,7 @@ pub mod tor;
 pub mod eld;
 pub mod znr;
 pub mod apc;
+pub mod ktk;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
@@ -92,6 +93,7 @@ pub struct SeedIds {
     pub bonecrusher_giant: CardId,
     pub tangled_florahedron: CardId,
     pub fire_ice: CardId,
+    pub monastery_swiftspear: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -125,6 +127,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         bonecrusher_giant: eld::bonecrusher_giant::register(reg),
         tangled_florahedron: znr::tangled_florahedron::register(reg),
         fire_ice: apc::fire_ice::register(reg),
+        monastery_swiftspear: ktk::monastery_swiftspear::register(reg),
     }
 }
 
@@ -145,7 +148,7 @@ mod tests {
             ids.serra_angel, ids.giant_spider, ids.typhoid_rats,
             ids.abrade, ids.chandra_pyromaster, ids.burst_lightning,
             ids.tranquil_thicket, ids.fiery_temper, ids.bonecrusher_giant,
-            ids.tangled_florahedron, ids.fire_ice,
+            ids.tangled_florahedron, ids.fire_ice, ids.monastery_swiftspear,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),

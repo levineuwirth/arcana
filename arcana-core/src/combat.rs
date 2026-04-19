@@ -304,10 +304,26 @@ impl GameState {
 
         for d in &decls {
             let Some(obj) = self.objects.get(d.attacker) else { continue; };
+            // CR 302.1 — summoning sickness gates attacks unless the
+            // creature has Haste (CR 702.10b). The layer-aware
+            // `has_keyword` dispatch matches `legal_actions::can_attack`;
+            // previously this guard hard-checked `summoning_sick` only
+            // and silently dropped Haste attackers that `legal_actions`
+            // had correctly offered. Surfaced by the Monastery
+            // Swiftspear integration test.
+            //
+            // DEBT: Defender (CR 702.3b) and Pacifism-style
+            // "can't attack" restrictions are similarly filtered by
+            // `legal_actions::can_attack` but not re-validated here.
+            // Fine for well-behaved agents; a malicious or buggy
+            // agent could submit such attackers and have them stick.
+            // Add the guards when the first real test exercises them.
+            let sick_and_no_haste = obj.status.summoning_sick
+                && !self.has_keyword(d.attacker, &KeywordAbility::Haste);
             if !obj.is_creature()
                 || !obj.zone.is_battlefield()
                 || obj.is_tapped()
-                || obj.status.summoning_sick
+                || sick_and_no_haste
             {
                 continue;
             }

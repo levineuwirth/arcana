@@ -2920,6 +2920,253 @@ fn bonecrusher_normal_creature_cast_from_hand_still_works() {
 }
 
 // ---------------------------------------------------------------------
+// Prowess (CR 702.108) + Haste (CR 702.10) — Monastery Swiftspear
+// ---------------------------------------------------------------------
+//
+// Swiftspear is {R} 1/2 Human Monk with Haste and Prowess. The seed
+// proves:
+//
+//   1. Haste — summoning sickness is overridden, Swiftspear attacks
+//      the turn it enters.
+//   2. Prowess on-cast — a noncreature spell cast by Swiftspear's
+//      controller pumps it to 2/3 via `apply_prowess_on_cast`.
+//   3. Prowess controller gate — an opponent's noncreature cast does
+//      NOT pump (this is the primary correctness regression vs. the
+//      naive "any noncreature cast triggers" bug).
+//   4. Duration cleanup — the +1/+1 pump is `Duration::EndOfTurn`
+//      and must expire at the cleanup step (CR 514.2). This is the
+//      first UntilEndOfTurn P/T test in the seed suite; it anchors
+//      the layer-7 pump-expiry path the same way the Snapcaster
+//      flashback grant test anchored keyword-grant-expiry.
+//   5. Combat integration — attacking with a pumped Swiftspear
+//      deals 2 combat damage, validating that layer-7 in-combat
+//      reads consume the pump correctly.
+
+fn combat_damage_dealt_to_player_0(s: &GameState) -> u32 {
+    // Default starting life total is 20; shorthand for tests below.
+    20u32.saturating_sub(s.player(0).life as u32)
+}
+
+fn combat_damage_dealt_to_player_1(s: &GameState) -> u32 {
+    20u32.saturating_sub(s.player(1).life as u32)
+}
+
+#[test]
+fn swiftspear_can_attack_turn_it_enters_via_haste() {
+    let (mut s, registry, ids) = fresh_game();
+    // Place Swiftspear and stamp summoning sickness manually — the
+    // put_on_battlefield fixture inserts with PermanentStatus::default
+    // (summoning_sick=false) because it bypasses the normal ETB
+    // sickness stamp. To test Haste we need the sickness flag on so
+    // the only reason the attack is legal is Haste overriding it
+    // (CR 702.10b).
+    let swift = put_on_battlefield(&mut s, &registry, 0, ids.monastery_swiftspear);
+    s.objects.get_mut(swift).unwrap().status.summoning_sick = true;
+    // p0 is active player (default from fresh_game + turn.active_player=0).
+    priority_to_main(&mut s, 0);
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: swift,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    // Haste overrode sickness — the attacker declaration stuck.
+    let combat = s.combat.as_ref().unwrap();
+    assert_eq!(combat.attackers.len(), 1,
+        "Haste creature must be a legal attacker on its first turn");
+}
+
+#[test]
+fn swiftspear_prowess_pumps_on_controller_noncreature_cast() {
+    let (mut s, registry, ids) = fresh_game();
+    let swift = put_on_battlefield(&mut s, &registry, 0, ids.monastery_swiftspear);
+    // Base P/T is 1/2.
+    assert_eq!(s.computed_power(swift), Some(1));
+    assert_eq!(s.computed_toughness(swift), Some(2));
+
+    // Cast Lightning Bolt from p0's hand at p1.
+    let bolt = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+    let cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![
+                arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Player(1)),
+            ],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    // Prowess fires on SpellCast — at this point (cast announced, on
+    // the stack, not yet resolved) the pump is already live.
+    assert_eq!(s.computed_power(swift), Some(2),
+        "Prowess pumps power to 2 on controller's noncreature cast");
+    assert_eq!(s.computed_toughness(swift), Some(3),
+        "Prowess pumps toughness to 3 on controller's noncreature cast");
+}
+
+#[test]
+fn swiftspear_prowess_does_not_fire_on_opponent_cast() {
+    let (mut s, registry, ids) = fresh_game();
+    let swift = put_on_battlefield(&mut s, &registry, 0, ids.monastery_swiftspear);
+    // Opponent (p1) casts Bolt at p0.
+    let bolt = put_in_hand(&mut s, &registry, 1, ids.lightning_bolt);
+    give_mana(&mut s, 1, ManaColor::Red, 1);
+    // Give priority to p1 on p1's main — hand-crafted since the
+    // priority_to_main helper sets turn.active_player=0 implicitly
+    // via fresh_game, and p1 needs to be active to cast at sorcery
+    // speed. Instants don't require active player, but Bolt would be
+    // legal on p0's turn too — we just need the cast to fire from p1.
+    s.priority.give_to(1);
+    s.turn.active_player = 0;
+    s.turn.phase = arcana_core::turn::Phase::PreCombatMain;
+    s.turn.step = arcana_core::turn::Step::Main;
+    let cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![
+                arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Player(0)),
+            ],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    // Prowess must NOT fire — the cast was by p1, Swiftspear is p0's.
+    assert_eq!(s.computed_power(swift), Some(1),
+        "opponent's noncreature cast must not pump Prowess");
+    assert_eq!(s.computed_toughness(swift), Some(2));
+}
+
+#[test]
+fn swiftspear_prowess_pump_expires_at_end_of_turn() {
+    // First UntilEndOfTurn P/T test in the seed suite. Anchors the
+    // layer-7 pump-expiry path: pump is set, pump is visible, pump
+    // expires after `expire_end_of_turn_effects`.
+    let (mut s, registry, ids) = fresh_game();
+    let swift = put_on_battlefield(&mut s, &registry, 0, ids.monastery_swiftspear);
+    let bolt = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+    let cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![
+                arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Player(1)),
+            ],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (mut s, _) = step(s, cast, &registry);
+    // Pump is live mid-turn.
+    assert_eq!(s.computed_power(swift), Some(2));
+
+    // Drive the end-of-turn expiry directly — same pattern as the
+    // snapcaster_flashback_grant_expires_end_of_turn fixture. CR 514.2
+    // handles this in the cleanup step.
+    s.expire_end_of_turn_effects();
+
+    assert_eq!(s.computed_power(swift), Some(1),
+        "Prowess +1/+1 must expire at end of turn");
+    assert_eq!(s.computed_toughness(swift), Some(2));
+}
+
+#[test]
+fn swiftspear_deals_2_combat_damage_after_prowess_pump() {
+    // Combat integration: cast-noncreature → prowess pump → attack
+    // unblocked → 2 damage to defending player (not 1). Validates
+    // that layer-7 in-combat reads consume the pump.
+    let (mut s, registry, ids) = fresh_game();
+    let swift = put_on_battlefield(&mut s, &registry, 0, ids.monastery_swiftspear);
+    let bolt = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![
+                arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Player(1)),
+            ],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+    // Bolt resolved (3 damage to p1); Swiftspear pump persists.
+    assert_eq!(s.computed_power(swift), Some(2),
+        "pump survives past Bolt's resolution (still before end of turn)");
+    assert_eq!(combat_damage_dealt_to_player_1(&s), 3,
+        "Bolt dealt 3 damage to p1");
+
+    // Attack. Haste lets Swiftspear swing on turn-it-came-in.
+    let mut s = s;
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: swift,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![]);
+    s.deal_combat_damage();
+    arcana_core::sba::apply_state_based_actions(&mut s);
+
+    // p1 took 3 from Bolt + 2 from pumped Swiftspear = 5.
+    assert_eq!(combat_damage_dealt_to_player_1(&s), 5,
+        "pumped Swiftspear deals 2 combat damage (base 1 + prowess +1)");
+    // Sanity: p0 untouched.
+    assert_eq!(combat_damage_dealt_to_player_0(&s), 0);
+}
+
+// ---------------------------------------------------------------------
 // Split (CR 711) — Fire // Ice
 // ---------------------------------------------------------------------
 //
