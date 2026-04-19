@@ -1,0 +1,14 @@
+[package]
+name = "arcana-session"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arcana-core = { path = "../arcana-core" }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+arcana-cards = { path = "../arcana-cards" }

@@ -6,6 +6,7 @@ members = [
     "arcana-py",
     "arcana-gen",
     "arcana-cli",
+    "arcana-session",
 ]
 resolver = "2"
 

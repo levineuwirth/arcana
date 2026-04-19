@@ -70,7 +70,13 @@ use crate::zones::Zone;
 // =============================================================================
 
 /// What the engine hands back after a call to [`step`] or [`new_game`].
-#[derive(Debug)]
+///
+/// `Clone` is derived because `arcana-session` stores the most
+/// recent yield in `GameSession::pending` and occasionally needs to
+/// inspect it without consuming it (undo restore, test harnesses).
+/// The AI/RL path calls [`step`] directly and moves yields by value,
+/// so it pays nothing for the clone impl being available.
+#[derive(Clone, Debug)]
 pub enum EngineYield {
     /// The game needs a decision from a player. `legal_actions`
     /// enumerates everything they can do; `context` says what *kind*
