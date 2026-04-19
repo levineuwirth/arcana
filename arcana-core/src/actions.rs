@@ -567,6 +567,22 @@ pub enum ChoiceFollowUp {
     /// Used by storm copies and by `Effect::CopySpell` to attach
     /// per-copy chosen targets (CR 706.10).
     ApplyTargetsToStackEntry { entry_id: ObjectId },
+    /// Pair with a [`ChoiceKind::PickCards`] response: for each
+    /// picked id, install a layer-6 grant of
+    /// `KeywordAbility::Flashback(C)` where `C` is the picked
+    /// card's printed mana cost (CR 702.33). Snapcaster Mage's
+    /// ETB is the canonical consumer. `source` is the grantor
+    /// permanent; `duration` is typically `Duration::EndOfTurn`.
+    ///
+    /// The grant is keyed on the *picked* ObjectId, not the card
+    /// id — when the card leaves the graveyard (cast via flashback,
+    /// exiled, shuffled), the zone change re-ids it per CR 400.7
+    /// and the re-entered object doesn't inherit the grant. This is
+    /// the behavior the rules require.
+    GrantFlashbackEqualToOwnManaCost {
+        source: ObjectId,
+        duration: crate::layers::Duration,
+    },
 }
 
 // =============================================================================

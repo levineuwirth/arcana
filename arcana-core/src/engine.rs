@@ -1072,6 +1072,28 @@ fn apply_choice_follow_up(
             panic!("apply_choice_follow_up: ApplyTargetsToStackEntry is for \
                     ChooseTargets, not PickCards");
         }
+        ChoiceFollowUp::GrantFlashbackEqualToOwnManaCost { source, duration } => {
+            // Per picked card, read its printed mana cost from the
+            // card's base characteristics (not computed, since
+            // flashback's granted cost is "equal to its mana cost"
+            // referring to the printed value) and install a layer-6
+            // grant of Flashback(cost) keyed on the picked ObjectId.
+            // If the card leaves the graveyard and re-enters as a
+            // new object per CR 400.7, the grant's target ObjectId
+            // no longer resolves to it — which is the CR-faithful
+            // behavior.
+            for id in chosen {
+                let Some(obj) = state.objects.get(*id) else { continue; };
+                let Some(printed_cost) = obj.characteristics.mana_cost.clone()
+                    else { continue; };
+                state.add_continuous_effect(
+                    crate::layers::ContinuousEffect::grant_keyword(
+                        source, *id,
+                        crate::effects::KeywordAbility::Flashback(printed_cost),
+                        duration,
+                    ));
+            }
+        }
     }
 }
 

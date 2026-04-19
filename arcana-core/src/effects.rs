@@ -186,6 +186,20 @@ pub enum Effect {
     /// permanent id.
     InstallContinuousEffect { effect: crate::layers::ContinuousEffect },
 
+    /// Snapcaster-style: push a [`crate::actions::ChoiceKind::PickCards`]
+    /// listing every instant or sorcery card currently in any
+    /// graveyard, and grant Flashback (cost = printed mana cost) to
+    /// whichever one the `controller` picks. Zero-candidate case
+    /// degrades gracefully — the choice presents an empty list and
+    /// the pick resolves to nothing. A choosing player may also
+    /// decline to pick (min = 0) when the trigger is resolving with
+    /// no legal target and the game has no effect to apply.
+    GrantFlashbackToInstantOrSorceryInGraveyard {
+        source: ObjectId,
+        controller: PlayerId,
+        duration: crate::layers::Duration,
+    },
+
     /// "Target becomes P/T" (Humility, Turn to Frog, Song of the
     /// Damned). Layer 7b — overrides the base characteristic.
     SetBasePT {
@@ -594,6 +608,11 @@ impl Effect {
             }
             Effect::InstallContinuousEffect { effect } => {
                 state.add_continuous_effect(effect.clone());
+            }
+            Effect::GrantFlashbackToInstantOrSorceryInGraveyard {
+                source, controller, duration,
+            } => {
+                snapcaster_grant_flashback(state, *source, *controller, *duration);
             }
             Effect::GrantKeyword { target, keyword, duration } => {
                 state.add_continuous_effect(
@@ -1271,6 +1290,62 @@ fn copy_spell_on_stack(state: &mut GameState, target: ObjectId) {
             crate::actions::ChoiceKind::ChooseTargets { source: new_id },
         );
     }
+}
+
+/// Snapcaster's ETB handler. Enumerates every instant or sorcery
+/// card in any graveyard and pushes a `PickCards` prompt so the
+/// controller picks one. The `GrantFlashbackEqualToOwnManaCost`
+/// follow-up, invoked after the agent answers, installs the layer-6
+/// grant on the chosen object.
+///
+/// If the candidate set is empty, we still push the prompt with an
+/// empty candidate list and `min = 0` so the agent can trivially
+/// answer "picked nothing" — matches CR 603.3d's graceful handling
+/// of a triggered ability that resolves without a legal target.
+/// (We don't fizzle at trigger-announcement time because Phase 2-A
+/// does target choice mid-resolution, not pre-stack; see the
+/// TargetedTrigger gap note in the commit message.)
+fn snapcaster_grant_flashback(
+    state: &mut GameState,
+    source: ObjectId,
+    controller: PlayerId,
+    duration: crate::layers::Duration,
+) {
+    use crate::types::TypeLine;
+    // Enumerate instants/sorceries across *every* player's graveyard
+    // — Snapcaster's printed text says "a graveyard" without a
+    // controller restriction.
+    let mut candidates: Vec<ObjectId> = Vec::new();
+    for p in 0..state.num_players() {
+        for obj in state.objects.objects_in_zone(Zone::Graveyard(p)) {
+            if obj.characteristics.types.is_instant()
+                || obj.characteristics.types.is_sorcery()
+            {
+                candidates.push(obj.id);
+            }
+        }
+    }
+    // Stable ordering — mirrors the arena iteration pattern used
+    // elsewhere in `legal_actions`.
+    candidates.sort_unstable();
+
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::GrantFlashbackEqualToOwnManaCost {
+            source, duration,
+        });
+    state.push_pending_choice(
+        controller,
+        crate::actions::ChoiceContext::ResolvingStack(source),
+        crate::actions::ChoiceKind::PickCards {
+            candidates,
+            min: 0,
+            max: 1,
+        },
+    );
+    // Silence unused warning on TypeLine import when built without
+    // the type predicates it fuels — those are enabled today, but
+    // making the dependency explicit helps future-me.
+    let _ = TypeLine::INSTANT;
 }
 
 /// CR 702.85 — cascade resolution.

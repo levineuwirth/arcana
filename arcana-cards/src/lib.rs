@@ -61,6 +61,7 @@ pub struct SeedIds {
     pub glorious_anthem: CardId,
     pub disintegrate: CardId,
     pub walking_ballista: CardId,
+    pub snapcaster_mage: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -80,6 +81,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         glorious_anthem: po2::glorious_anthem::register(reg),
         disintegrate: lea::disintegrate::register(reg),
         walking_ballista: aer::walking_ballista::register(reg),
+        snapcaster_mage: isd::snapcaster_mage::register(reg),
     }
 }
 
@@ -96,6 +98,7 @@ mod tests {
             ids.grizzly_bears, ids.lightning_bolt,
             ids.counterspell, ids.murder, ids.elvish_visionary,
             ids.glorious_anthem, ids.disintegrate, ids.walking_ballista,
+            ids.snapcaster_mage,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),

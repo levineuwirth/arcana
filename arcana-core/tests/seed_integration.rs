@@ -848,3 +848,256 @@ fn walking_ballista_ping_removes_counter_and_deals_1_damage() {
     )), "ping should be filtered out when source has zero counters");
 }
 
+// ---------------------------------------------------------------------
+// Snapcaster Mage — ETB targets a graveyard card + grants flashback
+// ---------------------------------------------------------------------
+
+/// Drive the engine forward, auto-answering any mid-resolution
+/// `PickCards` prompt with `pick` (which returns the ObjectId to
+/// choose, or `None` to pick zero). Stops when the stack is empty
+/// and no pending choice remains.
+fn resolve_with_pick_cards<F>(
+    mut state: GameState,
+    registry: &CardRegistry,
+    mut pick: F,
+) -> GameState
+where
+    F: FnMut(&arcana_core::actions::PendingChoice) -> Option<ObjectId>,
+{
+    use arcana_core::actions::{ChoiceKind, ChoiceResponse};
+    for _ in 0..400 {
+        if state.is_game_over() { return state; }
+
+        if let Some(pc) = state.pending_choice.clone() {
+            let response = match pc.kind {
+                ChoiceKind::PickCards { .. } => {
+                    let picked = pick(&pc).map(|id| vec![id]).unwrap_or_default();
+                    ChoiceResponse::PickCards { picked }
+                }
+                _ => panic!("resolve_with_pick_cards: unexpected choice kind \
+                             {:?}", pc.kind),
+            };
+            let (ns, _) = step(state, Action::SubmitResolutionChoice {
+                id: pc.id, response,
+            }, registry);
+            state = ns;
+            continue;
+        }
+
+        if state.stack_is_empty() { return state; }
+        let (ns, _) = step(state, Action::PassPriority, registry);
+        state = ns;
+    }
+    panic!("resolve_with_pick_cards: failed to quiesce in 400 iterations");
+}
+
+/// Put a specific card into a graveyard with explicit controller/owner.
+/// Returns the new ObjectId. Mirrors `put_in_hand` / `put_on_battlefield`
+/// for the graveyard zone.
+fn put_in_graveyard(
+    state: &mut GameState,
+    registry: &CardRegistry,
+    owner: PlayerId,
+    card_id: arcana_core::types::CardId,
+) -> ObjectId {
+    let obj_id = state.allocate_object_id();
+    let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+    state.objects.insert(GameObject::new(
+        obj_id, owner, Zone::Graveyard(owner), card_id, chars));
+    obj_id
+}
+
+/// Cast Snapcaster targeting a Bolt in P0's graveyard; verify
+/// `legal_actions` on P0's next priority window offers flashback on
+/// that Bolt. This is the load-bearing test for the layer system
+/// applying continuous effects to non-battlefield objects — if the
+/// layer path short-circuits for graveyard-zone objects, the grant
+/// is invisible and the flashback cast never shows up.
+#[test]
+fn snapcaster_grants_flashback_to_bolt_in_graveyard() {
+    let (mut s, registry, ids) = fresh_game();
+    let snap = put_in_hand(&mut s, &registry, 0, ids.snapcaster_mage);
+    let bolt = put_in_graveyard(&mut s, &registry, 0, ids.lightning_bolt);
+    // {1}{U} for Snapcaster + {R} reserve for flashback.
+    give_mana(&mut s, 0, ManaColor::Blue, 2);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: snap,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_with_pick_cards(s, &registry, |_| Some(bolt));
+
+    // Bolt in the graveyard should now have Flashback in its
+    // effective keyword list — queried through the layer system.
+    let kws = s.effective_keywords(bolt);
+    assert!(kws.iter().any(|k| matches!(k,
+        arcana_core::effects::KeywordAbility::Flashback(_))),
+        "Bolt should have granted Flashback; got {kws:?}");
+
+    // legal_actions should offer a flashback cast of Bolt.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let flashback = actions.iter().any(|a| matches!(a,
+        Action::CastSpell {
+            object_id,
+            cast_modifier: arcana_core::actions::CastModifier::Flashback,
+            ..
+        } if *object_id == bolt));
+    assert!(flashback,
+        "legal_actions should include a Flashback cast of Bolt");
+}
+
+/// End-of-turn duration: after Snapcaster's grant, if Bolt isn't
+/// flashbacked this turn, the grant must not persist into the next
+/// turn. Drive through the cleanup step and verify.
+#[test]
+fn snapcaster_flashback_grant_expires_end_of_turn() {
+    let (mut s, registry, ids) = fresh_game();
+    let snap = put_in_hand(&mut s, &registry, 0, ids.snapcaster_mage);
+    let bolt = put_in_graveyard(&mut s, &registry, 0, ids.lightning_bolt);
+    give_mana(&mut s, 0, ManaColor::Blue, 2);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: snap,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_with_pick_cards(s, &registry, |_| Some(bolt));
+
+    // Grant is present before turn ends.
+    assert!(s.effective_keywords(bolt).iter().any(|k| matches!(k,
+        arcana_core::effects::KeywordAbility::Flashback(_))));
+
+    // Force an end-of-turn pass through the cleanup step. The
+    // Duration::EndOfTurn expiry runs inside `expire_end_of_turn_effects`,
+    // which the engine's cleanup-step handler calls at CR 514.2. We
+    // can invoke it directly to avoid driving the entire turn cycle.
+    let mut s = s;
+    s.expire_end_of_turn_effects();
+
+    assert!(
+        !s.effective_keywords(bolt).iter().any(|k| matches!(k,
+            arcana_core::effects::KeywordAbility::Flashback(_))),
+        "Flashback grant must expire at end of turn");
+}
+
+/// ObjectId scoping, not CardId: Snapcaster grants flashback to a
+/// *specific* Bolt object by id. If that Bolt leaves the graveyard
+/// (e.g. by being cast normally from hand and re-entering as a new
+/// object per CR 400.7), the grant attached to the old id must not
+/// apply to the newly-entered object. This is the test that catches
+/// "grant accidentally keyed on CardId" bugs.
+#[test]
+fn snapcaster_grant_does_not_transfer_to_reentered_object() {
+    let (mut s, registry, ids) = fresh_game();
+    let snap = put_in_hand(&mut s, &registry, 0, ids.snapcaster_mage);
+    let bolt_in_gy = put_in_graveyard(&mut s, &registry, 0, ids.lightning_bolt);
+    // A second Bolt in hand — we'll cast this one normally after
+    // Snapcaster's grant to observe the re-enter-as-new-object
+    // behavior.
+    let bolt_in_hand = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    give_mana(&mut s, 0, ManaColor::Blue, 2);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast_snap = Action::CastSpell {
+        object_id: snap,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast_snap, &registry);
+    let s = resolve_with_pick_cards(s, &registry, |_| Some(bolt_in_gy));
+
+    // Sanity: grant targeted bolt_in_gy (the graveyard copy).
+    assert!(s.effective_keywords(bolt_in_gy).iter().any(|k| matches!(k,
+        arcana_core::effects::KeywordAbility::Flashback(_))));
+
+    // Now cast bolt_in_hand normally from hand. It resolves, moves
+    // to the graveyard, and gets a fresh ObjectId on the way
+    // through (CR 400.7). The grant on the old `bolt_in_gy` id
+    // does not transfer.
+    let mut s = s;
+    priority_to_main(&mut s, 0);
+    let cast_bolt = Action::CastSpell {
+        object_id: bolt_in_hand,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                arcana_core::targets::ObjectOrPlayer::Player(1),
+            )],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: 0, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast_bolt, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // There are now (at least) two Bolts in P0's graveyard: the
+    // originally-granted one (old id, still granted) and the
+    // newly-resolved one (fresh id, not granted).
+    let bolts_in_gy: Vec<ObjectId> = s.objects
+        .objects_in_zone(Zone::Graveyard(0))
+        .filter(|o| o.card_id == ids.lightning_bolt)
+        .map(|o| o.id)
+        .collect();
+    assert!(bolts_in_gy.len() >= 2,
+        "expected >=2 Bolts in graveyard, got {}", bolts_in_gy.len());
+
+    // The new Bolt's id is different from `bolt_in_gy`; its keywords
+    // must not include Flashback.
+    let new_bolt_id = bolts_in_gy.iter().copied()
+        .find(|id| *id != bolt_in_gy)
+        .expect("a freshly-entered Bolt distinct from the original");
+    let new_kws = s.effective_keywords(new_bolt_id);
+    assert!(!new_kws.iter().any(|k| matches!(k,
+        arcana_core::effects::KeywordAbility::Flashback(_))),
+        "re-entered Bolt must not inherit Snapcaster's grant; \
+         got keywords {new_kws:?}");
+}
+
