@@ -23,6 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target creature.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
                 effect: resolve,
             }),
     )

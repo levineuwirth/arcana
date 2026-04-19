@@ -309,13 +309,27 @@ pub enum StackEntryKind {
 /// A single modal-choice payload. For a spell like "Choose two —",
 /// this is the indices of the chosen modes within the card's modal
 /// clause list.
+///
+/// Invariant: `mode_indices` is kept **sorted ascending** with no
+/// duplicates. CR 700.2c says modes resolve in the order listed on
+/// the card, regardless of the order the player picked them —
+/// normalizing on construction means downstream code (target
+/// enumeration, per-clause dispatch) can rely on card order without
+/// re-sorting.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModeChoice {
     pub mode_indices: Vec<usize>,
 }
 
 impl ModeChoice {
-    pub fn new(mode_indices: Vec<usize>) -> Self { Self { mode_indices } }
+    /// Normalizes to the card-order invariant: sorted ascending,
+    /// deduplicated. The engine's modal validation additionally
+    /// bounds-checks indices against the card's clause count.
+    pub fn new(mut mode_indices: Vec<usize>) -> Self {
+        mode_indices.sort_unstable();
+        mode_indices.dedup();
+        Self { mode_indices }
+    }
     pub fn empty() -> Self { Self::default() }
     pub fn is_empty(&self) -> bool { self.mode_indices.is_empty() }
     pub fn len(&self) -> usize { self.mode_indices.len() }

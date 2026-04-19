@@ -30,6 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
+                modal: None,
                 effect: resolve,
             }),
     )

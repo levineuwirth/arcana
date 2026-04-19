@@ -191,12 +191,83 @@ pub enum EntersWithSpec {
 pub struct SpellAbilityDef {
     /// Oracle-style rules text. Used for debug output and testing.
     pub text: String,
-    /// Per-clause target requirements. The legal-action enumerator
-    /// consults this to emit target choices; resolution rechecks
-    /// against CR 608.2b.
+    /// Per-clause target requirements for **non-modal** spells. For
+    /// modal spells this stays empty; the effective target list is
+    /// derived from the chosen modes via [`effective_target_requirements`].
     pub target_requirements: Vec<TargetRequirement>,
+    /// CR 700.2 — declaration side of modal spells. `None` for the
+    /// common non-modal case. When `Some`, the spell requires the
+    /// caster to pick `[min_modes, max_modes]` clauses at cast time;
+    /// each clause carries its own targets, and the effective targets
+    /// for the cast are the concatenation of chosen clauses' targets
+    /// **in card order** (CR 700.2c), not selection order.
+    ///
+    /// Cost-contingent mode expansion (entwine, escalate) will need
+    /// to be resolved at announce time from the base `ModalSpec` plus
+    /// `additional_costs`. Phase 2-A treats this as a static spec;
+    /// the name stays `modal` rather than `base_modal` until the
+    /// first cost-contingent card lands and forces the distinction.
+    pub modal: Option<ModalSpec>,
     /// Function that produces the effect list at resolution.
     pub effect: SpellEffectFn,
+}
+
+/// CR 700.2 — modal-spell declaration. Lives on [`SpellAbilityDef`].
+///
+/// The `min_modes` / `max_modes` shape supports "Choose one" (1/1),
+/// "Choose two" (2/2), "Choose one or both" (1/2), and "Choose any
+/// number" (0/N). Entwine / escalate are deferred — they need a
+/// cost-contingent resolution of `max_modes` at cast time, which
+/// Phase 2-A doesn't wire.
+#[derive(Clone, Debug)]
+pub struct ModalSpec {
+    pub min_modes: usize,
+    pub max_modes: usize,
+    pub clauses: Vec<ModeClause>,
+}
+
+/// A single clause of a modal spell's "choose one — ; or ; or"
+/// block. Targets declared on the clause apply only when that clause
+/// is chosen.
+#[derive(Clone, Debug)]
+pub struct ModeClause {
+    pub text: String,
+    pub target_requirements: Vec<TargetRequirement>,
+}
+
+/// Effective target requirements for a spell given its chosen modes.
+/// Non-modal spells ignore `modes` and return the flat list. Modal
+/// spells concatenate the chosen clauses' requirements **in card
+/// order** (CR 700.2c) — `ModeChoice::mode_indices` is kept sorted
+/// ascending, so iterating it gives the canonical order directly.
+///
+/// Returns an owned `Vec` rather than a borrow so callers don't have
+/// to juggle lifetimes across the modal / non-modal branch. The cost
+/// is small — `TargetRequirement` is a handful of words. If this
+/// ever shows up in a profile, revisit with a `Cow`.
+///
+/// DEBT: target enumeration across `C(N, k)` mode subsets × per-clause
+/// targets is a Cartesian product that can blow up on many-target
+/// modals (e.g. Aminatou's Augury, Kolaghan's Command). The dedup-by-
+/// characteristic-equivalence helper used for delve applies here too
+/// and should be reused when that regime is reached.
+pub fn effective_target_requirements(
+    ability: &SpellAbilityDef,
+    modes: &[crate::stack::ModeChoice],
+) -> Vec<TargetRequirement> {
+    let Some(modal) = ability.modal.as_ref() else {
+        return ability.target_requirements.clone();
+    };
+    let Some(choice) = modes.first() else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for idx in &choice.mode_indices {
+        if let Some(clause) = modal.clauses.get(*idx) {
+            out.extend(clause.target_requirements.iter().cloned());
+        }
+    }
+    out
 }
 
 // =============================================================================
@@ -462,6 +533,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Bolt deals 3 to any target".into(),
             target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
             effect: bolt_effect,
         });
         let id = r.register(def);

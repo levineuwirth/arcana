@@ -461,12 +461,24 @@ fn legal_priority_actions(
         let ctx = SpendContext::for_spell(
             obj.characteristics.types, obj.characteristics.colors);
 
-        // Target requirements (if the registry knows this card).
-        let reqs: Vec<TargetRequirement> = registry.get(obj.card_id)
-            .and_then(|def| def.spell_ability.as_ref())
-            .map(|sa| sa.target_requirements.clone())
-            .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        // Target requirements and mode combinations. Modal spells
+        // (CR 700.2) generate `C(N,k)` distinct mode subsets for each
+        // `k` in `[min_modes, max_modes]`; each subset has its own
+        // effective target list. Non-modal spells produce a single
+        // subset (the empty mode choice).
+        //
+        // DEBT: many-target modal cards (Aminatou's Augury, etc.) will
+        // hit the Cartesian blow-up of (mode_combo) × (target_selection);
+        // reuse the dedup-by-characteristic-equivalence helper from
+        // delve/improvise enumeration when that regime is reached.
+        let spell_ability = registry.get(obj.card_id)
+            .and_then(|def| def.spell_ability.as_ref());
+        let mode_combos: Vec<Vec<crate::stack::ModeChoice>> =
+            match spell_ability.and_then(|sa| sa.modal.as_ref()) {
+                None => vec![Vec::new()],
+                Some(modal) => enumerate_mode_combinations(modal)
+                    .into_iter().map(|c| vec![c]).collect(),
+            };
 
         // X-value enumeration (CR 107.3 / 601.2b). If the cost has
         // `{X}`, the caster picks a non-negative integer at cast
@@ -501,6 +513,20 @@ fn legal_priority_actions(
         let convoke_available = crate::engine::has_convoke(state, id);
         let improvise_available = crate::engine::has_improvise(state, id);
 
+        for modes in &mode_combos {
+            // Effective target requirements for this mode combo.
+            // Non-modal spells' `modes` is empty — the helper returns
+            // the flat `target_requirements`. Modal spells concatenate
+            // the chosen clauses' requirements in card order.
+            let effective_reqs: Vec<TargetRequirement> = match spell_ability {
+                Some(sa) => crate::registry::effective_target_requirements(sa, modes),
+                None => Vec::new(),
+            };
+            let target_selections =
+                enumerate_target_selections(&effective_reqs, state, player);
+            // Mode combo has a clause with no legal targets → skip.
+            if target_selections.is_empty() { continue; }
+
         for &x in &x_values {
             // Expand X into Generic(x) before cost-reduction tracks
             // see the cost. Delve / improvise reduce generic; X
@@ -534,7 +560,7 @@ fn legal_priority_actions(
                         actions.push(Action::CastSpell {
                             object_id: id,
                             targets: targets.clone(),
-                            modes: Vec::new(),
+                            modes: modes.clone(),
                             mana_payment: plan.clone(),
                             additional_costs: Vec::new(),
                             x_value,
@@ -583,7 +609,7 @@ fn legal_priority_actions(
                                 actions.push(Action::CastSpell {
                                     object_id: id,
                                     targets: targets.clone(),
-                                    modes: Vec::new(),
+                                    modes: modes.clone(),
                                     mana_payment: plan.clone(),
                                     additional_costs: Vec::new(),
                                     x_value,
@@ -623,7 +649,7 @@ fn legal_priority_actions(
                             actions.push(Action::CastSpell {
                                 object_id: id,
                                 targets: targets.clone(),
-                                modes: Vec::new(),
+                                modes: modes.clone(),
                                 mana_payment: plan.clone(),
                                 additional_costs: Vec::new(),
                                 x_value,
@@ -638,6 +664,7 @@ fn legal_priority_actions(
                     }
                 }
             }
+        }
         }
     }
 
@@ -777,6 +804,35 @@ fn enumerate_target_selections(
     partials.into_iter()
         .map(|targets| TargetSelection { targets })
         .collect()
+}
+
+/// Enumerate every sorted mode subset for a modal spell whose size
+/// lies in `[min_modes, max_modes]`. Bitmask walk over `2^N` subsets;
+/// cheap for every real card (Cryptic Command: N=4 → 16 subsets,
+/// 6 of size 2; Kolaghan's Command: N=4 → 6 of size 2). `ModalSpec`
+/// construction is expected to bound `N` to a reasonable clause count.
+///
+/// Each returned `ModeChoice` is sorted ascending and deduplicated
+/// (the bitmask walk produces this order naturally), so the
+/// `ModeChoice::new` normalization is idempotent here.
+fn enumerate_mode_combinations(
+    modal: &crate::registry::ModalSpec,
+) -> Vec<crate::stack::ModeChoice> {
+    let n = modal.clauses.len();
+    // Upper guardrail — a 32-bit mask covers ModalSpec sizes we'd ever
+    // see on a printed card. If someone lands a card with >32 modes,
+    // switch to a recursive combinations generator.
+    assert!(n <= 32, "enumerate_mode_combinations: >32 modes unsupported");
+    let mut out = Vec::new();
+    for mask in 0u32..(1u32 << n) {
+        let bits = mask.count_ones() as usize;
+        if bits < modal.min_modes || bits > modal.max_modes { continue; }
+        let indices: Vec<usize> = (0..n)
+            .filter(|i| (mask >> i) & 1 == 1)
+            .collect();
+        out.push(crate::stack::ModeChoice { mode_indices: indices });
+    }
+    out
 }
 
 /// Enumerate every distinct subset of `candidates` of size ≤ `max_size`,

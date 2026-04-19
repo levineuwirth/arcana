@@ -61,6 +61,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // prompt — not a cast-time TargetRequirement. So the
                 // cast has no target_requirements.
                 target_requirements: vec![],
+                modal: None,
                 effect: resolve,
             }),
     )

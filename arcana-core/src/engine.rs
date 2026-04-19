@@ -261,6 +261,44 @@ fn apply_cast_spell(
         }
     }
 
+    // Modal validation (CR 700.2). A modal spell requires the caster to
+    // pick between `min_modes` and `max_modes` clauses; picks must be
+    // in range and the card-order invariant on `ModeChoice` must hold.
+    // Non-modal spells must supply either `vec![]` or a single empty
+    // ModeChoice — both are treated as "no modes." Agent input that
+    // violates this is rejected silently, matching the rest of this
+    // function.
+    {
+        let spell_ability = state.objects.get(object_id)
+            .and_then(|o| registry.get(o.card_id))
+            .and_then(|def| def.spell_ability.as_ref());
+        match spell_ability.and_then(|sa| sa.modal.as_ref()) {
+            Some(modal) => {
+                // Modal spell: need exactly one ModeChoice, count in
+                // [min, max], indices in range and normalized.
+                if modes.len() != 1 { return; }
+                let choice = &modes[0];
+                let n = choice.mode_indices.len();
+                if n < modal.min_modes || n > modal.max_modes { return; }
+                // Indices in bounds.
+                if choice.mode_indices.iter().any(|i| *i >= modal.clauses.len()) {
+                    return;
+                }
+                // Sorted-ascending + unique invariant. `ModeChoice::new`
+                // normalizes on construction, but serialized inputs or
+                // hand-built tests could violate this.
+                if !choice.mode_indices.windows(2).all(|w| w[0] < w[1]) {
+                    return;
+                }
+            }
+            None => {
+                // Non-modal: empty or a single empty ModeChoice.
+                let has_payload = modes.iter().any(|m| !m.is_empty());
+                if has_payload { return; }
+            }
+        }
+    }
+
     // Delve validation (CR 702.66). `Some(vec![])` is a legal "has
     // delve, chose not to use it"; `None` is "card has no delve."
     // Both reach cost payment with no exile side effect. `Some(list)`
@@ -418,11 +456,16 @@ fn apply_cast_spell(
     //    emits ZoneChange(Cast). Snapshots the spell's targeting
     //    requirements onto the entry so copies (storm / CopySpell)
     //    can push ChooseTargets without registry access.
+    //
+    //    For modal spells, the effective target requirements depend on
+    //    which clauses were chosen (CR 700.2c — card order). The
+    //    registry helper resolves this; non-modal spells fall back to
+    //    the flat list.
     let card_def = state.objects.get(object_id)
         .and_then(|o| registry.get(o.card_id));
-    let target_requirements = card_def
-        .and_then(|def| def.spell_ability.as_ref())
-        .map(|sa| sa.target_requirements.clone())
+    let spell_ability = card_def.and_then(|def| def.spell_ability.as_ref());
+    let target_requirements = spell_ability
+        .map(|sa| crate::registry::effective_target_requirements(sa, &modes))
         .unwrap_or_default();
     let enters_with = card_def
         .map(|def| def.enters_with.clone())
@@ -1843,9 +1886,12 @@ fn resolution_target_requirements(
 ) -> Vec<crate::targets::TargetRequirement> {
     match &entry.kind {
         crate::stack::StackEntryKind::Spell { card_id, .. } => {
+            // Modal-aware: CR 608.2b rechecks each chosen target against
+            // the requirement declared on the clause that summoned it.
+            // Non-modal spells fall back to the flat list.
             registry.get(*card_id)
                 .and_then(|def| def.spell_ability.as_ref())
-                .map(|sa| sa.target_requirements.clone())
+                .map(|sa| crate::registry::effective_target_requirements(sa, &entry.modes))
                 .unwrap_or_default()
         }
         crate::stack::StackEntryKind::ActivatedAbility { ability_id, .. } => {
@@ -3051,6 +3097,7 @@ mod resolution_choice_framework_tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Does nothing to target creature.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
             effect: noop_target_effect,
         });
         registry.register(def)
@@ -3192,6 +3239,7 @@ mod resolution_choice_framework_tests {
                 TargetRequirement::target_creature(),
                 TargetRequirement::target_creature(),
             ],
+            modal: None,
             effect: noop_target_effect,
         });
         registry.register(def)
@@ -4345,6 +4393,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Deal 1 damage to target player. Storm.".into(),
             target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
             effect: grapeshot_effect,
         });
         def.triggered_abilities.push(
@@ -4381,6 +4430,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Target player loses 2 life. Storm.".into(),
             target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
             effect: tendrils_effect,
         });
         def.triggered_abilities.push(
@@ -4537,6 +4587,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Cascade. (No other effect for this test card.)".into(),
             target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
             effect: nada,
         });
         def.triggered_abilities.push(
@@ -4740,6 +4791,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Deal 1 damage to target player. Flashback {2}{R}.".into(),
             target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
             effect: fb_bolt_effect,
         });
         def.base_characteristics.keywords.push(
@@ -4766,6 +4818,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Flashback {3}{B}.".into(),
             target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
             effect: fb_sorcery_effect,
         });
         def.base_characteristics.keywords.push(
@@ -5097,6 +5150,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Delve. Does nothing.".into(),
             target_requirements: vec![],
+            modal: None,
             effect: noop_effect,
         });
         def.base_characteristics.keywords.push(
@@ -5342,6 +5396,7 @@ mod tests {
             }).with_spell_ability(SpellAbilityDef {
                 text: "Does nothing.".into(),
                 target_requirements: vec![],
+            modal: None,
                 effect: noop,
             });
             registry.register(def)
@@ -5389,6 +5444,7 @@ mod tests {
             }).with_spell_ability(SpellAbilityDef {
                 text: "Does nothing.".into(),
                 target_requirements: vec![],
+            modal: None,
                 effect: noop,
             });
             registry.register(def)
@@ -5530,6 +5586,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Convoke. Does nothing.".into(),
             target_requirements: vec![],
+            modal: None,
             effect: noop_effect,
         });
         def.base_characteristics.keywords.push(
@@ -6001,6 +6058,7 @@ mod tests {
             }).with_spell_ability(SpellAbilityDef {
                 text: "Delve. Convoke.".into(),
                 target_requirements: vec![],
+            modal: None,
                 effect: noop,
             });
             def.base_characteristics.keywords.push(
@@ -6179,6 +6237,7 @@ mod tests {
             }).with_spell_ability(SpellAbilityDef {
                 text: "Does nothing.".into(),
                 target_requirements: vec![],
+            modal: None,
                 effect: noop,
             });
             registry.register(def)
@@ -6234,6 +6293,7 @@ mod tests {
         }).with_spell_ability(SpellAbilityDef {
             text: "Improvise. Does nothing.".into(),
             target_requirements: vec![],
+            modal: None,
             effect: noop_effect,
         });
         def.base_characteristics.keywords.push(
@@ -6652,6 +6712,7 @@ mod tests {
             }).with_spell_ability(SpellAbilityDef {
                 text: "Does nothing.".into(),
                 target_requirements: vec![],
+            modal: None,
                 effect: noop,
             });
             registry.register(def)
@@ -6699,6 +6760,7 @@ mod tests {
             }).with_spell_ability(SpellAbilityDef {
                 text: "Delve. Improvise.".into(),
                 target_requirements: vec![],
+            modal: None,
                 effect: noop,
             });
             def.base_characteristics.keywords.push(
@@ -6755,6 +6817,7 @@ mod tests {
             }).with_spell_ability(SpellAbilityDef {
                 text: "Convoke. Improvise.".into(),
                 target_requirements: vec![],
+            modal: None,
                 effect: noop,
             });
             def.base_characteristics.keywords.push(

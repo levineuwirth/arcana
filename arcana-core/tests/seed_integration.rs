@@ -1658,3 +1658,288 @@ fn typhoid_rats_one_damage_kills_grizzly_bears_via_deathtouch_sba() {
         "Dies event should fire for the Bears");
 }
 
+// ---------------------------------------------------------------------
+// Modal spells (CR 700.2) — Abrade + inline no-target-mode fixture
+//
+// Abrade's "Choose one" shape proves the per-clause target filter
+// plumbing and the mode-dispatch in the resolve fn. It doesn't
+// exercise a clause with no targets. To avoid the silent assumption
+// "every modal clause targets," a second test registers a synthetic
+// two-mode card inline where mode 0 is "gain 3 life" (no target) and
+// mode 1 is "deal 3 damage to target creature."
+// ---------------------------------------------------------------------
+
+fn put_artifact_on_battlefield(
+    state: &mut GameState,
+    player: PlayerId,
+) -> ObjectId {
+    let obj_id = state.allocate_object_id();
+    let name = 0; // interner id 0; not looked up by name in these tests
+    let chars = arcana_core::objects::Characteristics {
+        name,
+        types: arcana_core::types::TypeLine::ARTIFACT.into(),
+        ..Default::default()
+    };
+    state.objects.insert(GameObject::new(
+        obj_id, player, Zone::Battlefield, 0, chars));
+    obj_id
+}
+
+#[test]
+fn abrade_mode_0_deals_3_damage_to_target_creature() {
+    let (mut s, registry, ids) = fresh_game();
+    let abrade = put_in_hand(&mut s, &registry, 0, ids.abrade);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: abrade,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+        },
+        modes: vec![arcana_core::stack::ModeChoice::new(vec![0])],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "Bears (2 toughness) dies to Abrade's 3 damage");
+}
+
+#[test]
+fn abrade_mode_1_destroys_target_artifact() {
+    let (mut s, registry, ids) = fresh_game();
+    let abrade = put_in_hand(&mut s, &registry, 0, ids.abrade);
+    let artifact = put_artifact_on_battlefield(&mut s, 1);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: abrade,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::Object(artifact)],
+        },
+        modes: vec![arcana_core::stack::ModeChoice::new(vec![1])],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "Artifact moves to owner's graveyard after Destroy");
+    assert!(!s.objects.objects_in_zone(Zone::Battlefield)
+        .any(|o| o.id == artifact),
+        "artifact is no longer on the battlefield");
+}
+
+#[test]
+fn abrade_mode_validation_rejects_empty_mode_choice() {
+    // Modal spell cast with `modes: vec![]` must be rejected by
+    // apply_cast_spell — the engine keeps its invariants (no mana
+    // spent, no spell on stack).
+    let (mut s, registry, ids) = fresh_game();
+    let abrade = put_in_hand(&mut s, &registry, 0, ids.abrade);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let pool_before = s.player(0).mana_pool.total();
+    let cast = Action::CastSpell {
+        object_id: abrade,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+        },
+        modes: vec![], // invalid for a modal spell
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    assert!(s.stack_is_empty(),
+        "rejected modal cast must not put the spell on the stack");
+    assert_eq!(s.player(0).mana_pool.total(), pool_before,
+        "rejected modal cast must not spend mana");
+}
+
+#[test]
+fn abrade_legal_actions_enumerate_both_modes() {
+    let (mut s, registry, ids) = fresh_game();
+    let _abrade = put_in_hand(&mut s, &registry, 0, ids.abrade);
+    let _bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    let _artifact = put_artifact_on_battlefield(&mut s, 1);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast_actions: Vec<_> = actions.iter().filter_map(|a| match a {
+        Action::CastSpell { modes, .. } => Some(modes.clone()),
+        _ => None,
+    }).collect();
+    // At least one (mode=[0], target=bears) and one (mode=[1],
+    // target=artifact). The enumerator generates more rows (every
+    // legal mana plan), so just assert both mode choices appear.
+    let has_mode_0 = cast_actions.iter().any(|m|
+        m.len() == 1 && m[0].mode_indices == vec![0]);
+    let has_mode_1 = cast_actions.iter().any(|m|
+        m.len() == 1 && m[0].mode_indices == vec![1]);
+    assert!(has_mode_0, "Abrade mode 0 (damage creature) must be enumerated");
+    assert!(has_mode_1, "Abrade mode 1 (destroy artifact) must be enumerated");
+    // And no action emits both — Abrade is Choose one (max=1).
+    assert!(!cast_actions.iter().any(|m|
+        m.iter().any(|c| c.mode_indices.len() > 1)),
+        "Choose-one spell must not enumerate multi-mode picks");
+}
+
+#[test]
+fn modal_spell_with_no_target_clause_resolves() {
+    // Inline test fixture: a card with two modes, one of which does
+    // not target. Plugs the silent "every clause has targets"
+    // assumption: Abrade alone doesn't cover this path.
+    use arcana_core::effects::Effect;
+    use arcana_core::events::DamageTarget;
+    use arcana_core::registry::{
+        CardDefinition, ModalSpec, ModeClause, SpellAbilityDef,
+    };
+    use arcana_core::stack::StackEntry;
+    use arcana_core::state::GameState;
+
+    fn resolve(
+        _: &GameState,
+        entry: &StackEntry,
+        _: &CardRegistry,
+    ) -> Vec<Effect> {
+        let choice = entry.modes.first().expect("modal: one ModeChoice");
+        let mode = *choice.mode_indices.first().expect("modal: one mode index");
+        match mode {
+            0 => vec![Effect::GainLife { player: entry.controller, amount: 3 }],
+            1 => {
+                let Some(t) = entry.targets.targets.first() else {
+                    return Vec::new();
+                };
+                let target = match t {
+                    arcana_core::targets::TargetChoice::Object(id) => *id,
+                    _ => return Vec::new(),
+                };
+                vec![Effect::DealDamage {
+                    source: entry.source,
+                    target: DamageTarget::Object(target),
+                    amount: 3,
+                }]
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    let mut registry = CardRegistry::new();
+    let ids = register_seed(&mut registry);
+    let card_id = {
+        let name = registry.interner_mut().intern("Test Modal Spell");
+        let chars = arcana_core::objects::Characteristics {
+            name,
+            mana_cost: Some(arcana_core::mana::ManaCost::parse("{R}")
+                .expect("valid cost")),
+            colors: arcana_core::types::ColorSet::red(),
+            types: arcana_core::types::TypeLine::INSTANT.into(),
+            ..Default::default()
+        };
+        registry.register(
+            CardDefinition::new(name, chars)
+                .with_spell_ability(SpellAbilityDef {
+                    text: "Choose one — Gain 3 life; or deal 3 damage \
+                           to target creature.".into(),
+                    target_requirements: vec![],
+                    modal: Some(ModalSpec {
+                        min_modes: 1, max_modes: 1,
+                        clauses: vec![
+                            ModeClause {
+                                text: "Gain 3 life.".into(),
+                                target_requirements: vec![], // no target!
+                            },
+                            ModeClause {
+                                text: "Deal 3 damage to target creature.".into(),
+                                target_requirements: vec![
+                                    arcana_core::targets::TargetRequirement
+                                        ::target_creature(),
+                                ],
+                            },
+                        ],
+                    }),
+                    effect: resolve,
+                }))
+    };
+
+    // --- Cast the non-targeting mode -------------------------------
+    let mut s = GameState::new(2, 0);
+    let card = {
+        let obj_id = s.allocate_object_id();
+        let chars = registry.get(card_id).unwrap()
+            .base_characteristics.clone();
+        s.objects.insert(GameObject::new(
+            obj_id, 0, Zone::Hand(0), card_id, chars));
+        obj_id
+    };
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+    let life_start = s.player(0).life;
+
+    let cast = Action::CastSpell {
+        object_id: card,
+        targets: arcana_core::targets::TargetSelection { targets: vec![] },
+        modes: vec![arcana_core::stack::ModeChoice::new(vec![0])],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: 0, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+    assert_eq!(s.player(0).life, life_start + 3,
+        "Mode 0 (no-target gain 3 life) must resolve cleanly");
+    // Sanity: nothing else broke — no stray objects, stack empty.
+    assert!(s.stack_is_empty());
+    // Reference the seed so the test exercises the same registry as
+    // production (and catches any "modal must have targets" baked
+    // into the seed-construction path).
+    let _ = ids;
+}
+

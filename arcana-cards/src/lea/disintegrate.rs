@@ -31,6 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Disintegrate deals X damage to any target.".into(),
                 target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
                 effect: resolve,
             }),
     )
