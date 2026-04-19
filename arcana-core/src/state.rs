@@ -222,8 +222,8 @@ impl GameState {
             continuous_effects: Vec::new(),
             replacement_effects: Vec::new(),
             delayed_triggers: Vec::new(),
-            triggers_fired_this_turn: TriggerLedger::new(),
-            triggers_fired_this_game: TriggerLedger::new(),
+            triggers_fired_this_turn: TriggerLedger::default(),
+            triggers_fired_this_game: TriggerLedger::default(),
             timestamp_counter: 0,
             trigger_event_cursor: 0,
             format,
@@ -239,7 +239,7 @@ impl GameState {
             pending_resolution: None,
             currently_resolving: None,
             pending_choice_follow_up: None,
-            lki: HashMap::new(),
+            lki: HashMap::default(),
         }
     }
 
@@ -754,10 +754,10 @@ impl PlayerState {
             land_plays_per_turn: 1,
             has_drawn_from_empty_library: false,
             poison_counters: 0,
-            commander_damage: HashMap::new(),
+            commander_damage: HashMap::default(),
             has_lost: false,
             has_conceded: false,
-            known_cards: HashSet::new(),
+            known_cards: HashSet::default(),
             energy: 0,
             experience: 0,
             library_top_to_bottom: Vec::new(),

@@ -474,7 +474,7 @@ impl GameState {
         amount: u32,
     ) -> Option<(ObjectId, DamageTarget, u32)> {
         let mut current = ReplacementEvent::Damage { source, target, amount };
-        let mut used: std::collections::HashSet<u64> = std::collections::HashSet::new();
+        let mut used: crate::collections::HashSet<u64> = crate::collections::HashSet::default();
 
         loop {
             let candidates: Vec<&ReplacementEffect> = self.replacement_effects.iter()
@@ -530,7 +530,7 @@ impl GameState {
     ) -> Option<(CounterKind, u32)> {
         if count == 0 { return None; }
         let mut current = ReplacementEvent::PlaceCounters { target, kind, count };
-        let mut used: std::collections::HashSet<u64> = std::collections::HashSet::new();
+        let mut used: crate::collections::HashSet<u64> = crate::collections::HashSet::default();
 
         loop {
             let candidates: Vec<u64> = self.replacement_effects.iter()

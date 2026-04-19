@@ -775,8 +775,8 @@ mod tests {
         let b = cast(42);
         assert_eq!(a, b);
 
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
+        use crate::collections::HashSet;
+        let mut set = HashSet::default();
         set.insert(a);
         assert!(set.contains(&b));
     }

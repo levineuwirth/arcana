@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn apnap_visits_every_player_once() {
-        use std::collections::HashSet;
+        use crate::collections::HashSet;
         let order: Vec<_> = apnap_order(1, 5).collect();
         let unique: HashSet<_> = order.iter().copied().collect();
         assert_eq!(order.len(), 5);

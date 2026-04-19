@@ -152,7 +152,7 @@ impl FormatConfig {
         }
 
         // Copy counting — single pass, stable order via sort.
-        let mut counts = std::collections::HashMap::<crate::types::CardId, u32>::new();
+        let mut counts = crate::collections::HashMap::<crate::types::CardId, u32>::default();
         for id in deck {
             *counts.entry(*id).or_insert(0) += 1;
         }

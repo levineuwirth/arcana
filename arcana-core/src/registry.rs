@@ -33,7 +33,7 @@
 //! resolution (Task #20's `resolve_top_of_stack`). A spell with
 //! no target requirements has an empty vector.
 
-use std::collections::HashMap;
+use crate::collections::HashMap;
 
 use crate::effects::Effect;
 use crate::mana::ManaCost;
@@ -227,8 +227,8 @@ impl CardRegistry {
     pub fn new() -> Self {
         Self {
             next_card_id: 1,
-            definitions: HashMap::new(),
-            by_name: HashMap::new(),
+            definitions: HashMap::default(),
+            by_name: HashMap::default(),
             interner: StringInterner::new(),
         }
     }

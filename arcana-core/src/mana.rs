@@ -835,8 +835,8 @@ fn fingerprint(plan: &ManaPaymentPlan, pool: &ManaPool) -> PlanFingerprint {
 /// [`fingerprint`] as the equivalence key.
 fn dedup_plans_with_pool(plans: &mut Vec<ManaPaymentPlan>, pool: &ManaPool) {
     if plans.len() <= 1 { return; }
-    use std::collections::HashSet;
-    let mut seen = HashSet::new();
+    use crate::collections::HashSet;
+    let mut seen = HashSet::default();
     plans.retain(|p| seen.insert(fingerprint(p, pool)));
 }
 

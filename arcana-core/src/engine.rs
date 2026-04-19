@@ -263,7 +263,7 @@ fn apply_cast_spell(
     let delve_exiles_vec = cost_reductions.delve_exiles.clone().unwrap_or_default();
     if !delve_exiles_vec.is_empty() {
         if !has_delve(state, object_id) { return; }
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = crate::collections::HashSet::default();
         for &exile_id in &delve_exiles_vec {
             if !seen.insert(exile_id) { return; }
             let in_caster_yard = state.objects.get(exile_id)
@@ -299,7 +299,7 @@ fn apply_cast_spell(
     let convoke_taps_vec = cost_reductions.convoke_taps.clone().unwrap_or_default();
     if !convoke_taps_vec.is_empty() {
         if !has_convoke(state, object_id) { return; }
-        let mut seen_creatures = std::collections::HashSet::new();
+        let mut seen_creatures = crate::collections::HashSet::default();
         for assignment in &convoke_taps_vec {
             if !seen_creatures.insert(assignment.creature) { return; }
             let Some(creature) = state.objects.get(assignment.creature) else {
@@ -360,7 +360,7 @@ fn apply_cast_spell(
     let improvise_taps_vec = cost_reductions.improvise_taps.clone().unwrap_or_default();
     if !improvise_taps_vec.is_empty() {
         if !has_improvise(state, object_id) { return; }
-        let mut seen_artifacts = std::collections::HashSet::new();
+        let mut seen_artifacts = crate::collections::HashSet::default();
         for &art_id in &improvise_taps_vec {
             if !seen_artifacts.insert(art_id) { return; }
             let Some(obj) = state.objects.get(art_id) else { return; };

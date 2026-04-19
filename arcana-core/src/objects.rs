@@ -9,13 +9,13 @@
 //! tree of `Rc`s would require, and it keeps `GameState` trivially cloneable
 //! (the spec's first design principle).
 //!
-//! The arena currently uses `std::collections::HashMap`. The spec (Section
+//! The arena currently uses `crate::collections::HashMap`. The spec (Section
 //! 4.2) notes it can be swapped to `im::HashMap` (HAMT) later to reduce
 //! clone cost from O(n) to O(log n). That migration is behind a feature
 //! flag we'll add when profiling shows clone is the bottleneck.
 
 use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
+use crate::collections::HashMap;
 
 use crate::mana::ManaCost;
 use crate::types::*;
@@ -468,7 +468,7 @@ mod tests {
         a.insert(make_creature(1, Zone::Battlefield, 2, 2));
         a.insert(make_creature(2, Zone::Hand(0), 3, 3));
         a.insert(make_creature(3, Zone::Graveyard(0), 1, 1));
-        let ids: std::collections::HashSet<_> = a.iter().map(|o| o.id).collect();
+        let ids: crate::collections::HashSet<_> = a.iter().map(|o| o.id).collect();
         assert_eq!(ids, [1, 2, 3].iter().copied().collect());
     }
 

@@ -307,7 +307,7 @@ mod tests {
         // 2 players × 3 personal + 4 shared = 10
         assert_eq!(zones.len(), 10);
         // No duplicates
-        let unique: std::collections::HashSet<_> = zones.iter().collect();
+        let unique: crate::collections::HashSet<_> = zones.iter().collect();
         assert_eq!(unique.len(), 10);
         // Contains expected entries
         assert!(zones.contains(&Zone::Library(0)));

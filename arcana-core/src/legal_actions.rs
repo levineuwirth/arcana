@@ -805,8 +805,8 @@ where
     F: FnMut(&T) -> K,
 {
     let mut groups: Vec<Vec<T>> = Vec::new();
-    let mut index: std::collections::HashMap<K, usize> =
-        std::collections::HashMap::new();
+    let mut index: crate::collections::HashMap<K, usize> =
+        crate::collections::HashMap::default();
     for item in candidates {
         let k = key(item);
         match index.get(&k) {
@@ -1047,8 +1047,8 @@ fn reduce_cost_by_convoke(
     use crate::mana::ManaCostComponent;
 
     let mut generic_paid: u32 = 0;
-    let mut color_paid: std::collections::HashMap<crate::types::ManaColor, u32> =
-        std::collections::HashMap::new();
+    let mut color_paid: crate::collections::HashMap<crate::types::ManaColor, u32> =
+        crate::collections::HashMap::default();
     for p in assignment {
         match p {
             ConvokePayment::Generic => generic_paid += 1,
@@ -1517,7 +1517,7 @@ mod tests {
         put(&mut s, 0, Zone::Hand(0), x_instant_chars());
         add_mana(&mut s, 0, ManaColor::Red, 5);
         let actions = legal_actions(&s, &CardRegistry::new());
-        let x_values: std::collections::HashSet<u32> = actions.iter()
+        let x_values: crate::collections::HashSet<u32> = actions.iter()
             .filter_map(|a| match a {
                 Action::CastSpell { x_value: Some(x), .. } => Some(*x),
                 _ => None,

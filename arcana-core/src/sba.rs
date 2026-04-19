@@ -297,8 +297,8 @@ fn apply_legend_rule(state: &mut GameState) -> bool {
 }
 
 fn pending_legend_conflict(state: &GameState) -> bool {
-    use std::collections::HashMap;
-    let mut counts: HashMap<(PlayerId, SmallString), u32> = HashMap::new();
+    use crate::collections::HashMap;
+    let mut counts: HashMap<(PlayerId, SmallString), u32> = HashMap::default();
     for obj in state.objects.objects_in_zone(Zone::Battlefield) {
         if !obj.characteristics.supertypes.is_legendary() { continue; }
         *counts.entry((obj.controller, obj.characteristics.name)).or_insert(0) += 1;

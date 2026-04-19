@@ -8,6 +8,7 @@ serde = { workspace = true }
 im = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
+rustc-hash = { workspace = true }
 smallvec = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

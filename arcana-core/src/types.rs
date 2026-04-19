@@ -354,7 +354,7 @@ impl From<u8> for SupertypeSet {
 pub struct SubtypeSet(pub HashSet<SmallString>);
 
 impl SubtypeSet {
-    pub fn new() -> Self { Self(HashSet::new()) }
+    pub fn new() -> Self { Self(HashSet::default()) }
 
     /// Build a set from a list of subtype names, interning each into
     /// `interner`. Typically called at card-registration time.
@@ -363,7 +363,7 @@ impl SubtypeSet {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let mut set = HashSet::new();
+        let mut set = HashSet::default();
         for n in names {
             set.insert(interner.intern(n.as_ref()));
         }

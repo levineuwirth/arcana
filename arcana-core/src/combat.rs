@@ -550,7 +550,7 @@ impl GameState {
         // CR 510.1 — damage within a single pass is assigned
         // simultaneously, so snapshot which combatants are dead going
         // INTO this pass. Mid-pass deaths don't prevent their damage.
-        let dead_at_start: std::collections::HashSet<ObjectId> = combat.attackers.iter()
+        let dead_at_start: crate::collections::HashSet<ObjectId> = combat.attackers.iter()
             .map(|a| a.object_id)
             .chain(combat.blockers.iter().map(|b| b.object_id))
             .filter(|id| self.is_dead_in_combat(*id))

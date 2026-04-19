@@ -47,7 +47,7 @@
 //! u32>`s to track counts; [`TriggeredAbilityDef::should_fire`]
 //! respects them by default.
 
-use std::collections::HashMap;
+use crate::collections::HashMap;
 
 use crate::events::GameEvent;
 use crate::objects::ObjectId;

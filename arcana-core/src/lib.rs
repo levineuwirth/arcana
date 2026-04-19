@@ -1,3 +1,4 @@
+pub mod collections;
 pub mod types;
 pub mod mana;
 pub mod zones;
