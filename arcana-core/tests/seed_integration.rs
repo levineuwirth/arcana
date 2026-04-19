@@ -2920,6 +2920,299 @@ fn bonecrusher_normal_creature_cast_from_hand_still_works() {
 }
 
 // ---------------------------------------------------------------------
+// Hexproof (CR 702.11) — Slippery Bogle
+// ---------------------------------------------------------------------
+//
+// Bogle is {G/U} 1/1 Elemental Hound with Hexproof and literally
+// nothing else — the ideal Hexproof-in-isolation fixture. The seed
+// proves the four target-pipeline axes:
+//
+//   1. Opponent's CastSpell targeting is rejected at announce
+//      (filtered out of legal_actions).
+//   2. Own-controller's targeting IS accepted (Hexproof is
+//      "your opponents control" specifically, not "all players").
+//   3. Opponent's ActivateAbility targeting is rejected — proves the
+//      Ballista activation path flows through the same
+//      TargetRequirement::matches_choice filter as CastSpell does.
+//   4. Hexproof granted mid-stack (test-only Shalai-stand-in) makes
+//      the target illegal at resolution; CR 608.2b fizzles the
+//      pre-existing spell. This is the crucial "grant-in-response"
+//      test that exercises both granted-keyword layer composition
+//      and the resolution re-check.
+//
+// Pre-commit prediction (for calibration): audit showed all keyword
+// queries in the target pipeline already flow through has_keyword
+// (layer-aware). Predicted: zero engine changes needed — the
+// infrastructure covers every test path. Actual outcome tracked in
+// the commit message.
+
+/// Test-only "Hexproof Grant Instant": `{W}` instant, "Target
+/// creature you control gains Hexproof until end of turn." Installed
+/// as a local registry card (not in the shared seed pool). Replaces
+/// Shalai / Ranger-Captain / similar real cards for the single-test
+/// purpose of exercising granted-Hexproof interactions; delete when
+/// a real such card lands in the seed pool.
+fn register_hexproof_grant_instant(
+    registry: &mut CardRegistry,
+) -> arcana_core::types::CardId {
+    use arcana_core::effects::{Effect, KeywordAbility};
+    use arcana_core::layers::Duration;
+    use arcana_core::mana::ManaCost;
+    use arcana_core::objects::Characteristics;
+    use arcana_core::registry::{CardDefinition, SpellAbilityDef};
+    use arcana_core::stack::StackEntry;
+    use arcana_core::state::GameState;
+    use arcana_core::targets::{ObjectFilter, TargetFilter, TargetCount,
+        TargetRequirement};
+    use arcana_core::types::{ColorSet, TypeLine};
+
+    fn grant_hexproof_eot_resolve(
+        _state: &GameState,
+        entry: &StackEntry,
+        _reg: &CardRegistry,
+    ) -> Vec<Effect> {
+        let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+        let arcana_core::targets::TargetChoice::Object(id) = target else {
+            return Vec::new();
+        };
+        vec![Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Hexproof,
+            duration: Duration::EndOfTurn,
+        }]
+    }
+
+    let name = registry.interner_mut().intern("Test Hexproof Grant");
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),
+        colors: ColorSet::white(),
+        types: TypeLine::INSTANT.into(),
+        ..Default::default()
+    };
+    registry.register(CardDefinition::new(name, chars)
+        .with_spell_ability(SpellAbilityDef {
+            text: "Target creature you control gains hexproof \
+                   until end of turn.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                count: TargetCount::Exactly(1),
+                controller: Some(
+                    arcana_core::targets::ControllerConstraint::You),
+            }],
+            modal: None,
+            effect: grant_hexproof_eot_resolve,
+        }))
+}
+
+fn opponent_bolt_targeting(
+    actions: &[Action],
+    target: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::CastSpell { targets, .. }
+        if targets.targets.iter().any(|t| matches!(t,
+            arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                arcana_core::targets::ObjectOrPlayer::Object(id))
+            if *id == target))
+    )).cloned()
+}
+
+#[test]
+fn bogle_rejects_opponent_bolt_at_announce() {
+    // Baseline: opponent has a Bolt, Bogle is on the battlefield
+    // under p0's control. legal_actions(p1) should NOT enumerate a
+    // Bolt cast targeting Bogle.
+    let (mut s, registry, ids) = fresh_game();
+    let _bogle = put_on_battlefield(&mut s, &registry, 0, ids.slippery_bogle);
+    let bolt = put_in_hand(&mut s, &registry, 1, ids.lightning_bolt);
+    give_mana(&mut s, 1, ManaColor::Red, 1);
+    // Hand-craft opponent priority with stack empty.
+    s.priority.give_to(1);
+    s.turn.active_player = 0;
+    s.turn.phase = arcana_core::turn::Phase::PreCombatMain;
+    s.turn.step = arcana_core::turn::Step::Main;
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    // Bolt target at Bogle is NOT offered; Bolt cast at players IS.
+    let bolt_at_bogle = actions.iter().any(|a| matches!(a,
+        Action::CastSpell { object_id, targets, .. }
+        if *object_id == bolt
+            && targets.targets.iter().any(|t| matches!(t,
+                arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Object(_))))
+    ));
+    assert!(!bolt_at_bogle,
+        "opponent's Bolt must not offer Bogle as a target (Hexproof)");
+    // Sanity: Bolt targeting a player is still fine.
+    let bolt_at_player = actions.iter().any(|a| matches!(a,
+        Action::CastSpell { object_id, .. } if *object_id == bolt));
+    assert!(bolt_at_player,
+        "opponent can still cast Bolt at players (Hexproof doesn't \
+         extend to players)");
+}
+
+#[test]
+fn bogle_accepts_own_controller_targeting() {
+    // Hexproof says "your opponents control" — the controller
+    // targeting its own Hexproof creature is always legal. This
+    // exercises the controller-gate in the Hexproof check (obj.controller
+    // != source_controller). The regression would be "check drops
+    // the controller filter and rejects all targets."
+    let (mut s, registry, ids) = fresh_game();
+    let bogle = put_on_battlefield(&mut s, &registry, 0, ids.slippery_bogle);
+    let _bolt = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(opponent_bolt_targeting(&actions, bogle).is_some(),
+        "own-controller casting Bolt at own Hexproof creature must \
+         be legal");
+}
+
+#[test]
+fn bogle_rejects_opponent_ballista_ping() {
+    // Activated-ability path: opponent controls Walking Ballista
+    // with a +1/+1 counter (ping-ready). Legal_actions(opponent)
+    // must not offer a ping targeting Bogle. This proves the
+    // activation-side target filter flows through the same
+    // TargetRequirement::matches_choice as the cast-side.
+    use arcana_core::types::CounterKind;
+    let (mut s, registry, ids) = fresh_game();
+    let bogle = put_on_battlefield(&mut s, &registry, 0, ids.slippery_bogle);
+    let ballista = put_on_battlefield(&mut s, &registry, 1, ids.walking_ballista);
+    s.objects.get_mut(ballista).unwrap()
+        .add_counters(CounterKind::PlusOnePlusOne, 2);
+    clear_summoning_sickness(&mut s, ballista);
+    s.priority.give_to(1);
+    s.turn.active_player = 1;
+    s.turn.phase = arcana_core::turn::Phase::PreCombatMain;
+    s.turn.step = arcana_core::turn::Step::Main;
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    // Must NOT offer a ping specifically targeting Bogle.
+    let ping_at_bogle = actions.iter().any(|a| matches!(a,
+        Action::ActivateAbility { source, targets, .. }
+        if *source == ballista
+            && targets.targets.iter().any(|t| matches!(t,
+                arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Object(id))
+                if *id == bogle))
+    ));
+    assert!(!ping_at_bogle,
+        "opponent's Ballista ping must not target Bogle (Hexproof \
+         on the activated-ability path)");
+    // Sanity: ping IS offered against other targets (Ballista can
+    // self-target, can target p0 the player, etc.). The activation
+    // itself isn't keyword-rejected; only the specific Bogle target
+    // is filtered out.
+    let any_ping = actions.iter().any(|a| matches!(a,
+        Action::ActivateAbility { source, .. } if *source == ballista));
+    assert!(any_ping,
+        "Ballista activation is still offered against other legal \
+         targets (Hexproof filters per-target, not per-activation)");
+}
+
+#[test]
+fn bolt_fizzles_when_target_gains_hexproof_before_resolution() {
+    // The crux test. Opponent casts Bolt at a normal creature; in
+    // response, the controller casts Grant-Hexproof-EOT (test-only)
+    // on the same creature. Grant resolves first (LIFO stack), creature
+    // now has Hexproof. Bolt then tries to resolve — CR 608.2b
+    // re-check sees the target is now illegal, routes Bolt to
+    // `counter_resolved_spell` as a fizzle. Creature survives.
+    let mut registry = CardRegistry::new();
+    let ids = arcana_cards::register_seed(&mut registry);
+    let grant_id = register_hexproof_grant_instant(&mut registry);
+    let mut s = GameState::new(2, 0);
+
+    let bears = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    let bolt = put_in_hand(&mut s, &registry, 1, ids.lightning_bolt);
+    // Give p0 the grant-instant in hand.
+    let grant_obj = {
+        let obj_id = s.allocate_object_id();
+        let chars = registry.get(grant_id).unwrap()
+            .base_characteristics.clone();
+        s.objects.insert(GameObject::new(
+            obj_id, 0, Zone::Hand(0), grant_id, chars));
+        obj_id
+    };
+
+    give_mana(&mut s, 0, ManaColor::White, 1);
+    give_mana(&mut s, 1, ManaColor::Red, 1);
+    priority_to_main(&mut s, 1);
+
+    // Opponent (p1) casts Bolt at p0's Bears.
+    let cast_bolt = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![
+                arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                    arcana_core::targets::ObjectOrPlayer::Object(bears)),
+            ],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (mut s, _) = step(s, cast_bolt, &registry);
+
+    // Switch priority to p0 in response (Bolt on the stack).
+    s.priority.give_to(0);
+    let cast_grant = Action::CastSpell {
+        object_id: grant_obj,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![
+                arcana_core::targets::TargetChoice::Object(bears),
+            ],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast_grant, &registry);
+
+    // Resolve the stack: Grant resolves first (LIFO), gives Bears
+    // Hexproof EOT; then Bolt tries to resolve, finds the target
+    // illegal via CR 608.2b re-check, fizzles to graveyard.
+    let s = resolve_stack(s, &registry);
+
+    // Bears survives — Bolt fizzled.
+    assert!(s.objects.objects_in_zone(Zone::Battlefield)
+        .any(|o| o.card_id == ids.grizzly_bears),
+        "Bears survives because Bolt fizzled on the granted-Hexproof \
+         target");
+    // Bolt is in p1's graveyard (fizzle routes through
+    // counter_resolved_spell's non-Flashback default).
+    assert!(s.objects.objects_in_zone(Zone::Graveyard(1))
+        .any(|o| o.card_id == ids.lightning_bolt),
+        "fizzled Bolt lands in its owner's graveyard");
+    // Sanity: Bears has Hexproof now.
+    let bears_post = s.objects.objects_in_zone(Zone::Battlefield)
+        .find(|o| o.card_id == ids.grizzly_bears)
+        .map(|o| o.id).unwrap();
+    assert!(s.has_keyword(bears_post, &arcana_core::effects::KeywordAbility::Hexproof),
+        "grant effect installed Hexproof via layer system");
+}
+
+// ---------------------------------------------------------------------
 // Menace (CR 702.110) — Ahn-Crop Crasher
 // ---------------------------------------------------------------------
 //
