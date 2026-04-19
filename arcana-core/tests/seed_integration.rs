@@ -692,6 +692,83 @@ fn walking_ballista_x_0_dies_to_sba() {
         "no creatures on the battlefield");
 }
 
+/// Doubling Season on the battlefield doubles Walking Ballista's
+/// entry counters. This pins the architectural invariant that
+/// `EntersWithSpec` runs through `place_counters`, which runs through
+/// the replacement-effect pipeline — i.e., the card-declared spec is
+/// the *input* to replacement, not the output. If this test fails,
+/// the stamped spec is being applied raw and bypassing
+/// `WouldPlaceCounters` replacements, which would break every future
+/// "enters with counters" + counter-doubler interaction.
+///
+/// Doubling Season is installed as a bare `ReplacementEffect` rather
+/// than as a registered card — we don't need the enchantment itself,
+/// just its replacement behavior — so this test runs clean without
+/// forcing a Doubling Season card into the seed set ahead of a real
+/// consumer.
+#[test]
+fn walking_ballista_x3_with_doubling_season_enters_with_6_counters() {
+    use arcana_core::replacement::{
+        CounterKindFilter, ReplacementCondition, ReplacementDuration,
+        ReplacementEffect, ReplacementKind,
+    };
+    use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+    use arcana_core::types::CounterKind;
+
+    let (mut s, registry, ids) = fresh_game();
+    let wb = put_in_hand(&mut s, &registry, 0, ids.walking_ballista);
+    give_mana(&mut s, 0, ManaColor::Red, 6);
+
+    // Install Doubling Season as a bare replacement effect. Source
+    // id 0xDEAD_BEEF is a test sentinel — no real permanent owns it.
+    s.add_replacement_effect(ReplacementEffect {
+        source: 0xDEAD_BEEF,
+        id: 0, // overwritten by add_replacement_effect
+        condition: ReplacementCondition::WouldPlaceCounters {
+            object_filter: ObjectFilter::default()
+                .controlled_by(ControllerConstraint::You),
+            kinds: CounterKindFilter::Any,
+        },
+        kind: ReplacementKind::MultiplyCounters(2),
+        is_self_replacement: false,
+        duration: ReplacementDuration::Permanent,
+    });
+
+    priority_to_main(&mut s, 0);
+    let cast = Action::CastSpell {
+        object_id: wb,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 2, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 3, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 4, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 5, cost_index: 1 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: Some(3),
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let id = s.objects.objects_in_zone(Zone::Battlefield)
+        .find(|o| o.controller == 0 && o.characteristics.is_creature())
+        .map(|o| o.id)
+        .expect("Ballista on battlefield");
+    assert_eq!(
+        s.objects.get(id).unwrap().count_counters(CounterKind::PlusOnePlusOne),
+        6,
+        "X=3 with Doubling Season → 3*2 = 6 counters",
+    );
+}
+
 /// Walking Ballista's ping ability: "Remove a +1/+1 counter from ~:
 /// deals 1 damage to any target." Verify the counter comes off, the
 /// ping fires, and the ability shows up in legal actions only when
