@@ -2920,6 +2920,176 @@ fn bonecrusher_normal_creature_cast_from_hand_still_works() {
 }
 
 // ---------------------------------------------------------------------
+// Split (CR 711) — Fire // Ice
+// ---------------------------------------------------------------------
+//
+// Fire (left, {1}{R}): 2 damage to any target. Ice (right, {1}{U}):
+// tap target permanent. The seed proves the two Split cast paths:
+//
+//   1. Left-half cast — normal hand cast via the base characteristics.
+//      No new modifier; it goes through the main cast path.
+//   2. Right-half cast — `CastModifier::SplitRight` swaps the
+//      object's characteristics to the right face (Ice) before
+//      announce; resolution dispatches on Ice's spell ability.
+//
+// Both halves are instants and go to graveyard on resolution — no
+// exile routing, no battlefield residue.
+
+fn fire_cast_action(actions: &[Action], card_in_hand: ObjectId) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, cast_modifier, .. }
+        if *object_id == card_in_hand
+            && matches!(cast_modifier, arcana_core::actions::CastModifier::None)
+    )).cloned()
+}
+
+fn ice_cast_action(actions: &[Action], card_in_hand: ObjectId) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, cast_modifier, .. }
+        if *object_id == card_in_hand
+            && matches!(cast_modifier, arcana_core::actions::CastModifier::SplitRight)
+    )).cloned()
+}
+
+#[test]
+fn fire_left_half_cast_deals_2_damage_to_graveyard() {
+    let (mut s, registry, ids) = fresh_game();
+    let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = fire_cast_action(&actions, fi).expect("fire (left) cast offered");
+    // Retarget deterministically at bears.
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![
+                    arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                        arcana_core::targets::ObjectOrPlayer::Object(bears)),
+                ],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Bears (2 toughness) dies to 2 damage.
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "bears die to 2 damage from Fire");
+    // Fire goes to its owner's graveyard.
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+        "Fire resolves into its owner's graveyard");
+    assert_eq!(s.zone_count(Zone::Exile), 0,
+        "no exile routing for split halves");
+}
+
+#[test]
+fn ice_right_half_cast_taps_target_permanent_to_graveyard() {
+    let (mut s, registry, ids) = fresh_game();
+    let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Blue, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = ice_cast_action(&actions, fi).expect("ice (right) cast offered");
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Bears tapped, still on battlefield (Ice doesn't damage).
+    let bears_obj = s.objects.get(bears).expect("bears still alive");
+    assert!(bears_obj.is_tapped(),
+        "bears tapped by Ice");
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 0,
+        "bears are tapped, not dead");
+    // Ice goes to graveyard.
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+        "Ice resolves into owner's graveyard");
+}
+
+#[test]
+fn split_both_halves_offered_with_both_mana() {
+    // With enough mana for both halves simultaneously, legal_actions
+    // emits both the Fire cast and the Ice cast. Agent picks one.
+    let (mut s, registry, ids) = fresh_game();
+    let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
+    let _bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Blue, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 2);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(fire_cast_action(&actions, fi).is_some(),
+        "fire (left) cast offered");
+    assert!(ice_cast_action(&actions, fi).is_some(),
+        "ice (right) cast offered");
+}
+
+#[test]
+fn split_right_not_offered_without_blue_mana() {
+    let (mut s, registry, ids) = fresh_game();
+    let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
+    let _bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    // Only red mana — Fire castable, Ice not.
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(fire_cast_action(&actions, fi).is_some(),
+        "fire castable with {{R}}{{1}}");
+    assert!(ice_cast_action(&actions, fi).is_none(),
+        "ice NOT offered without {{U}}");
+}
+
+#[test]
+fn split_halves_are_instant_speed() {
+    // Both Fire and Ice are instants; the split right-half cast
+    // should be legal on the opponent's turn (outside main phase
+    // for the caster).
+    let (mut s, registry, ids) = fresh_game();
+    let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
+    let _bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Blue, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    // Hand-craft an opponent's-turn priority window.
+    s.priority.give_to(0);
+    s.turn.active_player = 1;
+    s.turn.phase = arcana_core::turn::Phase::PreCombatMain;
+    s.turn.step = arcana_core::turn::Step::Main;
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(ice_cast_action(&actions, fi).is_some(),
+        "Ice (instant right half) castable on opponent's turn");
+}
+
+// ---------------------------------------------------------------------
 // MDFC (CR 712.4) — Tangled Florahedron // Tangled Vale
 // ---------------------------------------------------------------------
 //

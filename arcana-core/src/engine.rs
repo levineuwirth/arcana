@@ -307,6 +307,17 @@ fn apply_cast_spell(
                 .is_some_and(|f| !f.characteristics.types.is_land());
             if !back_is_spell { return; }
         }
+        crate::actions::CastModifier::SplitRight => {
+            // CR 711 — cast the right half of a split card from
+            // hand. Source must be in the caster's hand and the
+            // card must declare a Split relationship.
+            let from_hand = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Hand(controller));
+            if !from_hand { return; }
+            if split_right_face_of(state, registry, object_id).is_none() {
+                return;
+            }
+        }
     }
 
     // Modal validation (CR 700.2). A modal spell requires the caster to
@@ -379,6 +390,9 @@ fn apply_cast_spell(
                     .and_then(|f| f.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::MdfcBack =>
                 mdfc_back_face_of(state, registry, object_id)
+                    .and_then(|f| f.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::SplitRight =>
+                split_right_face_of(state, registry, object_id)
                     .and_then(|f| f.characteristics.mana_cost.clone()),
         };
         let generic_total: u32 = cost_opt.as_ref()
@@ -488,6 +502,9 @@ fn apply_cast_spell(
             crate::actions::CastModifier::MdfcBack =>
                 mdfc_back_face_of(state, registry, object_id)
                     .and_then(|f| f.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::SplitRight =>
+                split_right_face_of(state, registry, object_id)
+                    .and_then(|f| f.characteristics.mana_cost.clone()),
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -555,6 +572,8 @@ fn apply_cast_spell(
         crate::actions::CastModifier::Adventure);
     let is_mdfc_back_cast = matches!(cast_modifier,
         crate::actions::CastModifier::MdfcBack);
+    let is_split_right_cast = matches!(cast_modifier,
+        crate::actions::CastModifier::SplitRight);
     let adventure_face = if is_adventure_cast {
         card_def.and_then(|d| d.alternate_face.as_ref())
             .and_then(|af| af.as_adventure())
@@ -562,6 +581,10 @@ fn apply_cast_spell(
     let mdfc_back_face = if is_mdfc_back_cast {
         card_def.and_then(|d| d.alternate_face.as_ref())
             .and_then(|af| af.as_mdfc())
+    } else { None };
+    let split_right_face = if is_split_right_cast {
+        card_def.and_then(|d| d.alternate_face.as_ref())
+            .and_then(|af| af.as_split())
     } else { None };
     let pre_adventure_chars = if is_adventure_cast {
         let swapped_chars = adventure_face.map(|f| f.characteristics.clone());
@@ -572,20 +595,35 @@ fn apply_cast_spell(
             Some(prior)
         } else { None }
     } else { None };
-    // MDFC back-face casts swap characteristics the same way as
-    // Adventure — the announced object needs the back face's sheet
-    // on the stack entry. Unlike Adventure, we do NOT snapshot the
-    // pre-swap (front-face) characteristics: CR 712.2b's revert to
-    // front-face in off-BF/off-stack zones is deferred (no seed
-    // exercises reanimation or graveyard-matters on MDFC cards), so
-    // the back-face chars ride through to the battlefield or
-    // graveyard as-is. See `with_mdfc_back` for the deferral note.
+    // MDFC back-face and Split right-face casts swap characteristics
+    // the same way as Adventure — the announced object needs the
+    // chosen face's sheet on the stack entry. Unlike Adventure, we
+    // do NOT snapshot the pre-swap characteristics: CR 712.2b's
+    // revert to default-face in off-BF/off-stack zones is deferred
+    // (no seed exercises reanimation or graveyard-matters on
+    // multi-face cards). See `with_mdfc_back` and `with_split_right`
+    // for the deferral notes.
     if is_mdfc_back_cast {
         let swapped_chars = mdfc_back_face.map(|f| f.characteristics.clone());
         if let (Some(swapped), Some(obj)) = (swapped_chars,
             state.objects.get_mut(object_id))
         {
             obj.characteristics = swapped;
+            obj.visible_face = 1;
+        }
+    }
+    if is_split_right_cast {
+        let swapped_chars = split_right_face.map(|f| f.characteristics.clone());
+        if let (Some(swapped), Some(obj)) = (swapped_chars,
+            state.objects.get_mut(object_id))
+        {
+            obj.characteristics = swapped;
+            // Split halves are always non-permanent spells; they
+            // never sit on the battlefield, so `visible_face` has
+            // no observable effect. We flag it anyway for
+            // consistency with MDFC and so any future face-gated
+            // ability (Fuse's shared triggers, e.g.) reads a
+            // coherent value.
             obj.visible_face = 1;
         }
     }
@@ -603,6 +641,10 @@ fn apply_cast_spell(
         let sa = mdfc_back_face.and_then(|f| f.spell_ability.as_ref());
         let ew = card_def.map(|d| d.enters_with.clone()).unwrap_or_default();
         (sa, ew)
+    } else if is_split_right_cast {
+        // Split right half supplies its own spell ability. No
+        // enters_with — both halves are non-permanent spells.
+        (split_right_face.and_then(|f| f.spell_ability.as_ref()), Vec::new())
     } else {
         let sa = card_def.and_then(|def| def.spell_ability.as_ref());
         let ew = card_def.map(|d| d.enters_with.clone()).unwrap_or_default();
@@ -777,6 +819,21 @@ pub(crate) fn mdfc_back_face_of<'r>(
     let card_id = state.objects.get(object_id)?.card_id;
     let def = registry.get(card_id)?;
     def.alternate_face.as_ref()?.as_mdfc()
+}
+
+/// Return the right half of the Split card backing `object_id`, if
+/// the card has a Split relationship (CR 711). Mirrors
+/// [`adventure_face_of`] and [`mdfc_back_face_of`]; the three
+/// `AlternateFace` variants are mutually exclusive on a single card
+/// (at most one relationship per [`CardDefinition`]).
+pub(crate) fn split_right_face_of<'r>(
+    state: &GameState,
+    registry: &'r crate::registry::CardRegistry,
+    object_id: ObjectId,
+) -> Option<&'r crate::registry::CardFace> {
+    let card_id = state.objects.get(object_id)?.card_id;
+    let def = registry.get(card_id)?;
+    def.alternate_face.as_ref()?.as_split()
 }
 
 
@@ -2188,6 +2245,10 @@ fn resolution_target_requirements(
                     def.and_then(|d| d.alternate_face.as_ref())
                         .and_then(|af| af.as_mdfc())
                         .and_then(|f| f.spell_ability.as_ref()),
+                crate::actions::CastModifier::SplitRight =>
+                    def.and_then(|d| d.alternate_face.as_ref())
+                        .and_then(|af| af.as_split())
+                        .and_then(|f| f.spell_ability.as_ref()),
                 _ => def.and_then(|d| d.spell_ability.as_ref()),
             };
             sa.map(|sa| crate::registry::effective_target_requirements(sa, &entry.modes))
@@ -2236,6 +2297,10 @@ fn resolution_effects(
                 crate::actions::CastModifier::MdfcBack =>
                     def.alternate_face.as_ref()
                         .and_then(|af| af.as_mdfc())
+                        .and_then(|f| f.spell_ability.as_ref()),
+                crate::actions::CastModifier::SplitRight =>
+                    def.alternate_face.as_ref()
+                        .and_then(|af| af.as_split())
                         .and_then(|f| f.spell_ability.as_ref()),
                 _ => def.spell_ability.as_ref(),
             };

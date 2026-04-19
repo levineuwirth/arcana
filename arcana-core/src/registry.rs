@@ -248,6 +248,23 @@ impl CardDefinition {
         self
     }
 
+    /// CR 711 — Split card. Declares the card's right half (an
+    /// instant or sorcery with its own name, mana cost, type line,
+    /// and rules text). The left half lives on
+    /// [`Self::base_characteristics`] / [`Self::spell_ability`] as
+    /// usual; either half is castable from hand via its own cost.
+    /// The engine enumerates a [`crate::actions::CastModifier::SplitRight`]
+    /// cast path alongside the normal (left-half) hand cast.
+    ///
+    /// Fuse (CR 702.102, Dragon's Maze) — the variant where a split
+    /// card may be cast for the combined cost of both halves — is
+    /// deferred. When it returns, a `fuse_cost: Option<ManaCost>`
+    /// field pairs with this helper.
+    pub fn with_split_right(mut self, face: CardFace) -> Self {
+        self.alternate_face = Some(AlternateFace::Split(face));
+        self
+    }
+
     /// CR 702.34 — Madness. Adds [`KeywordAbility::Madness(cost)`] to
     /// the card's base characteristics. Unlike cycling, there's no
     /// synthesized activated ability — Madness is consulted by the
@@ -375,6 +392,23 @@ pub enum AlternateFace {
     /// as the turn's land drop rather than cast. See
     /// [`CardDefinition::with_mdfc_back`] for the engine wiring.
     Mdfc(CardFace),
+    /// CR 711 — Split card. The card has two instant-or-sorcery
+    /// halves side by side; the caster chooses one half at cast
+    /// time. The left half rides on
+    /// [`CardDefinition::base_characteristics`] /
+    /// [`CardDefinition::spell_ability`]; the right half is this
+    /// payload. Unlike MDFC there is no land half and no
+    /// permanent-on-battlefield residue — both halves resolve to
+    /// graveyard as normal instants/sorceries.
+    ///
+    /// CR 711.4b says split cards have the combined characteristics
+    /// of both halves in zones other than the stack. This engine's
+    /// Phase 2 does not implement that combined view; queries
+    /// against a split card in hand / graveyard see only the left
+    /// half. No current seed exercises the combined-char behavior
+    /// (it matters for effects like Knowledge Pool and Chromatic
+    /// Lantern's color-identity checks, which haven't landed).
+    Split(CardFace),
 }
 
 impl AlternateFace {
@@ -394,6 +428,15 @@ impl AlternateFace {
     pub fn as_mdfc(&self) -> Option<&CardFace> {
         match self {
             AlternateFace::Mdfc(face) => Some(face),
+            _ => None,
+        }
+    }
+
+    /// Unwrap the Split right half, if this relationship is Split.
+    /// Returns `None` for the other variants.
+    pub fn as_split(&self) -> Option<&CardFace> {
+        match self {
+            AlternateFace::Split(face) => Some(face),
             _ => None,
         }
     }

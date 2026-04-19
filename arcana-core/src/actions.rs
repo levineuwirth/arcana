@@ -91,6 +91,14 @@ pub enum CastModifier {
     /// graveyard. Back faces that are *lands* are played via
     /// [`Action::PlayLand::mdfc_back`] instead of this cast path.
     MdfcBack,
+    /// CR 711 — cast the right half of a split card. Mirrors
+    /// [`Self::MdfcBack`] structurally: swap to the alternate
+    /// face's cost / type / spell ability, resolve to graveyard.
+    /// Split halves are always instants or sorceries — there is no
+    /// permanent or land variant — so the post-resolution path is
+    /// always "go to owner's graveyard" via the normal non-permanent
+    /// spell finalize.
+    SplitRight,
 }
 
 /// Bundle of *cost-reduction* choices (CR 601.2f category: "cost

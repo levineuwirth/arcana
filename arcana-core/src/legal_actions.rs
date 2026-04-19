@@ -922,6 +922,67 @@ fn legal_priority_actions(
         }
     }
 
+    // Split right-half casts from hand (CR 711). Walks the hand for
+    // cards whose registry definition declares a Split relationship.
+    // The right half's cost, targets, and type govern the cast; the
+    // left half is already enumerated by the main hand-cast loop
+    // above (via `base_characteristics`). Mirrors the MDFC back-face
+    // branch structurally — the only differences are the variant
+    // name and the lack of a land-back case.
+    for id in sorted_ids_in_zone(state, Zone::Hand(player)) {
+        let Some(obj) = state.objects.get(id) else { continue; };
+        let Some(def) = registry.get(obj.card_id) else { continue; };
+        let Some(right) = def.alternate_face.as_ref()
+            .and_then(|af| af.as_split()) else { continue; };
+        let Some(right_cost) = right.characteristics.mana_cost.clone()
+            else { continue; };
+
+        let right_is_instant_speed = right.characteristics.types.is_instant();
+        if !right_is_instant_speed && !sorcery_speed_ok { continue; }
+
+        let reqs: Vec<TargetRequirement> = right.spell_ability.as_ref()
+            .map(|sa| sa.target_requirements.clone())
+            .unwrap_or_default();
+        let target_selections = enumerate_target_selections(&reqs, state, player);
+        if target_selections.is_empty() { continue; }
+
+        let ctx = SpendContext::for_spell(
+            right.characteristics.types, right.characteristics.colors);
+
+        let has_x = right_cost.x_count() > 0;
+        let x_values: Vec<u32> = if has_x {
+            let max_x = state.player(player).mana_pool.total() as u32;
+            (0..=max_x).collect()
+        } else {
+            vec![0]
+        };
+
+        for &x in &x_values {
+            let cost = if has_x {
+                right_cost.with_x_expanded(x)
+            } else {
+                right_cost.clone()
+            };
+            let x_value = if has_x { Some(x) } else { None };
+            let plans = enumerate_payment_plans(
+                &cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in plans {
+                for targets in &target_selections {
+                    actions.push(Action::CastSpell {
+                        object_id: id,
+                        targets: targets.clone(),
+                        modes: Vec::new(),
+                        mana_payment: plan.clone(),
+                        additional_costs: Vec::new(),
+                        x_value,
+                        cast_modifier: crate::actions::CastModifier::SplitRight,
+                        cost_reductions: crate::actions::CostReductions::default(),
+                    });
+                }
+            }
+        }
+    }
+
     // Adventure casts from hand (CR 715). Walks the hand for cards
     // whose registry definition carries an Adventure face. The
     // Adventure face's own mana cost, target requirements, and
