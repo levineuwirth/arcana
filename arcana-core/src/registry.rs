@@ -183,6 +183,27 @@ impl CardDefinition {
         });
         self
     }
+
+    /// CR 702.34 — Madness. Adds [`KeywordAbility::Madness(cost)`] to
+    /// the card's base characteristics. Unlike cycling, there's no
+    /// synthesized activated ability — Madness is consulted by the
+    /// engine's discard path (CR 702.34a replacement routes the
+    /// discard to exile instead of graveyard) and by
+    /// [`crate::legal_actions`] (emits a
+    /// [`crate::actions::CastModifier::Madness`] cast path for
+    /// flagged exile objects). The keyword presence is what ties
+    /// both sides together; adding it via this helper keeps the
+    /// card definition terse.
+    pub fn with_madness(mut self, cost: crate::mana::ManaCost) -> Self {
+        use crate::effects::KeywordAbility;
+        let already_has = self.base_characteristics.keywords.iter().any(|kw|
+            matches!(kw, KeywordAbility::Madness(_)));
+        if !already_has {
+            self.base_characteristics.keywords.push(
+                KeywordAbility::Madness(cost));
+        }
+        self
+    }
 }
 
 /// Canonical cycling effect: the activator draws a card (CR 702.29a).

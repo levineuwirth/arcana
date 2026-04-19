@@ -54,6 +54,14 @@ pub enum CastModifier {
     /// counter / fizzle) routes to exile rather than the owner's
     /// graveyard.
     Flashback,
+    /// CR 702.34 — cast from exile via madness. The card entered
+    /// exile via the madness discard-replacement and carries
+    /// `madness_pending=true` on its [`crate::objects::GameObject`].
+    /// Unlike flashback, madness-cast spells leave the stack to
+    /// their *normal* destination (graveyard for non-permanents,
+    /// battlefield for permanents) — the madness exile was a
+    /// stepping-stone zone, not the post-resolution zone.
+    Madness,
 }
 
 /// Bundle of *cost-reduction* choices (CR 601.2f category: "cost

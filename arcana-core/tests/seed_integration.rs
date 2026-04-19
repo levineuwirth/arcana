@@ -2517,3 +2517,172 @@ fn tranquil_thicket_only_cycling_offered_from_hand() {
          while the card is in hand");
 }
 
+// ---------------------------------------------------------------------
+// Madness (CR 702.34) — Fiery Temper
+// ---------------------------------------------------------------------
+//
+// Fiery Temper is {1}{R}{R} for 3 damage, with Madness {R}. The seed
+// proves the three moving parts:
+//
+//   1. Discard replacement — discarding a madness card routes it to
+//      exile with `madness_pending=true`, not graveyard.
+//   2. Legal-action enumeration — flagged exile objects are offered
+//      as CastSpell with `CastModifier::Madness`, using the madness
+//      cost.
+//   3. Resolution routing — madness-cast instants leave the stack to
+//      graveyard (not back to exile); the flag is cleared on re-id.
+//
+// Discard is driven through `state.discard_object` directly to keep
+// the test scope on madness, not on the discard-triggering cards.
+
+fn madness_cast_action(
+    actions: &[Action],
+    object_id_in_exile: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a, Action::CastSpell {
+        object_id, cast_modifier, ..
+    } if *object_id == object_id_in_exile
+        && matches!(cast_modifier, arcana_core::actions::CastModifier::Madness)
+    )).cloned()
+}
+
+#[test]
+fn discarded_madness_card_routes_to_exile_with_flag() {
+    let (mut s, registry, ids) = fresh_game();
+    let temper = put_in_hand(&mut s, &registry, 0, ids.fiery_temper);
+
+    // Direct discard — the madness replacement is built into
+    // GameState::discard_object, so this exercises the same path
+    // every discard effect flows through.
+    let new_id = s.discard_object(0, temper,
+        arcana_core::events::MoveCause::Cost)
+        .expect("discard_object returns the new id");
+
+    // Card is in exile, not graveyard, with madness_pending set.
+    assert_eq!(s.zone_count(Zone::Exile), 1,
+        "madness card goes to exile");
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 0,
+        "madness card does NOT go to graveyard");
+    let obj = s.objects.get(new_id).expect("exile object exists");
+    assert!(obj.madness_pending,
+        "exile object is flagged madness_pending");
+    assert_eq!(obj.zone, Zone::Exile);
+}
+
+#[test]
+fn discarded_non_madness_card_still_goes_to_graveyard() {
+    // Regression: Lightning Bolt has no Madness keyword. Discard
+    // must still route to graveyard via the unchanged path.
+    let (mut s, registry, ids) = fresh_game();
+    let bolt = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    s.discard_object(0, bolt, arcana_core::events::MoveCause::Cost);
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+        "non-madness card discarded normally");
+    assert_eq!(s.zone_count(Zone::Exile), 0,
+        "no exile detour for non-madness");
+}
+
+#[test]
+fn legal_actions_offers_madness_cast_from_exile() {
+    let (mut s, registry, ids) = fresh_game();
+    let temper = put_in_hand(&mut s, &registry, 0, ids.fiery_temper);
+    let _bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    // Discard the temper — it goes to exile with the flag.
+    let exile_id = s.discard_object(0, temper,
+        arcana_core::events::MoveCause::Cost).unwrap();
+    // Mana to cast for madness cost {R}.
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(madness_cast_action(&actions, exile_id).is_some(),
+        "madness cast enumerated for flagged exile object with {{R}} \
+         in pool");
+}
+
+#[test]
+fn madness_cast_end_to_end_deals_3_damage_then_graveyard() {
+    let (mut s, registry, ids) = fresh_game();
+    let temper = put_in_hand(&mut s, &registry, 0, ids.fiery_temper);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    let exile_id = s.discard_object(0, temper,
+        arcana_core::events::MoveCause::Cost).unwrap();
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = madness_cast_action(&actions, exile_id)
+        .expect("madness cast must be offered");
+
+    // Retarget the cast at bears deterministically; enumeration
+    // will have picked one target but either player or bears works
+    // for this fixture — pin to bears for the death assertion.
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![
+                    arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                        arcana_core::targets::ObjectOrPlayer::Object(bears)),
+                ],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Bears (2 toughness) dies to 3 damage.
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "Bears in p1's graveyard after madness-cast damage");
+    // Fiery Temper, being a non-permanent, leaves the stack to
+    // graveyard (NOT back to exile — madness's exile was just a
+    // stepping stone).
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+        "Fiery Temper in p0's graveyard post-resolution");
+    assert_eq!(s.zone_count(Zone::Exile), 0,
+        "exile is empty — madness flag didn't re-exile the spell");
+}
+
+#[test]
+fn madness_cast_not_offered_without_madness_mana() {
+    let (mut s, registry, ids) = fresh_game();
+    let temper = put_in_hand(&mut s, &registry, 0, ids.fiery_temper);
+    let exile_id = s.discard_object(0, temper,
+        arcana_core::events::MoveCause::Cost).unwrap();
+    // No mana.
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(madness_cast_action(&actions, exile_id).is_none(),
+        "empty pool → no madness-cast enumeration");
+}
+
+#[test]
+fn madness_cast_not_offered_for_unflagged_exile_object() {
+    // If a Fiery Temper is in exile WITHOUT madness_pending (put
+    // there by some other exile effect, not the madness
+    // replacement), it must not be offered as a madness cast. The
+    // flag is the gate, not mere presence in exile.
+    let (mut s, registry, ids) = fresh_game();
+    let temper_id = {
+        let obj_id = s.allocate_object_id();
+        let chars = registry.get(ids.fiery_temper).unwrap()
+            .base_characteristics.clone();
+        s.objects.insert(GameObject::new(
+            obj_id, 0, Zone::Exile, ids.fiery_temper, chars));
+        obj_id
+    };
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(madness_cast_action(&actions, temper_id).is_none(),
+        "unflagged exile object is not madness-castable");
+}
+

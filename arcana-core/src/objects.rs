@@ -133,6 +133,17 @@ pub struct GameObject {
     pub has_deathtouch_damage: bool,
     pub abilities: Vec<AbilityId>,
     pub status: PermanentStatus,
+    /// CR 702.34a — Madness replacement marker. Set when the
+    /// discard-to-madness-exile replacement routes the card to
+    /// [`Zone::Exile`] instead of graveyard; cleared when the card
+    /// leaves exile (madness cast succeeds, or some other effect
+    /// moves it). While the flag is on, [`crate::legal_actions`]
+    /// emits a [`CastModifier::Madness`] cast path for the object
+    /// using its [`crate::effects::KeywordAbility::Madness`] cost.
+    /// The flag does not migrate across zone-change re-ids — it
+    /// only lives during the brief exile window between discard and
+    /// cast/cleanup.
+    pub madness_pending: bool,
 }
 
 impl GameObject {
@@ -159,6 +170,7 @@ impl GameObject {
             has_deathtouch_damage: false,
             abilities: Vec::new(),
             status: PermanentStatus::default(),
+            madness_pending: false,
         }
     }
 
@@ -322,6 +334,12 @@ impl GameObject {
         self.damage_marked = 0;
         self.has_deathtouch_damage = false;
         self.status = PermanentStatus::default();
+        // Madness marker is a single-use zone-specific flag (CR
+        // 702.34a). It's set in exile when the discard-replacement
+        // fires; leaving exile (via madness cast, cleanup, or any
+        // other effect) drops the flag. The re-id on zone change
+        // then gives the downstream zone a clean object.
+        self.madness_pending = false;
     }
 }
 

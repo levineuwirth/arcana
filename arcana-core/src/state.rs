@@ -545,6 +545,46 @@ impl GameState {
         Some(new_id)
     }
 
+    /// Discard a single card from `player`'s hand. Routes through the
+    /// Madness replacement (CR 702.34a): if the card has the Madness
+    /// keyword, it moves to exile with `madness_pending=true`
+    /// instead of going to the graveyard, opening a cast window via
+    /// [`crate::actions::CastModifier::Madness`]. Non-madness cards
+    /// go to graveyard as usual.
+    ///
+    /// Emits [`GameEvent::Discarded`] referencing the pre-move id
+    /// regardless of the destination (trigger filters compare against
+    /// the LKI snapshot, which is pinned at the old id).
+    ///
+    /// DEBT (Phase 2 simplification): the player is assumed to
+    /// always elect madness-exile when available. CR 702.34a is
+    /// actually optional on the player's side — if they'd rather
+    /// send the card to the graveyard (to enable a graveyard-matters
+    /// effect, say), they may decline. Real agent choice lives with
+    /// the broader replacement-effect decision work.
+    pub fn discard_object(
+        &mut self,
+        player: crate::types::PlayerId,
+        id: ObjectId,
+        cause: crate::events::MoveCause,
+    ) -> Option<ObjectId> {
+        let has_madness = self.effective_keywords(id).iter()
+            .any(|kw| matches!(kw, crate::effects::KeywordAbility::Madness(_)));
+        let new_id = if has_madness {
+            let nid = self.move_object_to_zone(id, Zone::Exile, cause);
+            if let Some(nid) = nid {
+                if let Some(obj) = self.objects.get_mut(nid) {
+                    obj.madness_pending = true;
+                }
+            }
+            nid
+        } else {
+            self.move_object_to_zone(id, Zone::Graveyard(player), cause)
+        };
+        self.emit(GameEvent::Discarded { player, object_id: id });
+        new_id
+    }
+
     /// Arena re-id core shared by [`Self::move_object_to_zone`] and
     /// [`crate::stack::GameState::finalize_resolved_spell`] (and any
     /// other future path that performs a CR 400.7 zone transition

@@ -259,6 +259,19 @@ fn apply_cast_spell(
             if !from_own_yard { return; }
             if flashback_cost_for(state, object_id).is_none() { return; }
         }
+        crate::actions::CastModifier::Madness => {
+            // CR 702.34 — cast from exile via madness. Source must
+            // be in Exile with madness_pending=true (i.e. entered
+            // exile via the madness replacement, not some other
+            // exile effect) and must still have the Madness keyword
+            // (granted-madness would also be honored via layers).
+            let flagged_in_exile = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Exile
+                    && o.madness_pending
+                    && o.owner == controller);
+            if !flagged_in_exile { return; }
+            if madness_cost_for(state, object_id).is_none() { return; }
+        }
     }
 
     // Modal validation (CR 700.2). A modal spell requires the caster to
@@ -322,6 +335,8 @@ fn apply_cast_spell(
                 .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>
                 flashback_cost_for(state, object_id),
+            crate::actions::CastModifier::Madness =>
+                madness_cost_for(state, object_id),
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -420,6 +435,8 @@ fn apply_cast_spell(
                 .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>
                 flashback_cost_for(state, object_id),
+            crate::actions::CastModifier::Madness =>
+                madness_cost_for(state, object_id),
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -595,6 +612,23 @@ pub(crate) fn has_kicker(state: &GameState, object_id: ObjectId) -> bool {
     state.effective_keywords(object_id).into_iter()
         .any(|kw| matches!(kw, crate::effects::KeywordAbility::Kicker(_)))
 }
+
+/// Return the currently-granted madness cost for `object_id`, if
+/// any (CR 702.34). Walks [`GameState::effective_keywords`] so
+/// layer-6 grants compose with printed madness. First match wins;
+/// the rules don't define multiple-madness semantics and no printed
+/// card has it.
+pub(crate) fn madness_cost_for(
+    state: &GameState,
+    object_id: ObjectId,
+) -> Option<crate::mana::ManaCost> {
+    state.effective_keywords(object_id).into_iter()
+        .find_map(|kw| match kw {
+            crate::effects::KeywordAbility::Madness(cost) => Some(cost),
+            _ => None,
+        })
+}
+
 
 /// Valid [`crate::actions::ConvokePayment`] options for a creature
 /// with the given characteristics (CR 702.51b).
@@ -1169,12 +1203,11 @@ fn apply_choice_follow_up(
         }
         ChoiceFollowUp::Discard { player } => {
             for id in chosen {
-                let _ = state.move_object_to_zone(
-                    *id, Zone::Graveyard(player), MoveCause::Cost);
-                // `Discarded` refers to the pre-move id — that matches
-                // the old behavior and is what trigger filters compare
-                // against via LKI.
-                state.emit(GameEvent::Discarded { player, object_id: *id });
+                // Madness-aware discard. The pre-move id is what
+                // `Discarded` carries (so trigger filters that
+                // compare by id resolve via LKI the same way whether
+                // the destination was graveyard or exile).
+                let _ = state.discard_object(player, *id, MoveCause::Cost);
             }
         }
         ChoiceFollowUp::ApplyTargetsToStackEntry { .. } => {
@@ -2126,9 +2159,11 @@ fn apply_additional_costs(
                     *id, Zone::Graveyard(player), MoveCause::Cost);
             }
             A::Discard(id) => {
-                state.move_object_to_zone(
-                    *id, Zone::Graveyard(player), MoveCause::Cost);
-                state.emit(GameEvent::Discarded { player, object_id: *id });
+                // Route through the Madness-aware helper (CR 702.34a):
+                // a card with Madness on its characteristics goes to
+                // exile with `madness_pending=true` instead of
+                // graveyard, opening the madness-cast window.
+                state.discard_object(player, *id, MoveCause::Cost);
             }
             A::ExileFromGraveyard(ids) => {
                 for id in ids {

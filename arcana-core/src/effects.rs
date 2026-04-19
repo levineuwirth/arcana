@@ -1104,9 +1104,10 @@ fn discard_cards(
             let mut shuffled = hand_ids.clone();
             shuffled.shuffle(&mut rng);
             for id in shuffled.into_iter().take(take) {
-                state.move_object_to_zone(
-                    id, Zone::Graveyard(p), MoveCause::SpellResolution);
-                state.emit(GameEvent::Discarded { player: p, object_id: id });
+                // Madness-aware discard helper: the card routes to
+                // exile with `madness_pending=true` when it has the
+                // Madness keyword, else to graveyard as before.
+                let _ = state.discard_object(p, id, MoveCause::SpellResolution);
             }
         }
         DiscardChoice::ControllerChooses | DiscardChoice::OpponentChooses => {
