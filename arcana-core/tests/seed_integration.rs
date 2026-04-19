@@ -439,6 +439,77 @@ fn randomized_self_play_100_games_terminate_without_panic() {
     }
 }
 
+/// Keyword-stress matchup: skies control vs ground/deathtouch. Pairs
+/// every creature in the keyword-stress seed pack against something
+/// that cares about its keyword, so random play exercises the
+/// Flying/Reach/Vigilance/Deathtouch pipelines each game.
+///
+/// Skies side leans on {W/U/B}: Serra Angel (Flying+Vigilance) over
+/// the top, Snapcaster Mage (Flying) for recursion, plus
+/// Counterspell/Murder interaction. Ground side leans on {B/G}:
+/// Typhoid Rats (Deathtouch) trading up on the floor, Giant Spider
+/// (Reach) as the Angel answer, Elvish Visionary for card flow,
+/// Murder as cross-strategy removal.
+///
+/// Fewer games than the headline self-play (50 vs 100) because the
+/// matchup has richer combat and mid-resolution choices — enough to
+/// flush regressions, not so many that CI time doubles.
+#[test]
+fn keyword_stressed_self_play_50_games_terminate_without_panic() {
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+
+    const GAMES: u64 = 50;
+    const MAX_STEPS: u32 = 50_000;
+
+    let mut registry = CardRegistry::new();
+    let _ids = register_seed(&mut registry);
+
+    let skies = arcana_core::registry::build_deck(
+        &[
+            ("Plains", 10),
+            ("Island", 10),
+            ("Swamp", 4),
+            ("Serra Angel", 10),
+            ("Snapcaster Mage", 10),
+            ("Counterspell", 10),
+            ("Murder", 6),
+        ], &registry);
+    let ground = arcana_core::registry::build_deck(
+        &[
+            ("Swamp", 10),
+            ("Forest", 14),
+            ("Typhoid Rats", 12),
+            ("Grizzly Bears", 8),
+            ("Giant Spider", 8),
+            ("Elvish Visionary", 4),
+            ("Murder", 4),
+        ], &registry);
+
+    for g in 0..GAMES {
+        let (mut state, mut yld) = arcana_core::engine::new_game(
+            vec![skies.clone(), ground.clone()], &registry, g ^ 0xA11C_E0DE);
+        let mut rng = ChaCha8Rng::seed_from_u64(g ^ 0xB10C_CADE);
+        let mut step_count = 0u32;
+        loop {
+            match yld {
+                EngineYield::GameOver(_) => break,
+                EngineYield::PendingDecision { ref legal_actions, .. } => {
+                    assert!(!legal_actions.is_empty(),
+                        "game {g} step {step_count}: empty legal_actions");
+                    let action = pick_random_action(&mut rng, legal_actions);
+                    let (ns, ny) = step(state, action, &registry);
+                    state = ns;
+                    yld = ny;
+                }
+            }
+            step_count += 1;
+            assert!(step_count < MAX_STEPS,
+                "game {g}: {MAX_STEPS} steps without termination");
+        }
+    }
+}
+
 fn pick_random_action(
     rng: &mut rand_chacha::ChaCha8Rng,
     actions: &[Action],
