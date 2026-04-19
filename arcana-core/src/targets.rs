@@ -786,6 +786,11 @@ mod tests {
         let mut obj = GameObject::new(id, controller, Zone::Battlefield, 3, chars);
         obj.controller = controller;
         state.objects.insert(obj);
+        // Direct arena insert bypasses after_enter_battlefield, so
+        // place the PW's loyalty counters here to match the post-ETB
+        // state the real pipeline would produce.
+        state.objects.get_mut(id).unwrap()
+            .add_counters(crate::types::CounterKind::Loyalty, 3);
         id
     }
 

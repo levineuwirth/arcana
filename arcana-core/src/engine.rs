@@ -591,17 +591,29 @@ fn apply_activate_ability(
 
     // Look up the ability. Bail silently on unregistered / invalid —
     // legal_actions shouldn't have emitted such an action.
-    let (is_mana_ability, tap, sacrifice, life) = {
+    let (is_mana_ability, is_loyalty_ability, tap, sacrifice, life) = {
         let Some(obj) = state.objects.get(source) else { return; };
         let Some(def) = registry.get(obj.card_id) else { return; };
         let Some(ability) = def.activated_abilities.get(ability_index) else { return; };
         (
             ability.is_mana_ability,
+            ability.is_loyalty_ability,
             ability.cost.tap,
             ability.cost.sacrifice,
             ability.cost.life,
         )
     };
+    // CR 606.3 — loyalty activation: belt-and-suspenders validation in
+    // addition to legal_actions gating. Rejects controller mismatch,
+    // non-empty stack, or an already-activated PW. `legal_actions`
+    // filters these upstream; this mirrors the style of the rest of
+    // apply_activate_ability (silent rejection on bogus input).
+    if is_loyalty_ability {
+        let Some(obj) = state.objects.get(source) else { return; };
+        if obj.controller != controller { return; }
+        if !state.stack_is_empty() { return; }
+        if state.loyalty_activated_this_turn.contains(&source) { return; }
+    }
 
     // --- Pay costs ---
     spend_mana_plan(state, controller, &mana_payment);
@@ -666,6 +678,13 @@ fn apply_activate_ability(
             None,
         );
         state.push_stack_entry(entry);
+    }
+
+    // CR 606.3 — mark the PW as having had a loyalty ability activated
+    // this turn. Done after costs clear and the ability is launched so
+    // rejected activations don't burn the once-per-turn allowance.
+    if is_loyalty_ability {
+        state.loyalty_activated_this_turn.insert(source);
     }
 
     state.priority.record_action();
@@ -1697,6 +1716,10 @@ fn next_turn(state: &mut GameState) {
     state.turn.start_next_turn(next_ap);
     // CR 702.40a: storm count resets between turns.
     state.storm_count = 0;
+    // CR 606.3 — loyalty-activation ledger is per-turn; clear it so
+    // each PW's controller may activate exactly one loyalty ability
+    // next turn.
+    state.loyalty_activated_this_turn.clear();
     state.emit(GameEvent::TurnBegins {
         player: next_ap, turn_number: state.turn.turn_number,
     });
@@ -2083,6 +2106,15 @@ fn apply_additional_costs(
                 if let Some(obj) = state.objects.get_mut(*source) {
                     obj.remove_counters(*kind, *count);
                 }
+            }
+            A::AddCounters { source, kind, count } => {
+                // Route through place_counters so Doubling Season and
+                // friends intercept — `+1` activations should stack
+                // exactly like ETB counter-placement does.
+                state.place_counters(
+                    crate::replacement::CounterTarget::Object(*source),
+                    *kind,
+                    *count);
             }
             A::RevealCard(_id) => {
                 // Reveals are informational; no state change until

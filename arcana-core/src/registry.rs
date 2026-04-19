@@ -286,6 +286,13 @@ pub struct ActivatedAbilityDef {
     /// (b) effect produces mana, (c) not a loyalty ability. The
     /// engine trusts this flag rather than re-deriving it.
     pub is_mana_ability: bool,
+    /// CR 606 — loyalty ability. Only the PW's controller may activate,
+    /// only at sorcery speed with the stack empty, and only one per
+    /// planeswalker per turn (tracked via
+    /// [`crate::state::GameState::loyalty_activated_this_turn`]). The
+    /// engine trusts this flag rather than re-deriving from the cost
+    /// shape.
+    pub is_loyalty_ability: bool,
     pub effect: ActivatedEffectFn,
 }
 
@@ -305,6 +312,13 @@ pub struct ActivationCost {
     /// both fit this shape. Legal-action enumeration filters the
     /// ability out when the source doesn't have enough counters.
     pub remove_self_counter: Option<(CounterKind, u32)>,
+    /// "Put N [kind] counters on ~: …" — the mirror of
+    /// [`Self::remove_self_counter`]. Planeswalker plus-loyalty
+    /// costs are the canonical consumer (CR 606.2). Routed through
+    /// [`GameState::place_counters`] so Hardened Scales / Doubling
+    /// Season compose for `+1` activations just like they do for
+    /// ETB counters.
+    pub add_self_counter: Option<(CounterKind, u32)>,
 }
 
 impl ActivationCost {

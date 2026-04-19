@@ -31,6 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost::tap_only(),
                 target_requirements: Vec::new(),
                 is_mana_ability: true,
+                is_loyalty_ability: false,
                 effect: add_red_mana,
             }),
     )

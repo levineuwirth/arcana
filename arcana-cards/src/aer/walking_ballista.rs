@@ -71,6 +71,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 },
                 target_requirements: vec![],
                 is_mana_ability: false,
+                is_loyalty_ability: false,
                 effect: add_counter_to_self,
             })
             // "Remove a +1/+1 counter from ~: ~ deals 1 damage to any
@@ -85,6 +86,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 },
                 target_requirements: vec![TargetRequirement::any_target()],
                 is_mana_ability: false,
+                is_loyalty_ability: false,
                 effect: ping_any_target,
             }),
     )

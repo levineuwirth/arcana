@@ -240,12 +240,19 @@ fn pending_planeswalker_to_graveyard(state: &GameState) -> bool {
         obj.is_planeswalker() && planeswalker_loyalty(obj) <= 0)
 }
 
-/// Current loyalty of a planeswalker object = base loyalty + Loyalty
-/// counters. Returns 0 for non-planeswalkers.
+/// Current loyalty of a planeswalker object = Loyalty counter count.
+/// Returns 0 for non-planeswalkers.
+///
+/// CR 113.3c — a PW enters the battlefield with Loyalty counters
+/// equal to its printed loyalty; afterwards, loyalty = counter count.
+/// `Characteristics.loyalty` is only the *printed* starting value,
+/// used by [`crate::state::GameState::after_enter_battlefield`] to
+/// seed the ETB counter placement. Once on the battlefield the
+/// counter count is the sole source of truth; `+N:` / `−N:` costs
+/// modify the counter count via place_counters / remove_counters and
+/// the CR 704.5i check reads the counter count directly here.
 fn planeswalker_loyalty(obj: &crate::objects::GameObject) -> i32 {
-    let base = obj.characteristics.loyalty.unwrap_or(0);
-    let counters = obj.count_counters(CounterKind::Loyalty) as i32;
-    base + counters
+    obj.count_counters(CounterKind::Loyalty) as i32
 }
 
 // =============================================================================

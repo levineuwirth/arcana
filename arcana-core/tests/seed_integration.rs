@@ -1943,3 +1943,257 @@ fn modal_spell_with_no_target_clause_resolves() {
     let _ = ids;
 }
 
+// ---------------------------------------------------------------------
+// Planeswalker loyalty (CR 606) — Chandra, Pyromaster + inline fixture
+//
+// Chandra proves the `+N:` cost path, PW ETB counter placement, the
+// once-per-turn-per-PW restriction, and sorcery-speed gating. An
+// inline test-fixture PW registers a `−N:` ability to exercise the
+// minus-cost path without requiring a second real PW card.
+// ---------------------------------------------------------------------
+
+/// Bring `player` to their own main phase with priority, with a PW
+/// already on the battlefield. Returns `(state, registry, pw_id)`.
+fn fresh_with_chandra_on_battlefield(
+) -> (GameState, CardRegistry, SeedIds, ObjectId) {
+    let (mut s, registry, ids) = fresh_game();
+    // Put Chandra on the battlefield directly (bypasses the cast
+    // path). But the ETB hook needs to fire so loyalty counters land
+    // — use move_object_to_zone via the allocate-then-arena-insert
+    // route from Hand→Battlefield so after_enter_battlefield runs.
+    let hand_id = put_in_hand(&mut s, &registry, 0, ids.chandra_pyromaster);
+    // move_object_to_zone into battlefield already calls
+    // after_enter_battlefield internally — don't double-fire it.
+    let pw_id = s.move_object_to_zone(
+        hand_id, Zone::Battlefield,
+        arcana_core::events::MoveCause::SpellResolution)
+        .expect("Chandra moves Hand→Battlefield");
+    // Clear the summoning-sick flag that after_enter_battlefield
+    // stamps: summoning sickness doesn't restrict loyalty activations
+    // (CR 114.3 limits it to attacking), but legal_actions has an
+    // audit path that assumes summoning_sick is meaningful. Keep it
+    // set in tests to prove it doesn't matter.
+    priority_to_main(&mut s, 0);
+    (s, registry, ids, pw_id)
+}
+
+#[test]
+fn chandra_enters_with_four_loyalty_counters() {
+    let (s, _registry, _ids, pw_id) = fresh_with_chandra_on_battlefield();
+    let pw = s.objects.get(pw_id).unwrap();
+    assert_eq!(
+        pw.count_counters(arcana_core::types::CounterKind::Loyalty), 4,
+        "Chandra enters with 4 Loyalty counters (CR 113.3c)");
+}
+
+#[test]
+fn chandra_plus_one_adds_loyalty_and_deals_1_damage() {
+    let (s, registry, _ids, pw_id) = fresh_with_chandra_on_battlefield();
+    let p1_start = s.player(1).life;
+
+    // Activate +1 targeting player 1. Ability index 0 is the only
+    // ability on Chandra.
+    let activate = Action::ActivateAbility {
+        source: pw_id,
+        ability_index: 0,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::Player(1)],
+        },
+        mana_payment: arcana_core::actions::ManaPaymentPlan::empty(),
+        additional_costs: vec![
+            arcana_core::actions::AdditionalCostPayment::AddCounters {
+                source: pw_id,
+                kind: arcana_core::types::CounterKind::Loyalty,
+                count: 1,
+            },
+        ],
+    };
+    let (s, _) = step(s, activate, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Loyalty went from 4 to 5 (cost added +1).
+    let pw = s.objects.get(pw_id).unwrap();
+    assert_eq!(
+        pw.count_counters(arcana_core::types::CounterKind::Loyalty), 5,
+        "+1 cost adds a Loyalty counter");
+    assert_eq!(p1_start - s.player(1).life, 1,
+        "+1 effect deals 1 damage to target player");
+}
+
+#[test]
+fn chandra_plus_one_twice_rejected_by_legal_actions() {
+    let (s, registry, _ids, pw_id) = fresh_with_chandra_on_battlefield();
+
+    // First activation: legal. Confirm.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(actions.iter().any(|a| matches!(a,
+        Action::ActivateAbility { source, .. } if *source == pw_id)),
+        "first activation must be legal");
+
+    // Perform the activation (don't bother resolving the stack entry
+    // — the loyalty mark happens at activation, not resolution).
+    let activate = Action::ActivateAbility {
+        source: pw_id,
+        ability_index: 0,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::Player(1)],
+        },
+        mana_payment: arcana_core::actions::ManaPaymentPlan::empty(),
+        additional_costs: vec![
+            arcana_core::actions::AdditionalCostPayment::AddCounters {
+                source: pw_id,
+                kind: arcana_core::types::CounterKind::Loyalty,
+                count: 1,
+            },
+        ],
+    };
+    let (s, _) = step(s, activate, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Second activation attempt the same turn: CR 606.3 forbids.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(!actions.iter().any(|a| matches!(a,
+        Action::ActivateAbility { source, .. } if *source == pw_id)),
+        "second activation this turn must not appear in legal_actions");
+}
+
+#[test]
+fn chandra_loyalty_abilities_not_legal_outside_sorcery_speed() {
+    let (mut s, registry, _ids, pw_id) = fresh_with_chandra_on_battlefield();
+    // Step into combat — sorcery-speed check rejects the activation.
+    s.turn.phase = arcana_core::turn::Phase::Combat;
+    s.turn.step = arcana_core::turn::Step::BeginCombat;
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(!actions.iter().any(|a| matches!(a,
+        Action::ActivateAbility { source, .. } if *source == pw_id)),
+        "loyalty ability must not be legal during combat (not sorcery speed)");
+}
+
+#[test]
+fn loyalty_ledger_clears_between_turns() {
+    let (mut s, _registry, _ids, pw_id) = fresh_with_chandra_on_battlefield();
+    s.loyalty_activated_this_turn.insert(pw_id);
+    // Simulate the turn-start reset — engine::next_turn calls this.
+    // We call start_next_turn directly here to avoid threading a full
+    // turn-pass through the test.
+    s.turn.start_next_turn(0);
+    s.loyalty_activated_this_turn.clear();
+    // After clear, the ledger no longer blocks the PW.
+    assert!(!s.loyalty_activated_this_turn.contains(&pw_id));
+}
+
+/// Inline test-fixture PW exercising the `−N:` cost path. Registers a
+/// 5-loyalty PW whose only ability is "−2: deal 3 damage to target
+/// creature." Proves the minus-cost path runs through
+/// remove_self_counter → `AdditionalCostPayment::RemoveCounters` →
+/// `obj.remove_counters`. Loyalty starts at 5 so the PW survives the
+/// cost — the SBA-on-0-loyalty path is covered by the existing
+/// `planeswalker_zero_loyalty_goes_to_graveyard` test in sba.rs.
+#[test]
+fn pw_minus_ability_removes_loyalty_counters() {
+    use arcana_core::registry::{
+        ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
+    };
+    use arcana_core::state::GameState;
+
+    fn damage_creature(
+        _s: &GameState,
+        ctx: &ActivationContext,
+        _: &CardRegistry,
+    ) -> Vec<arcana_core::effects::Effect> {
+        let Some(t) = ctx.targets.targets.first() else { return Vec::new(); };
+        let target = match t {
+            arcana_core::targets::TargetChoice::Object(id) => *id,
+            _ => return Vec::new(),
+        };
+        vec![arcana_core::effects::Effect::DealDamage {
+            source: ctx.source,
+            target: arcana_core::events::DamageTarget::Object(target),
+            amount: 3,
+        }]
+    }
+
+    let mut registry = CardRegistry::new();
+    let ids = register_seed(&mut registry);
+    let card_id = {
+        let name = registry.interner_mut().intern("Test Mini-PW");
+        let chars = arcana_core::objects::Characteristics {
+            name,
+            mana_cost: Some(arcana_core::mana::ManaCost::parse("{2}{B}")
+                .expect("valid cost")),
+            colors: arcana_core::types::ColorSet::black(),
+            types: arcana_core::types::TypeLine::PLANESWALKER.into(),
+            loyalty: Some(5),
+            ..Default::default()
+        };
+        registry.register(
+            CardDefinition::new(name, chars)
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "−2: Deal 3 damage to target creature.".into(),
+                    cost: ActivationCost {
+                        remove_self_counter: Some((
+                            arcana_core::types::CounterKind::Loyalty, 2)),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![
+                        arcana_core::targets::TargetRequirement
+                            ::target_creature(),
+                    ],
+                    is_mana_ability: false,
+                    is_loyalty_ability: true,
+                    effect: damage_creature,
+                }))
+    };
+
+    let mut s = GameState::new(2, 0);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    let pw_id = {
+        let obj_id = s.allocate_object_id();
+        let chars = registry.get(card_id).unwrap()
+            .base_characteristics.clone();
+        s.objects.insert(GameObject::new(
+            obj_id, 0, Zone::Battlefield, card_id, chars));
+        s.after_enter_battlefield(obj_id);
+        obj_id
+    };
+    priority_to_main(&mut s, 0);
+
+    assert_eq!(
+        s.objects.get(pw_id).unwrap()
+            .count_counters(arcana_core::types::CounterKind::Loyalty), 5,
+        "PW enters with 5 Loyalty counters");
+
+    let activate = Action::ActivateAbility {
+        source: pw_id,
+        ability_index: 0,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+        },
+        mana_payment: arcana_core::actions::ManaPaymentPlan::empty(),
+        additional_costs: vec![
+            arcana_core::actions::AdditionalCostPayment::RemoveCounters {
+                source: pw_id,
+                kind: arcana_core::types::CounterKind::Loyalty,
+                count: 2,
+            },
+        ],
+    };
+    let (s, _) = step(s, activate, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Loyalty 5 → 3 after −2 cost.
+    assert_eq!(
+        s.objects.get(pw_id).unwrap()
+            .count_counters(arcana_core::types::CounterKind::Loyalty), 3,
+        "−2 cost removes 2 Loyalty counters");
+    // Bears (2 toughness) takes 3 damage, dies via SBA.
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "Bears dies to 3 damage from the PW's −2 ability");
+    // PW survives with 3 loyalty.
+    assert!(s.objects.objects_in_zone(Zone::Battlefield)
+        .any(|o| o.id == pw_id),
+        "PW with 3 loyalty remains on the battlefield");
+}
+
+

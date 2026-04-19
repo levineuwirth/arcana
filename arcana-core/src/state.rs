@@ -174,6 +174,15 @@ pub struct GameState {
     /// pass is the CR-mandated retention window for LKI used by
     /// triggers that watch zone changes.
     pub lki: HashMap<ObjectId, GameObject>,
+    /// CR 606.3 — the set of planeswalkers whose controller has
+    /// activated a loyalty ability this turn. Each PW can have at most
+    /// one loyalty ability activated by its controller per turn; this
+    /// tracks that. Cleared in [`crate::turn::TurnState::start_next_turn`]
+    /// (via [`crate::engine::step`]'s turn-start hook). Keyed by the
+    /// PW's live `ObjectId` — zone changes re-id the object (CR 400.7),
+    /// so a PW that leaves and re-enters the battlefield is a new
+    /// entry for this set.
+    pub loyalty_activated_this_turn: crate::collections::HashSet<ObjectId>,
 }
 
 /// Parked cascade state between exile-and-prompt and the YesNo
@@ -240,6 +249,7 @@ impl GameState {
             currently_resolving: None,
             pending_choice_follow_up: None,
             lki: HashMap::default(),
+            loyalty_activated_this_turn: crate::collections::HashSet::default(),
         }
     }
 
@@ -422,6 +432,23 @@ impl GameState {
         for (kind, count) in replacements.additional_counters {
             self.place_counters(
                 crate::replacement::CounterTarget::Object(id), kind, count);
+        }
+        // CR 113.3c — a planeswalker entering the battlefield places
+        // Loyalty counters equal to its printed loyalty. Routed through
+        // `place_counters` so replacement effects (Doubling Season on
+        // PW ETB counters, etc.) compose. Phase 2-A gap closed — the
+        // previous "Phase 3" comment referred to cost-contingent
+        // loyalty (Nissa, Steward of Elements), which is still
+        // deferred; vanilla printed-loyalty PWs work now.
+        let base_loyalty = self.objects.get(id)
+            .and_then(|o| o.characteristics.loyalty);
+        if let Some(n) = base_loyalty {
+            if n > 0 {
+                self.place_counters(
+                    crate::replacement::CounterTarget::Object(id),
+                    crate::types::CounterKind::Loyalty,
+                    n as u32);
+            }
         }
         if let Some(obj) = self.objects.get_mut(id) {
             if replacements.enter_tapped {

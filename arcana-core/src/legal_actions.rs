@@ -1222,7 +1222,9 @@ fn enumerate_activation_actions(
         let Some(def) = registry.get(obj.card_id) else { continue; };
 
         for (i, ability) in def.activated_abilities.iter().enumerate() {
-            if !ability_is_activatable(state, obj, ability, sorcery_speed_ok) {
+            if !ability_is_activatable(
+                state, obj, ability, player, sorcery_speed_ok,
+            ) {
                 continue;
             }
             // Enumerate payment plans for the mana portion of the cost.
@@ -1261,9 +1263,10 @@ fn enumerate_activation_actions(
 /// tap-cost (must be untapped), sacrifice-cost (must exist), and
 /// the mana-ability-at-any-time rule vs. sorcery-speed abilities.
 fn ability_is_activatable(
-    _state: &GameState,
+    state: &GameState,
     obj: &crate::objects::GameObject,
     ability: &crate::registry::ActivatedAbilityDef,
+    activator: crate::types::PlayerId,
     sorcery_speed_ok: bool,
 ) -> bool {
     if obj.zone != Zone::Battlefield { return false; }
@@ -1293,6 +1296,19 @@ fn ability_is_activatable(
     if !ability.is_mana_ability && !sorcery_speed_ok {
         return false;
     }
+    // CR 606 — loyalty abilities: only the PW's controller may
+    // activate, only at sorcery speed (already enforced above via
+    // !is_mana_ability && sorcery_speed_ok), only with stack empty,
+    // and only once per turn per PW. Summoning-sickness does NOT
+    // block loyalty activations (CR 114.3 — PW sickness only
+    // restricts attacking).
+    if ability.is_loyalty_ability {
+        if obj.controller != activator { return false; }
+        if !state.stack_is_empty() { return false; }
+        if state.loyalty_activated_this_turn.contains(&obj.id) {
+            return false;
+        }
+    }
     true
 }
 
@@ -1309,6 +1325,11 @@ fn build_additional_costs(
     }
     if let Some((kind, count)) = cost.remove_self_counter {
         v.push(crate::actions::AdditionalCostPayment::RemoveCounters {
+            source, kind, count,
+        });
+    }
+    if let Some((kind, count)) = cost.add_self_counter {
+        v.push(crate::actions::AdditionalCostPayment::AddCounters {
             source, kind, count,
         });
     }
@@ -1957,6 +1978,7 @@ mod tests {
                     },
                     target_requirements: vec![],
                     is_mana_ability: false,
+                    is_loyalty_ability: false,
                     effect: |_, _, _| Vec::new(),
                 })
         )

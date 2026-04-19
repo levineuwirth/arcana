@@ -39,6 +39,7 @@ pub mod mh2;
 pub mod rav;
 pub mod m11;
 pub mod hou;
+pub mod m15;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
@@ -76,6 +77,7 @@ pub struct SeedIds {
     pub giant_spider: CardId,
     pub typhoid_rats: CardId,
     pub abrade: CardId,
+    pub chandra_pyromaster: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -102,6 +104,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         giant_spider: lea::giant_spider::register(reg),
         typhoid_rats: m11::typhoid_rats::register(reg),
         abrade: hou::abrade::register(reg),
+        chandra_pyromaster: m15::chandra_pyromaster::register(reg),
     }
 }
 
@@ -120,7 +123,7 @@ mod tests {
             ids.glorious_anthem, ids.disintegrate, ids.walking_ballista,
             ids.snapcaster_mage, ids.murktide_regent, ids.chord_of_calling,
             ids.serra_angel, ids.giant_spider, ids.typhoid_rats,
-            ids.abrade,
+            ids.abrade, ids.chandra_pyromaster,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),

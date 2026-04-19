@@ -330,6 +330,16 @@ pub enum AdditionalCostPayment {
         kind: CounterKind,
         count: u32,
     },
+    /// Planeswalker plus-loyalty costs (CR 606.2). Mirror of
+    /// [`Self::RemoveCounters`]; the activation places `count`
+    /// counters of `kind` on `source`. Routed through
+    /// [`crate::state::GameState::place_counters`] so Doubling
+    /// Season et al. compose for `+1` activations.
+    AddCounters {
+        source: ObjectId,
+        kind: CounterKind,
+        count: u32,
+    },
     RevealCard(ObjectId),
 }
 
