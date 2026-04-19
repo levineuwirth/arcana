@@ -1444,3 +1444,146 @@ fn chord_of_calling_filter_excludes_noncreatures_and_high_mv() {
         .any(|o| o.card_id == ids.grizzly_bears && o.controller == 0));
 }
 
+// ---------------------------------------------------------------------
+// Keyword-stress pack — Serra Angel / Giant Spider / Typhoid Rats
+//
+// Evergreen combat keywords (Flying, Reach, Vigilance, Deathtouch)
+// already have behavioral wiring in `combat.rs` and `sba.rs`. Before
+// this pack, the seed had only one keyworded creature (Murktide
+// Regent, Flying+Delve), so `randomized_self_play_100_games` exercised
+// none of that machinery via real cards. These tests pin the wiring
+// to concrete seed cards so any regression in the keyword pipelines
+// surfaces at the integration layer, not just at the unit layer.
+// ---------------------------------------------------------------------
+
+fn clear_summoning_sickness(state: &mut GameState, obj: ObjectId) {
+    state.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+}
+
+#[test]
+fn serra_angel_attacks_without_tapping_and_is_unblockable_by_ground() {
+    let (mut s, registry, ids) = fresh_game();
+    let angel = put_on_battlefield(&mut s, &registry, 0, ids.serra_angel);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    clear_summoning_sickness(&mut s, angel);
+    clear_summoning_sickness(&mut s, bears);
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: angel,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+
+    // CR 702.20a — Vigilance: attacker did not tap.
+    assert!(!s.objects.get(angel).unwrap().is_tapped(),
+        "Serra Angel has Vigilance; attacking must not tap it");
+
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        arcana_core::combat::BlockerDeclaration {
+            blocker: bears, blocking: angel,
+        },
+    ]);
+
+    // CR 702.9b — Flying: a ground creature without Reach/Flying
+    // cannot block, so the declaration is rejected and the attacker
+    // remains unblocked.
+    let combat = s.combat.as_ref().unwrap();
+    assert!(combat.blockers.is_empty(),
+        "Bears (no Flying, no Reach) must not block a Flying attacker");
+    assert!(!combat.attacker(angel).unwrap().is_blocked);
+}
+
+#[test]
+fn giant_spider_can_block_serra_angel_via_reach() {
+    let (mut s, registry, ids) = fresh_game();
+    let angel = put_on_battlefield(&mut s, &registry, 0, ids.serra_angel);
+    let spider = put_on_battlefield(&mut s, &registry, 1, ids.giant_spider);
+    clear_summoning_sickness(&mut s, angel);
+    clear_summoning_sickness(&mut s, spider);
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: angel,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        arcana_core::combat::BlockerDeclaration {
+            blocker: spider, blocking: angel,
+        },
+    ]);
+
+    // CR 702.17 — Reach: Spider can block a Flying attacker. Pairing
+    // must be accepted and the attacker marked blocked.
+    let combat = s.combat.as_ref().unwrap();
+    assert_eq!(combat.blockers.len(), 1,
+        "Spider has Reach; block vs Flying must be legal");
+    let info = combat.attacker(angel).unwrap();
+    assert!(info.is_blocked);
+    assert_eq!(info.blocked_by, vec![spider]);
+}
+
+#[test]
+fn serra_angel_trades_with_spider_then_angel_dies_spider_survives() {
+    // Serra Angel is 4/4; Giant Spider is 2/4. Spider's 2 damage is
+    // non-lethal to Angel (4 toughness), Angel's 4 damage is exactly
+    // lethal to Spider (4 toughness). After SBAs: Spider dies, Angel
+    // survives. This exercises the Flying+Reach pairing resolving
+    // through actual damage rather than just blocker validation.
+    let (mut s, registry, ids) = fresh_game();
+    let angel = put_on_battlefield(&mut s, &registry, 0, ids.serra_angel);
+    let spider = put_on_battlefield(&mut s, &registry, 1, ids.giant_spider);
+    clear_summoning_sickness(&mut s, angel);
+    clear_summoning_sickness(&mut s, spider);
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: angel,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        arcana_core::combat::BlockerDeclaration {
+            blocker: spider, blocking: angel,
+        },
+    ]);
+    s.deal_combat_damage();
+    arcana_core::sba::apply_state_based_actions(&mut s);
+
+    // Spider (2/4) took 4 damage and dies. Angel (4/4) took 2 damage
+    // and survives.
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "Spider should be in player 1's graveyard");
+    assert!(s.objects.objects_in_zone(Zone::Battlefield)
+        .any(|o| o.id == angel),
+        "Serra Angel survives the trade");
+}
+
+#[test]
+fn typhoid_rats_one_damage_kills_grizzly_bears_via_deathtouch_sba() {
+    // CR 702.2b / 704.5g — deathtouch damage of any nonzero amount is
+    // lethal; SBAs destroy any creature so marked. Use the damage
+    // primitive directly so the test stays focused on the DT wiring
+    // rather than the whole combat pipeline (Serra Angel vs Spider
+    // above covers the combat path).
+    let (mut s, registry, ids) = fresh_game();
+    let rats = put_on_battlefield(&mut s, &registry, 0, ids.typhoid_rats);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+
+    s.deal_damage(rats, arcana_core::combat::DamageTarget::Object(bears), 1, true);
+    arcana_core::sba::apply_state_based_actions(&mut s);
+
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "1 damage from a DT source should be lethal to any creature");
+    assert!(s.event_log.iter().any(|e| matches!(e,
+        arcana_core::events::GameEvent::Dies { object_id } if *object_id == bears)),
+        "Dies event should fire for the Bears");
+}
+

@@ -11,3 +11,5 @@ pub mod grizzly_bears;
 pub mod lightning_bolt;
 pub mod counterspell;
 pub mod disintegrate;
+pub mod serra_angel;
+pub mod giant_spider;

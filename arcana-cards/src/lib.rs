@@ -37,6 +37,7 @@ pub mod po2;
 pub mod aer;
 pub mod mh2;
 pub mod rav;
+pub mod m11;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
@@ -47,7 +48,11 @@ use arcana_core::types::CardId;
 /// Visionary (ETB-draw trigger), Glorious Anthem (layer-7c static),
 /// Disintegrate (X-cost damage). Tier 3 adds Walking Ballista
 /// (X-in-P/T via `EntersWithSpec::CountersFromX` + counter-removal-
-/// as-activation-cost). `CardId`s returned for test convenience.
+/// as-activation-cost). The keyword-stress pack adds Serra Angel
+/// (Flying + Vigilance), Giant Spider (Reach), and Typhoid Rats
+/// (Deathtouch) so the already-wired evergreen combat keywords get
+/// exercised via real seed cards rather than only synthetic combat
+/// tests. `CardId`s returned for test convenience.
 #[derive(Clone, Copy, Debug)]
 pub struct SeedIds {
     pub plains: CardId,
@@ -66,6 +71,9 @@ pub struct SeedIds {
     pub snapcaster_mage: CardId,
     pub murktide_regent: CardId,
     pub chord_of_calling: CardId,
+    pub serra_angel: CardId,
+    pub giant_spider: CardId,
+    pub typhoid_rats: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -88,6 +96,9 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         snapcaster_mage: isd::snapcaster_mage::register(reg),
         murktide_regent: mh2::murktide_regent::register(reg),
         chord_of_calling: rav::chord_of_calling::register(reg),
+        serra_angel: lea::serra_angel::register(reg),
+        giant_spider: lea::giant_spider::register(reg),
+        typhoid_rats: m11::typhoid_rats::register(reg),
     }
 }
 
@@ -105,6 +116,7 @@ mod tests {
             ids.counterspell, ids.murder, ids.elvish_visionary,
             ids.glorious_anthem, ids.disintegrate, ids.walking_ballista,
             ids.snapcaster_mage, ids.murktide_regent, ids.chord_of_calling,
+            ids.serra_angel, ids.giant_spider, ids.typhoid_rats,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),
