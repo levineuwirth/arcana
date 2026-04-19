@@ -1227,3 +1227,220 @@ fn murktide_regent_has_flying_via_effective_keywords() {
          relies on effective_keywords); got {kws:?}");
 }
 
+// ---------------------------------------------------------------------
+// Chord of Calling — X + convoke composition + search-with-mv-filter
+// ---------------------------------------------------------------------
+
+/// Put a card in `player`'s library via the arena (enough for
+/// `collect_matching_candidates` to find it). Does not push onto
+/// `library_top_to_bottom` — that's only needed for draws.
+fn put_in_library(
+    state: &mut GameState,
+    registry: &CardRegistry,
+    owner: PlayerId,
+    card_id: arcana_core::types::CardId,
+) -> ObjectId {
+    let obj_id = state.allocate_object_id();
+    let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+    state.objects.insert(GameObject::new(
+        obj_id, owner, Zone::Library(owner), card_id, chars));
+    obj_id
+}
+
+/// Cast Chord at X=2 (no convoke) — library contains a Grizzly
+/// Bears; resolution should find it and put it onto the battlefield.
+/// The basic "search-with-filter works end to end" test.
+#[test]
+fn chord_of_calling_x_2_finds_grizzly_bears() {
+    let (mut s, registry, ids) = fresh_game();
+    let chord = put_in_hand(&mut s, &registry, 0, ids.chord_of_calling);
+    let bears = put_in_library(&mut s, &registry, 0, ids.grizzly_bears);
+    // {X}{G}{G}{G} at X=2 = 2 generic + GGG = 5 green from pool.
+    give_mana(&mut s, 0, ManaColor::Green, 5);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: chord,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        // Expanded cost: Generic(2), Color(G), Color(G), Color(G).
+        // Assign 2 green to cost_index 0, 1 green each to 1/2/3.
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 2, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 3, cost_index: 2 },
+                arcana_core::actions::ManaAssignment { pool_index: 4, cost_index: 3 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: Some(2),
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_with_pick_cards(s, &registry, |_| Some(bears));
+
+    // Bears should be on P0's battlefield (with a new ObjectId after
+    // the zone-change re-id, per CR 400.7).
+    let bears_on_battlefield = s.objects.objects_in_zone(Zone::Battlefield)
+        .any(|o| o.card_id == ids.grizzly_bears && o.controller == 0);
+    assert!(bears_on_battlefield,
+        "Chord should have tutored Bears onto the battlefield");
+}
+
+/// The composition gate: X=2 with 2 convokers means the two X pips
+/// are paid by creature-taps, leaving only {G}{G}{G} from the pool.
+/// Verifies that X enumeration and convoke cost-reduction compose
+/// at the cast-validation layer — a regression in either path would
+/// block this cast.
+#[test]
+fn chord_of_calling_x_plus_convoke_composes() {
+    let (mut s, registry, ids) = fresh_game();
+    let chord = put_in_hand(&mut s, &registry, 0, ids.chord_of_calling);
+    let bears_tutor = put_in_library(&mut s, &registry, 0, ids.grizzly_bears);
+    // Two green creatures on the battlefield to convoke with. Giving
+    // them green payments covers both an X pip (generic) or a colored
+    // pip; here we use them for the X=2 generic portion.
+    let convoker1 = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    let convoker2 = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    // Clear summoning sickness so the convoke tap is legal as a cost
+    // (CR 302.1 only restricts tap-for-mana and combat under sickness;
+    // convoke's tap-for-cost isn't blocked, but a safety here — the
+    // engine's convoke validator currently allows summoning-sick
+    // creatures per the commit note on apply_cast_spell).
+    for c in [convoker1, convoker2] {
+        s.objects.get_mut(c).unwrap().status.summoning_sick = false;
+    }
+    // Only {G}{G}{G} from pool (convoke pays the X pips).
+    give_mana(&mut s, 0, ManaColor::Green, 3);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: chord,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        // Generic(2) covered by two convoke Generic payments (not in
+        // mana_payment, but in cost_reductions). Pool covers only the
+        // three colored pips.
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 2 },
+                arcana_core::actions::ManaAssignment { pool_index: 2, cost_index: 3 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: Some(2),
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions {
+            convoke_taps: Some(vec![
+                arcana_core::actions::ConvokeAssignment {
+                    creature: convoker1,
+                    payment: arcana_core::actions::ConvokePayment::Generic,
+                },
+                arcana_core::actions::ConvokeAssignment {
+                    creature: convoker2,
+                    payment: arcana_core::actions::ConvokePayment::Generic,
+                },
+            ]),
+            ..Default::default()
+        },
+    };
+    let (s, _) = step(s, cast, &registry);
+
+    // Both convokers should now be tapped.
+    assert!(s.objects.get(convoker1).unwrap().is_tapped(),
+        "convoker1 should be tapped after paying convoke");
+    assert!(s.objects.get(convoker2).unwrap().is_tapped(),
+        "convoker2 should be tapped");
+
+    let s = resolve_with_pick_cards(s, &registry, |_| Some(bears_tutor));
+
+    // The tutored Bears resolved onto the battlefield.
+    let tutored_count = s.objects.objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.card_id == ids.grizzly_bears && o.controller == 0)
+        .count();
+    // 2 convokers + 1 tutored = 3 Bears on P0's battlefield.
+    assert_eq!(tutored_count, 3,
+        "expected 3 Bears (2 convokers + 1 tutored); got {tutored_count}");
+}
+
+/// The filter excludes non-creatures and over-MV candidates. Library
+/// has three cards spanning the relevant cases. Verify that the
+/// `PickCards` candidate set offered by Chord at X=2 contains only
+/// the creature-with-mv-≤-2 — the other two are filtered out at
+/// candidate-enumeration time.
+#[test]
+fn chord_of_calling_filter_excludes_noncreatures_and_high_mv() {
+    let (mut s, registry, ids) = fresh_game();
+    let chord = put_in_hand(&mut s, &registry, 0, ids.chord_of_calling);
+    let bears = put_in_library(&mut s, &registry, 0, ids.grizzly_bears);
+    // mv=1 instant (Bolt) — should be excluded by the creature filter.
+    let _bolt = put_in_library(&mut s, &registry, 0, ids.lightning_bolt);
+    // mv=5 creature (Murktide) — should be excluded by the mv≤2 filter.
+    let _murktide = put_in_library(&mut s, &registry, 0, ids.murktide_regent);
+    give_mana(&mut s, 0, ManaColor::Green, 5);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: chord,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 2, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 3, cost_index: 2 },
+                arcana_core::actions::ManaAssignment { pool_index: 4, cost_index: 3 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: Some(2),
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+
+    // Introspect the candidate list by inspecting pending_choice
+    // after the resolve loop reaches the PickCards yield.
+    let s = {
+        let mut s = s;
+        // Step until a PickCards choice is pending.
+        for _ in 0..50 {
+            if s.pending_choice.is_some() { break; }
+            if s.stack_is_empty() { break; }
+            let (ns, _) = step(s, Action::PassPriority, &registry);
+            s = ns;
+        }
+        let pc = s.pending_choice.clone()
+            .expect("Chord should have parked on a PickCards prompt");
+        let candidates = match pc.kind {
+            arcana_core::actions::ChoiceKind::PickCards { candidates, .. } =>
+                candidates,
+            other => panic!("expected PickCards, got {other:?}"),
+        };
+        assert_eq!(candidates, vec![bears],
+            "only Bears should be offered; Bolt (not creature) and \
+             Murktide (mv=5 > X=2) must be filtered out");
+        // Close the choice so resolution finishes cleanly.
+        let (ns, _) = step(s, Action::SubmitResolutionChoice {
+            id: pc.id,
+            response: arcana_core::actions::ChoiceResponse::PickCards {
+                picked: vec![bears],
+            },
+        }, &registry);
+        ns
+    };
+    let s = resolve_stack(s, &registry);
+
+    // Sanity: Bears resolved onto the battlefield.
+    assert!(s.objects.objects_in_zone(Zone::Battlefield)
+        .any(|o| o.card_id == ids.grizzly_bears && o.controller == 0));
+}
+

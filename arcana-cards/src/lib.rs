@@ -36,6 +36,7 @@ pub mod isd;
 pub mod po2;
 pub mod aer;
 pub mod mh2;
+pub mod rav;
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
@@ -64,6 +65,7 @@ pub struct SeedIds {
     pub walking_ballista: CardId,
     pub snapcaster_mage: CardId,
     pub murktide_regent: CardId,
+    pub chord_of_calling: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -85,6 +87,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         walking_ballista: aer::walking_ballista::register(reg),
         snapcaster_mage: isd::snapcaster_mage::register(reg),
         murktide_regent: mh2::murktide_regent::register(reg),
+        chord_of_calling: rav::chord_of_calling::register(reg),
     }
 }
 
@@ -101,7 +104,7 @@ mod tests {
             ids.grizzly_bears, ids.lightning_bolt,
             ids.counterspell, ids.murder, ids.elvish_visionary,
             ids.glorious_anthem, ids.disintegrate, ids.walking_ballista,
-            ids.snapcaster_mage, ids.murktide_regent,
+            ids.snapcaster_mage, ids.murktide_regent, ids.chord_of_calling,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),
