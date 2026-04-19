@@ -186,6 +186,7 @@ impl CardDefinition {
             is_loyalty_ability: false,
             activation_zone: ActivationZone::Hand,
             is_instant_speed: true,
+            face_gate: None,
             effect: cycling_draw_one,
         });
         self
@@ -210,6 +211,40 @@ impl CardDefinition {
     ///   normally and the flag does not travel across the re-id.
     pub fn with_adventure(mut self, face: CardFace) -> Self {
         self.alternate_face = Some(AlternateFace::Adventure(face));
+        self
+    }
+
+    /// CR 712.4 — Modal double-faced card. Declares the card's back
+    /// face (second full face sheet with its own name, mana cost,
+    /// type line, and rules text). The front face lives on
+    /// [`Self::base_characteristics`] and [`Self::spell_ability`]
+    /// the way any other card does; this helper attaches the back
+    /// face alongside.
+    ///
+    /// Cast / play flow (per
+    /// [`crate::actions::CastModifier::MdfcBack`] and the
+    /// `mdfc_back` flag on [`crate::actions::Action::PlayLand`]):
+    /// * Back face is a spell (creature, instant, sorcery, etc.):
+    ///   castable from hand with `CastModifier::MdfcBack` for the
+    ///   back face's printed mana cost. Resolution uses the back
+    ///   face's spell ability and type — a back-face creature
+    ///   resolves to the battlefield as that creature, a back-face
+    ///   instant resolves its effect and goes to graveyard.
+    /// * Back face is a land: playable as the turn's land drop via
+    ///   `Action::PlayLand { mdfc_back: true }`. The battlefield
+    ///   object carries the back-face (land) characteristics; its
+    ///   printed mana abilities are the back face's.
+    ///
+    /// CR 712.2b — in zones other than stack and battlefield the
+    /// card's characteristics revert to the front face. This
+    /// engine's Phase 2 implementation does **not** perform that
+    /// revert: a back-face creature that dies carries back-face
+    /// characteristics into its owner's graveyard. No current seed
+    /// test or gameplay flow exercises the revert; it returns to
+    /// the backlog when reanimator and graveyard-matters effects
+    /// land.
+    pub fn with_mdfc_back(mut self, face: CardFace) -> Self {
+        self.alternate_face = Some(AlternateFace::Mdfc(face));
         self
     }
 
@@ -332,15 +367,34 @@ pub enum AlternateFace {
     /// instant-or-sorcery face (this payload). See
     /// [`CardDefinition::with_adventure`] for the full cast flow.
     Adventure(CardFace),
+    /// CR 712.4 — Modal double-faced card (MDFC). Both halves are
+    /// first-class: a player may cast the front face (on
+    /// [`CardDefinition::base_characteristics`]) using its printed
+    /// mana cost, or cast the back face (this payload) using *its*
+    /// printed mana cost. When the back face is a land, it's played
+    /// as the turn's land drop rather than cast. See
+    /// [`CardDefinition::with_mdfc_back`] for the engine wiring.
+    Mdfc(CardFace),
 }
 
 impl AlternateFace {
     /// Unwrap the Adventure face, if this relationship is Adventure.
-    /// Returns `None` for non-Adventure relationships (Split, MDFC,
-    /// Transform when they land).
+    /// Returns `None` for MDFC / Split / Transform / Adventure-less
+    /// registrations.
     pub fn as_adventure(&self) -> Option<&CardFace> {
         match self {
             AlternateFace::Adventure(face) => Some(face),
+            _ => None,
+        }
+    }
+
+    /// Unwrap the MDFC back face, if this relationship is MDFC. Returns
+    /// `None` for Adventure / Split / Transform / non-MDFC
+    /// registrations.
+    pub fn as_mdfc(&self) -> Option<&CardFace> {
+        match self {
+            AlternateFace::Mdfc(face) => Some(face),
+            _ => None,
         }
     }
 }
@@ -472,6 +526,14 @@ pub struct ActivatedAbilityDef {
     /// flag is for non-mana abilities that nonetheless may be
     /// activated at instant speed.
     pub is_instant_speed: bool,
+    /// CR 712 — multi-face gating. When `Some(n)`, the ability is
+    /// only activatable while the object's `visible_face == n` (see
+    /// [`crate::objects::GameObject::visible_face`]). Used by MDFC
+    /// back-face activated abilities (e.g. a land back's mana
+    /// ability) so the front face (creature / spell) does not
+    /// inherit them. `None` means "activatable on any face" — the
+    /// common case for single-face cards.
+    pub face_gate: Option<u8>,
     pub effect: ActivatedEffectFn,
 }
 

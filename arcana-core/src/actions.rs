@@ -80,6 +80,17 @@ pub enum CastModifier {
     /// battlefield; the re-id on the zone change drops the flag so
     /// the battlefield object is a clean creature.
     AdventureCreature,
+    /// CR 712.4 — cast the back face of a modal double-faced card
+    /// (MDFC) from hand. Both faces are first-class; this modifier
+    /// is how the caster elects the back face. Dispatches on the
+    /// card's [`crate::registry::AlternateFace::Mdfc`] face: its
+    /// mana cost, name, type line, and spell ability. Unlike
+    /// Adventure, there's no exile routing — a back-face creature
+    /// resolves to the battlefield as that creature; a back-face
+    /// instant/sorcery resolves its effect and goes to the owner's
+    /// graveyard. Back faces that are *lands* are played via
+    /// [`Action::PlayLand::mdfc_back`] instead of this cast path.
+    MdfcBack,
 }
 
 /// Bundle of *cost-reduction* choices (CR 601.2f category: "cost
@@ -201,8 +212,17 @@ pub enum Action {
     },
 
     /// Play a land. Legal only during the active player's main phase with
-    /// the stack empty, and only if `land_plays_remaining > 0`.
-    PlayLand { object_id: ObjectId },
+    /// the stack empty, and only if `land_plays_remaining > 0`. For
+    /// MDFC cards whose back face is a land (CR 712.4), set
+    /// `mdfc_back = true` to play the back face — the engine swaps
+    /// the object's characteristics to the back face before moving
+    /// it to the battlefield. For non-MDFC lands and front-face
+    /// plays, `mdfc_back = false`.
+    PlayLand {
+        object_id: ObjectId,
+        #[serde(default)]
+        mdfc_back: bool,
+    },
 
     // === Combat declarations ==============================================
     /// Declare attackers — batch action containing every attacker and its
@@ -785,7 +805,7 @@ mod tests {
         assert_eq!(Action::PassPriority.kind(), ActionKind::Priority);
         assert_eq!(cast(1).kind(), ActionKind::Cast);
         assert_eq!(
-            Action::PlayLand { object_id: 1 }.kind(),
+            Action::PlayLand { object_id: 1, mdfc_back: false }.kind(),
             ActionKind::PlayLand
         );
         assert_eq!(

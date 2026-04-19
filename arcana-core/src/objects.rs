@@ -144,6 +144,19 @@ pub struct GameObject {
     /// only lives during the brief exile window between discard and
     /// cast/cleanup.
     pub madness_pending: bool,
+    /// CR 712 — which printed face of a multi-face card this object
+    /// is currently showing. `0` = front face (default, and the only
+    /// state for single-face cards). `1` = back face — set during
+    /// cast/play of an MDFC back face or a Transform back (CR 712.4 /
+    /// CR 712.5) so activated-ability enumeration and face-gated
+    /// characteristics agree about which face is live.
+    ///
+    /// Preserved across re-ids (zone changes) because `reset_on_zone_change`
+    /// does not clear it; that's a Phase-2 simplification — CR 712.2b
+    /// says the card reverts to front face in zones other than stack
+    /// and battlefield, but no current seed exercises the revert. See
+    /// `CardDefinition::with_mdfc_back` for the full note.
+    pub visible_face: u8,
     /// CR 715 — Adventure exile marker. Set when an Adventure spell
     /// (cast via [`crate::actions::CastModifier::Adventure`]) leaves
     /// the stack via resolution, counter, or fizzle — the card
@@ -185,6 +198,7 @@ impl GameObject {
             status: PermanentStatus::default(),
             madness_pending: false,
             adventure_exile_pending: false,
+            visible_face: 0,
         }
     }
 

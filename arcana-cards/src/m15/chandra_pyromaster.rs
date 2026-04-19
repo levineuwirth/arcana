@@ -73,6 +73,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
+
+                face_gate: None,
                 effect: plus_one_damage,
             }),
     )

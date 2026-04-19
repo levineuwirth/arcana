@@ -155,7 +155,8 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
             mana_payment, additional_costs,
         ),
 
-        Action::PlayLand { object_id } => apply_play_land(state, object_id),
+        Action::PlayLand { object_id, mdfc_back } =>
+            apply_play_land(state, registry, object_id, mdfc_back),
 
         Action::DeclareAttackers { attackers } => {
             state.apply_declared_attackers(attackers);
@@ -293,6 +294,19 @@ fn apply_cast_spell(
                     && o.owner == controller);
             if !flagged_in_exile { return; }
         }
+        crate::actions::CastModifier::MdfcBack => {
+            // CR 712.4 — cast the back face from hand. Source must
+            // be in the caster's hand and the card must declare an
+            // MDFC back face. The back face must be a spell — a
+            // land back goes through `Action::PlayLand` with
+            // `mdfc_back = true` instead.
+            let from_hand = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Hand(controller));
+            if !from_hand { return; }
+            let back_is_spell = mdfc_back_face_of(state, registry, object_id)
+                .is_some_and(|f| !f.characteristics.types.is_land());
+            if !back_is_spell { return; }
+        }
     }
 
     // Modal validation (CR 700.2). A modal spell requires the caster to
@@ -362,6 +376,9 @@ fn apply_cast_spell(
                 madness_cost_for(state, object_id),
             crate::actions::CastModifier::Adventure =>
                 adventure_face_of(state, registry, object_id)
+                    .and_then(|f| f.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::MdfcBack =>
+                mdfc_back_face_of(state, registry, object_id)
                     .and_then(|f| f.characteristics.mana_cost.clone()),
         };
         let generic_total: u32 = cost_opt.as_ref()
@@ -468,6 +485,9 @@ fn apply_cast_spell(
             crate::actions::CastModifier::Adventure =>
                 adventure_face_of(state, registry, object_id)
                     .and_then(|f| f.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::MdfcBack =>
+                mdfc_back_face_of(state, registry, object_id)
+                    .and_then(|f| f.characteristics.mana_cost.clone()),
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -533,9 +553,15 @@ fn apply_cast_spell(
         .and_then(|o| registry.get(o.card_id));
     let is_adventure_cast = matches!(cast_modifier,
         crate::actions::CastModifier::Adventure);
+    let is_mdfc_back_cast = matches!(cast_modifier,
+        crate::actions::CastModifier::MdfcBack);
     let adventure_face = if is_adventure_cast {
         card_def.and_then(|d| d.alternate_face.as_ref())
             .and_then(|af| af.as_adventure())
+    } else { None };
+    let mdfc_back_face = if is_mdfc_back_cast {
+        card_def.and_then(|d| d.alternate_face.as_ref())
+            .and_then(|af| af.as_mdfc())
     } else { None };
     let pre_adventure_chars = if is_adventure_cast {
         let swapped_chars = adventure_face.map(|f| f.characteristics.clone());
@@ -546,11 +572,37 @@ fn apply_cast_spell(
             Some(prior)
         } else { None }
     } else { None };
+    // MDFC back-face casts swap characteristics the same way as
+    // Adventure — the announced object needs the back face's sheet
+    // on the stack entry. Unlike Adventure, we do NOT snapshot the
+    // pre-swap (front-face) characteristics: CR 712.2b's revert to
+    // front-face in off-BF/off-stack zones is deferred (no seed
+    // exercises reanimation or graveyard-matters on MDFC cards), so
+    // the back-face chars ride through to the battlefield or
+    // graveyard as-is. See `with_mdfc_back` for the deferral note.
+    if is_mdfc_back_cast {
+        let swapped_chars = mdfc_back_face.map(|f| f.characteristics.clone());
+        if let (Some(swapped), Some(obj)) = (swapped_chars,
+            state.objects.get_mut(object_id))
+        {
+            obj.characteristics = swapped;
+            obj.visible_face = 1;
+        }
+    }
 
     let (spell_ability, enters_with) = if is_adventure_cast {
         // Adventure face supplies the spell ability; enters_with
         // belongs to the creature face and does not apply.
         (adventure_face.and_then(|f| f.spell_ability.as_ref()), Vec::new())
+    } else if is_mdfc_back_cast {
+        // MDFC back face supplies its own spell ability. `enters_with`
+        // clauses on an MDFC card are declared at the CardDefinition
+        // level and don't yet split per-face; none of today's MDFC
+        // seeds need per-face enters_with, so this reads the main
+        // list verbatim.
+        let sa = mdfc_back_face.and_then(|f| f.spell_ability.as_ref());
+        let ew = card_def.map(|d| d.enters_with.clone()).unwrap_or_default();
+        (sa, ew)
     } else {
         let sa = card_def.and_then(|def| def.spell_ability.as_ref());
         let ew = card_def.map(|d| d.enters_with.clone()).unwrap_or_default();
@@ -710,6 +762,23 @@ pub(crate) fn adventure_face_of<'r>(
     def.alternate_face.as_ref()?.as_adventure()
 }
 
+/// Return the MDFC back face of the card backing `object_id`, if the
+/// card has one (CR 712.4). Sibling of [`adventure_face_of`]; MDFC
+/// and Adventure relationships are mutually exclusive on a
+/// [`CardDefinition`] today (each card has at most one
+/// [`crate::registry::AlternateFace`]), so a match on either
+/// helper's `Some` return tells dispatch code which cast path
+/// applies.
+pub(crate) fn mdfc_back_face_of<'r>(
+    state: &GameState,
+    registry: &'r crate::registry::CardRegistry,
+    object_id: ObjectId,
+) -> Option<&'r crate::registry::CardFace> {
+    let card_id = state.objects.get(object_id)?.card_id;
+    let def = registry.get(card_id)?;
+    def.alternate_face.as_ref()?.as_mdfc()
+}
+
 
 /// Valid [`crate::actions::ConvokePayment`] options for a creature
 /// with the given characteristics (CR 702.51b).
@@ -852,8 +921,39 @@ fn apply_activate_ability(
     state.priority.record_action();
 }
 
-fn apply_play_land(state: &mut GameState, object_id: ObjectId) {
+fn apply_play_land(
+    state: &mut GameState,
+    registry: &CardRegistry,
+    object_id: ObjectId,
+    mdfc_back: bool,
+) {
     let controller = state.priority_player();
+
+    // CR 712.4 — MDFC land back face. Before moving to the
+    // battlefield, swap the object's characteristics to the back
+    // face so the arriving permanent is the land with its own type
+    // line, color (typically none for MDFC lands), and printed mana
+    // abilities. The registry is the source of truth for the back
+    // face; the arena object holds the live copy.
+    if mdfc_back {
+        let back_chars = state.objects.get(object_id)
+            .and_then(|o| registry.get(o.card_id))
+            .and_then(|def| def.alternate_face.as_ref())
+            .and_then(|af| af.as_mdfc())
+            .map(|f| f.characteristics.clone());
+        let Some(back_chars) = back_chars else {
+            // Agent requested an MDFC land play on a card with no
+            // MDFC back face — reject silently, matching the rest of
+            // this function.
+            return;
+        };
+        if !back_chars.types.is_land() { return; }
+        if let Some(obj) = state.objects.get_mut(object_id) {
+            obj.characteristics = back_chars;
+            obj.visible_face = 1;
+        }
+    }
+
     state.player_mut(controller).land_plays_remaining =
         state.player(controller).land_plays_remaining.saturating_sub(1);
     // Land play is NOT a spell — no stack entry. Direct ETB. Re-id
@@ -2079,14 +2179,16 @@ fn resolution_target_requirements(
             // adventures aren't printed today, but routing through
             // `effective_target_requirements` still degrades correctly.
             let def = registry.get(*card_id);
-            let sa = if matches!(entry.cast_modifier,
-                crate::actions::CastModifier::Adventure)
-            {
-                def.and_then(|d| d.alternate_face.as_ref())
-                    .and_then(|af| af.as_adventure())
-                    .and_then(|f| f.spell_ability.as_ref())
-            } else {
-                def.and_then(|d| d.spell_ability.as_ref())
+            let sa = match entry.cast_modifier {
+                crate::actions::CastModifier::Adventure =>
+                    def.and_then(|d| d.alternate_face.as_ref())
+                        .and_then(|af| af.as_adventure())
+                        .and_then(|f| f.spell_ability.as_ref()),
+                crate::actions::CastModifier::MdfcBack =>
+                    def.and_then(|d| d.alternate_face.as_ref())
+                        .and_then(|af| af.as_mdfc())
+                        .and_then(|f| f.spell_ability.as_ref()),
+                _ => def.and_then(|d| d.spell_ability.as_ref()),
             };
             sa.map(|sa| crate::registry::effective_target_requirements(sa, &entry.modes))
                 .unwrap_or_default()
@@ -2123,16 +2225,19 @@ fn resolution_effects(
     match &entry.kind {
         crate::stack::StackEntryKind::Spell { card_id, .. } => {
             let Some(def) = registry.get(*card_id) else { return Vec::new(); };
-            // Adventure casts resolve via the Adventure face's spell
-            // ability (CR 715.2). Everything else uses the main face.
-            let sa = if matches!(entry.cast_modifier,
-                crate::actions::CastModifier::Adventure)
-            {
-                def.alternate_face.as_ref()
-                    .and_then(|af| af.as_adventure())
-                    .and_then(|f| f.spell_ability.as_ref())
-            } else {
-                def.spell_ability.as_ref()
+            // Adventure and MDFC back casts resolve via the
+            // alternate face's spell ability (CR 715.2, CR 712.4).
+            // Everything else uses the main face.
+            let sa = match entry.cast_modifier {
+                crate::actions::CastModifier::Adventure =>
+                    def.alternate_face.as_ref()
+                        .and_then(|af| af.as_adventure())
+                        .and_then(|f| f.spell_ability.as_ref()),
+                crate::actions::CastModifier::MdfcBack =>
+                    def.alternate_face.as_ref()
+                        .and_then(|af| af.as_mdfc())
+                        .and_then(|f| f.spell_ability.as_ref()),
+                _ => def.spell_ability.as_ref(),
             };
             let Some(sa) = sa else { return Vec::new(); };
             (sa.effect)(state, entry, registry)
@@ -4266,7 +4371,7 @@ mod tests {
         assert_eq!(state.player(0).land_plays_remaining, 1);
         let (state_after, _) = step(
             state.clone(),
-            Action::PlayLand { object_id: land_id },
+            Action::PlayLand { object_id: land_id, mdfc_back: false },
             &reg(),
         );
         // Re-id on the hand→battlefield move; locate the new land.

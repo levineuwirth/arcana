@@ -2144,6 +2144,7 @@ fn pw_minus_ability_removes_loyalty_counters() {
                     is_loyalty_ability: true,
                     activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                     is_instant_speed: false,
+                    face_gate: None,
                     effect: damage_creature,
                 }))
     };
@@ -2916,6 +2917,192 @@ fn bonecrusher_normal_creature_cast_from_hand_still_works() {
         .expect("bonecrusher on battlefield from normal cast");
     assert!(!on_bf.adventure_exile_pending);
     assert!(on_bf.characteristics.types.is_creature());
+}
+
+// ---------------------------------------------------------------------
+// MDFC (CR 712.4) — Tangled Florahedron // Tangled Vale
+// ---------------------------------------------------------------------
+//
+// Front: {G} 1/1 Elf Druid. Back: Tangled Vale land — enters
+// tapped, {T}: Add {G}. The seed proves the two MDFC cast/play paths:
+//
+//   1. Front face cast — normal hand cast of a {G} creature. Goes to
+//      battlefield as 1/1.
+//   2. Back face land play — PlayLand { mdfc_back: true } swaps the
+//      object's characteristics to the back face, consumes the land
+//      drop, and puts the land on the battlefield. The tap-for-green
+//      ability is gated on the back face so the front-face creature
+//      does NOT get offered a spurious mana ability.
+
+fn mdfc_back_land_play(actions: &[Action], card_in_hand: ObjectId) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::PlayLand { object_id, mdfc_back: true }
+        if *object_id == card_in_hand
+    )).cloned()
+}
+
+fn normal_creature_cast(actions: &[Action], card_in_hand: ObjectId) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, cast_modifier, .. }
+        if *object_id == card_in_hand
+            && matches!(cast_modifier, arcana_core::actions::CastModifier::None)
+    )).cloned()
+}
+
+#[test]
+fn tangled_florahedron_front_cast_makes_1_1_elf_druid() {
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    give_mana(&mut s, 0, ManaColor::Green, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = normal_creature_cast(&actions, hedron)
+        .expect("normal creature cast for {G} must be offered with {G} in pool");
+
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let on_bf = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .expect("florahedron on battlefield from normal cast");
+    assert_eq!(on_bf.controller, 0);
+    assert!(on_bf.characteristics.types.is_creature());
+    assert!(!on_bf.characteristics.types.is_land(),
+        "front face is NOT a land");
+    assert_eq!(on_bf.characteristics.power,
+        Some(arcana_core::types::PtValue::Fixed(1)));
+    assert_eq!(on_bf.characteristics.toughness,
+        Some(arcana_core::types::PtValue::Fixed(1)));
+    assert_eq!(on_bf.visible_face, 0,
+        "front-face cast leaves visible_face at 0");
+}
+
+#[test]
+fn tangled_florahedron_back_play_makes_tapped_land() {
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let play = mdfc_back_land_play(&actions, hedron)
+        .expect("MDFC back land-play offered");
+
+    let (s, _) = step(s, play, &registry);
+    // Land enters the battlefield directly (no stack).
+    let on_bf = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .expect("tangled vale on battlefield from back-face play");
+    assert!(on_bf.characteristics.types.is_land(),
+        "back face is a land");
+    assert!(!on_bf.characteristics.types.is_creature(),
+        "back face is NOT a creature");
+    assert_eq!(on_bf.visible_face, 1,
+        "back-face play sets visible_face to 1");
+    assert_eq!(on_bf.controller, 0);
+    // Land drop consumed.
+    assert_eq!(s.player(0).land_plays_remaining, 0);
+}
+
+#[test]
+fn tangled_vale_taps_for_green_when_on_battlefield_as_back() {
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let play = mdfc_back_land_play(&actions, hedron).unwrap();
+    let (s, _) = step(s, play, &registry);
+    // Locate the back-face land on battlefield.
+    let vale = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .map(|o| o.id).unwrap();
+
+    // Tap-for-green should be offered on the back face.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let tap = actions.iter().find(|a| matches!(a,
+        Action::ActivateAbility { source, .. } if *source == vale
+    )).cloned().expect("tap-for-green offered on back-face land");
+
+    let (s, _) = step(s, tap, &registry);
+    // Mana ability skips the stack — green should be in the pool now.
+    assert_eq!(s.player(0).mana_pool.count_color(ManaColor::Green), 1,
+        "tap-for-green put {{G}} in pool");
+    // The land is now tapped.
+    let vale_obj = s.objects.get(vale).unwrap();
+    assert!(vale_obj.is_tapped());
+}
+
+#[test]
+fn florahedron_front_face_does_not_offer_tap_for_green() {
+    // Regression: without the face_gate on the tap-for-green ability,
+    // the 1/1 creature face would spuriously offer the back-face's
+    // mana ability. With the gate in place, only the back face
+    // (visible_face=1) exposes it.
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    give_mana(&mut s, 0, ManaColor::Green, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = normal_creature_cast(
+        &arcana_core::legal_actions::legal_actions(&s, &registry), hedron)
+        .unwrap();
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let elf = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .map(|o| o.id).unwrap();
+    // Give priority back for activation enumeration.
+    let mut s2 = s;
+    priority_to_main(&mut s2, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s2, &registry);
+    let creature_activations = actions.iter().filter(|a| matches!(a,
+        Action::ActivateAbility { source, .. } if *source == elf
+    )).count();
+    assert_eq!(creature_activations, 0,
+        "front-face creature must NOT have the back-face mana ability");
+}
+
+#[test]
+fn mdfc_back_not_offered_without_land_drop() {
+    // If the player's land_plays_remaining is 0 the MDFC back-face
+    // land play should be withheld along with all other land plays.
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    s.player_mut(0).land_plays_remaining = 0;
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(mdfc_back_land_play(&actions, hedron).is_none(),
+        "no land drop remaining → MDFC back land play is withheld");
+    // But normal creature cast is still offered if mana present.
+    give_mana(&mut s, 0, ManaColor::Green, 1);
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(normal_creature_cast(&actions, hedron).is_some(),
+        "creature cast independent of land drop");
+}
+
+#[test]
+fn mdfc_both_faces_are_legal_simultaneously() {
+    // With {G} available AND a land drop, legal_actions should offer
+    // both the front-face cast and the back-face land play. Picking
+    // between them is the agent's call.
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    give_mana(&mut s, 0, ManaColor::Green, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(normal_creature_cast(&actions, hedron).is_some(),
+        "front-face cast offered");
+    assert!(mdfc_back_land_play(&actions, hedron).is_some(),
+        "back-face land play offered");
 }
 
 #[test]

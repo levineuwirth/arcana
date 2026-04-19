@@ -67,6 +67,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
+
+                face_gate: None,
                 effect: add_green_mana,
             })
             .with_cycling(ManaCost::parse("{2}").expect("valid cycling cost")),

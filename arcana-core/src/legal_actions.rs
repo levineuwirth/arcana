@@ -432,12 +432,31 @@ fn legal_priority_actions(
     actions.push(Action::PassPriority);
     actions.push(Action::Concede);
 
-    // Play a land.
+    // Play a land. CR 712.4 — an MDFC whose back face is a land is
+    // playable as the back face via `PlayLand { mdfc_back: true }`,
+    // counting the same single land drop as any other land play.
+    // Only one of the two faces can be chosen per play — the agent
+    // picks which face the drop goes to.
     if can_play_land_now(state, player) {
         for id in sorted_ids_in_zone(state, Zone::Hand(player)) {
             let obj = state.objects.get(id).unwrap();
             if obj.is_land() {
-                actions.push(Action::PlayLand { object_id: id });
+                actions.push(Action::PlayLand {
+                    object_id: id,
+                    mdfc_back: false,
+                });
+            }
+            if let Some(def) = registry.get(obj.card_id) {
+                if let Some(back) = def.alternate_face.as_ref()
+                    .and_then(|af| af.as_mdfc())
+                {
+                    if back.characteristics.types.is_land() {
+                        actions.push(Action::PlayLand {
+                            object_id: id,
+                            mdfc_back: true,
+                        });
+                    }
+                }
             }
         }
     }
@@ -830,6 +849,72 @@ fn legal_priority_actions(
                         additional_costs: Vec::new(),
                         x_value,
                         cast_modifier: crate::actions::CastModifier::Madness,
+                        cost_reductions: crate::actions::CostReductions::default(),
+                    });
+                }
+            }
+        }
+    }
+
+    // MDFC back-face casts from hand (CR 712.4). Walks the hand for
+    // cards whose registry definition declares an MDFC back face that
+    // is a SPELL (non-land — land backs are played via the land-play
+    // block above). Uses the back face's own mana cost, target
+    // requirements, and type for speed-gating.
+    //
+    // No exile routing or post-cast flag: an MDFC back-face creature
+    // resolves to the battlefield normally; an MDFC back-face
+    // instant/sorcery resolves its effect and goes to graveyard via
+    // the standard paths. The front face is NOT enumerated here —
+    // the main hand-cast loop already offers it when applicable.
+    for id in sorted_ids_in_zone(state, Zone::Hand(player)) {
+        let Some(obj) = state.objects.get(id) else { continue; };
+        let Some(def) = registry.get(obj.card_id) else { continue; };
+        let Some(back) = def.alternate_face.as_ref()
+            .and_then(|af| af.as_mdfc()) else { continue; };
+        if back.characteristics.types.is_land() { continue; }
+        let Some(back_cost) = back.characteristics.mana_cost.clone()
+            else { continue; };
+
+        let back_is_instant_speed = back.characteristics.types.is_instant();
+        if !back_is_instant_speed && !sorcery_speed_ok { continue; }
+
+        let reqs: Vec<TargetRequirement> = back.spell_ability.as_ref()
+            .map(|sa| sa.target_requirements.clone())
+            .unwrap_or_default();
+        let target_selections = enumerate_target_selections(&reqs, state, player);
+        if target_selections.is_empty() { continue; }
+
+        let ctx = SpendContext::for_spell(
+            back.characteristics.types, back.characteristics.colors);
+
+        let has_x = back_cost.x_count() > 0;
+        let x_values: Vec<u32> = if has_x {
+            let max_x = state.player(player).mana_pool.total() as u32;
+            (0..=max_x).collect()
+        } else {
+            vec![0]
+        };
+
+        for &x in &x_values {
+            let cost = if has_x {
+                back_cost.with_x_expanded(x)
+            } else {
+                back_cost.clone()
+            };
+            let x_value = if has_x { Some(x) } else { None };
+            let plans = enumerate_payment_plans(
+                &cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in plans {
+                for targets in &target_selections {
+                    actions.push(Action::CastSpell {
+                        object_id: id,
+                        targets: targets.clone(),
+                        modes: Vec::new(),
+                        mana_payment: plan.clone(),
+                        additional_costs: Vec::new(),
+                        x_value,
+                        cast_modifier: crate::actions::CastModifier::MdfcBack,
                         cost_reductions: crate::actions::CostReductions::default(),
                     });
                 }
@@ -1524,6 +1609,17 @@ fn ability_is_activatable(
     if !ability.activation_zone.matches(obj.zone, obj.owner) {
         return false;
     }
+    // Face gate (CR 712): multi-face cards can have abilities that
+    // only apply on a specific face. The shared `activated_abilities`
+    // list holds all faces' abilities; this gate filters out ones
+    // that don't belong to the object's current `visible_face`.
+    // Single-face cards skip this check (`face_gate` defaults to
+    // `None`, ability applies on any face).
+    if let Some(required_face) = ability.face_gate {
+        if obj.visible_face != required_face {
+            return false;
+        }
+    }
     if ability.cost.tap {
         if obj.is_tapped() { return false; }
         // Tapping a creature requires no summoning-sickness for
@@ -1721,7 +1817,7 @@ mod tests {
         let l = put(&mut s, 0, Zone::Hand(0), land_chars());
         let actions = legal_actions(&s, &CardRegistry::new());
         assert!(actions.iter().any(|a|
-            matches!(a, Action::PlayLand { object_id } if *object_id == l)));
+            matches!(a, Action::PlayLand { object_id, .. } if *object_id == l)));
     }
 
     #[test]
@@ -2208,7 +2304,7 @@ mod tests {
         let actions = legal_actions(&s, &CardRegistry::new());
         // Pass + concede + exactly one PlayLand, no CastSpells.
         assert!(actions.iter().any(|a|
-            matches!(a, Action::PlayLand { object_id } if *object_id == land)));
+            matches!(a, Action::PlayLand { object_id, .. } if *object_id == land)));
         assert!(!actions.iter().any(|a| matches!(a, Action::CastSpell { .. })));
     }
 
@@ -2247,6 +2343,7 @@ mod tests {
                     is_loyalty_ability: false,
                     activation_zone: crate::registry::ActivationZone::Battlefield,
                     is_instant_speed: false,
+                    face_gate: None,
                     effect: |_, _, _| Vec::new(),
                 })
         )
