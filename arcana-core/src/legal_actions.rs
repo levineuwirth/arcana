@@ -837,6 +837,137 @@ fn legal_priority_actions(
         }
     }
 
+    // Adventure casts from hand (CR 715). Walks the hand for cards
+    // whose registry definition carries an Adventure face. The
+    // Adventure face's own mana cost, target requirements, and
+    // type/color drive the cast (not the creature half); on
+    // resolution the card routes to exile with
+    // `adventure_exile_pending=true`, which opens the second
+    // enumeration track below (creature cast from adventure-exile).
+    //
+    // Timing: the Adventure face's printed type line governs speed.
+    // An Adventure instant is castable at instant speed; a sorcery
+    // Adventure (uncommon but legal — e.g. "Giant's Reply") is
+    // sorcery-speed. Flash on the creature face does NOT carry to
+    // the Adventure half.
+    for id in sorted_ids_in_zone(state, Zone::Hand(player)) {
+        let Some(obj) = state.objects.get(id) else { continue; };
+        let Some(def) = registry.get(obj.card_id) else { continue; };
+        let Some(face) = def.alternate_face.as_ref()
+            .and_then(|af| af.as_adventure()) else { continue; };
+        let Some(face_cost) = face.characteristics.mana_cost.clone() else {
+            continue;
+        };
+        let face_is_instant_speed = face.characteristics.types.is_instant();
+        if !face_is_instant_speed && !sorcery_speed_ok { continue; }
+
+        let reqs: Vec<TargetRequirement> = face.spell_ability.as_ref()
+            .map(|sa| sa.target_requirements.clone())
+            .unwrap_or_default();
+        let target_selections = enumerate_target_selections(&reqs, state, player);
+        if target_selections.is_empty() { continue; }
+
+        let ctx = SpendContext::for_spell(
+            face.characteristics.types, face.characteristics.colors);
+
+        let has_x = face_cost.x_count() > 0;
+        let x_values: Vec<u32> = if has_x {
+            let max_x = state.player(player).mana_pool.total() as u32;
+            (0..=max_x).collect()
+        } else {
+            vec![0]
+        };
+
+        for &x in &x_values {
+            let cost = if has_x {
+                face_cost.with_x_expanded(x)
+            } else {
+                face_cost.clone()
+            };
+            let x_value = if has_x { Some(x) } else { None };
+            let plans = enumerate_payment_plans(
+                &cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in plans {
+                for targets in &target_selections {
+                    actions.push(Action::CastSpell {
+                        object_id: id,
+                        targets: targets.clone(),
+                        modes: Vec::new(),
+                        mana_payment: plan.clone(),
+                        additional_costs: Vec::new(),
+                        x_value,
+                        cast_modifier: crate::actions::CastModifier::Adventure,
+                        cost_reductions: crate::actions::CostReductions::default(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Adventure-creature casts from exile (CR 715). Walks exile for
+    // flagged cards this player owns and emits a normal-cost cast of
+    // the creature half. The exile object already carries the
+    // creature-face characteristics (the resolution/counter path
+    // restored them when routing to exile), so the printed mana cost
+    // here is the main-face cost directly.
+    for id in sorted_ids_in_zone(state, Zone::Exile) {
+        let Some(obj) = state.objects.get(id) else { continue; };
+        if obj.owner != player { continue; }
+        if !obj.adventure_exile_pending { continue; }
+        if obj.is_land() { continue; }
+
+        let is_instant_speed = obj.is_instant()
+            || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
+        if !is_instant_speed && !sorcery_speed_ok { continue; }
+
+        let Some(printed_cost) = obj.characteristics.mana_cost.clone()
+            else { continue; };
+
+        let reqs: Vec<TargetRequirement> = registry.get(obj.card_id)
+            .and_then(|def| def.spell_ability.as_ref())
+            .map(|sa| sa.target_requirements.clone())
+            .unwrap_or_default();
+        let target_selections = enumerate_target_selections(&reqs, state, player);
+        if target_selections.is_empty() { continue; }
+
+        let ctx = SpendContext::for_spell(
+            obj.characteristics.types, obj.characteristics.colors);
+
+        let has_x = printed_cost.x_count() > 0;
+        let x_values: Vec<u32> = if has_x {
+            let max_x = state.player(player).mana_pool.total() as u32;
+            (0..=max_x).collect()
+        } else {
+            vec![0]
+        };
+
+        for &x in &x_values {
+            let cost = if has_x {
+                printed_cost.with_x_expanded(x)
+            } else {
+                printed_cost.clone()
+            };
+            let x_value = if has_x { Some(x) } else { None };
+            let plans = enumerate_payment_plans(
+                &cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in plans {
+                for targets in &target_selections {
+                    actions.push(Action::CastSpell {
+                        object_id: id,
+                        targets: targets.clone(),
+                        modes: Vec::new(),
+                        mana_payment: plan.clone(),
+                        additional_costs: Vec::new(),
+                        x_value,
+                        cast_modifier:
+                            crate::actions::CastModifier::AdventureCreature,
+                        cost_reductions: crate::actions::CostReductions::default(),
+                    });
+                }
+            }
+        }
+    }
+
     actions
 }
 

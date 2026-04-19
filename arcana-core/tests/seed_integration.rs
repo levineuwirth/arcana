@@ -2686,3 +2686,290 @@ fn madness_cast_not_offered_for_unflagged_exile_object() {
         "unflagged exile object is not madness-castable");
 }
 
+// ---------------------------------------------------------------------
+// Adventure (CR 715) — Bonecrusher Giant // Stomp
+// ---------------------------------------------------------------------
+//
+// Bonecrusher is {1}{R} 4/3 with Stomp ({1}{R} instant, "Stomp deals
+// 2 damage to any target"). The seed proves the three cast paths:
+//
+//   1. Adventure cast from hand — uses the face's cost, resolves
+//      the face's effect, routes to exile with the flag set and the
+//      creature-face characteristics restored.
+//   2. Creature cast from adventure-exile — legal_actions offers it;
+//      cost is the creature-face cost; resolution enters the
+//      battlefield as a 4/3 Giant.
+//   3. Countered adventure still routes to exile with the flag
+//      (fizzle path reaches counter_resolved_spell), matching the
+//      printed rule.
+
+fn adventure_cast_action(
+    actions: &[Action],
+    card_in_hand: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a, Action::CastSpell {
+        object_id, cast_modifier, ..
+    } if *object_id == card_in_hand
+        && matches!(cast_modifier, arcana_core::actions::CastModifier::Adventure)
+    )).cloned()
+}
+
+fn adventure_creature_cast_action(
+    actions: &[Action],
+    card_in_exile: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a, Action::CastSpell {
+        object_id, cast_modifier, ..
+    } if *object_id == card_in_exile
+        && matches!(cast_modifier,
+            arcana_core::actions::CastModifier::AdventureCreature)
+    )).cloned()
+}
+
+#[test]
+fn bonecrusher_adventure_cast_deals_2_damage_and_exiles() {
+    let (mut s, registry, ids) = fresh_game();
+    let giant = put_in_hand(&mut s, &registry, 0, ids.bonecrusher_giant);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    // Stomp costs {1}{R}.
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = adventure_cast_action(&actions, giant)
+        .expect("adventure cast must be offered for bonecrusher in hand \
+                 with {R}{1} available");
+    // Retarget deterministically at bears.
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![
+                    arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                        arcana_core::targets::ObjectOrPlayer::Object(bears)),
+                ],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Stomp deals 2 damage — bears (2 toughness) dies.
+    assert_eq!(s.zone_count(Zone::Graveyard(1)), 1,
+        "bears die to 2 damage from Stomp");
+    // Adventure spell routes to exile (not graveyard) with the flag.
+    assert_eq!(s.zone_count(Zone::Exile), 1,
+        "adventure spell goes to exile after resolution");
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 0,
+        "adventure spell does not go to its owner's graveyard");
+    let exiled = s.objects.iter()
+        .find(|o| o.zone == Zone::Exile)
+        .expect("exile object exists");
+    assert!(exiled.adventure_exile_pending,
+        "exile object has adventure_exile_pending flag set");
+    // Post-resolution characteristics are the creature face
+    // (restored on the way to exile so the creature cast works).
+    assert!(exiled.characteristics.types.is_creature(),
+        "exile object carries creature-face type line, not instant");
+    assert_eq!(exiled.characteristics.mana_cost,
+        Some(arcana_core::mana::ManaCost::parse("{1}{R}").unwrap()),
+        "exile object carries creature-face mana cost");
+}
+
+#[test]
+fn bonecrusher_creature_cast_from_adventure_exile_enters_battlefield() {
+    let (mut s, registry, ids) = fresh_game();
+    let giant = put_in_hand(&mut s, &registry, 0, ids.bonecrusher_giant);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    // Fire the Adventure cast (Stomp → bears).
+    let cast = adventure_cast_action(
+        &arcana_core::legal_actions::legal_actions(&s, &registry), giant)
+        .expect("adventure cast offered");
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![
+                    arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                        arcana_core::targets::ObjectOrPlayer::Object(bears)),
+                ],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let mut s = resolve_stack(s, &registry);
+    let exile_id = s.objects.iter()
+        .find(|o| o.zone == Zone::Exile && o.adventure_exile_pending)
+        .map(|o| o.id).expect("adventure exile object");
+
+    // Now pay {1}{R} again and cast the creature half.
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let creature_cast = adventure_creature_cast_action(&actions, exile_id)
+        .expect("creature cast from adventure-exile must be offered");
+
+    let (s, _) = step(s, creature_cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // A Bonecrusher Giant is now on the battlefield under player 0's
+    // control.
+    let giant_obj = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield && o.card_id == ids.bonecrusher_giant)
+        .expect("bonecrusher on battlefield");
+    assert_eq!(giant_obj.controller, 0);
+    assert!(giant_obj.characteristics.types.is_creature());
+    assert_eq!(giant_obj.characteristics.power,
+        Some(arcana_core::types::PtValue::Fixed(4)));
+    assert_eq!(giant_obj.characteristics.toughness,
+        Some(arcana_core::types::PtValue::Fixed(3)));
+    // Re-id on the exile→stack→battlefield moves drops the flag.
+    assert!(!giant_obj.adventure_exile_pending,
+        "battlefield creature has no lingering adventure marker");
+    // Exile is now empty (the adventure-exile card left when cast).
+    assert_eq!(s.zone_count(Zone::Exile), 0,
+        "creature cast emptied the adventure-exile");
+}
+
+#[test]
+fn bonecrusher_adventure_not_offered_without_mana() {
+    let (mut s, registry, ids) = fresh_game();
+    let giant = put_in_hand(&mut s, &registry, 0, ids.bonecrusher_giant);
+    // No mana.
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(adventure_cast_action(&actions, giant).is_none(),
+        "empty pool → no adventure cast");
+}
+
+#[test]
+fn bonecrusher_adventure_offered_at_instant_speed_on_opponent_turn() {
+    // Stomp is an instant. The adventure cast should be legal even
+    // during the opponent's turn with the stack empty, exactly like
+    // any other instant in hand.
+    let (mut s, registry, ids) = fresh_game();
+    let giant = put_in_hand(&mut s, &registry, 0, ids.bonecrusher_giant);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    // Give p0 priority, but don't set a main phase for p0 — the
+    // active player is p0 by default so flip to p1's main phase by
+    // setting turn.active differently. The existing helper always
+    // sets turn to main for whoever receives priority, so here we
+    // craft the state by hand.
+    s.priority.give_to(0);
+    s.turn.active_player = 1;
+    s.turn.phase = arcana_core::turn::Phase::PreCombatMain;
+    s.turn.step = arcana_core::turn::Step::Main;
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(adventure_cast_action(&actions, giant).is_some(),
+        "Stomp (instant) legal on opponent's turn for p0");
+}
+
+#[test]
+fn bonecrusher_normal_creature_cast_from_hand_still_works() {
+    // Regression: the main-face cast path is unaffected by the
+    // adventure additions. Casting Bonecrusher normally (as a
+    // creature) from hand puts a 4/3 Giant on the battlefield,
+    // no exile detour.
+    let (mut s, registry, ids) = fresh_game();
+    let giant = put_in_hand(&mut s, &registry, 0, ids.bonecrusher_giant);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let normal_cast = actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, cast_modifier, .. }
+        if *object_id == giant
+            && matches!(cast_modifier, arcana_core::actions::CastModifier::None)
+    )).cloned().expect("normal creature cast offered");
+
+    let (s, _) = step(s, normal_cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Battlefield, not exile.
+    assert_eq!(s.zone_count(Zone::Exile), 0,
+        "normal creature cast does not exile");
+    let on_bf = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.bonecrusher_giant)
+        .expect("bonecrusher on battlefield from normal cast");
+    assert!(!on_bf.adventure_exile_pending);
+    assert!(on_bf.characteristics.types.is_creature());
+}
+
+#[test]
+fn bonecrusher_adventure_cast_fizzles_to_exile_when_target_leaves() {
+    // An adventure spell cast with its only target disappearing
+    // before resolution fizzles — CR 608.2b sends it to the
+    // graveyard via counter_resolved_spell. For an adventure cast
+    // the routing override must still fire: the card goes to exile
+    // with the flag set (CR 715 routing), exactly like Flashback's
+    // flag-on-leave.
+    let (mut s, registry, ids) = fresh_game();
+    let giant = put_in_hand(&mut s, &registry, 0, ids.bonecrusher_giant);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = adventure_cast_action(
+        &arcana_core::legal_actions::legal_actions(&s, &registry), giant)
+        .expect("adventure cast offered");
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![
+                    arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                        arcana_core::targets::ObjectOrPlayer::Object(bears)),
+                ],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+    let (mut s, _) = step(s, cast, &registry);
+    // Remove the target bears from the battlefield before the spell
+    // resolves — CR 608.2b will classify the entry as illegal at
+    // resolution time and route through `counter_resolved_spell`.
+    s.move_object_to_zone(bears, Zone::Exile,
+        arcana_core::events::MoveCause::AbilityResolution);
+    let s = resolve_stack(s, &registry);
+
+    // The adventure spell went to exile with the flag, not to
+    // graveyard.
+    let exile_objs: Vec<_> = s.objects.iter()
+        .filter(|o| o.zone == Zone::Exile
+            && o.card_id == ids.bonecrusher_giant)
+        .collect();
+    assert_eq!(exile_objs.len(), 1,
+        "fizzled adventure in exile");
+    assert!(exile_objs[0].adventure_exile_pending,
+        "fizzled adventure still flag-set for creature-cast window");
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 0,
+        "fizzled adventure does NOT route to graveyard");
+}

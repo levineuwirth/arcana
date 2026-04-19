@@ -272,6 +272,27 @@ fn apply_cast_spell(
             if !flagged_in_exile { return; }
             if madness_cost_for(state, object_id).is_none() { return; }
         }
+        crate::actions::CastModifier::Adventure => {
+            // CR 715 — cast the Adventure half from hand. The card
+            // must currently be in the caster's hand and its
+            // registry definition must declare an Adventure face.
+            let from_hand = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Hand(controller));
+            if !from_hand { return; }
+            if adventure_face_of(state, registry, object_id).is_none() {
+                return;
+            }
+        }
+        crate::actions::CastModifier::AdventureCreature => {
+            // CR 715 — cast the creature half from adventure-exile.
+            // Source must be in Exile with
+            // `adventure_exile_pending=true` and belong to the caster.
+            let flagged_in_exile = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Exile
+                    && o.adventure_exile_pending
+                    && o.owner == controller);
+            if !flagged_in_exile { return; }
+        }
     }
 
     // Modal validation (CR 700.2). A modal spell requires the caster to
@@ -331,12 +352,17 @@ fn apply_cast_spell(
         // the bound is against the flashback cost; for a normal cast
         // it's against the printed cost.
         let cost_opt = match cast_modifier {
-            crate::actions::CastModifier::None => state.objects.get(object_id)
-                .and_then(|o| o.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::None
+            | crate::actions::CastModifier::AdventureCreature =>
+                state.objects.get(object_id)
+                    .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>
                 flashback_cost_for(state, object_id),
             crate::actions::CastModifier::Madness =>
                 madness_cost_for(state, object_id),
+            crate::actions::CastModifier::Adventure =>
+                adventure_face_of(state, registry, object_id)
+                    .and_then(|f| f.characteristics.mana_cost.clone()),
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -431,12 +457,17 @@ fn apply_cast_spell(
         // Bound: improvise taps + delve exiles must not exceed the
         // spell's generic component. Flashback adjusts the base cost.
         let cost_opt = match cast_modifier {
-            crate::actions::CastModifier::None => state.objects.get(object_id)
-                .and_then(|o| o.characteristics.mana_cost.clone()),
+            crate::actions::CastModifier::None
+            | crate::actions::CastModifier::AdventureCreature =>
+                state.objects.get(object_id)
+                    .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>
                 flashback_cost_for(state, object_id),
             crate::actions::CastModifier::Madness =>
                 madness_cost_for(state, object_id),
+            crate::actions::CastModifier::Adventure =>
+                adventure_face_of(state, registry, object_id)
+                    .and_then(|f| f.characteristics.mana_cost.clone()),
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -489,14 +520,44 @@ fn apply_cast_spell(
     //    which clauses were chosen (CR 700.2c — card order). The
     //    registry helper resolves this; non-modal spells fall back to
     //    the flat list.
+    //
+    //    For Adventure casts (CR 715.2) the announced object uses the
+    //    Adventure face's characteristics — name, type line, mana
+    //    cost, and spell ability all come from the face. We swap the
+    //    hand object's characteristics to the face's before announce
+    //    so `announce_spell_on_stack` reads the right sheet onto the
+    //    stack entry; the pre-swap (creature-face) characteristics
+    //    ride on the entry via `pre_adventure_characteristics` so the
+    //    leave-the-stack path can restore them on the exile object.
     let card_def = state.objects.get(object_id)
         .and_then(|o| registry.get(o.card_id));
-    let spell_ability = card_def.and_then(|def| def.spell_ability.as_ref());
+    let is_adventure_cast = matches!(cast_modifier,
+        crate::actions::CastModifier::Adventure);
+    let adventure_face = if is_adventure_cast {
+        card_def.and_then(|d| d.alternate_face.as_ref())
+            .and_then(|af| af.as_adventure())
+    } else { None };
+    let pre_adventure_chars = if is_adventure_cast {
+        let swapped_chars = adventure_face.map(|f| f.characteristics.clone());
+        if let (Some(swapped), Some(obj)) = (swapped_chars,
+            state.objects.get_mut(object_id))
+        {
+            let prior = std::mem::replace(&mut obj.characteristics, swapped);
+            Some(prior)
+        } else { None }
+    } else { None };
+
+    let (spell_ability, enters_with) = if is_adventure_cast {
+        // Adventure face supplies the spell ability; enters_with
+        // belongs to the creature face and does not apply.
+        (adventure_face.and_then(|f| f.spell_ability.as_ref()), Vec::new())
+    } else {
+        let sa = card_def.and_then(|def| def.spell_ability.as_ref());
+        let ew = card_def.map(|d| d.enters_with.clone()).unwrap_or_default();
+        (sa, ew)
+    };
     let target_requirements = spell_ability
         .map(|sa| crate::registry::effective_target_requirements(sa, &modes))
-        .unwrap_or_default();
-    let enters_with = card_def
-        .map(|def| def.enters_with.clone())
         .unwrap_or_default();
     let entry_id = state.announce_spell_on_stack(
         object_id, controller, targets, modes, x_value, target_requirements);
@@ -512,6 +573,7 @@ fn apply_cast_spell(
         entry.enters_with = enters_with;
         entry.delve_count = delve_count;
         entry.kicked = elected_kicker;
+        entry.pre_adventure_characteristics = pre_adventure_chars;
     }
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
@@ -627,6 +689,25 @@ pub(crate) fn madness_cost_for(
             crate::effects::KeywordAbility::Madness(cost) => Some(cost),
             _ => None,
         })
+}
+
+/// Return the Adventure face of the card backing `object_id`, if the
+/// card has one (CR 715). Dispatches on the registry definition, not
+/// on the object's current characteristics — the field is
+/// "characteristic of the printed card" and does not participate in
+/// the layer system (no card grants another card an Adventure).
+///
+/// Today's only multi-face relationship is Adventure;
+/// [`crate::registry::AlternateFace::as_adventure`] filters out the
+/// Split / MDFC / Transform variants when they land.
+pub(crate) fn adventure_face_of<'r>(
+    state: &GameState,
+    registry: &'r crate::registry::CardRegistry,
+    object_id: ObjectId,
+) -> Option<&'r crate::registry::CardFace> {
+    let card_id = state.objects.get(object_id)?.card_id;
+    let def = registry.get(card_id)?;
+    def.alternate_face.as_ref()?.as_adventure()
 }
 
 
@@ -1992,9 +2073,22 @@ fn resolution_target_requirements(
             // Modal-aware: CR 608.2b rechecks each chosen target against
             // the requirement declared on the clause that summoned it.
             // Non-modal spells fall back to the flat list.
-            registry.get(*card_id)
-                .and_then(|def| def.spell_ability.as_ref())
-                .map(|sa| crate::registry::effective_target_requirements(sa, &entry.modes))
+            //
+            // Adventure casts dispatch on the Adventure face's spell
+            // ability rather than the main (creature) one — modal
+            // adventures aren't printed today, but routing through
+            // `effective_target_requirements` still degrades correctly.
+            let def = registry.get(*card_id);
+            let sa = if matches!(entry.cast_modifier,
+                crate::actions::CastModifier::Adventure)
+            {
+                def.and_then(|d| d.alternate_face.as_ref())
+                    .and_then(|af| af.as_adventure())
+                    .and_then(|f| f.spell_ability.as_ref())
+            } else {
+                def.and_then(|d| d.spell_ability.as_ref())
+            };
+            sa.map(|sa| crate::registry::effective_target_requirements(sa, &entry.modes))
                 .unwrap_or_default()
         }
         crate::stack::StackEntryKind::ActivatedAbility {
@@ -2029,7 +2123,18 @@ fn resolution_effects(
     match &entry.kind {
         crate::stack::StackEntryKind::Spell { card_id, .. } => {
             let Some(def) = registry.get(*card_id) else { return Vec::new(); };
-            let Some(sa) = def.spell_ability.as_ref() else { return Vec::new(); };
+            // Adventure casts resolve via the Adventure face's spell
+            // ability (CR 715.2). Everything else uses the main face.
+            let sa = if matches!(entry.cast_modifier,
+                crate::actions::CastModifier::Adventure)
+            {
+                def.alternate_face.as_ref()
+                    .and_then(|af| af.as_adventure())
+                    .and_then(|f| f.spell_ability.as_ref())
+            } else {
+                def.spell_ability.as_ref()
+            };
+            let Some(sa) = sa else { return Vec::new(); };
             (sa.effect)(state, entry, registry)
         }
         crate::stack::StackEntryKind::ActivatedAbility {

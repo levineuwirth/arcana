@@ -144,6 +144,19 @@ pub struct GameObject {
     /// only lives during the brief exile window between discard and
     /// cast/cleanup.
     pub madness_pending: bool,
+    /// CR 715 — Adventure exile marker. Set when an Adventure spell
+    /// (cast via [`crate::actions::CastModifier::Adventure`]) leaves
+    /// the stack via resolution, counter, or fizzle — the card
+    /// routes to [`Zone::Exile`] instead of graveyard and this flag
+    /// opens the creature-cast window. While flagged,
+    /// [`crate::legal_actions`] emits a
+    /// [`crate::actions::CastModifier::AdventureCreature`] cast path
+    /// for the object using its printed creature-face mana cost.
+    /// The flag does not survive the re-id on the exile→stack (and
+    /// subsequent stack→battlefield) moves, so the resulting
+    /// battlefield creature is an ordinary object with no adventure
+    /// residue.
+    pub adventure_exile_pending: bool,
 }
 
 impl GameObject {
@@ -171,6 +184,7 @@ impl GameObject {
             abilities: Vec::new(),
             status: PermanentStatus::default(),
             madness_pending: false,
+            adventure_exile_pending: false,
         }
     }
 
@@ -340,6 +354,13 @@ impl GameObject {
         // other effect) drops the flag. The re-id on zone change
         // then gives the downstream zone a clean object.
         self.madness_pending = false;
+        // Adventure-exile marker is similarly zone-local (CR 715):
+        // set when an Adventure spell leaves the stack to exile,
+        // cleared the moment the card moves anywhere (creature
+        // cast, effect-driven exile, cleanup). Dropping it on re-id
+        // keeps the post-exile object from carrying stale adventure
+        // residue into the battlefield.
+        self.adventure_exile_pending = false;
     }
 }
 

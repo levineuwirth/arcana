@@ -156,6 +156,22 @@ pub struct StackEntry {
     /// of kickable spells.
     #[serde(default)]
     pub kicked: bool,
+    /// CR 715 — snapshot of the card's *creature-face* characteristics
+    /// at the moment of casting. Populated only for Adventure casts
+    /// (`cast_modifier == CastModifier::Adventure`), where the
+    /// announced object carried the *Adventure-face* characteristics
+    /// (so the stack entry reads as an instant/sorcery). On resolution
+    /// or counter the routing path restores these onto the post-re-id
+    /// exile object, so the subsequent adventure-creature cast sees
+    /// the correct (creature) type line and mana cost.
+    ///
+    /// `None` for every other cast. Skipped by serde: `Characteristics`
+    /// is already non-serializing around a few inner types for the
+    /// same reasons `enters_with` and `target_requirements` skip —
+    /// replay across a serialize boundary doesn't re-hydrate this
+    /// path and Phase 2 doesn't exercise it.
+    #[serde(skip)]
+    pub pre_adventure_characteristics: Option<Characteristics>,
 }
 
 impl StackEntry {
@@ -190,6 +206,8 @@ impl StackEntry {
             delve_count: 0,
             // Caller (apply_cast_spell) stamps from AdditionalCostPayment::Kicker.
             kicked: false,
+            // Caller (apply_cast_spell) populates only for Adventure casts.
+            pre_adventure_characteristics: None,
         }
     }
 
@@ -223,6 +241,7 @@ impl StackEntry {
             enters_with: Vec::new(),
             delve_count: 0,
             kicked: false,
+            pre_adventure_characteristics: None,
         }
     }
 
@@ -255,6 +274,7 @@ impl StackEntry {
             enters_with: Vec::new(),
             delve_count: 0,
             kicked: false,
+            pre_adventure_characteristics: None,
         }
     }
 
@@ -608,8 +628,18 @@ impl GameState {
         // exile, not the graveyard (and not the battlefield, since a
         // permanent spell cast via flashback is already a degenerate
         // case — Phase 1 doesn't register any such cards).
+        //
+        // CR 715 — an Adventure spell likewise routes to exile, but
+        // with the `adventure_exile_pending` flag set and the
+        // creature-face characteristics restored (Adventure faces
+        // are instant/sorcery, so `chars.is_permanent()` is false
+        // above and the normal graveyard route would fire — the
+        // Adventure branch overrides that).
+        let is_adventure = matches!(entry.cast_modifier,
+            crate::actions::CastModifier::Adventure);
         let destination = if matches!(entry.cast_modifier,
             crate::actions::CastModifier::Flashback)
+            || is_adventure
         {
             Zone::Exile
         } else if chars.is_permanent() {
@@ -628,6 +658,19 @@ impl GameState {
         if destination == Zone::Battlefield {
             if let Some(obj) = self.objects.get_mut(new_id) {
                 obj.controller = controller;
+            }
+        }
+
+        // Adventure exile: restore the creature-face characteristics
+        // (captured at cast time on the entry) and flag the exile so
+        // legal-action enumeration offers the creature cast. Done
+        // after the re-id so we're writing the fresh exile object.
+        if is_adventure {
+            if let Some(obj) = self.objects.get_mut(new_id) {
+                obj.adventure_exile_pending = true;
+                if let Some(pre) = entry.pre_adventure_characteristics.as_ref() {
+                    obj.characteristics = pre.clone();
+                }
             }
         }
 
@@ -750,8 +793,17 @@ impl GameState {
         // Fizzle reaches this path via
         // [`crate::engine::resolve_top_of_stack`]'s
         // `CounteredIllegalTargets` branch.
+        //
+        // CR 715 — an Adventure spell leaving the stack also routes
+        // to exile with the `adventure_exile_pending` flag set and
+        // creature-face characteristics restored. Countered /
+        // fizzled Adventure spells stay castable as the creature
+        // half, matching the printed rules.
+        let is_adventure = matches!(entry.cast_modifier,
+            crate::actions::CastModifier::Adventure);
         let destination = if matches!(entry.cast_modifier,
             crate::actions::CastModifier::Flashback)
+            || is_adventure
         {
             Zone::Exile
         } else {
@@ -760,6 +812,15 @@ impl GameState {
 
         let (new_id, from) = self.swap_to_zone_reid(id, destination)
             .expect("counter_resolved_spell: swap_to_zone_reid returned None");
+
+        if is_adventure {
+            if let Some(obj) = self.objects.get_mut(new_id) {
+                obj.adventure_exile_pending = true;
+                if let Some(pre) = entry.pre_adventure_characteristics.as_ref() {
+                    obj.characteristics = pre.clone();
+                }
+            }
+        }
 
         self.emit(GameEvent::ZoneChange {
             object_id: id,

@@ -111,6 +111,12 @@ pub struct CardDefinition {
     /// Season) live on `GameState::replacement_effects` and compose
     /// through `place_counters`.
     pub enters_with: Vec<EntersWithSpec>,
+    /// Multi-face relationship, if any (Adventure, Split, MDFC,
+    /// Transform — Phase 2-B seeds Adventure first). `None` for the
+    /// vast majority of cards. When `Some`, the secondary face data
+    /// rides inline on the variant, keeping the type system's "is
+    /// this card multi-face" check to a single `Option` match.
+    pub alternate_face: Option<AlternateFace>,
 }
 
 impl CardDefinition {
@@ -124,6 +130,7 @@ impl CardDefinition {
             activated_abilities: Vec::new(),
             triggered_abilities: Vec::new(),
             enters_with: Vec::new(),
+            alternate_face: None,
         }
     }
 
@@ -181,6 +188,28 @@ impl CardDefinition {
             is_instant_speed: true,
             effect: cycling_draw_one,
         });
+        self
+    }
+
+    /// CR 715 — Adventure. Declares the card's Adventure half (the
+    /// instant/sorcery side, with its own name, mana cost, and
+    /// rules text). The creature side lives on
+    /// [`Self::base_characteristics`] and [`Self::spell_ability`] as
+    /// usual; this helper attaches the Adventure face alongside.
+    ///
+    /// Cast flow (summarized, per
+    /// [`crate::actions::CastModifier::Adventure`] +
+    /// [`crate::actions::CastModifier::AdventureCreature`]):
+    /// * From hand with `CastModifier::Adventure`: the cast uses the
+    ///   face's mana cost and spell ability; on resolution (or
+    ///   counter) the card goes to exile flagged with
+    ///   [`crate::objects::GameObject::adventure_exile_pending`].
+    /// * From that flagged exile, the owner may cast the creature
+    ///   half with `CastModifier::AdventureCreature` for its normal
+    ///   (printed) mana cost; resolution enters the battlefield
+    ///   normally and the flag does not travel across the re-id.
+    pub fn with_adventure(mut self, face: CardFace) -> Self {
+        self.alternate_face = Some(AlternateFace::Adventure(face));
         self
     }
 
@@ -251,6 +280,69 @@ pub enum EntersWithSpec {
     /// Cultivator Colossus, etc. Applies after any counters but
     /// before summoning sickness is stamped.
     Tapped,
+}
+
+// =============================================================================
+// Multi-face cards (CR 715 Adventurer; CR 711 Split; CR 712 Transform;
+// CR 717 MDFC — Phase 2-B lands Adventure first)
+// =============================================================================
+
+/// A secondary face on a multi-face card. Holds the printed data the
+/// engine needs to execute that face: name, mana cost, type line, and
+/// — for instant/sorcery faces — a [`SpellAbilityDef`]. The creature
+/// (or "main") face lives on [`CardDefinition`] as usual.
+///
+/// Today only the Adventure half populates this (always an instant or
+/// sorcery side whose own mana cost and spell ability the engine
+/// dispatches on via [`crate::actions::CastModifier::Adventure`]). The
+/// struct is deliberately minimal: Split/MDFC/Transform will push
+/// activated/triggered abilities and `enters_with` into this struct as
+/// they land.
+#[derive(Clone, Debug)]
+pub struct CardFace {
+    /// Interned face name ("Petty Theft", "Stomp", etc.). The stack
+    /// entry that dispatches this face carries this name via its
+    /// spell entry characteristics so logs and debug output read
+    /// correctly.
+    pub name: SmallString,
+    /// Full characteristics for the face — mana cost, type line,
+    /// color, and (for multi-face permanent sides later) P/T. For
+    /// today's Adventure half this is always an instant or sorcery
+    /// sheet; the name here is the face's own name, separate from
+    /// the main card's name.
+    pub characteristics: Characteristics,
+    /// Spell ability that fires when this face resolves. Required for
+    /// instant/sorcery faces (today's Adventure). `None` is reserved
+    /// for permanent alternate faces (MDFC creature back, Transform
+    /// flip) that will land later.
+    pub spell_ability: Option<SpellAbilityDef>,
+}
+
+/// The shape of the relationship between a [`CardDefinition`] and its
+/// [`CardFace`]. Each variant carries its own face data; the variant
+/// tag is what drives engine dispatch (Adventure routes differently
+/// from Split differently from MDFC).
+///
+/// Adventure lands first (Phase 2-B). Split, MDFC, and Transform are
+/// reserved variants that will populate as those mechanics return.
+#[derive(Clone, Debug)]
+pub enum AlternateFace {
+    /// CR 715 — Adventurer. The card has a creature main face (on
+    /// [`CardDefinition::base_characteristics`]) and an Adventure
+    /// instant-or-sorcery face (this payload). See
+    /// [`CardDefinition::with_adventure`] for the full cast flow.
+    Adventure(CardFace),
+}
+
+impl AlternateFace {
+    /// Unwrap the Adventure face, if this relationship is Adventure.
+    /// Returns `None` for non-Adventure relationships (Split, MDFC,
+    /// Transform when they land).
+    pub fn as_adventure(&self) -> Option<&CardFace> {
+        match self {
+            AlternateFace::Adventure(face) => Some(face),
+        }
+    }
 }
 
 // =============================================================================

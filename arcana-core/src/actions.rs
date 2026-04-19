@@ -62,6 +62,24 @@ pub enum CastModifier {
     /// battlefield for permanents) — the madness exile was a
     /// stepping-stone zone, not the post-resolution zone.
     Madness,
+    /// CR 715 — cast the Adventure half of an adventurer card from
+    /// hand. Dispatches on the card's
+    /// [`crate::registry::AlternateFace::Adventure`] face: the mana
+    /// cost, name, type line, and spell ability all come from the
+    /// face rather than the main (creature) characteristics. On
+    /// resolution or counter the card goes to exile with
+    /// [`crate::objects::GameObject::adventure_exile_pending`] set,
+    /// enabling the subsequent creature cast.
+    Adventure,
+    /// CR 715 — cast the creature half of an adventurer card from
+    /// adventure-exile. Source must be in exile with
+    /// `adventure_exile_pending=true` and belong to the caster. Mana
+    /// cost and spell shape are the normal (main-face) characteristics —
+    /// this modifier is purely a zone override, analogous to
+    /// [`Self::Madness`]. On resolution the creature enters the
+    /// battlefield; the re-id on the zone change drops the flag so
+    /// the battlefield object is a clean creature.
+    AdventureCreature,
 }
 
 /// Bundle of *cost-reduction* choices (CR 601.2f category: "cost
