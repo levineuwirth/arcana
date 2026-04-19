@@ -315,9 +315,33 @@ fn enumerate_attacker_declarations(state: &GameState, active: PlayerId) -> Vec<A
     out
 }
 
-/// Emit the empty declaration (no blocks) plus one declaration per
-/// (eligible blocker, attacker being blocked) pair. Multi-blocker
-/// combinations are deferred.
+/// Emit the empty declaration (no blocks) plus, for each attacker,
+/// every legal subset of that attacker's eligible blockers whose size
+/// satisfies the attacker's [`AttackerBlockConstraints`] (CR 509.1
+/// plus count-keywords). This is a constraint-driven generalization
+/// of the earlier singleton-only enumerator: the default
+/// `min=1, max=None` case recovers the old "every (blocker, attacker)
+/// pair" shape, while Menace's `min=2` produces pair-and-larger
+/// subsets and a hypothetical "can't be blocked by more than one"
+/// would cap at `max=Some(1)`.
+///
+/// Per-attacker independence (Phase 2 scope): each emitted action
+/// declares blockers on **one** attacker with the others unblocked.
+/// The defender can still construct multi-attacker block batches by
+/// hand. Full multi-attacker-assignment enumeration is deferred — it
+/// blows up combinatorially and no current consumer pays for the
+/// generality.
+///
+/// DEBT: subset enumeration at high eligible-blocker counts can
+/// generate many equivalent declarations when multiple blockers
+/// share characteristics. The
+/// [`enumerate_equivalence_subsets`] helper applies
+/// characteristic-equivalence dedup (same mechanism delve uses), so
+/// two Grizzly Bears enter a single equivalence class and subsets of
+/// the class are counted once. This is the main lever that keeps
+/// Menace enumeration tractable. If a future AI-training profile
+/// shows the enumeration is still pathological, revisit with a
+/// richer key (counters, attachments, damage).
 fn enumerate_blocker_declarations(state: &GameState, defender: PlayerId) -> Vec<Action> {
     let mut out = Vec::new();
     out.push(Action::DeclareBlockers { blockers: Vec::new() });
@@ -327,37 +351,66 @@ fn enumerate_blocker_declarations(state: &GameState, defender: PlayerId) -> Vec<
         None => return out,
     };
 
-    let mut eligible_blockers: Vec<ObjectId> = state.objects
+    let mut all_eligible: Vec<ObjectId> = state.objects
         .objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == defender && can_block(state, o))
         .map(|o| o.id)
         .collect();
-    eligible_blockers.sort();
+    all_eligible.sort();
 
     let mut attackers: Vec<ObjectId> = combat.attackers.iter()
         .map(|a| a.object_id).collect();
     attackers.sort();
 
-    for blk in eligible_blockers {
-        for &atk in &attackers {
-            if !can_block_attacker(state, blk, atk) { continue; }
-            out.push(Action::DeclareBlockers {
-                blockers: vec![BlockerDeclaration {
-                    blocker: blk,
-                    blocking: atk,
-                }],
-            });
+    for atk in attackers {
+        // Per-attacker eligibility filter (Flying/Reach, Protection).
+        // Menace is now expressed via `block_constraints`, not per-
+        // blocker eligibility.
+        let eligible_for_atk: Vec<ObjectId> = all_eligible.iter()
+            .copied()
+            .filter(|&blk| can_block_attacker(state, blk, atk))
+            .collect();
+
+        let constraints = state.block_constraints(atk);
+        let max_size = match constraints.max_blockers {
+            Some(m) => (m as usize).min(eligible_for_atk.len()),
+            None => eligible_for_atk.len(),
+        };
+        if (constraints.min_blockers as usize) > max_size {
+            // No legal non-empty block exists on this attacker
+            // (e.g. Menace with only one eligible blocker, or
+            // unblockable via max=Some(0)).
+            continue;
+        }
+
+        // Characteristic-equivalence dedup: subsets of size 0..=max
+        // over the eligible blockers, grouped by equivalence class.
+        // Filter the emitted subsets down to the constraint-allowed
+        // sizes; drop the empty subset (already emitted above).
+        let subsets = enumerate_equivalence_subsets(
+            &eligible_for_atk, max_size,
+            |&id| object_equivalence_key(state, id),
+        );
+        for subset in subsets {
+            let size = subset.len() as u32;
+            if size == 0 { continue; }
+            if !constraints.allows_block_count(size) { continue; }
+            let decls: Vec<BlockerDeclaration> = subset.into_iter()
+                .map(|blk| BlockerDeclaration { blocker: blk, blocking: atk })
+                .collect();
+            out.push(Action::DeclareBlockers { blockers: decls });
         }
     }
     out
 }
 
-/// Per-pair block-legality check. Enforces evergreen pair restrictions
-/// (Flying/Reach, Menace). Singleton-only for Phase 1: since our
-/// enumerator only emits one-blocker declarations, Menace always
-/// rejects here — any attacker with Menace requires two blockers. Tests
-/// that want to set up legal Menace blocks construct the
-/// `DeclareBlockers` action manually.
+/// Per-pair blocker eligibility (CR 509.1b). Checks the per-blocker
+/// restrictions: Flying/Reach evasion, Protection. Count constraints
+/// (Menace, unblockable, etc.) live on
+/// [`crate::combat::AttackerBlockConstraints`] and are enforced by
+/// the enumerator's subset-size filter rather than here — this fn's
+/// job is strictly "is this *individual* creature a legal blocker
+/// for this attacker."
 fn can_block_attacker(state: &GameState, blocker: ObjectId, attacker: ObjectId) -> bool {
     use crate::effects::KeywordAbility;
     // CR 702.9a — Flying: a creature with flying can be blocked only
@@ -366,11 +419,6 @@ fn can_block_attacker(state: &GameState, blocker: ObjectId, attacker: ObjectId) 
         && !state.has_keyword(blocker, &KeywordAbility::Flying)
         && !state.has_keyword(blocker, &KeywordAbility::Reach)
     {
-        return false;
-    }
-    // CR 702.110a — Menace: a creature with menace can't be blocked
-    // except by two or more creatures. Singleton enumerator => reject.
-    if state.has_keyword(attacker, &KeywordAbility::Menace) {
         return false;
     }
     // CR 702.16b — Protection: attacker can't be blocked by a creature

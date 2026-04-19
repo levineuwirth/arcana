@@ -2920,6 +2920,242 @@ fn bonecrusher_normal_creature_cast_from_hand_still_works() {
 }
 
 // ---------------------------------------------------------------------
+// Menace (CR 702.110) — Ahn-Crop Crasher
+// ---------------------------------------------------------------------
+//
+// Crasher is {2}{R} 3/2 Human Warrior with Menace. The seed proves
+// the constraint-driven block infrastructure that Menace forced:
+//
+//   1. apply_declared_blockers rejects a single blocker on a Menace
+//      attacker (min_blockers = 2 via AttackerBlockConstraints).
+//   2. apply_declared_blockers accepts a pair of blockers.
+//   3. legal_actions::enumerate_blocker_declarations, after the
+//      refactor to constraint-driven subset enumeration, offers
+//      pair-block declarations for Menace attackers — which the
+//      singleton-only enumerator did NOT. This is the primary gap
+//      Menace surfaced.
+//   4. Non-Menace attackers still receive singleton blocks (the
+//      default unrestricted constraint).
+//   5. Combat damage flows correctly through a Menace pair-block.
+
+fn pair_block_action(
+    actions: &[Action],
+    attacker: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::DeclareBlockers { blockers }
+        if blockers.len() == 2
+            && blockers.iter().all(|d| d.blocking == attacker)
+    )).cloned()
+}
+
+fn singleton_block_action_for(
+    actions: &[Action],
+    attacker: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::DeclareBlockers { blockers }
+        if blockers.len() == 1 && blockers[0].blocking == attacker
+    )).cloned()
+}
+
+#[test]
+fn menace_apply_drops_single_blocker_declaration() {
+    let (mut s, registry, ids) = fresh_game();
+    let crasher = put_on_battlefield(&mut s, &registry, 0, ids.ahn_crop_crasher);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    clear_summoning_sickness(&mut s, crasher);
+    clear_summoning_sickness(&mut s, bears);
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: crasher,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    // Submit a single-blocker declaration — the generalized
+    // constraint check must drop it because Menace's
+    // min_blockers=2 is unsatisfied.
+    s.apply_declared_blockers(vec![
+        arcana_core::combat::BlockerDeclaration {
+            blocker: bears, blocking: crasher,
+        },
+    ]);
+
+    let combat = s.combat.as_ref().unwrap();
+    assert!(combat.blockers.is_empty(),
+        "single blocker on a Menace attacker must be dropped");
+    assert!(!combat.attacker(crasher).unwrap().is_blocked,
+        "attacker remains unblocked when the declaration is dropped");
+}
+
+#[test]
+fn menace_apply_accepts_pair_block() {
+    // Two defender creatures against one Menace attacker — the pair
+    // declaration satisfies min_blockers=2 and sticks.
+    let (mut s, registry, ids) = fresh_game();
+    let crasher = put_on_battlefield(&mut s, &registry, 0, ids.ahn_crop_crasher);
+    let bears1 = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    // Give the second blocker a distinct card to avoid triggering
+    // equivalence-class dedup on the apply-path (apply doesn't dedup,
+    // but two identical bears would both be in the arena as separate
+    // objects with different ids — duplicate-id guards in apply want
+    // distinct ids, which they already are).
+    let spider = put_on_battlefield(&mut s, &registry, 1, ids.giant_spider);
+    for id in [crasher, bears1, spider] {
+        clear_summoning_sickness(&mut s, id);
+    }
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: crasher,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        arcana_core::combat::BlockerDeclaration {
+            blocker: bears1, blocking: crasher,
+        },
+        arcana_core::combat::BlockerDeclaration {
+            blocker: spider, blocking: crasher,
+        },
+    ]);
+
+    let combat = s.combat.as_ref().unwrap();
+    assert_eq!(combat.blockers.len(), 2,
+        "both blockers stick on a Menace attacker with pair-block");
+    assert!(combat.attacker(crasher).unwrap().is_blocked,
+        "attacker marked blocked after pair-block");
+}
+
+#[test]
+fn menace_legal_actions_offers_pair_block_declaration() {
+    // This is the primary regression: before the constraint-driven
+    // enumerator refactor, legal_actions only emitted singleton
+    // block declarations, so a Menace attacker was silently
+    // unblockable from the legal-action API's perspective.
+    let (mut s, registry, ids) = fresh_game();
+    let crasher = put_on_battlefield(&mut s, &registry, 0, ids.ahn_crop_crasher);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    let spider = put_on_battlefield(&mut s, &registry, 1, ids.giant_spider);
+    for id in [crasher, bears, spider] {
+        clear_summoning_sickness(&mut s, id);
+    }
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: crasher,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    // Defender has priority during DeclareBlockers — legal_actions
+    // gates block enumeration on `player != active_player`.
+    s.priority.give_to(1);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(pair_block_action(&actions, crasher).is_some(),
+        "legal_actions must offer a pair-block declaration for a \
+         Menace attacker with two eligible blockers available");
+    // And must NOT offer singleton blocks (the pre-refactor shape)
+    // — Menace's min=2 filters them out of the constraint-allowed
+    // sizes.
+    assert!(singleton_block_action_for(&actions, crasher).is_none(),
+        "legal_actions must not offer a singleton block against a \
+         Menace attacker (min_blockers=2 filters it)");
+}
+
+#[test]
+fn non_menace_attacker_still_offered_singleton_block() {
+    // Regression: the constraint refactor did not break the default
+    // unrestricted (min=1, max=None) case. A plain Bears attacker
+    // still gets singleton block offers.
+    let (mut s, registry, ids) = fresh_game();
+    let bears_a = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    let bears_b = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    clear_summoning_sickness(&mut s, bears_a);
+    clear_summoning_sickness(&mut s, bears_b);
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: bears_a,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    s.priority.give_to(1);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    assert!(singleton_block_action_for(&actions, bears_a).is_some(),
+        "non-Menace attacker still offered singleton block");
+}
+
+#[test]
+fn menace_combat_damage_flows_through_pair_block() {
+    // Crasher (3/2) vs Bears (2/2) + Spider (2/4). Attacker
+    // distributes 3 damage in declared-blocker order. Default
+    // distribution gives Bears lethal (2) first, then remainder (1)
+    // to Spider. Blockers deal back: 2 + 2 = 4 damage to Crasher,
+    // which dies (2 toughness).
+    let (mut s, registry, ids) = fresh_game();
+    let crasher = put_on_battlefield(&mut s, &registry, 0, ids.ahn_crop_crasher);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    let spider = put_on_battlefield(&mut s, &registry, 1, ids.giant_spider);
+    for id in [crasher, bears, spider] {
+        clear_summoning_sickness(&mut s, id);
+    }
+
+    s.begin_combat();
+    s.apply_declared_attackers(vec![
+        arcana_core::combat::AttackerDeclaration {
+            attacker: crasher,
+            defending: arcana_core::combat::DefendingEntity::Player(1),
+        },
+    ]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        arcana_core::combat::BlockerDeclaration {
+            blocker: bears, blocking: crasher,
+        },
+        arcana_core::combat::BlockerDeclaration {
+            blocker: spider, blocking: crasher,
+        },
+    ]);
+    // Precondition: the pair-block must have stuck.
+    let combat = s.combat.as_ref().unwrap();
+    assert_eq!(combat.blockers.len(), 2,
+        "precondition: pair-block sticks on Menace attacker");
+
+    s.deal_combat_damage();
+    arcana_core::sba::apply_state_based_actions(&mut s);
+
+    // Crasher takes 4 total damage (2 from Bears + 2 from Spider),
+    // 2 toughness → dies. Look up by card_id, not old object id:
+    // SBA moves the dying creature to its owner's graveyard and
+    // re-ids it (CR 400.7), so the pre-combat ids no longer
+    // resolve in the arena.
+    assert!(s.objects.objects_in_zone(Zone::Graveyard(0))
+        .any(|o| o.card_id == ids.ahn_crop_crasher),
+        "Crasher dies to 4 damage from the pair-block");
+    // Bears (2 toughness) dies to 2 damage (default distribution
+    // gives lethal to first blocker in order).
+    assert!(s.objects.objects_in_zone(Zone::Graveyard(1))
+        .any(|o| o.card_id == ids.grizzly_bears),
+        "Bears dies to 2 damage");
+    // Spider (4 toughness) takes 1 damage, survives.
+    assert!(s.objects.objects_in_zone(Zone::Battlefield)
+        .any(|o| o.card_id == ids.giant_spider),
+        "Spider survives (4 toughness absorbs default distribution's \
+         1 remaining point)");
+}
+
+// ---------------------------------------------------------------------
 // Prowess (CR 702.108) + Haste (CR 702.10) — Monastery Swiftspear
 // ---------------------------------------------------------------------
 //

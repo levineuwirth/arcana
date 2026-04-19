@@ -180,6 +180,66 @@ pub struct BlockerDeclaration {
     pub blocking: ObjectId,
 }
 
+/// CR-derived aggregate count constraints on how many blockers may be
+/// declared against a single attacker. Computed per attacker by
+/// [`GameState::block_constraints`] from the attacker's current
+/// characteristics (via layer-aware keyword lookup).
+///
+/// Two axes factor cleanly from per-blocker eligibility (Flying/Reach,
+/// Protection, Skulk-style power filters, etc.):
+///
+/// * `min_blockers` — the minimum number of blockers required **when
+///   the attacker is blocked at all**. Zero blockers (no block) is
+///   always legal at the aggregate level; the minimum only constrains
+///   non-empty block sets. CR 702.110 Menace raises this to 2;
+///   "can't be blocked except by three or more" variants raise it
+///   higher. Default 1 (the ordinary "any single blocker is legal"
+///   case).
+/// * `max_blockers` — the maximum number of blockers allowed, or
+///   `None` for unbounded. `Some(0)` expresses "can't be blocked"
+///   (a.k.a. unblockable) at the constraint layer — the enumerator
+///   emits only the empty block, and the apply-side drops any
+///   declared blockers. `Some(1)` expresses "can't be blocked by
+///   more than one" effects. Default `None`.
+///
+/// The layer-aware derivation runs every time combat legality is
+/// checked, so Menace granted by a layer-6 effect (Goblin War Drums,
+/// Kazuul's Fury mid-game) composes naturally.
+///
+/// DEBT: at high eligible-blocker counts with multi-Menace (or any
+/// min >= 2 constraint on multiple attackers in the same combat),
+/// subset enumeration can blow up — C(10,2) = 45 per attacker, three
+/// attackers × 45² ≈ 90k declarations. Apply
+/// characteristic-equivalence dedup (grouping blockers by computed
+/// characteristics the same way delve-subset dedup groups graveyard
+/// cards) when the first AI-training profile surfaces the pressure.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct AttackerBlockConstraints {
+    pub min_blockers: u32,
+    pub max_blockers: Option<u32>,
+}
+
+impl AttackerBlockConstraints {
+    /// Default constraints — any single eligible blocker is legal,
+    /// no upper bound. Matches the ordinary "creature without a
+    /// combat-count-restriction keyword" case.
+    pub fn default_unrestricted() -> Self {
+        Self { min_blockers: 1, max_blockers: None }
+    }
+
+    /// Is `count` an allowed non-empty block size under these
+    /// constraints? Zero is always legal at the aggregate level (no
+    /// block at all); this check gates non-empty counts.
+    pub fn allows_block_count(&self, count: u32) -> bool {
+        if count == 0 { return true; }
+        if count < self.min_blockers { return false; }
+        match self.max_blockers {
+            Some(max) if count > max => false,
+            _ => true,
+        }
+    }
+}
+
 /// How an attacker distributes its damage among its blockers.
 /// `distribution` is a `(blocker_id, amount)` list whose sum must
 /// equal the attacker's combat-damage-dealt amount and whose order
@@ -378,6 +438,31 @@ impl GameState {
         combat.phase = CombatPhase::PostDeclareAttackers;
     }
 
+    /// CR 509/702 — combat block-count constraints for `attacker`.
+    /// Factors count restrictions (Menace, can't-be-blocked, etc.)
+    /// away from per-blocker eligibility (Flying/Reach/Protection),
+    /// so combat-restriction keywords slot into this single
+    /// dispatch without per-keyword enumeration branches. See
+    /// [`AttackerBlockConstraints`] for the rationale.
+    ///
+    /// Layer-aware via [`Self::has_keyword`] — granted Menace
+    /// composes the same as printed Menace.
+    pub fn block_constraints(&self, attacker: ObjectId)
+        -> AttackerBlockConstraints
+    {
+        let mut c = AttackerBlockConstraints::default_unrestricted();
+        // CR 702.110a — Menace: can't be blocked except by two or
+        // more creatures. Expressed as min=2.
+        if self.has_keyword(attacker, &KeywordAbility::Menace) {
+            c.min_blockers = c.min_blockers.max(2);
+        }
+        // Future constraint-keyword hooks slot here:
+        //   - "Can't be blocked except by three or more" → raise min.
+        //   - "Can't be blocked by more than one creature" → cap max.
+        //   - Unblockable (printed text, not a keyword today) → max=0.
+        c
+    }
+
     /// Move into the DeclareBlockers sub-step.
     pub fn enter_declare_blockers(&mut self) {
         if let Some(c) = self.combat.as_mut() {
@@ -422,24 +507,31 @@ impl GameState {
             valid.push(d.clone());
         }
 
-        // CR 702.110a — Menace check happens after duplicate filtering:
-        // for any attacker with Menace, it must have 0 or ≥2 blockers.
-        let menace_violators: Vec<ObjectId> = {
+        // Aggregate block-count enforcement (CR 702.110 Menace and
+        // future variants). Per-attacker: count declared blockers,
+        // compare against the attacker's
+        // [`AttackerBlockConstraints`]. Violators (counts below
+        // `min_blockers` or above `max_blockers`) drop all their
+        // blocker declarations — same shape as the previous
+        // Menace-specific check, but now factored to handle every
+        // constraint keyword through a single path.
+        let constraint_violators: Vec<ObjectId> = {
             let mut violators = Vec::new();
-            let by_attacker = |target: ObjectId| valid.iter()
-                .filter(|d| d.blocking == target).count();
+            let mut seen: std::collections::HashSet<ObjectId>
+                = std::collections::HashSet::new();
             for d in &valid {
-                if self.has_keyword(d.blocking, &KeywordAbility::Menace)
-                    && by_attacker(d.blocking) < 2
-                    && !violators.contains(&d.blocking)
-                {
+                if !seen.insert(d.blocking) { continue; }
+                let constraints = self.block_constraints(d.blocking);
+                let count = valid.iter()
+                    .filter(|v| v.blocking == d.blocking).count() as u32;
+                if !constraints.allows_block_count(count) {
                     violators.push(d.blocking);
                 }
             }
             violators
         };
-        if !menace_violators.is_empty() {
-            valid.retain(|d| !menace_violators.contains(&d.blocking));
+        if !constraint_violators.is_empty() {
+            valid.retain(|d| !constraint_violators.contains(&d.blocking));
         }
 
         // Second pass: update combat state + emit per-pairing events.
