@@ -435,9 +435,11 @@ fn apply_cast_spell(
     // Same pattern for `enters_with`: finalize_resolved_spell reads
     // the clauses off the entry to apply CR 121.6a "enters with"
     // counters/tapped.
+    let delve_count = delve_exiles_vec.len() as u32;
     if let Some(entry) = state.stack.iter_mut().find(|e| e.id == entry_id) {
         entry.cast_modifier = cast_modifier;
         entry.enters_with = enters_with;
+        entry.delve_count = delve_count;
     }
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.

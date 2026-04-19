@@ -168,6 +168,12 @@ pub enum EntersWithSpec {
     /// zero counters. Walking Ballista, Hangarback Walker,
     /// Endless One.
     CountersFromX { kind: CounterKind },
+    /// "CARDNAME enters with a [kind] counter for each card exiled
+    /// with it." Reads the cast's `delve_count` (number of cards
+    /// exiled to pay the delve cost). Murktide Regent is the
+    /// canonical consumer; degrades to zero counters when the
+    /// caster didn't delve.
+    CountersFromDelveCount { kind: CounterKind },
     /// "CARDNAME enters the battlefield tapped." Tap-lands,
     /// Cultivator Colossus, etc. Applies after any counters but
     /// before summoning sickness is stamped.

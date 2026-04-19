@@ -1101,3 +1101,129 @@ fn snapcaster_grant_does_not_transfer_to_reentered_object() {
          got keywords {new_kws:?}");
 }
 
+// ---------------------------------------------------------------------
+// Murktide Regent — delve-count → ETB P/T
+// ---------------------------------------------------------------------
+
+/// Cast Murktide with two delve exiles. Delve pays 2 generic of the
+/// `{3}{U}{U}` cost, so the caster covers the remaining 1 generic +
+/// {U}{U} from the mana pool. On resolution, Murktide enters with 2
+/// +1/+1 counters (one per exiled card) → effective 5/5.
+#[test]
+fn murktide_regent_enters_with_counters_equal_to_delve_exiles() {
+    use arcana_core::types::CounterKind;
+    let (mut s, registry, ids) = fresh_game();
+    let regent = put_in_hand(&mut s, &registry, 0, ids.murktide_regent);
+    // Two instant/sorcery cards in P0's graveyard for delve.
+    let g1 = put_in_graveyard(&mut s, &registry, 0, ids.lightning_bolt);
+    let g2 = put_in_graveyard(&mut s, &registry, 0, ids.counterspell);
+    // Remaining cost after 2 delve exiles: 1 generic + {U}{U}. Three
+    // blue pays it.
+    give_mana(&mut s, 0, ManaColor::Blue, 3);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: regent,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        // Cost expansion: Generic(3), Colored(U), Colored(U). Delve
+        // pays 2 of the Generic(3) component, so we only need to
+        // cover 1 generic + the two colored with our 3 blue.
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 2, cost_index: 2 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions {
+            delve_exiles: Some(vec![g1, g2]),
+            ..Default::default()
+        },
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let id = s.objects.objects_in_zone(Zone::Battlefield)
+        .find(|o| o.controller == 0 && o.characteristics.is_creature())
+        .map(|o| o.id)
+        .expect("Murktide on battlefield");
+    assert_eq!(
+        s.objects.get(id).unwrap().count_counters(CounterKind::PlusOnePlusOne),
+        2,
+        "2 delve exiles → 2 +1/+1 counters",
+    );
+    let chars = s.compute_characteristics(id).expect("creature chars");
+    assert_eq!(chars.power, Some(arcana_core::types::PtValue::Fixed(5)));
+    assert_eq!(chars.toughness, Some(arcana_core::types::PtValue::Fixed(5)));
+}
+
+/// Delve is optional (CR 702.66). Cast Murktide paying the full
+/// `{3}{U}{U}` without exiling anything → enters with 0 counters,
+/// effective 3/3.
+#[test]
+fn murktide_regent_without_delve_enters_3_3() {
+    use arcana_core::types::CounterKind;
+    let (mut s, registry, ids) = fresh_game();
+    let regent = put_in_hand(&mut s, &registry, 0, ids.murktide_regent);
+    // Full cost: 3 generic + {U}{U} = 5 blue.
+    give_mana(&mut s, 0, ManaColor::Blue, 5);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: regent,
+        targets: arcana_core::targets::TargetSelection::new(),
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![
+                arcana_core::actions::ManaAssignment { pool_index: 0, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 1, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 2, cost_index: 0 },
+                arcana_core::actions::ManaAssignment { pool_index: 3, cost_index: 1 },
+                arcana_core::actions::ManaAssignment { pool_index: 4, cost_index: 2 },
+            ],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let id = s.objects.objects_in_zone(Zone::Battlefield)
+        .find(|o| o.controller == 0 && o.characteristics.is_creature())
+        .map(|o| o.id)
+        .expect("Murktide on battlefield");
+    assert_eq!(
+        s.objects.get(id).unwrap().count_counters(CounterKind::PlusOnePlusOne),
+        0,
+        "no delve → no counters",
+    );
+    let chars = s.compute_characteristics(id).expect("creature chars");
+    assert_eq!(chars.power, Some(arcana_core::types::PtValue::Fixed(3)));
+    assert_eq!(chars.toughness, Some(arcana_core::types::PtValue::Fixed(3)));
+}
+
+/// Murktide is printed with Flying. The base keyword must survive
+/// through `effective_keywords` so combat (blockers need Flying or
+/// Reach) sees it. Sanity check on the base-keyword path for a
+/// creature that *also* has delve — confirms the two keywords don't
+/// shadow each other somewhere.
+#[test]
+fn murktide_regent_has_flying_via_effective_keywords() {
+    let (mut s, registry, ids) = fresh_game();
+    let regent = put_on_battlefield(&mut s, &registry, 0, ids.murktide_regent);
+    let kws = s.effective_keywords(regent);
+    assert!(kws.contains(&arcana_core::effects::KeywordAbility::Flying),
+        "Murktide must have Flying in its effective keywords; got {kws:?}");
+    assert!(kws.contains(&arcana_core::effects::KeywordAbility::Delve),
+        "Murktide's printed Delve keyword must survive (has_delve \
+         relies on effective_keywords); got {kws:?}");
+}
+

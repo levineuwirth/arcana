@@ -137,6 +137,15 @@ pub struct StackEntry {
     /// Phase 2 doesn't exercise that path.
     #[serde(skip)]
     pub enters_with: Vec<crate::registry::EntersWithSpec>,
+    /// Count of cards exiled to pay the cast's delve cost. Set by
+    /// [`crate::engine::apply_cast_spell`] after delve validation
+    /// succeeds; zero for casts that didn't use delve (including
+    /// `Some(vec![])` — delve available but not elected — which is
+    /// indistinguishable from no-delve at resolution time). Read by
+    /// [`crate::registry::EntersWithSpec::CountersFromDelveCount`]
+    /// (Murktide Regent).
+    #[serde(default)]
+    pub delve_count: u32,
 }
 
 impl StackEntry {
@@ -167,6 +176,8 @@ impl StackEntry {
             cast_modifier: crate::actions::CastModifier::None,
             // Caller (announce_spell_on_stack) populates from registry.
             enters_with: Vec::new(),
+            // Caller (apply_cast_spell) stamps after delve validation.
+            delve_count: 0,
         }
     }
 
@@ -193,6 +204,7 @@ impl StackEntry {
             target_requirements: Vec::new(),
             cast_modifier: crate::actions::CastModifier::None,
             enters_with: Vec::new(),
+            delve_count: 0,
         }
     }
 
@@ -223,6 +235,7 @@ impl StackEntry {
             target_requirements: Vec::new(),
             cast_modifier: crate::actions::CastModifier::None,
             enters_with: Vec::new(),
+            delve_count: 0,
         }
     }
 
@@ -596,7 +609,9 @@ impl GameState {
             // sweep after the event cascade.
             if !entry.enters_with.is_empty() {
                 apply_enters_with_clauses(
-                    self, new_id, &entry.enters_with, x_value);
+                    self, new_id, &entry.enters_with, x_value,
+                    entry.delve_count,
+                );
             }
             self.after_enter_battlefield(new_id);
             self.emit(GameEvent::EntersBattlefield {
@@ -628,6 +643,7 @@ pub(crate) fn apply_enters_with_clauses(
     object_id: ObjectId,
     clauses: &[crate::registry::EntersWithSpec],
     x_value: Option<u32>,
+    delve_count: u32,
 ) {
     use crate::registry::EntersWithSpec;
     use crate::replacement::CounterTarget;
@@ -644,6 +660,12 @@ pub(crate) fn apply_enters_with_clauses(
                 if x > 0 {
                     state.place_counters(
                         CounterTarget::Object(object_id), *kind, x);
+                }
+            }
+            EntersWithSpec::CountersFromDelveCount { kind } => {
+                if delve_count > 0 {
+                    state.place_counters(
+                        CounterTarget::Object(object_id), *kind, delve_count);
                 }
             }
             EntersWithSpec::Tapped => {
@@ -1391,6 +1413,51 @@ mod tests {
             TargetSelection::new(), vec![], None, // no X announced
         );
         entry.enters_with = vec![EntersWithSpec::CountersFromX {
+            kind: CounterKind::PlusOnePlusOne,
+        }];
+        s.finalize_resolved_spell(entry);
+        let new_id = only_battlefield_permanent(&s);
+        assert_eq!(
+            s.objects.get(new_id).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            0,
+        );
+    }
+
+    #[test]
+    fn enters_with_counters_from_delve_count_reads_entry_delve_count() {
+        use crate::registry::EntersWithSpec;
+        let mut s = GameState::new(2, 0);
+        let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(3, 3));
+        let mut entry = StackEntry::new_spell(
+            obj, 0, 1, creature_chars(3, 3),
+            TargetSelection::new(), vec![], None,
+        );
+        entry.delve_count = 4;
+        entry.enters_with = vec![EntersWithSpec::CountersFromDelveCount {
+            kind: CounterKind::PlusOnePlusOne,
+        }];
+        s.finalize_resolved_spell(entry);
+        let new_id = only_battlefield_permanent(&s);
+        assert_eq!(
+            s.objects.get(new_id).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            4,
+            "delve_count=4 → 4 +1/+1 counters",
+        );
+    }
+
+    #[test]
+    fn enters_with_counters_from_delve_count_zero_when_not_delved() {
+        use crate::registry::EntersWithSpec;
+        let mut s = GameState::new(2, 0);
+        let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(3, 3));
+        let mut entry = StackEntry::new_spell(
+            obj, 0, 1, creature_chars(3, 3),
+            TargetSelection::new(), vec![], None,
+        );
+        // delve_count left at 0 — caster didn't delve.
+        entry.enters_with = vec![EntersWithSpec::CountersFromDelveCount {
             kind: CounterKind::PlusOnePlusOne,
         }];
         s.finalize_resolved_spell(entry);
