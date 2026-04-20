@@ -49,6 +49,7 @@ fn session_random_vs_random_terminates() {
         .observer(observer)
         .history_depth(4)
         .seed(7)
+        .skip_validation()
         .build()
         .expect("valid session config");
 
@@ -109,6 +110,7 @@ fn session_matches_direct_step_loop() {
         .agent(0, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(RNG_A) })
         .agent(1, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(RNG_B) })
         .seed(SEED)
+        .skip_validation()
         .build()
         .unwrap();
 
@@ -200,6 +202,7 @@ fn undo_rolls_back_most_recent_action() {
         .agent(0, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(11) })
         .agent(1, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(22) })
         .history_depth(8)
+        .skip_validation()
         .build()
         .unwrap();
 
@@ -222,6 +225,81 @@ fn undo_rolls_back_most_recent_action() {
 
     session.undo().expect("undo with populated history");
     assert_eq!(session.history_depth(), snapshot_depth);
+}
+
+/// Default-on deck validation rejects a Standard-illegal deck at
+/// session-build time. The fence exists so a malformed deck from an
+/// eventual untrusted source (CLI user, arcana-gen output) fails
+/// loudly at construction rather than as a silent mid-game
+/// empty-library loss.
+#[test]
+fn build_rejects_deck_failing_validation() {
+    use arcana_core::format::DeckValidationError;
+    use arcana_session::SessionBuildError;
+
+    let mut registry = CardRegistry::new();
+    let _ids = register_seed(&mut registry);
+    let registry = Arc::new(registry);
+
+    // 30-card all-Mountains deck: fails on both size (min 60) and
+    // copy limit (4-of) for Standard.
+    let deck = build_deck(&[("Mountain", 30)], &registry);
+
+    let result = GameSession::builder()
+        .registry(registry)
+        .format(FormatConfig::standard_2026())
+        .deck(0, deck.clone())
+        .deck(1, deck)
+        .agent(0, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(1) })
+        .agent(1, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(2) })
+        .build();
+
+    let err = result.err().expect("build must reject non-conforming deck");
+    match err {
+        SessionBuildError::InvalidDeck { player, errors } => {
+            assert_eq!(player, 0,
+                "should fail on first non-conforming deck");
+            assert!(errors.iter().any(|e| matches!(e,
+                DeckValidationError::TooFewCards { minimum: 60, actual: 30 })),
+                "expected TooFewCards in {errors:?}");
+            assert!(errors.iter().any(|e| matches!(e,
+                DeckValidationError::TooManyCopies { .. })),
+                "expected TooManyCopies in {errors:?}");
+        }
+        other => panic!("expected InvalidDeck, got {other:?}"),
+    }
+}
+
+/// A standard-legal 60-card 4-of deck passes validation and builds
+/// a session without `.skip_validation()`. Counterpart to the
+/// rejection test: confirms the fence is not over-restrictive.
+#[test]
+fn build_accepts_standard_legal_deck() {
+    let mut registry = CardRegistry::new();
+    let _ids = register_seed(&mut registry);
+    let registry = Arc::new(registry);
+
+    // 15 distinct cards × 4 copies = 60. Standard-legal.
+    let deck = build_deck(&[
+        ("Plains", 4), ("Island", 4), ("Swamp", 4),
+        ("Mountain", 4), ("Forest", 4),
+        ("Grizzly Bears", 4), ("Lightning Bolt", 4),
+        ("Counterspell", 4), ("Murder", 4), ("Elvish Visionary", 4),
+        ("Glorious Anthem", 4), ("Disintegrate", 4),
+        ("Serra Angel", 4), ("Giant Spider", 4), ("Typhoid Rats", 4),
+    ], &registry);
+    assert_eq!(deck.len(), 60, "test precondition: 60-card deck");
+
+    let session = GameSession::builder()
+        .registry(registry)
+        .format(FormatConfig::standard_2026())
+        .deck(0, deck.clone())
+        .deck(1, deck)
+        .agent(0, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(3) })
+        .agent(1, PlayerAgent::Random { rng: ChaCha8Rng::seed_from_u64(4) })
+        .build();
+
+    assert!(session.is_ok(), "valid deck must build: {:?}", session.err());
 }
 
 // --- test harness ------------------------------------------------------------

@@ -24,8 +24,9 @@ use std::sync::Arc;
 use arcana_core::{Action, CardRegistry, FormatConfig, GameState};
 use arcana_core::actions::DecisionContext;
 use arcana_core::engine::{self, EngineYield};
+use arcana_core::format::DeckValidationError;
 use arcana_core::state::GameResult;
-use arcana_core::types::CardId;
+use arcana_core::types::{CardId, PlayerId};
 
 use crate::agent::PlayerAgent;
 use crate::observer::GameObserver;
@@ -183,7 +184,6 @@ impl GameSession {
 /// missing ones via [`SessionBuildError`].
 ///
 /// [`build`]: Self::build
-#[derive(Default)]
 pub struct GameSessionBuilder {
     registry: Option<Arc<CardRegistry>>,
     format: Option<FormatConfig>,
@@ -193,6 +193,23 @@ pub struct GameSessionBuilder {
     observers: Vec<Box<dyn GameObserver>>,
     seed: u64,
     history_depth: usize,
+    skip_validation: bool,
+}
+
+impl Default for GameSessionBuilder {
+    fn default() -> Self {
+        Self {
+            registry: None,
+            format: None,
+            decks: Vec::new(),
+            agents: Vec::new(),
+            stop_settings: Vec::new(),
+            observers: Vec::new(),
+            seed: 0,
+            history_depth: 0,
+            skip_validation: false,
+        }
+    }
 }
 
 impl GameSessionBuilder {
@@ -243,12 +260,25 @@ impl GameSessionBuilder {
         self.history_depth = n; self
     }
 
+    /// Skip [`FormatConfig::validate_deck`] in [`Self::build`]. Use
+    /// for tests that intentionally construct non-conforming decks to
+    /// exercise engine behavior in isolation (e.g. a 48-card
+    /// playtest deck for a combat corner case). Production drivers
+    /// that take untrusted decks — the eventual CLI runner, or
+    /// generated decks from `arcana-gen` — should leave validation
+    /// on so a malformed deck fails loudly at session construction
+    /// instead of as a mid-game empty-library loss.
+    pub fn skip_validation(mut self) -> Self {
+        self.skip_validation = true; self
+    }
+
     pub fn build(self) -> Result<GameSession, SessionBuildError> {
         let registry = self.registry.ok_or(SessionBuildError::MissingRegistry)?;
         let format = self.format.unwrap_or_else(FormatConfig::standard_2026);
 
         let Self {
             decks, agents, stop_settings, observers, seed, history_depth,
+            skip_validation,
             ..
         } = self;
 
@@ -263,6 +293,17 @@ impl GameSessionBuilder {
         }
         while deck_vec.len() < n_players {
             return Err(SessionBuildError::MissingDeck(deck_vec.len()));
+        }
+
+        if !skip_validation {
+            for (i, deck) in deck_vec.iter().enumerate() {
+                if let Err(errors) = format.validate_deck(deck) {
+                    return Err(SessionBuildError::InvalidDeck {
+                        player: i as PlayerId,
+                        errors,
+                    });
+                }
+            }
         }
 
         let mut agent_vec = Vec::with_capacity(n_players);
@@ -317,6 +358,11 @@ pub enum SessionBuildError {
     MissingAgent(usize),
     #[error("need at least 2 players, got {0}")]
     TooFewPlayers(usize),
+    #[error("deck for player {player} fails format validation: {errors:?}")]
+    InvalidDeck {
+        player: PlayerId,
+        errors: Vec<DeckValidationError>,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
