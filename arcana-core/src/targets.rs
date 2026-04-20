@@ -546,10 +546,14 @@ impl ObjectFilter {
             }
         }
 
-        // --- is_token: TODO(tokens) — GameObject doesn't track token
-        // status yet. When tokens land, check obj.is_token here. For now
-        // the field is accepted but not enforced.
-        let _ = self.is_token;
+        // --- is_token: CR 111 — "nontoken creature" and "target
+        // token" filters read the object's token flag. Set by
+        // `Effect::CreateToken` / `Effect::CopyPermanent`.
+        if let Some(required) = self.is_token {
+            if obj.is_token != required {
+                return false;
+            }
+        }
 
         // --- has_counter ---
         if let Some(kind) = &self.has_counter {

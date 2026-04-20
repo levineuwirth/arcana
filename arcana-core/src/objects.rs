@@ -167,6 +167,15 @@ pub struct GameObject {
     /// the object remains on stack or battlefield; cleared by the
     /// revert when the object moves to any other zone.
     pub default_face_characteristics: Option<Characteristics>,
+    /// CR 111 — is this object a token or the result of copying a
+    /// permanent? Set by [`crate::effects::Effect::CreateToken`] and
+    /// [`crate::effects::Effect::CopyPermanent`]; false for every
+    /// normal card. Consulted by:
+    /// - [`crate::targets::ObjectFilter::is_token`] for
+    ///   "target nontoken" / "target token" filters.
+    /// - The CR 704.5d state-based action that removes tokens from
+    ///   the arena when they aren't on the battlefield.
+    pub is_token: bool,
     /// CR 715 — Adventure exile marker. Set when an Adventure spell
     /// (cast via [`crate::actions::CastModifier::Adventure`]) leaves
     /// the stack via resolution, counter, or fizzle — the card
@@ -210,6 +219,7 @@ impl GameObject {
             adventure_exile_pending: false,
             visible_face: 0,
             default_face_characteristics: None,
+            is_token: false,
         }
     }
 

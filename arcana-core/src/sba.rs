@@ -82,6 +82,12 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
             update_game_result(state);
             return iterations;
         }
+        // CR 704.5d runs after every zone-movement SBA in this pass,
+        // so any token sent to graveyard / exile / hand / library in
+        // the steps above ceases to exist on the same iteration. LKI
+        // was stored by the preceding zone move, so Dies / LeavesBF
+        // triggers still see the pre-cease state.
+        fired |= check_token_ceases_to_exist(state);  // CR 704.5d
         fired |= check_player_losses(state);          // CR 704.5a, 704.5b, 704.5c
         if !fired { break; }
         iterations += 1;
@@ -97,6 +103,7 @@ pub fn has_pending_state_based_actions(state: &GameState) -> bool {
         || pending_planeswalker_to_graveyard(state)
         || pending_legend_conflict(state)
         || pending_pt_annihilation(state)
+        || pending_token_cease(state)
 }
 
 // =============================================================================
@@ -352,6 +359,32 @@ fn pending_pt_annihilation(state: &GameState) -> bool {
     state.objects.objects_in_zone(Zone::Battlefield).any(|o|
         o.has_counter(CounterKind::PlusOnePlusOne)
         && o.has_counter(CounterKind::MinusOneMinusOne))
+}
+
+// =============================================================================
+// 704.5d — tokens cease to exist in zones other than the battlefield
+// =============================================================================
+
+/// CR 704.5d — a token not on the battlefield ceases to exist. This
+/// runs after every zone-movement SBA in the same loop pass so a
+/// token that dies / gets exiled / is bounced is removed from the
+/// arena before the next pass sees it. LKI was already captured by
+/// the zone move (CR 603.10), so dies / leaves-the-battlefield
+/// triggers read the pre-cease state normally.
+fn check_token_ceases_to_exist(state: &mut GameState) -> bool {
+    let to_remove: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.is_token && !o.zone.is_battlefield())
+        .map(|o| o.id)
+        .collect();
+    if to_remove.is_empty() { return false; }
+    for id in to_remove {
+        state.objects.remove(id);
+    }
+    true
+}
+
+fn pending_token_cease(state: &GameState) -> bool {
+    state.objects.iter().any(|o| o.is_token && !o.zone.is_battlefield())
 }
 
 // =============================================================================
@@ -709,6 +742,59 @@ mod tests {
         assert_eq!(apply_state_based_actions(&mut s), 0);
         // Second call produces nothing further.
         assert_eq!(apply_state_based_actions(&mut s), 0);
+    }
+
+    // --- 704.5d: tokens cease to exist -------------------------------------
+
+    /// A token in a non-battlefield zone ceases to exist in the same
+    /// SBA loop pass as the zone move that put it there. Simulates a
+    /// dying token: put the 1/1 token on the battlefield with lethal
+    /// damage pre-marked, call SBAs once, expect both the move and
+    /// the cease in a single iteration pair.
+    #[test]
+    fn token_dies_and_ceases_to_exist_in_one_sba_call() {
+        let mut s = GameState::new(2, 0);
+        let t = put_creature(&mut s, 0, Zone::Battlefield, 1, 1);
+        s.objects.get_mut(t).unwrap().is_token = true;
+        s.objects.get_mut(t).unwrap().damage_marked = 1;
+
+        apply_state_based_actions(&mut s);
+
+        assert!(s.objects.get(t).is_none()
+            && s.objects.iter().find(|o| o.id == t + 1).is_none(),
+            "token removed from arena entirely after dying");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0,
+            "no token residue in graveyard");
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
+    }
+
+    /// A non-token creature with the same setup goes to the graveyard
+    /// and stays there. Negative control for the token-cease SBA.
+    #[test]
+    fn nontoken_creature_goes_to_graveyard_and_stays() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, Zone::Battlefield, 1, 1);
+        s.objects.get_mut(c).unwrap().damage_marked = 1;
+
+        apply_state_based_actions(&mut s);
+
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+            "ordinary creature corpse remains in graveyard");
+    }
+
+    /// A token placed directly into a graveyard (simulating a side
+    /// door that skipped the normal zone-move path) is still removed
+    /// on the next SBA pass.
+    #[test]
+    fn token_in_graveyard_ceases_on_next_sba() {
+        let mut s = GameState::new(2, 0);
+        let t = put_creature(&mut s, 0, Zone::Graveyard(0), 1, 1);
+        s.objects.get_mut(t).unwrap().is_token = true;
+        assert!(pending_token_cease(&s));
+        apply_state_based_actions(&mut s);
+        assert!(s.objects.get(t).is_none(),
+            "token in graveyard was removed");
+        assert!(!pending_token_cease(&s));
     }
 
     #[test]

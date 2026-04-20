@@ -1152,10 +1152,11 @@ fn create_token(
     // a token is that token's owner"). We're minting a new object so
     // there's no upstream from-zone; use Stack as the conventional
     // pretend-origin for the ETB event, matching the cast path.
-    let obj = GameObject::new(
+    let mut obj = GameObject::new(
         id, controller, Zone::Battlefield, /*card_id=*/ 0,
         token.to_characteristics(),
     );
+    obj.is_token = true;
     state.objects.insert(obj);
     state.emit(GameEvent::TokenCreated { object_id: id, controller });
     // Tokens are fair game for global ETB replacements (Hardened
@@ -1461,10 +1462,11 @@ pub(crate) fn cascade_shuffle_to_bottom(
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
     let Some(src) = state.objects.get(target).cloned() else { return; };
     let id = state.allocate_object_id();
-    let token = GameObject::new(
+    let mut token = GameObject::new(
         id, src.controller, Zone::Battlefield, /*card_id=*/ 0,
         src.characteristics.clone(),
     );
+    token.is_token = true;
     state.objects.insert(token);
     state.emit(GameEvent::TokenCreated { object_id: id, controller: src.controller });
     state.emit(GameEvent::CopyCreated { object_id: id, copying: target });

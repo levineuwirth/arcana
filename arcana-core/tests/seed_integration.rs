@@ -4261,3 +4261,191 @@ fn bonecrusher_adventure_cast_fizzles_to_exile_when_target_leaves() {
     assert_eq!(s.zone_count(Zone::Graveyard(0)), 0,
         "fizzled adventure does NOT route to graveyard");
 }
+
+// ---------------------------------------------------------------------
+// Servo Exhibition (CR 111 / 704.5d) — token creation + cease-to-exist
+// ---------------------------------------------------------------------
+
+fn cast_servo_exhibition(
+    actions: &[Action],
+    card_in_hand: ObjectId,
+) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, .. } if *object_id == card_in_hand
+    )).cloned()
+}
+
+/// Cast Servo Exhibition and assert two 1/1 colorless Servo artifact
+/// creature tokens hit the battlefield with `is_token = true`.
+#[test]
+fn servo_exhibition_creates_two_artifact_creature_tokens() {
+    let (mut s, registry, ids) = fresh_game();
+    let spell = put_in_hand(&mut s, &registry, 0, ids.servo_exhibition);
+    give_mana(&mut s, 0, ManaColor::White, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = cast_servo_exhibition(&actions, spell)
+        .expect("Servo Exhibition is castable");
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let tokens: Vec<_> = s.objects.iter()
+        .filter(|o| o.zone.is_battlefield() && o.is_token)
+        .collect();
+    assert_eq!(tokens.len(), 2,
+        "Servo Exhibition creates exactly two tokens");
+    for tok in &tokens {
+        assert!(tok.is_creature());
+        assert!(tok.is_artifact());
+        assert_eq!(tok.characteristics.power,
+            Some(arcana_core::types::PtValue::Fixed(1)));
+        assert_eq!(tok.characteristics.toughness,
+            Some(arcana_core::types::PtValue::Fixed(1)));
+        assert!(tok.characteristics.colors.is_colorless(),
+            "tokens are colorless");
+        assert_eq!(tok.controller, 0,
+            "tokens are controlled by the caster");
+    }
+    // The spell itself went to graveyard (standard sorcery resolution).
+    assert_eq!(
+        s.objects.iter()
+            .filter(|o| matches!(o.zone, Zone::Graveyard(_))
+                && o.card_id == ids.servo_exhibition)
+            .count(),
+        1,
+        "Servo Exhibition (the card) is in the graveyard");
+}
+
+/// CR 704.5d — a token that dies is removed from the arena entirely
+/// on the same SBA pass as the lethal-damage check. The graveyard
+/// should contain zero token residue, and a subsequent object lookup
+/// should find nothing.
+#[test]
+fn servo_token_dies_and_ceases_to_exist() {
+    let (mut s, registry, ids) = fresh_game();
+    let spell = put_in_hand(&mut s, &registry, 0, ids.servo_exhibition);
+    give_mana(&mut s, 0, ManaColor::White, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = cast_servo_exhibition(&actions, spell).unwrap();
+    let (s, _) = step(s, cast, &registry);
+    let mut s = resolve_stack(s, &registry);
+
+    let token_id = s.objects.iter()
+        .find(|o| o.zone.is_battlefield() && o.is_token)
+        .map(|o| o.id).expect("token on battlefield");
+
+    // Mark lethal damage and run SBAs. 704.5g sends the token to
+    // graveyard; 704.5d removes it from the arena on the same pass.
+    s.objects.get_mut(token_id).unwrap().damage_marked = 1;
+    arcana_core::sba::apply_state_based_actions(&mut s);
+
+    assert!(s.objects.get(token_id).is_none(),
+        "dead token is removed from the arena");
+    let token_residue = s.objects.iter()
+        .filter(|o| o.is_token)
+        .count();
+    // Still one live token on the battlefield (we only killed one).
+    assert_eq!(token_residue, 1,
+        "the other token is still on the battlefield");
+    assert_eq!(
+        s.objects.iter()
+            .filter(|o| matches!(o.zone, Zone::Graveyard(_)) && o.is_token)
+            .count(),
+        0,
+        "no token residue in any graveyard");
+}
+
+/// A Lightning Bolt targeting a Servo token kills it. End-to-end
+/// check that the token-cease SBA fires on a non-combat destroy path.
+#[test]
+fn bolt_to_servo_token_removes_it_from_arena() {
+    let (mut s, registry, ids) = fresh_game();
+    let spell = put_in_hand(&mut s, &registry, 0, ids.servo_exhibition);
+    give_mana(&mut s, 0, ManaColor::White, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = cast_servo_exhibition(&actions, spell).unwrap();
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let token_id = s.objects.iter()
+        .find(|o| o.zone.is_battlefield() && o.is_token)
+        .map(|o| o.id).unwrap();
+
+    // Opponent bolts the token.
+    let mut s = s;
+    let bolt = put_in_hand(&mut s, &registry, 1, ids.lightning_bolt);
+    give_mana(&mut s, 1, ManaColor::Red, 1);
+    priority_to_main(&mut s, 1);
+
+    let bolt_cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                arcana_core::targets::ObjectOrPlayer::Object(token_id),
+            )],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: 0, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, bolt_cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    assert!(s.objects.get(token_id).is_none(),
+        "bolted token ceased to exist");
+    let live_tokens: Vec<_> = s.objects.iter()
+        .filter(|o| o.is_token)
+        .collect();
+    assert_eq!(live_tokens.len(), 1,
+        "surviving token still on the battlefield");
+    assert!(live_tokens[0].zone.is_battlefield());
+}
+
+/// `ObjectFilter::is_token` composes with other filters. Verifies
+/// the filter flip from the no-op TODO to the real check — setup
+/// both a Servo token and a nontoken creature, then assert filter
+/// matching picks the right side each way.
+#[test]
+fn is_token_filter_distinguishes_tokens_from_cards() {
+    use arcana_core::targets::ObjectFilter;
+    let (mut s, registry, ids) = fresh_game();
+    let spell = put_in_hand(&mut s, &registry, 0, ids.servo_exhibition);
+    let bears = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::White, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = cast_servo_exhibition(&actions, spell).unwrap();
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let token_obj = s.objects.iter()
+        .find(|o| o.is_token).unwrap();
+    let bears_obj = s.objects.get(bears).unwrap();
+
+    let token_only = ObjectFilter { is_token: Some(true), ..Default::default() };
+    let nontoken_only = ObjectFilter { is_token: Some(false), ..Default::default() };
+    assert!(token_only.matches(token_obj, &s, 0),
+        "is_token=Some(true) matches a token");
+    assert!(!token_only.matches(bears_obj, &s, 0),
+        "is_token=Some(true) rejects a card");
+    assert!(nontoken_only.matches(bears_obj, &s, 0),
+        "is_token=Some(false) matches a card");
+    assert!(!nontoken_only.matches(token_obj, &s, 0),
+        "is_token=Some(false) rejects a token");
+}
