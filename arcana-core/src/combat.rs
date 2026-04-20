@@ -364,26 +364,31 @@ impl GameState {
 
         for d in &decls {
             let Some(obj) = self.objects.get(d.attacker) else { continue; };
-            // CR 302.1 — summoning sickness gates attacks unless the
-            // creature has Haste (CR 702.10b). The layer-aware
-            // `has_keyword` dispatch matches `legal_actions::can_attack`;
-            // previously this guard hard-checked `summoning_sick` only
-            // and silently dropped Haste attackers that `legal_actions`
-            // had correctly offered. Surfaced by the Monastery
-            // Swiftspear integration test.
+            // Every gate here must match `legal_actions::can_attack` so a
+            // malicious or buggy agent can't smuggle an illegal attacker
+            // past the apply path:
             //
-            // DEBT: Defender (CR 702.3b) and Pacifism-style
-            // "can't attack" restrictions are similarly filtered by
-            // `legal_actions::can_attack` but not re-validated here.
-            // Fine for well-behaved agents; a malicious or buggy
-            // agent could submit such attackers and have them stick.
-            // Add the guards when the first real test exercises them.
+            // * summoning sickness (CR 302.1), overridden by Haste (CR 702.10b)
+            // * Defender (CR 702.3b)
+            // * Pacifism-style "can't attack" continuous effects
+            //
+            // All three go through the layer-aware `has_keyword` /
+            // `cant_attack` dispatch so granted variants (e.g. an
+            // opponent's Lure-adjacent effect granting Defender, or a
+            // Pacifism enchantment installing `CantAttack`) compose
+            // the same as printed ones. Keyword-query layer audit:
+            // clean as of 2026-04-20.
             let sick_and_no_haste = obj.status.summoning_sick
                 && !self.has_keyword(d.attacker, &KeywordAbility::Haste);
+            let has_defender = self.has_keyword(
+                d.attacker, &KeywordAbility::Defender);
+            let restricted = self.cant_attack(d.attacker);
             if !obj.is_creature()
                 || !obj.zone.is_battlefield()
                 || obj.is_tapped()
                 || sick_and_no_haste
+                || has_defender
+                || restricted
             {
                 continue;
             }
@@ -1017,6 +1022,62 @@ mod tests {
             AttackerDeclaration { attacker: tapped, defending: DefendingEntity::Player(1) },
         ]);
         assert!(s.combat.as_ref().unwrap().attackers.is_empty());
+    }
+
+    /// CR 702.3b — a creature with Defender can't attack. The apply
+    /// path must silently drop a Defender declaration even though the
+    /// creature is otherwise eligible; otherwise an agent feeding raw
+    /// declarations could bypass `legal_actions::can_attack`.
+    #[test]
+    fn declare_attackers_drops_defender_keyword() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let wall = put_creature(&mut s, 0, 0, 4);
+        ready(wall, &mut s);
+        s.objects.get_mut(wall).unwrap().characteristics.keywords
+            .push(KeywordAbility::Defender);
+
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: wall,
+            defending: DefendingEntity::Player(1),
+        }]);
+
+        assert!(s.combat.as_ref().unwrap().attackers.is_empty(),
+            "Defender creature must not be recorded as attacker");
+        assert!(!s.objects.get(wall).unwrap().is_tapped(),
+            "dropped attacker must not be tapped");
+        assert!(!s.event_log.iter().any(|e|
+            matches!(e, GameEvent::CreatureAttacks { attacker, .. }
+                if *attacker == wall)),
+            "no CreatureAttacks event for a dropped Defender attacker");
+    }
+
+    /// CR 509.1a — a Pacifism-style "can't attack" continuous effect
+    /// blocks attack declaration. Apply-path re-check mirrors
+    /// `legal_actions::can_attack`.
+    #[test]
+    fn declare_attackers_drops_cant_attack_restriction() {
+        use crate::effects::Effect;
+        use crate::layers::Duration;
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 2, 2);
+        ready(atk, &mut s);
+        Effect::ForbidAttacking {
+            target: atk,
+            duration: Duration::EndOfTurn,
+        }.execute(&mut s);
+        assert!(s.cant_attack(atk), "test precondition");
+
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk,
+            defending: DefendingEntity::Player(1),
+        }]);
+
+        assert!(s.combat.as_ref().unwrap().attackers.is_empty(),
+            "cant_attack creature must not be recorded as attacker");
+        assert!(!s.objects.get(atk).unwrap().is_tapped(),
+            "dropped attacker must not be tapped");
     }
 
     #[test]
