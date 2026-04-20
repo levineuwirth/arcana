@@ -70,9 +70,10 @@ pub use crate::targets::ControllerConstraint;
 ///
 /// The ability-definition callback receives the current state, the
 /// [`PendingTrigger`] (carrying source / controller / the triggering
-/// event), and a unit placeholder that keeps the signature stable for
-/// the future `&CardRegistry` parameter.
-pub type EffectFn = fn(&GameState, &PendingTrigger, &())
+/// event), and the card registry — granting access to the interner
+/// for effects that produce fresh named game objects (token
+/// subtypes, for instance) at resolve time.
+pub type EffectFn = fn(&GameState, &PendingTrigger, &crate::registry::CardRegistry)
     -> Vec<crate::effects::Effect>;
 
 /// Function pointer for intervening-if clauses (CR 603.4).
@@ -598,11 +599,11 @@ mod tests {
         id
     }
 
-    fn no_effect(_: &GameState, _: &PendingTrigger, _: &()) -> Vec<Effect> {
+    fn no_effect(_: &GameState, _: &PendingTrigger, _: &crate::registry::CardRegistry) -> Vec<Effect> {
         Vec::new()
     }
 
-    fn draw_card_effect(_: &GameState, t: &PendingTrigger, _: &()) -> Vec<Effect> {
+    fn draw_card_effect(_: &GameState, t: &PendingTrigger, _: &crate::registry::CardRegistry) -> Vec<Effect> {
         vec![Effect::DrawCards { player: t.controller, count: 1 }]
     }
 

@@ -57,7 +57,7 @@ fn storm_fires_on_self_cast(
 fn storm_effect(
     state: &crate::state::GameState,
     pt: &crate::triggers::PendingTrigger,
-    _: &(),
+    _: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
     // The cast id is in the triggering event; the stack entry snapshots
     // storm_count_at_cast at announce time.
@@ -103,7 +103,7 @@ fn cascade_fires_on_self_cast(
 fn cascade_effect(
     _state: &crate::state::GameState,
     pt: &crate::triggers::PendingTrigger,
-    _: &(),
+    _: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
     let cast_id = match pt.trigger_event {
         GameEvent::SpellCast { object_id, .. } => object_id,

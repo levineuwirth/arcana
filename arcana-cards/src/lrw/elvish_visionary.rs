@@ -49,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_draw_a_card(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &(),
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

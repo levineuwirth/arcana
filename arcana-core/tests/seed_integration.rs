@@ -4449,3 +4449,158 @@ fn is_token_filter_distinguishes_tokens_from_cards() {
     assert!(!nontoken_only.matches(token_obj, &s, 0),
         "is_token=Some(false) rejects a token");
 }
+
+// ---------------------------------------------------------------------
+// Young Pyromancer (CR 603) — cast-trigger token creation, exercising
+// the trigger EffectFn's `&CardRegistry` parameter (for interning
+// "Elemental" at resolve time) plus the SpellCast + instant/sorcery
+// filter + You caster-constraint composition.
+// ---------------------------------------------------------------------
+
+/// Casting an instant with Young Pyromancer on the battlefield creates
+/// one 1/1 red Elemental creature token.
+#[test]
+fn young_pyromancer_triggers_on_instant_cast() {
+    let (mut s, registry, ids) = fresh_game();
+    let _pyro = put_on_battlefield(&mut s, &registry, 0, ids.young_pyromancer);
+    let bolt = put_in_hand(&mut s, &registry, 0, ids.lightning_bolt);
+    give_mana(&mut s, 0, ManaColor::Red, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                arcana_core::targets::ObjectOrPlayer::Player(1),
+            )],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: 0, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let tokens: Vec<_> = s.objects.iter()
+        .filter(|o| o.zone.is_battlefield() && o.is_token)
+        .collect();
+    assert_eq!(tokens.len(), 1, "exactly one Elemental token");
+    let tok = tokens[0];
+    assert!(tok.is_creature());
+    assert!(!tok.characteristics.types.is_artifact(),
+        "Elemental token is not an artifact");
+    assert!(tok.characteristics.colors.contains(arcana_core::types::Color::Red),
+        "Elemental token is red");
+    assert_eq!(tok.characteristics.power,
+        Some(arcana_core::types::PtValue::Fixed(1)));
+    assert_eq!(tok.characteristics.toughness,
+        Some(arcana_core::types::PtValue::Fixed(1)));
+    assert_eq!(tok.controller, 0, "token is controlled by Pyromancer's controller");
+}
+
+/// Casting a sorcery also triggers Pyromancer. Uses Servo Exhibition
+/// as the sorcery so the test co-validates that both cards' triggers
+/// produce tokens in the same resolution window without confusing
+/// them (Pyromancer's Elemental is red; Servo tokens are colorless).
+#[test]
+fn young_pyromancer_triggers_on_sorcery_cast() {
+    let (mut s, registry, ids) = fresh_game();
+    let _pyro = put_on_battlefield(&mut s, &registry, 0, ids.young_pyromancer);
+    let servo = put_in_hand(&mut s, &registry, 0, ids.servo_exhibition);
+    give_mana(&mut s, 0, ManaColor::White, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, .. } if *object_id == servo
+    )).cloned().expect("Servo Exhibition is castable");
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let tokens: Vec<_> = s.objects.iter()
+        .filter(|o| o.zone.is_battlefield() && o.is_token)
+        .collect();
+    assert_eq!(tokens.len(), 3,
+        "two Servo tokens + one Elemental token");
+    let reds = tokens.iter()
+        .filter(|t| t.characteristics.colors.contains(arcana_core::types::Color::Red))
+        .count();
+    let colorless = tokens.iter()
+        .filter(|t| t.characteristics.colors.is_colorless())
+        .count();
+    assert_eq!(reds, 1, "exactly one red token (Pyromancer's Elemental)");
+    assert_eq!(colorless, 2, "two colorless Servo tokens");
+}
+
+/// Casting a creature spell does NOT trigger Young Pyromancer — the
+/// filter requires instant-or-sorcery.
+#[test]
+fn young_pyromancer_ignores_creature_cast() {
+    let (mut s, registry, ids) = fresh_game();
+    let _pyro = put_on_battlefield(&mut s, &registry, 0, ids.young_pyromancer);
+    let bears = put_in_hand(&mut s, &registry, 0, ids.grizzly_bears);
+    give_mana(&mut s, 0, ManaColor::Green, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, .. } if *object_id == bears
+    )).cloned().expect("Bears is castable");
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let token_count = s.objects.iter()
+        .filter(|o| o.zone.is_battlefield() && o.is_token)
+        .count();
+    assert_eq!(token_count, 0,
+        "creature cast must not fire Pyromancer's trigger");
+}
+
+/// An opponent casting an instant does NOT trigger your Young
+/// Pyromancer — the caster constraint is [`ControllerConstraint::You`].
+#[test]
+fn young_pyromancer_ignores_opponents_instant() {
+    let (mut s, registry, ids) = fresh_game();
+    let _pyro = put_on_battlefield(&mut s, &registry, 0, ids.young_pyromancer);
+    let bolt = put_in_hand(&mut s, &registry, 1, ids.lightning_bolt);
+    give_mana(&mut s, 1, ManaColor::Red, 1);
+    priority_to_main(&mut s, 1);
+
+    let cast = Action::CastSpell {
+        object_id: bolt,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
+                arcana_core::targets::ObjectOrPlayer::Player(0),
+            )],
+        },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: 0, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    let token_count = s.objects.iter()
+        .filter(|o| o.zone.is_battlefield() && o.is_token)
+        .count();
+    assert_eq!(token_count, 0,
+        "opponent's instant must not fire your Pyromancer's trigger");
+}

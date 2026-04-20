@@ -2354,7 +2354,7 @@ fn resolution_effects(
                 controller: entry.controller,
                 trigger_event: trigger_event.clone(),
             };
-            (ability.effect)(state, &pt, &())
+            (ability.effect)(state, &pt, registry)
         }
     }
 }
@@ -4027,7 +4027,7 @@ mod tests {
         fn pinger_effect(
             _s: &GameState,
             pt: &crate::triggers::PendingTrigger,
-            _: &(),
+            _: &crate::registry::CardRegistry,
         ) -> Vec<Effect> {
             vec![Effect::DealDamage {
                 source: pt.source,
@@ -4122,7 +4122,7 @@ mod tests {
         fn delayed_effect(
             _: &GameState,
             pt: &crate::triggers::PendingTrigger,
-            _: &(),
+            _: &crate::registry::CardRegistry,
         ) -> Vec<Effect> {
             vec![Effect::DealDamage {
                 source: pt.source,

@@ -78,7 +78,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_grant_flashback(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &(),
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GrantFlashbackToInstantOrSorceryInGraveyard {
         source: trig.source,

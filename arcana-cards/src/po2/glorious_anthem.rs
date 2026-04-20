@@ -60,7 +60,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_install_anthem(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &(),
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::anthem(
