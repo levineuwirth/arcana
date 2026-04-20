@@ -151,12 +151,22 @@ pub struct GameObject {
     /// CR 712.5) so activated-ability enumeration and face-gated
     /// characteristics agree about which face is live.
     ///
-    /// Preserved across re-ids (zone changes) because `reset_on_zone_change`
-    /// does not clear it; that's a Phase-2 simplification — CR 712.2b
-    /// says the card reverts to front face in zones other than stack
-    /// and battlefield, but no current seed exercises the revert. See
-    /// `CardDefinition::with_mdfc_back` for the full note.
+    /// Preserved across re-ids (zone changes) because
+    /// `reset_on_zone_change` does not clear it; the zone-change
+    /// machinery in [`crate::state::GameState::swap_to_zone_reid`]
+    /// instead applies the CR 712.2b revert when leaving stack or
+    /// battlefield, restoring front-face chars from
+    /// [`Self::default_face_characteristics`] and zeroing this field.
     pub visible_face: u8,
+    /// CR 712.2b — snapshot of the default-face characteristics taken
+    /// at the moment an MDFC (or future Transform) back face is
+    /// committed onto the object, so the zone-change machinery can
+    /// restore them when the object leaves the stack or battlefield.
+    /// `None` for single-face cards and for MDFCs that haven't yet
+    /// been swapped to the back face. Preserved across re-ids while
+    /// the object remains on stack or battlefield; cleared by the
+    /// revert when the object moves to any other zone.
+    pub default_face_characteristics: Option<Characteristics>,
     /// CR 715 — Adventure exile marker. Set when an Adventure spell
     /// (cast via [`crate::actions::CastModifier::Adventure`]) leaves
     /// the stack via resolution, counter, or fizzle — the card
@@ -199,6 +209,7 @@ impl GameObject {
             madness_pending: false,
             adventure_exile_pending: false,
             visible_face: 0,
+            default_face_characteristics: None,
         }
     }
 

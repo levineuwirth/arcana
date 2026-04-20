@@ -4051,6 +4051,161 @@ fn mdfc_both_faces_are_legal_simultaneously() {
         "back-face land play offered");
 }
 
+/// CR 712.2b — a multi-face card in a zone other than the stack or
+/// battlefield has only its front-face characteristics. Play Tangled
+/// Vale (back face land), destroy it, and assert the graveyard
+/// object shows Tangled Florahedron (1/1 creature), not the land.
+#[test]
+fn mdfc_back_land_reverts_to_front_on_bf_to_graveyard() {
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    priority_to_main(&mut s, 0);
+
+    // Play the back face as Tangled Vale.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let play = mdfc_back_land_play(&actions, hedron)
+        .expect("MDFC back land-play offered");
+    let (mut s, _) = step(s, play, &registry);
+    let vale = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .map(|o| o.id).unwrap();
+    // Precondition: on-battlefield object is a land (back face live).
+    assert!(s.objects.get(vale).unwrap().is_land(),
+        "precondition: battlefield object shows back-face land");
+    assert_eq!(s.objects.get(vale).unwrap().visible_face, 1);
+
+    // Destroy.
+    s.move_object_to_zone(vale, Zone::Graveyard(0),
+        arcana_core::events::MoveCause::AbilityResolution);
+
+    let grave_obj = s.objects.iter()
+        .find(|o| matches!(o.zone, Zone::Graveyard(_))
+            && o.card_id == ids.tangled_florahedron)
+        .expect("card landed in graveyard");
+    assert!(grave_obj.is_creature(),
+        "graveyard object reverts to front-face creature per CR 712.2b");
+    assert!(!grave_obj.is_land(),
+        "graveyard object no longer shows back-face land");
+    assert_eq!(grave_obj.visible_face, 0,
+        "visible_face reset on revert");
+    assert!(grave_obj.default_face_characteristics.is_none(),
+        "snapshot cleared after revert");
+}
+
+/// Bouncing a back-face MDFC land to its owner's hand must revert to
+/// front-face characteristics — the card appears in hand as the
+/// creature, not as a playable land. Without the revert, the card
+/// would remain `is_land()` in hand and `legal_actions` would
+/// spuriously offer it as a normal land play.
+#[test]
+fn mdfc_back_land_reverts_to_front_on_bf_to_hand() {
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let play = mdfc_back_land_play(&actions, hedron).unwrap();
+    let (mut s, _) = step(s, play, &registry);
+    let vale = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .map(|o| o.id).unwrap();
+
+    // Bounce to hand.
+    s.move_object_to_zone(vale, Zone::Hand(0),
+        arcana_core::events::MoveCause::AbilityResolution);
+
+    let hand_obj = s.objects.iter()
+        .find(|o| o.zone == Zone::Hand(0)
+            && o.card_id == ids.tangled_florahedron)
+        .expect("card returned to hand");
+    assert!(hand_obj.is_creature(),
+        "bounced MDFC reverts to front-face creature in hand");
+    assert!(!hand_obj.is_land(),
+        "bounced MDFC no longer shows back-face land chars");
+    assert_eq!(hand_obj.visible_face, 0);
+}
+
+/// Round-trip: after a bounced MDFC reverts in hand, the player must
+/// still be able to re-play the back face as a land via the normal
+/// `PlayLand { mdfc_back: true }` path. Proves the revert doesn't
+/// clobber the registry-driven re-swap.
+#[test]
+fn mdfc_back_land_replayable_after_bounce_revert() {
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    priority_to_main(&mut s, 0);
+
+    // First play — back face.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let play = mdfc_back_land_play(&actions, hedron).unwrap();
+    let (mut s, _) = step(s, play, &registry);
+    let vale = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .map(|o| o.id).unwrap();
+
+    // Bounce, reset land drop, replay back face.
+    s.move_object_to_zone(vale, Zone::Hand(0),
+        arcana_core::events::MoveCause::AbilityResolution);
+    s.player_mut(0).land_plays_remaining = 1;
+    let rebound_id = s.objects.iter()
+        .find(|o| o.zone == Zone::Hand(0)
+            && o.card_id == ids.tangled_florahedron)
+        .map(|o| o.id).unwrap();
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let replay = mdfc_back_land_play(&actions, rebound_id)
+        .expect("back-face land play offered after bounce-revert");
+    let (s, _) = step(s, replay, &registry);
+    let replayed = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .expect("card returns to battlefield");
+    assert!(replayed.is_land(),
+        "replayed object is back-face land again");
+    assert_eq!(replayed.visible_face, 1);
+}
+
+/// Negative control: a Florahedron cast and resolved as a creature,
+/// then killed, shows front-face chars throughout. No snapshot was
+/// ever taken because no back-face swap happened; the revert path is
+/// a no-op in this case.
+#[test]
+fn mdfc_front_face_cast_unaffected_by_revert_logic() {
+    let (mut s, registry, ids) = fresh_game();
+    let hedron = put_in_hand(&mut s, &registry, 0, ids.tangled_florahedron);
+    give_mana(&mut s, 0, ManaColor::Green, 1);
+    priority_to_main(&mut s, 0);
+
+    let cast = normal_creature_cast(
+        &arcana_core::legal_actions::legal_actions(&s, &registry), hedron)
+        .unwrap();
+    let (s, _) = step(s, cast, &registry);
+    let mut s = resolve_stack(s, &registry);
+    let elf = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield
+            && o.card_id == ids.tangled_florahedron)
+        .map(|o| o.id).unwrap();
+    assert!(s.objects.get(elf).unwrap().is_creature(),
+        "precondition: resolved as creature");
+    assert!(s.objects.get(elf).unwrap()
+        .default_face_characteristics.is_none(),
+        "front-face cast never takes a snapshot");
+
+    s.move_object_to_zone(elf, Zone::Graveyard(0),
+        arcana_core::events::MoveCause::AbilityResolution);
+    let grave_obj = s.objects.iter()
+        .find(|o| matches!(o.zone, Zone::Graveyard(_))
+            && o.card_id == ids.tangled_florahedron)
+        .unwrap();
+    assert!(grave_obj.is_creature(),
+        "graveyard object is still the creature — revert was a no-op");
+    assert_eq!(grave_obj.visible_face, 0);
+}
+
 #[test]
 fn bonecrusher_adventure_cast_fizzles_to_exile_when_target_leaves() {
     // An adventure spell cast with its only target disappearing

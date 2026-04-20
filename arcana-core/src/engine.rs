@@ -595,35 +595,39 @@ fn apply_cast_spell(
             Some(prior)
         } else { None }
     } else { None };
-    // MDFC back-face and Split right-face casts swap characteristics
-    // the same way as Adventure — the announced object needs the
-    // chosen face's sheet on the stack entry. Unlike Adventure, we
-    // do NOT snapshot the pre-swap characteristics: CR 712.2b's
-    // revert to default-face in off-BF/off-stack zones is deferred
-    // (no seed exercises reanimation or graveyard-matters on
-    // multi-face cards). See `with_mdfc_back` and `with_split_right`
-    // for the deferral notes.
+    // MDFC back-face casts swap characteristics the same way as
+    // Adventure — the announced object needs the chosen face's sheet
+    // on the stack entry. Snapshot the pre-swap front-face chars on
+    // the object so `swap_to_zone_reid` can revert per CR 712.2b when
+    // the object leaves the stack or battlefield to any other zone.
     if is_mdfc_back_cast {
         let swapped_chars = mdfc_back_face.map(|f| f.characteristics.clone());
         if let (Some(swapped), Some(obj)) = (swapped_chars,
             state.objects.get_mut(object_id))
         {
-            obj.characteristics = swapped;
+            let prior = std::mem::replace(&mut obj.characteristics, swapped);
+            obj.default_face_characteristics = Some(prior);
             obj.visible_face = 1;
         }
     }
+    // Split right-half casts swap characteristics onto the stack
+    // entry. DEBT: Split cards have a different off-stack rule from
+    // MDFC — CR 711.4 says a Split card's characteristics in zones
+    // other than the stack are the COMBINED characteristics of both
+    // halves (Ice casts, then Fire // Ice sits in graveyard with
+    // combined chars). That's a separate behavior from 712.2b's
+    // front-face revert and needs its own commit. For now, a Split
+    // cast as right-half will show right-half chars in the
+    // graveyard — reachable with Fire // Ice but not tested by any
+    // current seed scenario. `visible_face = 1` is flagged for
+    // consistency and so a future Fuse implementation has a
+    // coherent per-face signal.
     if is_split_right_cast {
         let swapped_chars = split_right_face.map(|f| f.characteristics.clone());
         if let (Some(swapped), Some(obj)) = (swapped_chars,
             state.objects.get_mut(object_id))
         {
             obj.characteristics = swapped;
-            // Split halves are always non-permanent spells; they
-            // never sit on the battlefield, so `visible_face` has
-            // no observable effect. We flag it anyway for
-            // consistency with MDFC and so any future face-gated
-            // ability (Fuse's shared triggers, e.g.) reads a
-            // coherent value.
             obj.visible_face = 1;
         }
     }
@@ -991,7 +995,10 @@ fn apply_play_land(
     // face so the arriving permanent is the land with its own type
     // line, color (typically none for MDFC lands), and printed mana
     // abilities. The registry is the source of truth for the back
-    // face; the arena object holds the live copy.
+    // face; the arena object holds the live copy. Snapshot the
+    // pre-swap front-face chars on the object for the CR 712.2b
+    // revert in `swap_to_zone_reid` when this land eventually
+    // leaves the battlefield.
     if mdfc_back {
         let back_chars = state.objects.get(object_id)
             .and_then(|o| registry.get(o.card_id))
@@ -1006,7 +1013,8 @@ fn apply_play_land(
         };
         if !back_chars.types.is_land() { return; }
         if let Some(obj) = state.objects.get_mut(object_id) {
-            obj.characteristics = back_chars;
+            let prior = std::mem::replace(&mut obj.characteristics, back_chars);
+            obj.default_face_characteristics = Some(prior);
             obj.visible_face = 1;
         }
     }

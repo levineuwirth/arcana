@@ -645,6 +645,21 @@ impl GameState {
         obj.id = new_id;
         obj.zone = destination;
         obj.reset_on_zone_change();
+        // CR 712.2b — multi-face card reverts to front-face
+        // characteristics in zones other than stack and battlefield.
+        // The pre-swap chars were snapshotted onto the object at the
+        // moment the back face was committed (MDFC back-face cast or
+        // land play); here we restore them on the way out and clear
+        // the snapshot so a subsequent stack/battlefield entry
+        // starts fresh. Stack→battlefield and hand→stack transitions
+        // skip the revert — the engaged face stays live while the
+        // card is on the stack or battlefield.
+        if destination != Zone::Stack && !destination.is_battlefield() {
+            if let Some(default_chars) = obj.default_face_characteristics.take() {
+                obj.characteristics = default_chars;
+                obj.visible_face = 0;
+            }
+        }
         // Controller reverts to owner everywhere except the
         // battlefield (CR 110.2a). Callers that want a specific
         // battlefield controller set it on the returned new_id
