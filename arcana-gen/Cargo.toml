@@ -9,3 +9,5 @@ arcana-cards = { path = "../arcana-cards" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+tracing = { workspace = true }
+ureq = { version = "2", features = ["json", "gzip"] }
