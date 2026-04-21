@@ -4,8 +4,8 @@
 //! cast-trigger + token-creation intersection — exercises the trigger
 //! `EffectFn`'s `&CardRegistry` parameter (needed to intern the token
 //! subtype at resolve time) and the `SpellCast` condition with an
-//! `ObjectFilter` whose `custom` predicate expresses the "instant OR
-//! sorcery" type-OR that the primary `types` field (AND-only) cannot.
+//! [`ObjectFilter::types_any`] OR-mask for the "instant or sorcery"
+//! disjunction.
 //!
 //! # Rules references
 //!
@@ -17,21 +17,11 @@
 //!   that creates it.
 //! * CR 704.5d — tokens in any non-battlefield zone cease to exist
 //!   on the next SBA pass (shared with Servo Exhibition's path).
-//!
-//! # Why "instant or sorcery" needs a custom predicate
-//!
-//! [`ObjectFilter::types`] is an AND-mask — every bit in the mask
-//! must be set on the object. A filter of `INSTANT | SORCERY` would
-//! require *both* types simultaneously, which no spell has. The
-//! `custom` field bypasses the AND semantics for this OR case. When
-//! a second OR-typed card lands (e.g. "target creature or
-//! planeswalker"), we'll promote this into a first-class
-//! `types_any: Option<TypeLine>` field on `ObjectFilter`.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, GameObject};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
@@ -71,7 +61,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter {
-                        custom: Some(is_instant_or_sorcery),
+                        types_any: Some(TypeLine(
+                            TypeLine::INSTANT | TypeLine::SORCERY)),
                         ..Default::default()
                     }),
                     caster: ControllerConstraint::You,
@@ -82,11 +73,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
             }),
     )
-}
-
-fn is_instant_or_sorcery(obj: &GameObject, _state: &GameState) -> bool {
-    obj.characteristics.types.is_instant()
-        || obj.characteristics.types.is_sorcery()
 }
 
 fn create_elemental_token(

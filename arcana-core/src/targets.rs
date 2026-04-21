@@ -420,6 +420,11 @@ impl TargetFilter {
 pub struct ObjectFilter {
     /// Every bit in this `TypeLine` must be set on the object (AND).
     pub types: Option<TypeLine>,
+    /// At least one bit in this `TypeLine` must be set on the object (OR).
+    /// Use for "instant or sorcery", "creature or planeswalker", etc.,
+    /// where the primary [`Self::types`] AND-mask can't express the
+    /// disjunction. An empty (`0`) mask matches no object.
+    pub types_any: Option<TypeLine>,
     /// No bit in this `TypeLine` may be set on the object.
     pub not_types: Option<TypeLine>,
     /// Every color in this set must be in the object's colors (AND).
@@ -454,6 +459,14 @@ impl ObjectFilter {
         self
     }
 
+    /// Builder: require at least one of the given type bits (OR).
+    /// E.g. `with_types_any(INSTANT | SORCERY)` for Young Pyromancer-
+    /// style "instant or sorcery" triggers.
+    pub fn with_types_any(mut self, tl: TypeLine) -> Self {
+        self.types_any = Some(tl);
+        self
+    }
+
     /// Builder: exclude type bits.
     pub fn without_types(mut self, tl: TypeLine) -> Self {
         self.not_types = Some(tl);
@@ -483,9 +496,14 @@ impl ObjectFilter {
         state: &GameState,
         source_controller: PlayerId,
     ) -> bool {
-        // --- type bits: all required, none forbidden ---
+        // --- type bits: all required, at least one of any, none forbidden ---
         if let Some(required) = self.types {
             if (obj.characteristics.types.0 & required.0) != required.0 {
+                return false;
+            }
+        }
+        if let Some(any) = self.types_any {
+            if obj.characteristics.types.0 & any.0 == 0 {
                 return false;
             }
         }
@@ -977,6 +995,65 @@ mod tests {
         };
         assert!( with.matches(s.objects.get(id).unwrap(), &s, 0));
         assert!(!with_other.matches(s.objects.get(id).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_types_any_or_mask() {
+        // "instant or sorcery" — a type-OR the primary types mask
+        // (AND) can't express. Young Pyromancer's trigger filter
+        // rides on this field.
+        let mut s = GameState::new(2, 0);
+        let sorc = put_sorcery(&mut s, 0, Zone::Stack);
+        let creature = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+        let instant_id = {
+            let id = s.allocate_object_id();
+            let chars = Characteristics {
+                mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+                colors: ColorSet::red(),
+                types: TypeLine::INSTANT.into(),
+                ..Default::default()
+            };
+            s.objects.insert(GameObject::new(id, 0, Zone::Stack, 3, chars));
+            id
+        };
+
+        let instant_or_sorcery = ObjectFilter::new()
+            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY));
+        assert!( instant_or_sorcery.matches(s.objects.get(sorc).unwrap(), &s, 0));
+        assert!( instant_or_sorcery.matches(s.objects.get(instant_id).unwrap(), &s, 0));
+        assert!(!instant_or_sorcery.matches(s.objects.get(creature).unwrap(), &s, 0),
+            "creature has neither instant nor sorcery bit");
+    }
+
+    #[test]
+    fn object_filter_types_any_composes_with_types_and_not_types() {
+        // AND + OR + NOT all compose: require CREATURE, at least one
+        // of CREATURE|ARTIFACT, exclude LAND. A plain creature passes
+        // all three conjuncts.
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+        let sorc = put_sorcery(&mut s, 0, Zone::Stack);
+
+        let f = ObjectFilter::new()
+            .with_types(TypeLine::CREATURE.into())
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::ARTIFACT))
+            .without_types(TypeLine::LAND.into());
+        assert!(f.matches(s.objects.get(creature).unwrap(), &s, 0));
+        // Sorcery fails the CREATURE AND-mask first; separately it
+        // would also fail the types_any OR-mask.
+        assert!(!f.matches(s.objects.get(sorc).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_types_any_empty_mask_matches_nothing() {
+        // types_any of 0 bits has no way to succeed — matches no
+        // object. Regression guard: the check uses `& mask != 0`, not
+        // `& mask == mask`.
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+
+        let f = ObjectFilter { types_any: Some(TypeLine(0)), ..Default::default() };
+        assert!(!f.matches(s.objects.get(creature).unwrap(), &s, 0));
     }
 
     #[test]
