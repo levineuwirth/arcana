@@ -927,6 +927,7 @@ impl TokenDefinition {
             loyalty: None,
             abilities_text: Vec::new(),
             keywords: self.keywords.clone(),
+            is_aura: false,
         }
     }
 }

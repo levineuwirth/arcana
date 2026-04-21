@@ -425,6 +425,15 @@ pub struct Characteristics {
     /// [`crate::state::GameState::compute_characteristics`] — this base
     /// field holds only the characteristics' inherent set.
     pub keywords: Vec<crate::effects::KeywordAbility>,
+    /// CR 704.5n distinguisher — true iff this object's subtypes
+    /// include "Aura". Set at [`crate::registry::CardRegistry::register`]
+    /// time by looking up the interned "Aura" SmallString in
+    /// [`Self::subtypes`]; lets the SBA loop identify Auras without
+    /// needing registry/interner access. Layer-effect subtype grants
+    /// (rare; no Phase 2 card exercises them) don't yet flip this
+    /// flag — that's a separate concern once an actual card forces it.
+    #[serde(default)]
+    pub is_aura: bool,
 }
 
 impl Characteristics {
@@ -472,6 +481,7 @@ mod tests {
             loyalty: None,
             abilities_text: vec![],
             keywords: vec![],
+            is_aura: false,
         }
     }
 

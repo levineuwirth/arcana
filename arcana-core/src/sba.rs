@@ -29,7 +29,8 @@
 //! | 704.5p  | ±1/±1 counter annihilation          | ✅ |
 //! | 704.5d,e| Tokens/copies in wrong zone         | ✅ |
 //! | 704.5q  | Equipment attached to illegal perm  | ✅ (Equipment only) |
-//! | 704.5k,m,n | Aura attachment rules            | ⬜ (deferred) |
+//! | 704.5n  | Aura illegally attached or unattached | ✅ (zone-only; type-filter deferred) |
+//! | 704.5k,m | Fortification / saga-style attach  | ⬜ (deferred) |
 //! | 704.5r,s,t | Saga/battle/dungeon/ownership    | ⬜ (deferred) |
 //!
 //! The legend rule per CR 704.5j says "that player chooses one" —
@@ -90,6 +91,7 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
         // triggers still see the pre-cease state.
         fired |= check_token_ceases_to_exist(state);  // CR 704.5d
         fired |= check_attachment_illegal(state);     // CR 704.5q
+        fired |= check_aura_illegal(state);           // CR 704.5n
         fired |= check_player_losses(state);          // CR 704.5a, 704.5b, 704.5c
         if !fired { break; }
         iterations += 1;
@@ -107,6 +109,7 @@ pub fn has_pending_state_based_actions(state: &GameState) -> bool {
         || pending_pt_annihilation(state)
         || pending_token_cease(state)
         || pending_attachment_illegal(state)
+        || pending_aura_illegal(state)
 }
 
 // =============================================================================
@@ -441,6 +444,53 @@ fn is_equipment_style(obj: &crate::objects::GameObject) -> bool {
 fn is_legal_equipment_target(state: &GameState, target: ObjectId) -> bool {
     state.objects.get(target).is_some_and(|t|
         t.zone.is_battlefield() && t.is_creature())
+}
+
+// =============================================================================
+// 704.5n — Aura attached to an illegal object or unattached
+// =============================================================================
+
+/// CR 704.5n — an Aura is put into its owner's graveyard if it's
+/// attached to an illegal object or player, or isn't attached to any
+/// object or player. Detection rides on the [`Characteristics::is_aura`]
+/// flag (synthesized by [`crate::registry::CardRegistry::register`]
+/// from the printed subtypes), which lets this SBA stay
+/// registry-free.
+///
+/// Legality here is conservative: an attached Aura is legal iff its
+/// host object is still on the battlefield. Target-type filters
+/// ("enchant creature" vs "enchant land") compose on top once an
+/// Aura seed card forces the machinery — for Phase 2 no card
+/// distinguishes them in a test.
+fn check_aura_illegal(state: &mut GameState) -> bool {
+    let to_move: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.characteristics.is_aura && o.zone.is_battlefield())
+        .filter(|o| !is_legal_aura_state(state, o))
+        .map(|o| o.id)
+        .collect();
+    if to_move.is_empty() { return false; }
+    for id in to_move {
+        let owner = state.objects.get(id).map(|o| o.owner);
+        if let Some(owner) = owner {
+            state.move_object_to_zone(
+                id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+        }
+    }
+    true
+}
+
+fn pending_aura_illegal(state: &GameState) -> bool {
+    state.objects.iter()
+        .filter(|o| o.characteristics.is_aura && o.zone.is_battlefield())
+        .any(|o| !is_legal_aura_state(state, o))
+}
+
+fn is_legal_aura_state(
+    state: &GameState,
+    aura: &crate::objects::GameObject,
+) -> bool {
+    let Some(target) = aura.attached_to else { return false; };
+    state.objects.get(target).is_some_and(|t| t.zone.is_battlefield())
 }
 
 // =============================================================================
@@ -904,5 +954,91 @@ mod tests {
         apply_state_based_actions(&mut s);
         assert!(s.player(1).has_lost);
         assert_eq!(s.result, Some(GameResult::Win(0)));
+    }
+
+    // --- 704.5n: Aura attachment -------------------------------------------
+
+    fn put_aura(s: &mut GameState, owner: PlayerId, zone: Zone) -> ObjectId {
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::ENCHANTMENT.into(),
+            is_aura: true,
+            ..Default::default()
+        };
+        let mut obj = GameObject::new(id, owner, zone, 1, chars);
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    #[test]
+    fn unattached_aura_on_battlefield_goes_to_graveyard() {
+        // CR 704.5n — an Aura with no attached_to belongs in the owner's
+        // graveyard on the next SBA pass.
+        let mut s = GameState::new(2, 0);
+        let aura = put_aura(&mut s, 0, Zone::Battlefield);
+        assert!(pending_aura_illegal(&s));
+        apply_state_based_actions(&mut s);
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+            "unattached Aura lands in owner's graveyard");
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
+        // Original id is LKI; the graveyard object has a fresh id.
+        let _ = aura;
+    }
+
+    #[test]
+    fn aura_whose_host_left_goes_to_graveyard() {
+        // Create an Aura attached to a creature that dies. The creature's
+        // move to graveyard clears the Aura's attached_to; the SBA catches
+        // the unattached Aura in the same pass.
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let aura = put_aura(&mut s, 0, Zone::Battlefield);
+        // Wire up the attachment.
+        s.objects.get_mut(aura).unwrap().attached_to = Some(creature);
+        s.objects.get_mut(creature).unwrap().attachments.push(aura);
+        // Lethal damage to creature.
+        s.objects.get_mut(creature).unwrap().damage_marked = 3;
+
+        apply_state_based_actions(&mut s);
+
+        assert_eq!(s.zone_count(Zone::Battlefield), 0,
+            "creature died and Aura followed");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 2,
+            "creature + Aura both in owner's graveyard");
+    }
+
+    #[test]
+    fn non_aura_enchantment_stays_on_battlefield() {
+        // Glorious Anthem-shaped enchantment (not an Aura). attached_to
+        // is None permanently; SBA must leave it alone.
+        let mut s = GameState::new(2, 0);
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::ENCHANTMENT.into(),
+            is_aura: false,  // explicit: not an Aura
+            ..Default::default()
+        };
+        s.objects.insert(GameObject::new(id, 0, Zone::Battlefield, 1, chars));
+        assert!(!pending_aura_illegal(&s));
+        apply_state_based_actions(&mut s);
+        assert_eq!(s.zone_count(Zone::Battlefield), 1,
+            "non-Aura enchantment stays put");
+    }
+
+    #[test]
+    fn aura_attached_to_legal_target_stays() {
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let aura = put_aura(&mut s, 0, Zone::Battlefield);
+        s.objects.get_mut(aura).unwrap().attached_to = Some(creature);
+        s.objects.get_mut(creature).unwrap().attachments.push(aura);
+
+        apply_state_based_actions(&mut s);
+
+        assert_eq!(s.zone_count(Zone::Battlefield), 2,
+            "both remain on the battlefield");
+        assert!(s.objects.get(aura).is_some_and(|o|
+            o.attached_to == Some(creature)));
     }
 }

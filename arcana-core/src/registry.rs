@@ -772,11 +772,17 @@ impl CardRegistry {
     /// starts at 1 so `0` remains available as the unregistered
     /// sentinel.
     pub fn new() -> Self {
+        let mut interner = StringInterner::new();
+        // Pre-intern subtype names the engine queries without card
+        // context. CR 704.5n (illegal Aura SBA) uses the "Aura"
+        // SmallString to synthesize [`Characteristics::is_aura`] at
+        // [`Self::register`] time.
+        interner.intern("Aura");
         Self {
             next_card_id: 1,
             definitions: HashMap::default(),
             by_name: HashMap::default(),
-            interner: StringInterner::new(),
+            interner,
         }
     }
 
@@ -798,6 +804,15 @@ impl CardRegistry {
         let name = definition.name;
         if self.by_name.insert(name, id).is_some() {
             panic!("CardRegistry::register: duplicate name for CardId {id}");
+        }
+        // CR 704.5n — synthesize the Aura flag from the card's
+        // subtypes. Layer-effect subtype grants don't feed this yet
+        // (no Phase 2 card does); on-battlefield subtype changes
+        // would need to flip the flag as well.
+        let aura_sym = self.interner.lookup("Aura")
+            .expect("CardRegistry::new interns \"Aura\"");
+        if definition.base_characteristics.subtypes.contains(aura_sym) {
+            definition.base_characteristics.is_aura = true;
         }
         // CR 711.4 — a Split card's off-stack characteristics combine
         // both halves. Synthesize and stash now, while the interner is
@@ -907,6 +922,7 @@ fn combine_split_characteristics(
         loyalty: None,
         abilities_text,
         keywords,
+        is_aura: left.is_aura || right.is_aura,
     }
 }
 
@@ -1059,6 +1075,40 @@ mod tests {
 
         let free = ActivationCost::free();
         assert!(!free.tap);
+    }
+
+    /// CR 704.5n — registering a card with "Aura" in its subtypes
+    /// flips [`Characteristics::is_aura`] on. The SBA loop reads
+    /// this flag without needing registry access.
+    #[test]
+    fn aura_subtype_registration_flips_is_aura_flag() {
+        use crate::types::SubtypeSet;
+        let mut r = CardRegistry::new();
+        // Aura card
+        let pacifism_name = r.interner_mut().intern("Pacifism");
+        let subtypes = SubtypeSet::from_names(
+            r.interner_mut(), ["Aura"]);
+        let pacifism_id = r.register(CardDefinition::new(pacifism_name, Characteristics {
+            name: pacifism_name,
+            mana_cost: Some(ManaCost::parse("{1}{W}").unwrap()),
+            colors: ColorSet::white(),
+            types: TypeLine::ENCHANTMENT.into(),
+            subtypes,
+            ..Default::default()
+        }));
+        assert!(r.get(pacifism_id).unwrap().base_characteristics.is_aura,
+            "Aura subtype synthesizes is_aura = true");
+        // Non-Aura enchantment
+        let anthem_name = r.interner_mut().intern("Glorious Anthem");
+        let anthem_id = r.register(CardDefinition::new(anthem_name, Characteristics {
+            name: anthem_name,
+            mana_cost: Some(ManaCost::parse("{1}{W}{W}").unwrap()),
+            colors: ColorSet::white(),
+            types: TypeLine::ENCHANTMENT.into(),
+            ..Default::default()
+        }));
+        assert!(!r.get(anthem_id).unwrap().base_characteristics.is_aura,
+            "non-Aura enchantment has is_aura = false");
     }
 
     /// CR 711.4 — registering a split card synthesizes a combined-
