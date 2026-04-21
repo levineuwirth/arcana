@@ -169,6 +169,13 @@ pub enum TriggerCondition {
     SelfDies,
     /// "When ~ attacks".
     SelfAttacks,
+    /// CR 702.21a — "Whenever ~ becomes the target of a spell or
+    /// ability an opponent controls." Matches [`GameEvent::BecomesTarget`]
+    /// where `target == source` and the targeting player passes
+    /// `caster`. Phase 2-B scope: spells + activated abilities only
+    /// (triggered-ability targets are still chosen mid-resolution and
+    /// don't emit the event).
+    SelfBecomesTarget { caster: ControllerConstraint },
     /// "Whenever a creature enters the battlefield under your control".
     ZoneChange { filter: ObjectFilter, from: Option<Zone>, to: Zone },
     /// "Whenever you cast a spell" (optionally filtered).
@@ -223,6 +230,13 @@ impl TriggerCondition {
 
             SelfAttacks => matches!(event,
                 GameEvent::CreatureAttacks { attacker, .. } if *attacker == source),
+
+            SelfBecomesTarget { caster } => {
+                let GameEvent::BecomesTarget { target, controller, .. } = event
+                    else { return false; };
+                *target == source
+                    && caster.matches(*controller, source_controller)
+            }
 
             ZoneChange { filter, from, to } => {
                 let GameEvent::ZoneChange { object_id, from: evf, to: evt, .. } = event

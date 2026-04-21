@@ -605,14 +605,6 @@ pub struct PendingResolution {
     /// stashed entry can be consumed by finalization without a
     /// second borrow.
     pub is_spell: bool,
-    /// Pre-effect Ward prompts still to resolve (Phase 2-A stopgap —
-    /// CR 702.21a is *actually* a triggered ability that stacks
-    /// separately; we approximate with a sequential PayOrDecline at
-    /// resolution time). Each `(target, cost)` pushes a
-    /// [`ChoiceKind::PayOrDecline`]; a decline counters the entry and
-    /// drops the queue. When drained, `remaining_effects` proceed.
-    /// TODO(phase-2b): real trigger routing with Stifle interaction.
-    pub ward_queue: Vec<(crate::objects::ObjectId, crate::mana::ManaCost)>,
 }
 
 /// Effect-supplied follow-up the dispatcher runs after an agent answers

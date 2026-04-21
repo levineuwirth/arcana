@@ -242,6 +242,17 @@ pub enum Effect {
     /// attacher's characteristics don't overcome.
     Attach { equipment_or_aura: ObjectId, target: ObjectId },
 
+    /// CR 702.21a — Ward trigger resolution: push a
+    /// [`crate::actions::ChoiceKind::PayOrDecline`] to `caster`. On
+    /// decline, `counter_target` (the targeting spell/ability's stack
+    /// entry id) is countered. Emitted by the synthesized Ward trigger
+    /// handler ([`crate::engine::WARD_TRIGGER_ID`] dispatch).
+    WardPrompt {
+        caster: PlayerId,
+        cost: crate::mana::ManaCost,
+        counter_target: ObjectId,
+    },
+
     // --- mana / phases -----------------------------------------------------
     AddMana { player: PlayerId, mana: Vec<crate::mana::ManaUnit> },
     ExtraTurn { player: PlayerId },
@@ -668,6 +679,24 @@ impl Effect {
                 if obj.untap() {
                     state.emit(GameEvent::Untapped { object_id: *target });
                 }
+            }
+            Effect::WardPrompt { caster, cost, counter_target } => {
+                // Resolution of a Ward trigger. Push a PayOrDecline on
+                // the targeting spell's controller; a decline routes
+                // to CounterStackEntry on the original source.
+                let stack_entry = state.currently_resolving
+                    .expect("Effect::WardPrompt: no currently_resolving stack \
+                             entry — Ward must execute inside the Ward \
+                             trigger's resolution");
+                state.push_pending_choice(
+                    *caster,
+                    crate::actions::ChoiceContext::ResolvingStack(stack_entry),
+                    crate::actions::ChoiceKind::PayOrDecline {
+                        cost: cost.clone(),
+                        on_decline: crate::actions::DeclineConsequence::CounterStackEntry(
+                            *counter_target),
+                    },
+                );
             }
             Effect::Attach { equipment_or_aura, target } => {
                 attach(state, *equipment_or_aura, *target);

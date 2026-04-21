@@ -686,8 +686,41 @@ fn apply_cast_spell(
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
     state.emit_spell_cast(entry_id);
 
+    // CR 115 — emit BecomesTarget for each object target, in the order
+    // they were declared. Ward (CR 702.21a) and other "becomes the
+    // target" triggers pick these up during the next settle pass.
+    emit_becomes_target_events(state, entry_id, controller);
+
     // 5. Record the action (priority retained, pass counter reset).
     state.priority.record_action();
+}
+
+/// Emit [`GameEvent::BecomesTarget`] for each `TargetChoice::Object`
+/// (and object variants of `ObjectOrPlayer`) on the stack entry
+/// identified by `stack_entry_id`. Silently no-ops for non-existent
+/// entries or entries without object targets. Used by
+/// [`apply_cast_spell`] and [`apply_activate_ability`] alike.
+fn emit_becomes_target_events(
+    state: &mut GameState,
+    stack_entry_id: ObjectId,
+    controller: PlayerId,
+) {
+    use crate::targets::{ObjectOrPlayer, TargetChoice};
+    let target_ids: Vec<ObjectId> = {
+        let Some(entry) = state.stack.iter().find(|e| e.id == stack_entry_id)
+            else { return; };
+        entry.targets.targets.iter().filter_map(|choice| match choice {
+            TargetChoice::Object(id) => Some(*id),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)) => Some(*id),
+            TargetChoice::Player(_)
+            | TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(_)) => None,
+        }).collect()
+    };
+    for target in target_ids {
+        state.emit(crate::events::GameEvent::BecomesTarget {
+            target, source: stack_entry_id, controller,
+        });
+    }
 }
 
 /// Return the currently-granted flashback cost for `object_id`, if any.
@@ -979,6 +1012,10 @@ fn apply_activate_ability(
             None,
         );
         state.push_stack_entry(entry);
+        // CR 115 — activated abilities that target emit BecomesTarget
+        // after landing on the stack, same hook as cast spells. Ward
+        // treats spells and activated abilities uniformly.
+        emit_becomes_target_events(state, entry_id, controller);
     }
 
     // CR 606.3 — mark the PW as having had a loyalty ability activated
@@ -1364,34 +1401,33 @@ fn auto_pay_ward_cost(
     spend_mana_plan(state, player, &plan);
 }
 
-/// Consume the parked resolution and apply the decline consequence
-/// from a PayOrDecline (Phase 2-A: Ward → CounterStackEntry).
+/// Apply the decline consequence from a PayOrDecline. For Ward
+/// (CR 702.21a) the decline path counters the targeting spell/ability
+/// whose stack-entry id was stamped into
+/// [`DeclineConsequence::CounterStackEntry`] at prompt-push time.
+///
+/// The Ward trigger itself (the stack entry currently resolving)
+/// drains normally via [`resume_parked_resolution`] — its
+/// `remaining_effects` are empty, so `execute_effects_or_park`
+/// finalizes immediately after this returns.
 fn apply_decline_consequence(
     state: &mut GameState,
     consequence: crate::actions::DeclineConsequence,
 ) {
     use crate::actions::DeclineConsequence;
     match consequence {
-        DeclineConsequence::CounterStackEntry(_entry_id) => {
-            // Take the parked entry — we never run its effects. Its
-            // id in `consequence` matches `parked.entry.id` by
-            // construction, but we don't double-check (the handler
-            // only runs under a specific pending_choice, and that
-            // choice was freshly pushed by `begin_ward_check`).
-            let Some(parked) = state.pending_resolution.take() else {
-                return;
-            };
-            state.currently_resolving = None;
-            if parked.is_spell {
-                state.counter_resolved_spell(parked.entry);
+        DeclineConsequence::CounterStackEntry(entry_id) => {
+            let Some(entry) = state.remove_stack_entry_by_id(entry_id)
+                else { return; };
+            if entry.is_spell() {
+                state.counter_resolved_spell(entry);
             } else {
-                state.counter_resolved_ability(parked.entry);
+                state.counter_resolved_ability(entry);
             }
         }
         DeclineConsequence::SkipEffect => {
-            // "May" effects: just clear currently_resolving and let
-            // resume_parked_resolution advance to the next effect.
-            // (Not used in Phase 2-A; stubbed for forward-compat.)
+            // "May" effects: no cleanup needed; resume_parked_resolution
+            // will advance to the next effect.
         }
     }
 }
@@ -1816,7 +1852,34 @@ fn collect_pending_triggers(
         let delayed = state.take_matching_delayed_triggers(event);
         pending.extend(delayed);
 
-        // 3. Auto-applied keyword triggers that bypass the stack in
+        // 3. Synthesized Ward triggers (CR 702.21a). Ward lives on
+        //    [`crate::objects::Characteristics::keywords`] rather than as a
+        //    registered [`crate::triggers::TriggeredAbilityDef`], so we
+        //    synthesize a PendingTrigger here for any battlefield object
+        //    with Ward whose id matches this `BecomesTarget` event and
+        //    whose controller is opposed to the event's caster. Dispatch
+        //    at resolution time uses the [`WARD_TRIGGER_ID`] sentinel.
+        if let crate::events::GameEvent::BecomesTarget { target, controller: caster, .. } = event {
+            if let Some(ward_obj) = state.objects.get(*target) {
+                if ward_obj.zone.is_battlefield()
+                    && ward_obj.controller != *caster
+                {
+                    let has_ward = state.effective_keywords(*target).iter()
+                        .any(|kw| matches!(kw,
+                            crate::effects::KeywordAbility::Ward(_)));
+                    if has_ward {
+                        pending.push(crate::triggers::PendingTrigger {
+                            source: *target,
+                            trigger_id: WARD_TRIGGER_ID,
+                            controller: ward_obj.controller,
+                            trigger_event: event.clone(),
+                        });
+                    }
+                }
+            }
+        }
+
+        // 4. Auto-applied keyword triggers that bypass the stack in
         //    Phase 1. These are known, bounded behaviors we don't yet
         //    route through the full TriggeredAbilityDef system.
         apply_prowess_on_cast(state, event);
@@ -2176,76 +2239,9 @@ fn resolve_top_of_stack(state: &mut GameState, registry: &CardRegistry) {
         ResolutionOutcome::Resolve { target_legality: _ } => {
             let effects = resolution_effects(state, &entry, registry);
             let is_spell = entry.is_spell();
-            let ward_queue = collect_ward_queue(state, &entry);
-            if ward_queue.is_empty() {
-                execute_effects_or_park(state, entry, effects, is_spell);
-            } else {
-                begin_ward_check(state, entry, effects, is_spell, ward_queue);
-            }
+            execute_effects_or_park(state, entry, effects, is_spell);
         }
     }
-}
-
-/// Scan `entry`'s targets for Ward abilities owned by players other
-/// than the stack-entry's controller. Returns `(target_id, ward_cost)`
-/// pairs to be resolved sequentially as PayOrDecline prompts.
-///
-/// Phase 2-A stopgap: Ward is *actually* a triggered ability per
-/// CR 702.21a — each instance should go on the stack independently,
-/// where it can be Stifled. We approximate by prompting at resolution
-/// time inside the triggering spell/ability. The Stifle-Ward gap is
-/// pinned by an `#[ignore]`'d test in the framework test suite.
-fn collect_ward_queue(
-    state: &GameState,
-    entry: &crate::stack::StackEntry,
-) -> Vec<(ObjectId, crate::mana::ManaCost)> {
-    use crate::effects::KeywordAbility;
-    let mut queue = Vec::new();
-    for choice in &entry.targets.targets {
-        let Some(id) = choice.object_id() else { continue; };
-        let Some(obj) = state.objects.get(id) else { continue; };
-        if obj.controller == entry.controller { continue; }
-        for kw in state.effective_keywords(id) {
-            if let KeywordAbility::Ward(cost) = kw {
-                queue.push((id, cost.clone()));
-                break;
-            }
-        }
-    }
-    queue
-}
-
-fn begin_ward_check(
-    state: &mut GameState,
-    entry: crate::stack::StackEntry,
-    effects: Vec<crate::effects::Effect>,
-    is_spell: bool,
-    mut ward_queue: Vec<(ObjectId, crate::mana::ManaCost)>,
-) {
-    let (target, cost) = ward_queue.remove(0);
-    let spell_controller = entry.controller;
-    let entry_id = entry.id;
-    state.currently_resolving = Some(entry_id);
-    state.pending_resolution = Some(crate::actions::PendingResolution {
-        entry,
-        remaining_effects: effects,
-        is_spell,
-        ward_queue,
-    });
-    state.push_pending_choice(
-        spell_controller,
-        crate::actions::ChoiceContext::ResolvingStack(entry_id),
-        crate::actions::ChoiceKind::PayOrDecline {
-            cost,
-            on_decline: crate::actions::DeclineConsequence::CounterStackEntry(entry_id),
-        },
-    );
-    // target-id is recoverable from the choice_context caller if
-    // needed; we don't feed it back to the agent explicitly because
-    // Phase 2-A treats Ward as "one prompt per target, caster pays or
-    // the spell dies". A UI can look up which target caused the
-    // prompt via the ward_queue metadata on pending_resolution.
-    let _ = target;
 }
 
 /// Drive the effect sequence of a stack entry, pausing if any effect
@@ -2272,7 +2268,6 @@ fn execute_effects_or_park(
                 entry,
                 remaining_effects: iter.collect(),
                 is_spell,
-                ward_queue: Vec::new(),
             });
             // Leave `currently_resolving` as-is — the parked state
             // still logically belongs to this entry. Cleared on resume
@@ -2297,13 +2292,6 @@ fn resume_parked_resolution(state: &mut GameState) {
     let Some(parked) = state.pending_resolution.take() else { return; };
     debug_assert!(state.pending_choice.is_none(),
         "resume_parked_resolution: pending_choice still set");
-    // More Ward prompts queued? Emit the next one.
-    if !parked.ward_queue.is_empty() {
-        begin_ward_check(
-            state, parked.entry, parked.remaining_effects,
-            parked.is_spell, parked.ward_queue);
-        return;
-    }
     execute_effects_or_park(
         state, parked.entry, parked.remaining_effects, parked.is_spell);
 }
@@ -2423,6 +2411,13 @@ fn resolution_effects(
         crate::stack::StackEntryKind::TriggeredAbility {
             trigger_id, trigger_event, ..
         } => {
+            // Ward (CR 702.21a) is a keyword-born trigger; its stack
+            // entry carries the [`WARD_TRIGGER_ID`] sentinel and no
+            // per-card [`TriggeredAbilityDef`] exists. Dispatch to
+            // the built-in handler.
+            if *trigger_id == WARD_TRIGGER_ID {
+                return ward_trigger_resolve(state, entry.source, trigger_event);
+            }
             let source = entry.source;
             let Some(obj) = state.objects.get(source)
                 .or_else(|| state.lki.get(&source))
@@ -2440,6 +2435,36 @@ fn resolution_effects(
             (ability.effect)(state, &pt, registry)
         }
     }
+}
+
+/// Resolution effect list for a synthesized Ward trigger. Reads the
+/// Ward cost from the source's effective keywords (layers-aware, so
+/// granted-Ward is honored) and returns a single
+/// [`Effect::WardPrompt`] keyed to the targeting spell/ability's
+/// stack entry. Returns an empty list if the source no longer has
+/// Ward (e.g. granted via a temporary layer that expired between
+/// trigger-announcement and resolution).
+fn ward_trigger_resolve(
+    state: &GameState,
+    source: ObjectId,
+    trigger_event: &crate::events::GameEvent,
+) -> Vec<crate::effects::Effect> {
+    use crate::effects::KeywordAbility;
+    let crate::events::GameEvent::BecomesTarget {
+        source: target_entry, controller: caster, ..
+    } = trigger_event else { return Vec::new(); };
+    // Re-read Ward cost at resolution time (layers may have changed).
+    let cost = state.effective_keywords(source).into_iter()
+        .find_map(|kw| match kw {
+            KeywordAbility::Ward(c) => Some(c),
+            _ => None,
+        });
+    let Some(cost) = cost else { return Vec::new(); };
+    vec![crate::effects::Effect::WardPrompt {
+        caster: *caster,
+        cost,
+        counter_target: *target_entry,
+    }]
 }
 
 // =============================================================================
@@ -2604,6 +2629,16 @@ pub const MAX_HAND_SIZE: u32 = 7;
 /// Cap on [`settle`] iterations. Guards against infinite advance
 /// loops from a state-machine bug.
 const MAX_SETTLE_ITERATIONS: u32 = 64;
+
+/// Sentinel [`crate::types::TriggerId`] used for the synthesized Ward
+/// trigger (CR 702.21a). Ward lives on an object's
+/// [`crate::objects::Characteristics::keywords`] list rather than as
+/// a per-card [`crate::triggers::TriggeredAbilityDef`], so the
+/// collector fabricates [`crate::triggers::PendingTrigger`] entries
+/// with this id and [`resolution_effects`] dispatches on the sentinel
+/// to the built-in Ward handler. `u32::MAX` chosen so real card
+/// trigger ids (assigned from 1 upward per card) never collide.
+pub(crate) const WARD_TRIGGER_ID: crate::types::TriggerId = u32::MAX;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -3583,13 +3618,20 @@ mod resolution_choice_framework_tests {
     }
 
     // =========================================================================
-    // Ward migration — end-to-end pay/decline cycles.
+    // Ward — CR 702.21a, Phase 2-B.
     //
-    // Phase 2-A stopgap: the Ward prompt is resolved at spell resolution
-    // (just before effects run) rather than as an independently-stacked
-    // trigger. A properly-stacked Ward (CR 702.21a) could be Stifled
-    // before it resolves; see `stifle_ward_interaction_is_phase_2b` for
-    // the pinned gap.
+    // Ward fires as a synthesized triggered ability ([`WARD_TRIGGER_ID`])
+    // collected from [`GameEvent::BecomesTarget`] events that
+    // [`apply_cast_spell`] and [`apply_activate_ability`] emit after
+    // their target-bearing stack entry lands. The Ward trigger sits on
+    // the stack above the targeting entry and can be countered
+    // independently (Stifle). Resolution pushes PayOrDecline to the
+    // caster; a decline counters the original stack entry.
+    //
+    // Tests below drive this without going through Action::CastSpell:
+    // we manually put a spell on the stack, emit BecomesTarget, run
+    // `run_sba_and_triggers` to push the Ward trigger, then resolve
+    // and answer.
     // =========================================================================
 
     fn noop_target_effect(
@@ -3662,6 +3704,26 @@ mod resolution_choice_framework_tests {
         id
     }
 
+    /// Simulate the "spell targets Ward creature" event chain without
+    /// going through Action::CastSpell: caller has already pushed the
+    /// targeting stack entry. Emits BecomesTarget for the target and
+    /// runs the SBA/trigger loop so the Ward trigger lands on top of
+    /// the original entry. Returns when the synthesized Ward trigger
+    /// is in place (or, if Ward doesn't fire, when the settle loop
+    /// reaches a no-op).
+    fn emit_becomes_target_and_settle(
+        s: &mut GameState,
+        registry: &CardRegistry,
+        target: ObjectId,
+        source: ObjectId,
+        controller: PlayerId,
+    ) {
+        s.emit(crate::events::GameEvent::BecomesTarget {
+            target, source, controller,
+        });
+        run_sba_and_triggers(s, registry);
+    }
+
     #[test]
     fn ward_paid_lets_spell_resolve() {
         use crate::mana::ManaCost;
@@ -3669,32 +3731,34 @@ mod resolution_choice_framework_tests {
         let mut s = GameState::new(2, 0);
         let mut registry = CardRegistry::new();
         let card = register_noop_target_instant(&mut registry);
-        // Caster = player 0, target's controller = player 1.
         let victim = pay_cost_creature(&mut s, 1, ManaCost::parse("{2}").unwrap());
         // Give player 0 two colorless mana in pool to pay ward.
         s.player_mut(0).mana_pool.add(crate::mana::ManaUnit::plain(ManaColor::Red, 0));
         s.player_mut(0).mana_pool.add(crate::mana::ManaUnit::plain(ManaColor::Red, 0));
-        let _spell = put_target_spell_on_stack(&mut s, 0, card, victim);
+        let spell = put_target_spell_on_stack(&mut s, 0, card, victim);
+        emit_becomes_target_and_settle(&mut s, &registry, victim, spell, 0);
+        assert_eq!(s.stack_size(), 2,
+            "Ward trigger landed on top of the targeting spell");
 
+        // Resolve the Ward trigger — it pushes PayOrDecline on the caster.
         resolve_top_of_stack(&mut s, &registry);
-
-        // A Ward prompt is pending for the caster (player 0).
         let pc = s.pending_choice.as_ref().unwrap();
-        assert_eq!(pc.choosing_player, 0);
+        assert_eq!(pc.choosing_player, 0, "caster pays or declines");
         assert!(matches!(pc.kind, ChoiceKind::PayOrDecline { .. }));
         let pc_id = pc.id;
         let before_pool = s.player(0).mana_pool.total();
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PayOrDecline { pay: true });
 
-        // Pool debited by 2 generic.
+        // Pool debited by 2 generic; Ward trigger drained and
+        // finalized. The original spell is still on the stack — the
+        // caller is responsible for resolving it (in a real game,
+        // that's the next priority round).
         assert_eq!(s.player(0).mana_pool.total(), before_pool - 2);
-        // Spell finalized (spell object moves off stack to graveyard —
-        // instant goes to GY after resolving).
         assert!(s.pending_choice.is_none());
         assert!(s.pending_resolution.is_none());
-        // Stack is empty.
-        assert!(s.stack_is_empty());
+        assert_eq!(s.stack_size(), 1,
+            "original spell remains on the stack after Ward resolves");
     }
 
     #[test]
@@ -3705,6 +3769,7 @@ mod resolution_choice_framework_tests {
         let card = register_noop_target_instant(&mut registry);
         let victim = pay_cost_creature(&mut s, 1, ManaCost::parse("{2}").unwrap());
         let spell = put_target_spell_on_stack(&mut s, 0, card, victim);
+        emit_becomes_target_and_settle(&mut s, &registry, victim, spell, 0);
 
         resolve_top_of_stack(&mut s, &registry);
 
@@ -3712,8 +3777,8 @@ mod resolution_choice_framework_tests {
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PayOrDecline { pay: false });
 
-        // Spell countered: ends up in caster's graveyard with a
-        // SpellCountered event that still references the stack id.
+        // Spell countered via CounterStackEntry; Ward trigger itself
+        // drained and finalized. Stack is empty.
         assert!(s.objects.get(spell).is_none(),
             "stack id is consumed on re-id into graveyard");
         assert_eq!(s.zone_count(crate::zones::Zone::Graveyard(0)), 1);
@@ -3722,6 +3787,7 @@ mod resolution_choice_framework_tests {
                 if *object_id == spell)));
         assert!(s.pending_choice.is_none());
         assert!(s.pending_resolution.is_none());
+        assert!(s.stack_is_empty());
     }
 
     #[test]
@@ -3732,12 +3798,12 @@ mod resolution_choice_framework_tests {
         let card = register_noop_target_instant(&mut registry);
         // Caster 0 targets their own Ward creature — no trigger.
         let own = pay_cost_creature(&mut s, 0, ManaCost::parse("{2}").unwrap());
-        let _spell = put_target_spell_on_stack(&mut s, 0, card, own);
+        let spell = put_target_spell_on_stack(&mut s, 0, card, own);
+        emit_becomes_target_and_settle(&mut s, &registry, own, spell, 0);
 
-        resolve_top_of_stack(&mut s, &registry);
-
-        assert!(s.pending_choice.is_none(),
-            "Ward never triggers for the controller's own spells");
+        assert_eq!(s.stack_size(), 1,
+            "no Ward trigger pushed — stack holds only the original spell");
+        assert!(s.pending_choice.is_none());
     }
 
     fn register_noop_two_target_instant(registry: &mut CardRegistry)
@@ -3765,8 +3831,10 @@ mod resolution_choice_framework_tests {
     }
 
     /// A spell targeting two different Ward creatures produces two
-    /// sequential PayOrDecline prompts. Paying both lets the spell
-    /// resolve; declining the second still counters it.
+    /// Ward triggers, each its own stack object. The active-player
+    /// (triggerer's controller) resolves LIFO: the second trigger
+    /// pushed lands on top and resolves first. Paying both lets the
+    /// spell through; declining either counters it.
     #[test]
     fn ward_multiple_targets_emit_sequential_prompts() {
         use crate::mana::ManaCost;
@@ -3784,7 +3852,7 @@ mod resolution_choice_framework_tests {
         for _ in 0..2 {
             s.player_mut(0).mana_pool.add(crate::mana::ManaUnit::plain(ManaColor::Red, 0));
         }
-        // Two-target spell.
+        // Two-target spell on the stack.
         let spell_id = s.allocate_object_id();
         let chars = Characteristics {
             mana_cost: Some(ManaCost::parse("{R}").unwrap()),
@@ -3800,42 +3868,83 @@ mod resolution_choice_framework_tests {
         s.push_stack_entry(StackEntry::new_spell(
             spell_id, 0, card, chars, targets, vec![], None));
 
-        resolve_top_of_stack(&mut s, &registry);
+        // Emit both BecomesTarget events, then settle: two Ward
+        // triggers land on the stack (one per target).
+        s.emit(crate::events::GameEvent::BecomesTarget {
+            target: a, source: spell_id, controller: 0,
+        });
+        s.emit(crate::events::GameEvent::BecomesTarget {
+            target: b, source: spell_id, controller: 0,
+        });
+        run_sba_and_triggers(&mut s, &registry);
+        assert_eq!(s.stack_size(), 3,
+            "spell + two Ward triggers on the stack");
 
-        // First prompt pushed.
+        // Resolve first (top) Ward trigger; pay.
+        resolve_top_of_stack(&mut s, &registry);
         let pc_id = s.pending_choice.as_ref().unwrap().id;
         apply_resolution_choice(&mut s, pc_id,
             ChoiceResponse::PayOrDecline { pay: true });
 
-        // Second prompt should now be live.
-        let second = s.pending_choice.as_ref()
-            .expect("second Ward prompt");
-        assert!(second.id > pc_id);
-        let second_id = second.id;
-        apply_resolution_choice(&mut s, second_id,
+        // Resolve second Ward trigger; pay.
+        resolve_top_of_stack(&mut s, &registry);
+        let pc2_id = s.pending_choice.as_ref()
+            .expect("second Ward prompt").id;
+        assert!(pc2_id > pc_id);
+        apply_resolution_choice(&mut s, pc2_id,
             ChoiceResponse::PayOrDecline { pay: true });
 
         assert!(s.pending_choice.is_none());
         assert!(s.pending_resolution.is_none());
-        assert!(s.stack_is_empty());
+        assert_eq!(s.stack_size(), 1,
+            "both Ward triggers drained; original spell remains");
     }
 
-    /// Gap pin: in real MTG, a Ward trigger sits on the stack as its
-    /// own object and can be Stifled (countered) before resolving,
-    /// letting the original spell through without payment. Our Phase
-    /// 2-A stopgap resolves Ward inline inside the spell's resolution,
-    /// so there's no intermediate stack object for Stifle to hit.
-    /// Promote this to Phase 2-B when triggered-ability stack routing
-    /// lands.
+    /// CR 702.21a + Stifle (CR 701.47 / printed as "counter target
+    /// activated or triggered ability"): the Ward trigger is its own
+    /// stack object; countering it with Stifle skips the payment and
+    /// the targeting spell resolves unimpeded. Simulated here by
+    /// directly countering the Ward trigger via the stack API (we
+    /// don't register a Stifle card — the gap pinned is the trigger
+    /// *shape*, not Stifle the spell).
     #[test]
-    #[ignore = "Phase 2-B: Ward is a real trigger; see TODO(phase-2b) in engine::collect_ward_queue"]
-    fn stifle_ward_interaction_is_phase_2b() {
-        // Setup: spell targets Ward creature; Stifle responds to the
-        // Ward trigger. Expected: Ward trigger countered, original
-        // spell resolves without payment. Current behavior: we never
-        // push a separate Ward trigger to the stack, so there's
-        // nothing for Stifle to target.
-        panic!("deliberately unimplemented — see #[ignore] reason");
+    fn ward_trigger_countered_by_stifle_bypasses_payment() {
+        use crate::mana::ManaCost;
+        let mut s = GameState::new(2, 0);
+        let mut registry = CardRegistry::new();
+        let card = register_noop_target_instant(&mut registry);
+        let victim = pay_cost_creature(&mut s, 1, ManaCost::parse("{2}").unwrap());
+        // Caster 0 deliberately has NO mana for the Ward — if the
+        // trigger resolves without being Stifled, the decline path
+        // would counter the spell. Stifle intervenes first.
+        let spell = put_target_spell_on_stack(&mut s, 0, card, victim);
+        emit_becomes_target_and_settle(&mut s, &registry, victim, spell, 0);
+        assert_eq!(s.stack_size(), 2,
+            "Ward trigger landed on top of the targeting spell");
+
+        // "Stifle" the Ward trigger: remove it from the stack and
+        // counter it. This mirrors what resolving a real Stifle spell
+        // targeting the trigger would do via
+        // `apply_decline_consequence` / its counter-resolved path.
+        let ward_trigger_id = s.stack.last().unwrap().id;
+        let entry = s.remove_stack_entry_by_id(ward_trigger_id)
+            .expect("Ward trigger on stack");
+        s.counter_resolved_ability(entry);
+
+        // Ward trigger gone, original spell intact.
+        assert_eq!(s.stack_size(), 1);
+        assert!(s.pending_choice.is_none());
+        assert!(s.event_log.iter().any(|e|
+            matches!(e, crate::events::GameEvent::SpellCountered { object_id }
+                if *object_id == ward_trigger_id)));
+
+        // Resolve the original spell — it lands without any Ward
+        // payment prompt because the Ward trigger no longer exists.
+        resolve_top_of_stack(&mut s, &registry);
+        assert!(s.pending_choice.is_none(),
+            "no Ward prompt: trigger was countered before it resolved");
+        assert!(s.stack_is_empty(),
+            "spell resolved cleanly");
     }
 
     #[test]

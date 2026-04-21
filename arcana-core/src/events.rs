@@ -76,6 +76,22 @@ pub enum GameEvent {
     SpellResolved { object_id: ObjectId },
     AbilityResolved { object_id: ObjectId },
     SpellCountered { object_id: ObjectId },
+    /// CR 115 — `target` became the target of a spell or activated
+    /// ability. Fires once per targeted object per source, after the
+    /// spell/ability has landed on the stack with its targets set.
+    /// The hook Ward (CR 702.21a) and other "whenever ~ becomes the
+    /// target of ..." triggers attach to.
+    ///
+    /// `source` is the stack-entry id of the targeting spell or
+    /// ability; `controller` is its caster/activator. Triggered
+    /// abilities that target don't emit this event in Phase 2-B —
+    /// triggered-ability target choice is still mid-resolution (the
+    /// TargetedTrigger gap documented in [`crate::effects`]).
+    BecomesTarget {
+        target: ObjectId,
+        source: ObjectId,
+        controller: PlayerId,
+    },
 
     // === Damage ===
     DamageDealt {
@@ -235,7 +251,8 @@ impl GameEvent {
             | AbilityTriggered { .. }
             | SpellResolved { .. }
             | AbilityResolved { .. }
-            | SpellCountered { .. } => SpellOrAbility,
+            | SpellCountered { .. }
+            | BecomesTarget { .. } => SpellOrAbility,
 
             DamageDealt { .. } => Damage,
 
@@ -328,6 +345,10 @@ impl GameEvent {
 
             CopyCreated { object_id, .. } => *object_id,
 
+            // Becoming a target: the object becoming targeted is
+            // the subject (what "Self becomes target" triggers check).
+            BecomesTarget { target, .. } => *target,
+
             // Events with no single subject object
             LifeGained { .. } | LifeLost { .. } | LifeSet { .. }
             | AttacksDeclared { .. } | BlocksDeclared { .. }
@@ -362,7 +383,8 @@ impl GameEvent {
 
             SpellCast { controller, .. }
             | AbilityActivated { controller, .. }
-            | AbilityTriggered { controller, .. } => *controller,
+            | AbilityTriggered { controller, .. }
+            | BecomesTarget { controller, .. } => *controller,
 
             // SearchedLibrary deliberately does NOT map to a single
             // affected_player — callers must pattern-match on

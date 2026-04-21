@@ -169,11 +169,11 @@ impl TargetRequirement {
         //
         // CR 702.21a — Ward: target legality is NOT affected. Ward is a
         // triggered ability that fires on being targeted; the caster
-        // pays or the spell is countered at resolution. We resolve the
-        // Ward prompt in `engine::collect_ward_queue` + `begin_ward_check`
-        // before running the spell's effects (Phase 2-A stopgap —
-        // TODO(phase-2b): route Ward as a real trigger so it can be
-        // Stifled).
+        // pays or the spell is countered when the Ward trigger
+        // resolves. Synthesized as [`engine::WARD_TRIGGER_ID`] from
+        // [`GameEvent::BecomesTarget`] events emitted by
+        // [`engine::apply_cast_spell`] and
+        // [`engine::apply_activate_ability`].
         if let Some(id) = choice.object_id() {
             if let Some(obj) = state.objects.get(id) {
                 if obj.controller != source_controller
@@ -1102,8 +1102,9 @@ mod tests {
     // --- TargetRequirement --------------------------------------------------
 
     /// Ward does NOT affect target legality (CR 702.21a makes it a
-    /// triggered ability). The Ward prompt is resolved at spell
-    /// resolution in [`crate::engine::begin_ward_check`]. End-to-end
+    /// triggered ability). The Ward trigger synthesizes from the
+    /// [`GameEvent::BecomesTarget`] event emitted at cast/activate
+    /// time and resolves as its own stack object. End-to-end
     /// pay-vs-decline tests live in
     /// `engine::resolution_choice_framework_tests::ward_*`.
     #[test]
