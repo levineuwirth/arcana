@@ -363,16 +363,22 @@ fn enumerate_distributions_for_attacker(
     state: &GameState,
     attacker: ObjectId,
 ) -> Vec<Vec<(ObjectId, u32)>> {
-    let Some(combat) = state.combat.as_ref() else { return Vec::new(); };
-    let Some(atk) = combat.attacker(attacker) else { return Vec::new(); };
+    let Some(_combat) = state.combat.as_ref() else { return Vec::new(); };
     let power = state.computed_power(attacker).unwrap_or(0).max(0) as u32;
     if power == 0 { return vec![Vec::new()]; }
 
     let has_dt = state.has_keyword(attacker, &crate::effects::KeywordAbility::Deathtouch);
     let has_trample = state.has_keyword(
         attacker, &crate::effects::KeywordAbility::Trample);
-    // (id, lethal) pairs in damage-assignment order.
-    let ordered: Vec<(ObjectId, u32)> = atk.blocked_by.iter().map(|&id| {
+    // (id, lethal) pairs in damage-assignment order. CR 510.1c —
+    // blockers that have already been dealt lethal damage are
+    // "treated as though they weren't there", so they drop out of
+    // the enumeration entirely. Critical in the regular pass after
+    // the first-strike pass has killed earlier blockers, which
+    // would otherwise let the enumerator spend all of the attacker's
+    // damage on a corpse and skip the live blocker.
+    let live_blockers = state.live_blockers_of(attacker);
+    let ordered: Vec<(ObjectId, u32)> = live_blockers.iter().map(|&id| {
         let lethal = if has_dt { 1 } else { raw_remaining_lethal(state, id) };
         (id, lethal)
     }).collect();
@@ -2886,6 +2892,106 @@ mod tests {
         // Sub-lethal isn't legal under trample (overflow requires lethal
         // to every blocker first).
         assert!(!dists.contains(&vec![(blk, 1)]));
+    }
+
+    #[test]
+    fn enumerate_distributions_skips_blockers_killed_in_first_strike() {
+        // CR 510.1c — after the first-strike pass kills earlier
+        // blockers, the regular pass must enumerate distributions
+        // over only the surviving blocker(s). Dumping the attacker's
+        // damage onto a corpse while a live blocker goes untouched
+        // would be illegal, and before the dead-blocker filter the
+        // enumerator happily produced such distributions.
+        //
+        // Trample is used here so a single-live-blocker configuration
+        // still requires an assignment choice (overflow vs. pile-on);
+        // the same filter applies to the multi-blocker case.
+        use crate::combat::{
+            AttackerDeclaration, BlockerDeclaration, DamageAssignment,
+            DefendingEntity, PendingDamagePass,
+        };
+        use crate::effects::KeywordAbility;
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(4, 4);
+            chars.keywords.push(KeywordAbility::Trample);
+            let mut obj = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            obj.controller = 0;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let b1 = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(1, 1);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let b2 = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(2, 2);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let b3 = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(1, 3);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+            BlockerDeclaration { blocker: b3, blocking: atk },
+        ]);
+        s.apply_blocker_ordering(vec![(atk, vec![b1, b2, b3])]);
+        // Simulate the first-strike pass having killed B1 and B2.
+        s.objects.get_mut(b1).unwrap().damage_marked = 1;
+        s.objects.get_mut(b2).unwrap().damage_marked = 2;
+        s.combat.as_mut().unwrap().pending_damage_assignment
+            = Some(PendingDamagePass::Regular);
+
+        let actions = legal_actions(&s, &reg);
+        let dists: std::collections::HashSet<Vec<(ObjectId, u32)>> = actions.iter()
+            .filter_map(|a| match a {
+                Action::AssignCombatDamage { distributions } =>
+                    Some(distributions.clone()),
+                _ => None,
+            })
+            .filter(|d| d.len() == 1)
+            .map(|d: Vec<DamageAssignment>| d[0].distribution.clone())
+            .collect();
+        assert!(!dists.is_empty(),
+            "trample + single live blocker should produce distributions");
+        // No distribution should reference a dead blocker.
+        for dist in &dists {
+            for (blk, _) in dist {
+                assert!(*blk == b3,
+                    "enumeration referenced a dead blocker: {:?}", dist);
+            }
+        }
+        // Canonical trample overflow set for power=4 vs B3 (lethal=3):
+        // (B3, 3) — overflow 1, and (B3, 4) — all on blocker.
+        assert!(dists.contains(&vec![(b3, 3)]),
+            "lethal-to-live + overflow-1-to-defender must be legal");
+        assert!(dists.contains(&vec![(b3, 4)]),
+            "all four on the live blocker must be legal");
     }
 
     /// `put` but with a specific registered CardId so ability lookup

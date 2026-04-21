@@ -723,15 +723,19 @@ impl GameState {
         distribution: &[(ObjectId, u32)],
     ) -> bool {
         let Some(combat) = self.combat.as_ref() else { return false; };
-        let Some(atk) = combat.attackers.iter().find(|a| a.object_id == attacker)
+        let Some(_atk) = combat.attackers.iter().find(|a| a.object_id == attacker)
             else { return false; };
-        let blocked_by = &atk.blocked_by;
+        // CR 510.1c — damage is assigned to the original ordered
+        // blockers "as though creatures dealt lethal damage weren't
+        // there". Filter the declared order to surviving blockers
+        // before checking prefix/lethal/sum rules.
+        let live_blocked_by = self.live_blockers_of(attacker);
 
-        // Rule 1a — length ≤ blocked_by length.
-        if distribution.len() > blocked_by.len() { return false; }
-        // Rule 1b — order matches prefix of blocked_by.
+        // Rule 1a — length ≤ live_blocked_by length.
+        if distribution.len() > live_blocked_by.len() { return false; }
+        // Rule 1b — order matches prefix of live_blocked_by.
         for (i, (id, _)) in distribution.iter().enumerate() {
-            if blocked_by[i] != *id { return false; }
+            if live_blocked_by[i] != *id { return false; }
         }
 
         let has_dt = self.has_keyword(attacker, &KeywordAbility::Deathtouch);
@@ -759,7 +763,7 @@ impl GameState {
             if total < atk_power {
                 // Overflow to defender — every live blocker must have
                 // received ≥ lethal.
-                if distribution.len() < blocked_by.len() { return false; }
+                if distribution.len() < live_blocked_by.len() { return false; }
                 for (blk, amt) in distribution {
                     if *amt < lethal_of(*blk) { return false; }
                 }
@@ -999,13 +1003,35 @@ impl GameState {
     /// strike in the regular pass. Mirrors CR 704.5g (lethal damage)
     /// and CR 702.2b (deathtouch lethality) without involving the SBA
     /// loop.
-    fn is_dead_in_combat(&self, id: ObjectId) -> bool {
+    pub(crate) fn is_dead_in_combat(&self, id: ObjectId) -> bool {
         let Some(obj) = self.objects.get(id) else { return true; };
         let Some(t) = self.computed_toughness(id) else { return false; };
         if t <= 0 { return true; }
         if (obj.damage_marked as i32) >= t { return true; }
         if obj.damage_marked > 0 && obj.has_deathtouch_damage { return true; }
         false
+    }
+
+    /// CR 510.1c — blockers of `attacker` the attacking player still
+    /// has to consider when assigning damage. Blockers that have
+    /// accumulated lethal damage (or deathtouch damage, per CR 702.2c)
+    /// are treated "as though they weren't there", so they don't
+    /// appear in this list.
+    ///
+    /// Damage-assignment enumeration
+    /// ([`crate::legal_actions`]) and legality
+    /// ([`Self::is_legal_damage_assignment`]) both ride on this
+    /// filtered view — the raw
+    /// [`crate::combat::AttackerAssignment::blocked_by`] is only the
+    /// declared-order list from declare-blockers and doesn't self-
+    /// update when the first-strike pass kills a blocker.
+    pub fn live_blockers_of(&self, attacker: ObjectId) -> Vec<ObjectId> {
+        let Some(combat) = self.combat.as_ref() else { return Vec::new(); };
+        let Some(atk) = combat.attacker(attacker) else { return Vec::new(); };
+        atk.blocked_by.iter()
+            .copied()
+            .filter(|id| !self.is_dead_in_combat(*id))
+            .collect()
     }
 
     /// End the combat phase. Clears combat state; the engine follows
@@ -2387,6 +2413,119 @@ mod tests {
         let mut s = GameState::new(2, 0);
         s.deal_damage(0, DamageTarget::Player(0), 0, true);
         assert!(s.event_log.is_empty());
+    }
+
+    // --- Dead-blocker edge in first-strike pass (CR 510.1c) ----------------
+
+    #[test]
+    fn live_blockers_of_excludes_lethally_damaged() {
+        // A 4-power attacker blocked by B1 (1/1), B2 (2/2), B3 (3/3).
+        // After marking lethal damage on B1 and B2, only B3 remains in
+        // the live-blockers view — matching the CR 510.1c semantics
+        // that damage-assignment "skips" dead blockers.
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 4, 4);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let b1 = put_creature(&mut s, 1, 1, 1);
+        let b2 = put_creature(&mut s, 1, 2, 2);
+        let b3 = put_creature(&mut s, 1, 3, 3);
+        ready(b1, &mut s); ready(b2, &mut s); ready(b3, &mut s);
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+            BlockerDeclaration { blocker: b3, blocking: atk },
+        ]);
+        s.apply_blocker_ordering(vec![(atk, vec![b1, b2, b3])]);
+
+        assert_eq!(s.live_blockers_of(atk), vec![b1, b2, b3],
+            "all three alive before any damage marks");
+
+        // Simulate first-strike deaths of B1 and B2.
+        s.objects.get_mut(b1).unwrap().damage_marked = 1;
+        s.objects.get_mut(b2).unwrap().damage_marked = 2;
+
+        assert_eq!(s.live_blockers_of(atk), vec![b3],
+            "dead blockers drop out of the live view");
+    }
+
+    #[test]
+    fn is_legal_damage_assignment_rejects_distribution_over_dead_blocker() {
+        // Distributions must start at the first LIVE blocker and run
+        // forward from there. A distribution that assigns damage to a
+        // lethally-damaged blocker (or skips a live one in favor of a
+        // dead one) is illegal under CR 510.1c.
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 4, 4);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let b1 = put_creature(&mut s, 1, 1, 1);
+        let b2 = put_creature(&mut s, 1, 2, 2);
+        let b3 = put_creature(&mut s, 1, 3, 3);
+        ready(b1, &mut s); ready(b2, &mut s); ready(b3, &mut s);
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+            BlockerDeclaration { blocker: b3, blocking: atk },
+        ]);
+        s.apply_blocker_ordering(vec![(atk, vec![b1, b2, b3])]);
+        // Kill B1 and B2.
+        s.objects.get_mut(b1).unwrap().damage_marked = 1;
+        s.objects.get_mut(b2).unwrap().damage_marked = 2;
+
+        // Illegal: dumps all damage onto the dead B1.
+        assert!(!s.is_legal_damage_assignment(atk, &[(b1, 4)]),
+            "distribution that targets a dead blocker is illegal");
+        // Illegal: references a dead blocker as prefix.
+        assert!(!s.is_legal_damage_assignment(atk, &[(b1, 1), (b3, 3)]),
+            "prefix that starts with a dead blocker is illegal");
+        // Legal: all damage to the sole live blocker.
+        assert!(s.is_legal_damage_assignment(atk, &[(b3, 4)]),
+            "distribution over the live blocker is legal");
+    }
+
+    #[test]
+    fn is_legal_damage_assignment_trample_overflow_counts_live_blockers() {
+        // CR 702.19b overflow needs ≥ lethal assigned to every LIVE
+        // blocker, not every declared blocker. A trample attacker
+        // whose first-strike damage already killed earlier blockers
+        // must only satisfy lethal against those still standing.
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 5, 5);
+        s.objects.get_mut(atk).unwrap().characteristics.keywords
+            .push(KeywordAbility::Trample);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let b1 = put_creature(&mut s, 1, 1, 1);
+        let b2 = put_creature(&mut s, 1, 2, 2);
+        ready(b1, &mut s); ready(b2, &mut s);
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+        ]);
+        s.apply_blocker_ordering(vec![(atk, vec![b1, b2])]);
+        // Kill B1 before the regular pass.
+        s.objects.get_mut(b1).unwrap().damage_marked = 1;
+
+        // Lethal for B2 alone = 2. Assigning (B2, 2) lets the other 3
+        // overflow to the defender — legal now that B1 drops out.
+        assert!(s.is_legal_damage_assignment(atk, &[(b2, 2)]),
+            "trample overflow after lethal to only live blocker is legal");
+        // Sub-lethal to B2 with overflow is still illegal.
+        assert!(!s.is_legal_damage_assignment(atk, &[(b2, 1)]),
+            "sub-lethal to a live blocker forbids overflow");
     }
 
     // --- Full combat integration -------------------------------------------
