@@ -384,7 +384,8 @@ impl Effect {
 
             // --- card flow -----------------------------------------------
             Effect::DrawCards { player, count } => {
-                for _ in 0..*count { draw_one_card(state, *player); }
+                if !valid_player(state, *player) { return; }
+                for _ in 0..*count { state.draw_one_card(*player); }
             }
             Effect::Discard { player, count, choice } => {
                 discard_cards(state, *player, *count, choice);
@@ -1057,27 +1058,11 @@ fn lose_life(state: &mut GameState, p: PlayerId, amount: u32) {
     // here — we only surface the life-loss event.
 }
 
-fn draw_one_card(state: &mut GameState, p: PlayerId) {
-    if !valid_player(state, p) { return; }
-    // Convention: library ordering by id is a Phase 1 stand-in. Task #20
-    // will populate libraries as a per-player ordered Vec and `draw`
-    // will pop from that list. For now we pick the smallest id in the
-    // library as "top" so tests that create library cards in a known
-    // order get deterministic draws.
-    let lib_ids = state.objects.ids_in_zone_sorted(Zone::Library(p));
-    let Some(&top) = lib_ids.first() else {
-        // CR 704.5b: drew from empty library → loses next SBA check.
-        state.player_mut(p).has_drawn_from_empty_library = true;
-        return;
-    };
-    state.move_object_to_zone(top, Zone::Hand(p), MoveCause::SpellResolution);
-    state.emit(GameEvent::DrawCard { player: p, object_id: top });
-}
-
 fn mill_one_card(state: &mut GameState, p: PlayerId) {
     if !valid_player(state, p) { return; }
-    let lib_ids = state.objects.ids_in_zone_sorted(Zone::Library(p));
-    let Some(&top) = lib_ids.first() else { return; };
+    let Some(&top) = state.player(p).library_top_to_bottom.first() else {
+        return;
+    };
     state.move_object_to_zone(top, Zone::Graveyard(p), MoveCause::SpellResolution);
     state.emit(GameEvent::Milled { player: p, object_id: top });
 }
@@ -1712,6 +1697,9 @@ mod tests {
         let mut obj = GameObject::new(id, owner, zone, 1, creature_chars(p, t));
         obj.controller = owner;
         state.objects.insert(obj);
+        if let Zone::Library(lib_owner) = zone {
+            state.player_mut(lib_owner).library_top_to_bottom.push(id);
+        }
         id
     }
 
@@ -1723,6 +1711,9 @@ mod tests {
             ..Default::default()
         };
         state.objects.insert(GameObject::new(id, owner, zone, 2, chars));
+        if let Zone::Library(lib_owner) = zone {
+            state.player_mut(lib_owner).library_top_to_bottom.push(id);
+        }
         id
     }
 

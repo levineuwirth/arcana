@@ -14,15 +14,10 @@
 //! Smashing and Lightning Helix]; the seed's purpose is Split cast
 //! mechanics, not divided damage.
 //!
-//! Printed oracle for Ice is "Tap target permanent. Draw a card";
-//! this engine ships Ice as **just "tap target permanent"** —
-//! dropping the draw-a-card rider. Card draw after a tap is trivial
-//! in isolation but adds effect chaining that no other Phase 2 seed
-//! exercises; revisit when the first multi-effect spell's test
-//! coverage is explicitly needed.
-//!
-//! Both simplifications are documented; either oracle-correct
-//! expansion is a small follow-up commit.
+//! Ice is oracle-complete: "Tap target permanent. Draw a card".
+//! The two-effect vec is the first seed pair that doesn't pause
+//! mid-resolution; see [`preordain`](arcana_cards::m11::preordain)
+//! for the sibling test of the pause/resume path via Scry-then-draw.
 //!
 //! # Rules references
 //!
@@ -81,7 +76,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     let ice_ability = SpellAbilityDef {
-        text: "Tap target permanent.".into(),
+        text: "Tap target permanent. Draw a card.".into(),
         target_requirements: vec![TargetRequirement {
             filter: TargetFilter::Permanent(ObjectFilter::permanent()),
             count: TargetCount::Exactly(1),
@@ -135,5 +130,8 @@ fn ice_resolve(
         // player targets would be a solver bug.
         return Vec::new();
     };
-    vec![Effect::Tap { target: *id }]
+    vec![
+        Effect::Tap { target: *id },
+        Effect::DrawCards { player: entry.controller, count: 1 },
+    ]
 }

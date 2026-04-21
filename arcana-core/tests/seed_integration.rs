@@ -204,14 +204,7 @@ fn elvish_visionary_draws_a_card_on_etb() {
     let (mut s, registry, ids) = fresh_game();
     let vis = put_in_hand(&mut s, &registry, 0, ids.elvish_visionary);
     // Stock P0's library with something to draw.
-    let top = {
-        let obj_id = s.allocate_object_id();
-        let chars = registry.get(ids.mountain).unwrap()
-            .base_characteristics.clone();
-        s.objects.insert(GameObject::new(
-            obj_id, 0, Zone::Library(0), ids.mountain, chars));
-        obj_id
-    };
+    let _top = put_in_library(&mut s, &registry, 0, ids.mountain);
     give_mana(&mut s, 0, ManaColor::Green, 2);
     priority_to_main(&mut s, 0);
     let hand_before = s.objects.count_in_zone(Zone::Hand(0));
@@ -245,7 +238,6 @@ fn elvish_visionary_draws_a_card_on_etb() {
     // trigger resolution: 1 (Mountain).
     assert_eq!(s.objects.count_in_zone(Zone::Hand(0)), hand_before,
         "net-0 hand size: cast Visionary, drew a card from ETB");
-    let _ = top;
 }
 
 // ---------------------------------------------------------------------
@@ -1302,9 +1294,10 @@ fn murktide_regent_has_flying_via_effective_keywords() {
 // Chord of Calling — X + convoke composition + search-with-mv-filter
 // ---------------------------------------------------------------------
 
-/// Put a card in `player`'s library via the arena (enough for
-/// `collect_matching_candidates` to find it). Does not push onto
-/// `library_top_to_bottom` — that's only needed for draws.
+/// Put a card in `player`'s library via the arena **and** append it
+/// to the bottom of `library_top_to_bottom`. Appending mirrors the
+/// engine's `move_object_to_zone` into-library convention so draws
+/// and scrys see the card in a stable position.
 fn put_in_library(
     state: &mut GameState,
     registry: &CardRegistry,
@@ -1315,6 +1308,25 @@ fn put_in_library(
     let chars = registry.get(card_id).unwrap().base_characteristics.clone();
     state.objects.insert(GameObject::new(
         obj_id, owner, Zone::Library(owner), card_id, chars));
+    state.player_mut(owner).library_top_to_bottom.push(obj_id);
+    obj_id
+}
+
+/// Put a card into `player`'s library arena and push it onto the
+/// **top** of `library_top_to_bottom`. Use when a test needs to
+/// control which card is drawn first. Repeated calls stack: the
+/// last inserted card ends up at the top.
+fn put_in_library_top(
+    state: &mut GameState,
+    registry: &CardRegistry,
+    owner: PlayerId,
+    card_id: arcana_core::types::CardId,
+) -> ObjectId {
+    let obj_id = state.allocate_object_id();
+    let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+    state.objects.insert(GameObject::new(
+        obj_id, owner, Zone::Library(owner), card_id, chars));
+    state.player_mut(owner).library_top_to_bottom.insert(0, obj_id);
     obj_id
 }
 
@@ -3770,10 +3782,13 @@ fn fire_left_half_cast_deals_2_damage_to_graveyard() {
 }
 
 #[test]
-fn ice_right_half_cast_taps_target_permanent_to_graveyard() {
+fn ice_right_half_cast_taps_target_permanent_and_draws() {
     let (mut s, registry, ids) = fresh_game();
     let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
     let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    // Seed one card on top of p0's library so the "draw a card"
+    // clause has something to pull.
+    let lib_card = put_in_library_top(&mut s, &registry, 0, ids.mountain);
     give_mana(&mut s, 0, ManaColor::Blue, 1);
     give_mana(&mut s, 0, ManaColor::Colorless, 1);
     priority_to_main(&mut s, 0);
@@ -3806,6 +3821,14 @@ fn ice_right_half_cast_taps_target_permanent_to_graveyard() {
     // Ice goes to graveyard.
     assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
         "Ice resolves into owner's graveyard");
+    // Draw landed: seeded library card was pulled into p0's hand.
+    // The drawn card gets re-ided during the zone change, so the
+    // count is the load-bearing assertion (old lib_card id is LKI).
+    assert_eq!(s.zone_count(Zone::Hand(0)), 1,
+        "Ice's second clause drew one card");
+    assert_eq!(s.zone_count(Zone::Library(0)), 0,
+        "library depleted after draw");
+    let _ = lib_card;
 }
 
 #[test]
@@ -4777,4 +4800,154 @@ fn bonesplitter_equipped_creature_dies_detaches_bones() {
         "Bonesplitter auto-detaches once target leaves battlefield");
     assert!(s.objects.get(bones).unwrap().zone.is_battlefield(),
         "Bonesplitter remains on the battlefield after detach");
+}
+
+// ---------------------------------------------------------------------
+// Preordain — CR 608.2 sequential multi-effect resolution (Scry, then
+// draw). Exercises the engine's park-on-pending-choice / resume path:
+// Scry pushes OrderCards mid-resolution; the draw is deferred into
+// `pending_resolution.remaining_effects` and runs when the agent
+// submits placements.
+// ---------------------------------------------------------------------
+
+fn cast_preordain(
+    mut s: GameState,
+    registry: &CardRegistry,
+    caster: PlayerId,
+    preordain: ObjectId,
+) -> GameState {
+    give_mana(&mut s, caster, ManaColor::Blue, 1);
+    priority_to_main(&mut s, caster);
+    let cast = Action::CastSpell {
+        object_id: preordain,
+        targets: arcana_core::targets::TargetSelection { targets: vec![] },
+        modes: vec![],
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: 0, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+        x_value: None,
+        cast_modifier: arcana_core::actions::CastModifier::None,
+        cost_reductions: arcana_core::actions::CostReductions::default(),
+    };
+    let (s, _) = step(s, cast, registry);
+    // Pass priority from both players — active pass resolves
+    // Preordain, which pushes the Scry OrderCards choice.
+    let (s, _) = step(s, Action::PassPriority, registry);
+    let (s, _) = step(s, Action::PassPriority, registry);
+    s
+}
+
+/// Preordain's Scry pushes an `OrderCards` prompt mid-resolution and
+/// parks the remaining `DrawCards` effect. Submitting placements
+/// resumes the parked resolution and drains the draw.
+#[test]
+fn preordain_parks_on_scry_then_resumes_draw() {
+    let (mut s, registry, ids) = fresh_game();
+    let preordain = put_in_hand(&mut s, &registry, 0, ids.preordain);
+    // Seed three cards top-to-bottom: [l0, l1, l2]. Scry looks at
+    // [l0, l1]; keeping both on top leaves the draw to pull l0.
+    let l2 = put_in_library_top(&mut s, &registry, 0, ids.mountain);
+    let l1 = put_in_library_top(&mut s, &registry, 0, ids.forest);
+    let l0 = put_in_library_top(&mut s, &registry, 0, ids.plains);
+    assert_eq!(s.player(0).library_top_to_bottom, vec![l0, l1, l2],
+        "helper invariant: most-recently-inserted card sits on top");
+
+    let s = cast_preordain(s, &registry, 0, preordain);
+
+    // The Scry pushed a choice; draw is parked.
+    let pc = s.pending_choice.as_ref().expect("scry pushed OrderCards");
+    assert_eq!(pc.choosing_player, 0);
+    assert!(matches!(&pc.context,
+        arcana_core::actions::ChoiceContext::ResolvingStack(_)));
+    match &pc.kind {
+        arcana_core::actions::ChoiceKind::OrderCards { cards, allowed } => {
+            assert_eq!(cards, &vec![l0, l1],
+                "scry surfaces the top 2 cards of library_top_to_bottom");
+            assert!(allowed.contains(
+                &arcana_core::actions::CardDestination::TopOfLibrary));
+            assert!(allowed.contains(
+                &arcana_core::actions::CardDestination::BottomOfLibrary));
+        }
+        other => panic!("expected OrderCards, got {other:?}"),
+    }
+    let parked = s.pending_resolution.as_ref()
+        .expect("draw is parked while scry's choice is open");
+    assert_eq!(parked.remaining_effects.len(), 1,
+        "DrawCards is the single remaining effect");
+    assert!(matches!(
+        &parked.remaining_effects[0],
+        arcana_core::effects::Effect::DrawCards { player: 0, count: 1 },
+    ));
+
+    // Submit: keep both on top in [l0, l1] order (no-op reorder).
+    let pc_id = pc.id;
+    let submit = Action::SubmitResolutionChoice {
+        id: pc_id,
+        response: arcana_core::actions::ChoiceResponse::OrderCards {
+            placements: vec![
+                (l0, arcana_core::actions::CardDestination::TopOfLibrary),
+                (l1, arcana_core::actions::CardDestination::TopOfLibrary),
+            ],
+        },
+    };
+    let (s, _) = step(s, submit, &registry);
+
+    // Parked resolution drained, draw landed. A drawn card is re-ided
+    // by swap_to_zone_reid, so the old l0 id is LKI in Library(0);
+    // the live object is in Hand(0) under a fresh id. The
+    // load-bearing assertions are zone counts + remaining library
+    // order.
+    assert!(s.pending_choice.is_none(),
+        "choice cleared after submit");
+    assert!(s.pending_resolution.is_none(),
+        "park cleared after remaining effects drained");
+    assert_eq!(s.zone_count(Zone::Hand(0)), 1,
+        "draw pulled one card into p0's hand");
+    assert_eq!(s.player(0).library_top_to_bottom.len(), 2,
+        "library: two cards remain after a scry-2 + draw-1");
+    assert_eq!(s.player(0).library_top_to_bottom[1], l2,
+        "l2 was never touched by the scry or draw");
+    assert_eq!(s.zone_count(Zone::Graveyard(0)), 1,
+        "Preordain resolved into its owner's graveyard");
+}
+
+/// Scry-both-to-bottom: the draw pulls whatever the scry left on top
+/// (the third card), proving the effect sequence observes the
+/// intermediate library mutation.
+#[test]
+fn preordain_bottom_both_draws_the_new_top() {
+    let (mut s, registry, ids) = fresh_game();
+    let preordain = put_in_hand(&mut s, &registry, 0, ids.preordain);
+    let _l2 = put_in_library_top(&mut s, &registry, 0, ids.mountain);
+    let l1 = put_in_library_top(&mut s, &registry, 0, ids.forest);
+    let l0 = put_in_library_top(&mut s, &registry, 0, ids.plains);
+
+    let s = cast_preordain(s, &registry, 0, preordain);
+    let pc_id = s.pending_choice.as_ref()
+        .expect("scry-2 on a 3-card library pushes OrderCards").id;
+
+    // Both to bottom: pre-draw library = [l2, l0, l1]; draw pulls l2
+    // (which gets re-ided), leaving library = [l0, l1].
+    let submit = Action::SubmitResolutionChoice {
+        id: pc_id,
+        response: arcana_core::actions::ChoiceResponse::OrderCards {
+            placements: vec![
+                (l0, arcana_core::actions::CardDestination::BottomOfLibrary),
+                (l1, arcana_core::actions::CardDestination::BottomOfLibrary),
+            ],
+        },
+    };
+    let (s, _) = step(s, submit, &registry);
+
+    // l2 moved to hand via the re-iding zone change, so its old id is
+    // LKI; the arena has a fresh id for the drawn card. Assert on the
+    // surviving library order + hand count.
+    assert_eq!(s.zone_count(Zone::Hand(0)), 1,
+        "scry-to-bottom leaves the draw to pull the former l2");
+    assert_eq!(s.player(0).library_top_to_bottom, vec![l0, l1],
+        "library after draw: [l0, l1] (originally-top pair at bottom)");
 }

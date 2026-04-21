@@ -67,7 +67,11 @@ use arcana_core::types::CardId;
 /// exercised via real seed cards rather than only synthetic combat
 /// tests. Abrade (modal), Chandra, Pyromaster (loyalty), and Burst
 /// Lightning (Kicker) anchor the Phase 2 mechanics each in a real
-/// printed card. `CardId`s returned for test convenience.
+/// printed card. Preordain (Scry 2, then draw a card) anchors
+/// sequential multi-effect resolution — the engine must park the
+/// draw while the scry's `OrderCards` prompt is open and resume it
+/// when the placements come in. `CardId`s returned for test
+/// convenience.
 #[derive(Clone, Copy, Debug)]
 pub struct SeedIds {
     pub plains: CardId,
@@ -103,6 +107,7 @@ pub struct SeedIds {
     pub servo_exhibition: CardId,
     pub young_pyromancer: CardId,
     pub bonesplitter: CardId,
+    pub preordain: CardId,
 }
 
 /// Register every seed card. Convenience for tests and tooling;
@@ -142,6 +147,7 @@ pub fn register_seed(reg: &mut CardRegistry) -> SeedIds {
         servo_exhibition: aer::servo_exhibition::register(reg),
         young_pyromancer: m14::young_pyromancer::register(reg),
         bonesplitter: mrd::bonesplitter::register(reg),
+        preordain: m11::preordain::register(reg),
     }
 }
 
@@ -165,7 +171,7 @@ mod tests {
             ids.tangled_florahedron, ids.fire_ice, ids.monastery_swiftspear,
             ids.ahn_crop_crasher, ids.slippery_bogle,
             ids.servo_exhibition, ids.young_pyromancer,
-            ids.bonesplitter,
+            ids.bonesplitter, ids.preordain,
         ];
         let unique: std::collections::HashSet<_> = as_slice.iter().collect();
         assert_eq!(unique.len(), as_slice.len(),
