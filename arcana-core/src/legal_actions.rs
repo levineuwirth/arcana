@@ -257,8 +257,60 @@ fn legal_combat_declaration_actions(
         CombatPhase::DeclareBlockers if player != state.active_player() => {
             Some(enumerate_blocker_declarations(state, player))
         }
+        CombatPhase::OrderBlockers if player == state.active_player() => {
+            Some(enumerate_blocker_orderings(state))
+        }
         _ => None,
     }
+}
+
+/// CR 509.2 — emit every legal assignment of damage-assignment order
+/// across the multi-blocked attackers, as a Cartesian product of per-
+/// attacker permutations.
+///
+/// Blows up as product of k_i! for attackers with k_i blockers each.
+/// For the seed set (typical multi-block depth ≤3) the enumeration
+/// stays small; deeper blocks come back as a truncation-with-policy
+/// refinement when deeper board states enter the test pool.
+fn enumerate_blocker_orderings(state: &GameState) -> Vec<Action> {
+    let Some(combat) = state.combat.as_ref() else { return Vec::new(); };
+    let per_attacker: Vec<(ObjectId, Vec<Vec<ObjectId>>)> = combat.attackers.iter()
+        .filter(|a| a.blocked_by.len() >= 2)
+        .map(|a| (a.object_id, permutations(&a.blocked_by)))
+        .collect();
+    if per_attacker.is_empty() { return Vec::new(); }
+
+    // Cartesian product across attackers.
+    let mut acc: Vec<Vec<(ObjectId, Vec<ObjectId>)>> = vec![Vec::new()];
+    for (atk, perms) in &per_attacker {
+        let mut next: Vec<Vec<(ObjectId, Vec<ObjectId>)>> = Vec::new();
+        for partial in &acc {
+            for p in perms {
+                let mut extended = partial.clone();
+                extended.push((*atk, p.clone()));
+                next.push(extended);
+            }
+        }
+        acc = next;
+    }
+    acc.into_iter()
+        .map(|orderings| Action::OrderBlockers { orderings })
+        .collect()
+}
+
+fn permutations(items: &[ObjectId]) -> Vec<Vec<ObjectId>> {
+    if items.is_empty() { return vec![Vec::new()]; }
+    let mut out = Vec::new();
+    for i in 0..items.len() {
+        let mut rest: Vec<ObjectId> = items.to_vec();
+        let picked = rest.remove(i);
+        for sub in permutations(&rest) {
+            let mut perm = vec![picked];
+            perm.extend(sub);
+            out.push(perm);
+        }
+    }
+    out
 }
 
 /// Emit the empty declaration (no attacks) plus one declaration per
@@ -2501,6 +2553,62 @@ mod tests {
             crate::actions::AdditionalCostPayment::RemoveCounters {
                 source: s, kind: CounterKind::PlusOnePlusOne, count: 1,
             } if *s == obj)));
+    }
+
+    #[test]
+    fn enumerate_blocker_orderings_emits_all_permutations() {
+        use crate::combat::{
+            AttackerDeclaration, BlockerDeclaration, DefendingEntity,
+        };
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(5, 5);
+            let mut obj = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            obj.controller = 0;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let b1 = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(2, 2);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let b2 = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(1, 4);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+        ]);
+        // Active player (0) gets the OrderBlockers decision.
+        let actions = legal_actions(&s, &reg);
+        let orderings: Vec<_> = actions.iter().filter_map(|a| match a {
+            Action::OrderBlockers { orderings } => Some(orderings.clone()),
+            _ => None,
+        }).collect();
+        assert_eq!(orderings.len(), 2, "both permutations emitted");
+        assert!(orderings.iter().any(|o|
+            o == &vec![(atk, vec![b1, b2])]));
+        assert!(orderings.iter().any(|o|
+            o == &vec![(atk, vec![b2, b1])]));
     }
 
     /// `put` but with a specific registered CardId so ability lookup

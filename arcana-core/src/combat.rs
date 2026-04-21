@@ -155,7 +155,16 @@ pub enum CombatPhase {
     DeclareAttackers,
     PostDeclareAttackers,  // triggers, priority
     DeclareBlockers,
-    PostDeclareBlockers,   // ordering, triggers, priority
+    /// CR 509.2 — the active player chooses the damage-assignment
+    /// order for each attacker blocked by two or more creatures. The
+    /// engine yields a [`DecisionContext::OrderBlockers`] to the
+    /// active player; the answering [`Action::OrderBlockers`]
+    /// rewrites each attacker's `blocked_by` vector in the chosen
+    /// order. Entered only when at least one attacker is multi-blocked;
+    /// otherwise [`apply_declared_blockers`] routes straight to
+    /// [`CombatPhase::PostDeclareBlockers`].
+    OrderBlockers,
+    PostDeclareBlockers,   // triggers, priority
     FirstStrikeDamage,
     RegularDamage,
     EndOfCombat,
@@ -585,7 +594,64 @@ impl GameState {
         let has_fs = self.any_combatant_has_first_strike();
         let combat = self.combat.as_mut().unwrap();
         combat.has_first_strike = has_fs;
+        // CR 509.2 — if any attacker is blocked by multiple creatures,
+        // pause in OrderBlockers for the active player to choose the
+        // damage-assignment order. Otherwise skip the substep.
+        let needs_ordering = combat.attackers.iter()
+            .any(|a| a.blocked_by.len() >= 2);
+        combat.phase = if needs_ordering {
+            CombatPhase::OrderBlockers
+        } else {
+            CombatPhase::PostDeclareBlockers
+        };
+    }
+
+    /// CR 509.2 — apply the active player's damage-assignment ordering.
+    ///
+    /// Each ordering is `(attacker, ordered_blockers)`. For every
+    /// multi-blocked attacker, the ordering must be a permutation of
+    /// that attacker's current `blocked_by` set; otherwise the entry
+    /// is rejected. Attackers with 0 or 1 blocker don't need an
+    /// ordering and may be omitted; including one is a no-op.
+    ///
+    /// Returns `true` if every multi-blocked attacker received a valid
+    /// ordering and the phase advanced to [`CombatPhase::PostDeclareBlockers`].
+    /// Returns `false` (phase unchanged) if any multi-blocked attacker
+    /// is missing a valid ordering — lets the caller re-prompt.
+    pub fn apply_blocker_ordering(
+        &mut self,
+        orderings: Vec<(ObjectId, Vec<ObjectId>)>,
+    ) -> bool {
+        let Some(combat) = self.combat.as_mut() else { return false; };
+        if combat.phase != CombatPhase::OrderBlockers { return false; }
+
+        use crate::collections::HashSet;
+        // Validate + apply each ordering.
+        for (atk_id, new_order) in &orderings {
+            let Some(atk) = combat.attackers.iter_mut()
+                .find(|a| a.object_id == *atk_id) else { continue; };
+            if new_order.len() != atk.blocked_by.len() { continue; }
+            let current: HashSet<ObjectId> = atk.blocked_by.iter().copied().collect();
+            let proposed: HashSet<ObjectId> = new_order.iter().copied().collect();
+            if current != proposed { continue; }
+            atk.blocked_by = new_order.clone();
+        }
+
+        // Verify every multi-blocked attacker now has an accepted
+        // ordering. Simplest check: every multi-blocked attacker must
+        // appear in `orderings` with a valid permutation — which, since
+        // invalid entries are skipped above, means the attacker's
+        // `blocked_by` now matches the corresponding `new_order`.
+        let all_ordered = combat.attackers.iter()
+            .filter(|a| a.blocked_by.len() >= 2)
+            .all(|a| {
+                orderings.iter().any(|(id, order)|
+                    *id == a.object_id && *order == a.blocked_by)
+            });
+        if !all_ordered { return false; }
+
         combat.phase = CombatPhase::PostDeclareBlockers;
+        true
     }
 
     /// Does any attacker or blocker have First Strike or Double Strike?
@@ -1589,6 +1655,98 @@ mod tests {
         s.deal_combat_damage();
         assert_eq!(s.objects.get(blk1).unwrap().damage_marked, 3);
         assert_eq!(s.objects.get(blk2).unwrap().damage_marked, 1);
+    }
+
+    // --- CR 509.2 blocker ordering -----------------------------------------
+
+    fn put_multi_block_scenario(s: &mut GameState)
+        -> (ObjectId, ObjectId, ObjectId)
+    {
+        s.begin_combat();
+        let atk = put_creature(s, 0, 5, 5);
+        ready(atk, s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let b1 = put_creature(s, 1, 2, 2);
+        let b2 = put_creature(s, 1, 1, 4);
+        ready(b1, s);
+        ready(b2, s);
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+        ]);
+        (atk, b1, b2)
+    }
+
+    #[test]
+    fn apply_declared_blockers_multi_block_enters_order_phase() {
+        let mut s = GameState::new(2, 0);
+        let _ = put_multi_block_scenario(&mut s);
+        assert_eq!(s.combat.as_ref().unwrap().phase,
+            CombatPhase::OrderBlockers,
+            "multi-block must pause in OrderBlockers for CR 509.2");
+    }
+
+    #[test]
+    fn apply_declared_blockers_single_block_skips_order_phase() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 3, 3);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let blk = put_creature(&mut s, 1, 2, 2);
+        ready(blk, &mut s);
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: blk, blocking: atk },
+        ]);
+        assert_eq!(s.combat.as_ref().unwrap().phase,
+            CombatPhase::PostDeclareBlockers,
+            "single-blocker combat skips the ordering substep");
+    }
+
+    #[test]
+    fn apply_blocker_ordering_reorders_blocked_by() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = put_multi_block_scenario(&mut s);
+        // Declared order was (b1, b2); active player reorders to (b2, b1).
+        let applied = s.apply_blocker_ordering(vec![(atk, vec![b2, b1])]);
+        assert!(applied, "valid permutation must be accepted");
+        assert_eq!(s.combat.as_ref().unwrap()
+            .attacker(atk).unwrap().blocked_by, vec![b2, b1]);
+        assert_eq!(s.combat.as_ref().unwrap().phase,
+            CombatPhase::PostDeclareBlockers);
+    }
+
+    #[test]
+    fn apply_blocker_ordering_rejects_non_permutation() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, _b2) = put_multi_block_scenario(&mut s);
+        // Missing b2 — not a permutation.
+        let applied = s.apply_blocker_ordering(vec![(atk, vec![b1])]);
+        assert!(!applied, "non-permutation must be rejected");
+        assert_eq!(s.combat.as_ref().unwrap().phase,
+            CombatPhase::OrderBlockers, "phase stays for re-prompt");
+    }
+
+    #[test]
+    fn apply_blocker_ordering_affects_default_damage_distribution() {
+        // Declared order (b1=2/2, b2=1/4) would default to 2 damage
+        // to b1 (lethal) and 3 to b2 (not lethal). After reordering to
+        // (b2 first, b1 second), b2's lethal is 4, so 4 go to b2 and
+        // 1 to b1.
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = put_multi_block_scenario(&mut s);
+        assert!(s.apply_blocker_ordering(vec![(atk, vec![b2, b1])]));
+        s.deal_combat_damage();
+        assert_eq!(s.objects.get(b2).unwrap().damage_marked, 4,
+            "reordered first blocker takes its lethal first");
+        assert_eq!(s.objects.get(b1).unwrap().damage_marked, 1,
+            "remaining damage piles on the second blocker");
     }
 
     // --- default_damage_distribution ---------------------------------------

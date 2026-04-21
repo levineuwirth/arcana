@@ -26,7 +26,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::combat::{AttackerDeclaration, BlockerDeclaration, DamageAssignment};
+use crate::combat::{AttackerDeclaration, BlockerDeclaration};
 use crate::objects::ObjectId;
 
 /// Alternative or cost-modifying cast path for [`Action::CastSpell`].
@@ -241,11 +241,12 @@ pub enum Action {
     /// legal (no blocks).
     DeclareBlockers { blockers: Vec<BlockerDeclaration> },
 
-    /// Per-attacker damage ordering (CR 510.1c) — only needed when an
-    /// attacker is blocked by multiple creatures and the attacker's
-    /// controller must choose damage assignment order. One entry per
-    /// multi-blocked attacker.
-    OrderBlockers { assignments: Vec<DamageAssignment> },
+    /// CR 509.2 — per-attacker damage-assignment **ordering** (not
+    /// amounts). One entry per multi-blocked attacker; each entry
+    /// must be a permutation of that attacker's `blocked_by`.
+    /// Damage *amounts* are chosen later via
+    /// [`Action::AssignCombatDamage`] in the combat-damage step.
+    OrderBlockers { orderings: Vec<(ObjectId, Vec<ObjectId>)> },
 
     // === Resolution / in-engine choices ===================================
     /// A choice made during spell/ability resolution (chosen target,
@@ -716,6 +717,14 @@ pub enum DecisionContext {
     },
     DeclareAttackers,
     DeclareBlockers,
+    /// CR 509.2 — active player must choose the damage-assignment
+    /// order for each multi-blocked attacker. Answered with
+    /// [`Action::OrderBlockers`]. The `attackers` field lists every
+    /// attacker currently needing an ordering (i.e. blocked by ≥2
+    /// creatures).
+    OrderBlockers {
+        attackers: Vec<ObjectId>,
+    },
     /// Attacker must distribute damage among its blockers in order
     /// (CR 510.1c).
     DistributeDamage {
@@ -846,7 +855,7 @@ mod tests {
         let attackers = Action::DeclareAttackers { attackers: vec![] };
         let blockers = Action::DeclareBlockers { blockers: vec![] };
         let order = Action::OrderBlockers {
-            assignments: vec![],
+            orderings: vec![],
         };
 
         assert!(attackers.is_combat());

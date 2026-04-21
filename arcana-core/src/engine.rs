@@ -175,12 +175,17 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
             state.priority.give_to(ap);
         }
 
-        Action::OrderBlockers { assignments } => {
-            for a in assignments {
-                state.set_damage_assignment(a);
+        Action::OrderBlockers { orderings } => {
+            let applied = state.apply_blocker_ordering(orderings);
+            if applied {
+                // CR 509.2 completes; enter PostDeclareBlockers with
+                // priority to the active player for the triggers +
+                // response window.
+                let ap = state.active_player();
+                state.priority.give_to(ap);
             }
-            let ap = state.active_player();
-            state.priority.give_to(ap);
+            // If invalid (applied == false), phase stays at OrderBlockers
+            // and the next compute_next_decision call re-prompts.
         }
 
         Action::MakeChoice(choice) => apply_make_choice(state, choice),
@@ -2715,6 +2720,20 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
                     player: defender,
                     legal_actions: legal_actions(state, registry),
                     context: DecisionContext::DeclareBlockers,
+                };
+            }
+            CombatPhase::OrderBlockers => {
+                // CR 509.2 — active player orders each multi-blocked
+                // attacker's blockers before priority opens in
+                // PostDeclareBlockers.
+                let multi: Vec<ObjectId> = combat.attackers.iter()
+                    .filter(|a| a.blocked_by.len() >= 2)
+                    .map(|a| a.object_id)
+                    .collect();
+                return EngineYield::PendingDecision {
+                    player: state.active_player(),
+                    legal_actions: legal_actions(state, registry),
+                    context: DecisionContext::OrderBlockers { attackers: multi },
                 };
             }
             _ => {}
