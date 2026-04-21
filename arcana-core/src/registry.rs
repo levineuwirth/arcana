@@ -192,6 +192,50 @@ impl CardDefinition {
         self
     }
 
+    /// CR 702.6 — Equip. Adds [`KeywordAbility::Equip(cost)`] to the
+    /// card's base characteristics (if not already present) and
+    /// appends the canonical Equip activated ability: pay the equip
+    /// cost at sorcery speed to attach this Equipment to target
+    /// creature you control. The Equipment must be on the
+    /// battlefield. Re-equipping moves the attachment to the new
+    /// target, discarding the old (CR 702.6a, handled by the shared
+    /// [`crate::effects::attach`] helper).
+    ///
+    /// The static "equipped creature gets …" bonus is *not* installed
+    /// by this helper — each Equipment's printed pump/grant lives on
+    /// its own ETB-trigger or continuous-effect install. Seed cards
+    /// using `with_equip` should pair it with an ETB trigger that
+    /// installs the relevant [`crate::layers::ContinuousEffect`] (e.g.
+    /// [`ContinuousEffect::attached_pt`](crate::layers::ContinuousEffect::attached_pt)).
+    pub fn with_equip(mut self, cost: crate::mana::ManaCost) -> Self {
+        use crate::effects::KeywordAbility;
+        let already_has = self.base_characteristics.keywords.iter().any(|kw|
+            matches!(kw, KeywordAbility::Equip(_)));
+        if !already_has {
+            self.base_characteristics.keywords.push(
+                KeywordAbility::Equip(cost.clone()));
+        }
+        self.activated_abilities.push(ActivatedAbilityDef {
+            text: format!("Equip {cost}"),
+            cost: ActivationCost {
+                mana_cost: cost,
+                ..ActivationCost::default()
+            },
+            target_requirements: vec![TargetRequirement {
+                filter: crate::targets::TargetFilter::Creature,
+                count: crate::targets::TargetCount::Exactly(1),
+                controller: Some(crate::targets::ControllerConstraint::You),
+            }],
+            is_mana_ability: false,
+            is_loyalty_ability: false,
+            activation_zone: ActivationZone::Battlefield,
+            is_instant_speed: false,
+            face_gate: None,
+            effect: equip_attach,
+        });
+        self
+    }
+
     /// CR 715 — Adventure. Declares the card's Adventure half (the
     /// instant/sorcery side, with its own name, mana cost, and
     /// rules text). The creature side lives on
@@ -299,6 +343,23 @@ fn cycling_draw_one(
     vec![crate::effects::Effect::DrawCards {
         player: ctx.controller,
         count: 1,
+    }]
+}
+
+/// Canonical Equip effect: attach the source Equipment to the chosen
+/// target creature (CR 702.6). Target legality (creature, controlled
+/// by activator) is enforced by the ability's target requirement at
+/// activation time; resolution re-check lives in the stack pipeline.
+fn equip_attach(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<crate::effects::Effect> {
+    let Some(target) = ctx.targets.targets.first()
+        .and_then(|t| t.object_id()) else { return Vec::new(); };
+    vec![crate::effects::Effect::Attach {
+        equipment_or_aura: ctx.source,
+        target,
     }]
 }
 

@@ -27,9 +27,10 @@
 //! | 704.5i  | Planeswalker loyalty = 0 → graveyard| ✅ |
 //! | 704.5j  | Legend rule (name duplicate)        | ✅ (deterministic keep-oldest) |
 //! | 704.5p  | ±1/±1 counter annihilation          | ✅ |
-//! | 704.5d,e| Tokens/copies in wrong zone         | ⬜ (no token tracking) |
-//! | 704.5k,m,n | Aura/equip attachment rules      | ⬜ (deferred) |
-//! | 704.5q,r,s,t | Saga/battle/dungeon/ownership  | ⬜ (deferred) |
+//! | 704.5d,e| Tokens/copies in wrong zone         | ✅ |
+//! | 704.5q  | Equipment attached to illegal perm  | ✅ (Equipment only) |
+//! | 704.5k,m,n | Aura attachment rules            | ⬜ (deferred) |
+//! | 704.5r,s,t | Saga/battle/dungeon/ownership    | ⬜ (deferred) |
 //!
 //! The legend rule per CR 704.5j says "that player chooses one" —
 //! for Phase 1 we **deterministically keep the legendary permanent
@@ -88,6 +89,7 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
         // was stored by the preceding zone move, so Dies / LeavesBF
         // triggers still see the pre-cease state.
         fired |= check_token_ceases_to_exist(state);  // CR 704.5d
+        fired |= check_attachment_illegal(state);     // CR 704.5q
         fired |= check_player_losses(state);          // CR 704.5a, 704.5b, 704.5c
         if !fired { break; }
         iterations += 1;
@@ -104,6 +106,7 @@ pub fn has_pending_state_based_actions(state: &GameState) -> bool {
         || pending_legend_conflict(state)
         || pending_pt_annihilation(state)
         || pending_token_cease(state)
+        || pending_attachment_illegal(state)
 }
 
 // =============================================================================
@@ -385,6 +388,59 @@ fn check_token_ceases_to_exist(state: &mut GameState) -> bool {
 
 fn pending_token_cease(state: &GameState) -> bool {
     state.objects.iter().any(|o| o.is_token && !o.zone.is_battlefield())
+}
+
+// =============================================================================
+// 704.5q — Equipment attached to illegal permanent
+// =============================================================================
+
+/// CR 704.5q — an Equipment attached to an illegal permanent (non-
+/// creature or not on the battlefield) or to a nonpermanent becomes
+/// unattached. It stays on the battlefield; this is a pure detach.
+///
+/// Equipment detection is heuristic in Phase 2: any artifact (not also
+/// an enchantment) with `attached_to.is_some()` is treated as an
+/// Equipment-style attacher. Fortification support and proper Aura
+/// handling (CR 704.5n — illegal Auras go to graveyard) land as
+/// labeled followups.
+fn check_attachment_illegal(state: &mut GameState) -> bool {
+    let to_detach: Vec<(ObjectId, ObjectId)> = state.objects.iter()
+        .filter(|o| is_equipment_style(o) && o.zone.is_battlefield())
+        .filter_map(|o| o.attached_to.map(|t| (o.id, t)))
+        .filter(|(_, target)| !is_legal_equipment_target(state, *target))
+        .collect();
+    if to_detach.is_empty() { return false; }
+    for (equip_id, prior_target) in to_detach {
+        if let Some(obj) = state.objects.get_mut(equip_id) {
+            obj.detach();
+        }
+        if let Some(holder) = state.objects.get_mut(prior_target) {
+            holder.attachments.retain(|&id| id != equip_id);
+        }
+        state.emit(GameEvent::Detached {
+            equipment_or_aura: equip_id,
+            from: prior_target,
+        });
+    }
+    true
+}
+
+fn pending_attachment_illegal(state: &GameState) -> bool {
+    state.objects.iter()
+        .filter(|o| is_equipment_style(o) && o.zone.is_battlefield())
+        .filter_map(|o| o.attached_to)
+        .any(|target| !is_legal_equipment_target(state, target))
+}
+
+fn is_equipment_style(obj: &crate::objects::GameObject) -> bool {
+    obj.characteristics.types.is_artifact()
+        && !obj.characteristics.types.is_enchantment()
+        && obj.attached_to.is_some()
+}
+
+fn is_legal_equipment_target(state: &GameState, target: ObjectId) -> bool {
+    state.objects.get(target).is_some_and(|t|
+        t.zone.is_battlefield() && t.is_creature())
 }
 
 // =============================================================================

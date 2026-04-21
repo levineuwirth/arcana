@@ -208,6 +208,23 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build an Equipment-style "equipped creature gets +P/+T" effect,
+    /// layer 7c. The buff follows `source`'s attachment — whichever
+    /// creature `source` is currently attached to receives the pump.
+    /// Typically paired with [`Duration::WhileSourceOnBattlefield`]
+    /// so the effect auto-expires when the Equipment leaves play.
+    pub fn attached_pt(source: ObjectId, power: i32, toughness: i32,
+                       duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7cPTModifying,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureGetsPt { power, toughness },
+        }
+    }
+
     /// Build a "target can't attack" effect (Pacifism-style).
     pub fn cant_attack(source: ObjectId, target: ObjectId,
                        duration: Duration) -> Self {
@@ -243,14 +260,32 @@ pub enum ContinuousEffectKind {
     /// "Target creature can't attack" (Pacifism-style). Doesn't
     /// modify characteristics; consumed by [`crate::legal_actions`].
     CantAttack { target: ObjectId },
+    /// CR 702.6 — "Equipped creature gets +P/+T" (Bonesplitter,
+    /// Sword of Fire and Ice, etc.). The buff applies to whatever
+    /// creature the effect's source (the Equipment) is currently
+    /// attached to, looked up dynamically at apply-time via
+    /// `state.objects.get(source).attached_to`. When the Equipment
+    /// is unattached, the effect is inert. Paired with
+    /// [`Duration::WhileSourceOnBattlefield`] the effect auto-
+    /// expires when the Equipment leaves play.
+    AttachedCreatureGetsPt { power: i32, toughness: i32 },
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
 }
 
 impl ContinuousEffectKind {
-    /// Does this effect variant apply to `object_id`?
-    pub fn applies_to(&self, object_id: ObjectId, state: &GameState) -> bool {
+    /// Does this effect variant apply to `object_id`? `source` is the
+    /// installer (the permanent that produced the effect) — needed by
+    /// variants whose target depends on live state referencing the
+    /// source, such as
+    /// [`ContinuousEffectKind::AttachedCreatureGetsPt`].
+    pub fn applies_to(
+        &self,
+        object_id: ObjectId,
+        source: ObjectId,
+        state: &GameState,
+    ) -> bool {
         match self {
             Self::PumpTarget { target, .. }
             | Self::SetPt { target, .. }
@@ -262,6 +297,11 @@ impl ContinuousEffectKind {
                     o.is_creature()
                     && o.zone.is_battlefield()
                     && o.controller == *controller)
+            }
+            Self::AttachedCreatureGetsPt { .. } => {
+                state.objects.get(source)
+                    .and_then(|src| src.attached_to)
+                    == Some(object_id)
             }
             Self::Custom(_) => true, // Custom fn decides internally
         }
@@ -277,7 +317,8 @@ impl ContinuousEffectKind {
     ) {
         match self {
             Self::PumpTarget { power, toughness, .. }
-            | Self::AnthemForController { power, toughness, .. } => {
+            | Self::AnthemForController { power, toughness, .. }
+            | Self::AttachedCreatureGetsPt { power, toughness } => {
                 add_to_pt(chars, *power, *toughness);
             }
             Self::SetPt { power, toughness, .. } => {
@@ -404,7 +445,7 @@ impl GameState {
             // analysis — we only honor timestamps for now.)
             let mut effects: Vec<&ContinuousEffect> = self.continuous_effects.iter()
                 .filter(|e| e.layer == layer
-                    && e.kind.applies_to(object_id, self))
+                    && e.kind.applies_to(object_id, e.source, self))
                 .collect();
             effects.sort_by_key(|e| e.timestamp);
             for e in effects {

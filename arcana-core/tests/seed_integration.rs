@@ -4604,3 +4604,177 @@ fn young_pyromancer_ignores_opponents_instant() {
     assert_eq!(token_count, 0,
         "opponent's instant must not fire your Pyromancer's trigger");
 }
+
+// ---------------------------------------------------------------------
+// Bonesplitter (CR 702.6 / 704.5q) — Equipment + equip + attached-pump
+// layer + illegal-attachment SBA.
+// ---------------------------------------------------------------------
+
+fn activate_equip(
+    source: ObjectId,
+    target: ObjectId,
+    mana_pool_index: usize,
+) -> Action {
+    Action::ActivateAbility {
+        source,
+        ability_index: 0,
+        targets: arcana_core::targets::TargetSelection {
+            targets: vec![arcana_core::targets::TargetChoice::Object(target)],
+        },
+        mana_payment: arcana_core::actions::ManaPaymentPlan {
+            assignments: vec![arcana_core::actions::ManaAssignment {
+                pool_index: mana_pool_index, cost_index: 0,
+            }],
+            ..Default::default()
+        },
+        additional_costs: vec![],
+    }
+}
+
+/// Cast Bonesplitter, equip it to Grizzly Bears, verify the Bears
+/// gains +2/+0 via the layer system.
+#[test]
+fn bonesplitter_equipped_creature_gets_plus_2_plus_0() {
+    let (mut s, registry, ids) = fresh_game();
+    let bones = put_in_hand(&mut s, &registry, 0, ids.bonesplitter);
+    let bears = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    // Cast Bonesplitter ({1}) then equip ({1}) = 2 colorless.
+    give_mana(&mut s, 0, ManaColor::Colorless, 2);
+    priority_to_main(&mut s, 0);
+
+    // Bears starts at 2/2.
+    assert_eq!(
+        s.compute_characteristics(bears).unwrap().power,
+        Some(arcana_core::types::PtValue::Fixed(2)));
+
+    // Cast Bonesplitter — spends 1 colorless from pool 0.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, .. } if *object_id == bones
+    )).cloned().expect("Bonesplitter is castable");
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Find Bonesplitter's new battlefield ObjectId (re-id'd on zone move).
+    let bones_bf = s.objects.iter()
+        .find(|o| o.zone.is_battlefield()
+            && o.card_id == ids.bonesplitter)
+        .map(|o| o.id).expect("Bonesplitter on battlefield");
+
+    // Activate equip {1} on Bears. Pool index is 0 — only one unit left
+    // after the cast.
+    let equip = activate_equip(bones_bf, bears, 0);
+    let (s, _) = step(s, equip, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Bears is now 4/2 (+2/+0 from Bonesplitter).
+    let bears_chars = s.compute_characteristics(bears).unwrap();
+    assert_eq!(bears_chars.power,
+        Some(arcana_core::types::PtValue::Fixed(4)),
+        "equipped creature gets +2 power");
+    assert_eq!(bears_chars.toughness,
+        Some(arcana_core::types::PtValue::Fixed(2)),
+        "toughness unchanged (+0)");
+    // Bonesplitter sees the attachment.
+    assert_eq!(s.objects.get(bones_bf).unwrap().attached_to, Some(bears));
+    assert!(s.objects.get(bears).unwrap().attachments.contains(&bones_bf));
+}
+
+/// Re-equipping Bonesplitter on a second creature moves the attachment
+/// and the +2/+0 bonus with it.
+#[test]
+fn bonesplitter_re_equip_moves_bonus() {
+    let (mut s, registry, ids) = fresh_game();
+    let bones_hand = put_in_hand(&mut s, &registry, 0, ids.bonesplitter);
+    let bears_a = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    let bears_b = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    // 1 cast + 2 equips = 3 colorless.
+    give_mana(&mut s, 0, ManaColor::Colorless, 3);
+    priority_to_main(&mut s, 0);
+
+    // Cast Bonesplitter.
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, .. } if *object_id == bones_hand
+    )).cloned().expect("castable");
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+    let bones_bf = s.objects.iter()
+        .find(|o| o.zone.is_battlefield() && o.card_id == ids.bonesplitter)
+        .map(|o| o.id).unwrap();
+
+    // Equip → Bears A.
+    let (s, _) = step(s, activate_equip(bones_bf, bears_a, 0), &registry);
+    let s = resolve_stack(s, &registry);
+    assert_eq!(s.compute_characteristics(bears_a).unwrap().power,
+        Some(arcana_core::types::PtValue::Fixed(4)));
+    assert_eq!(s.compute_characteristics(bears_b).unwrap().power,
+        Some(arcana_core::types::PtValue::Fixed(2)));
+
+    // Equip → Bears B. Moves the attachment.
+    let (s, _) = step(s, activate_equip(bones_bf, bears_b, 0), &registry);
+    let s = resolve_stack(s, &registry);
+    assert_eq!(s.compute_characteristics(bears_a).unwrap().power,
+        Some(arcana_core::types::PtValue::Fixed(2)),
+        "Bears A loses the bonus when Bonesplitter moves");
+    assert_eq!(s.compute_characteristics(bears_b).unwrap().power,
+        Some(arcana_core::types::PtValue::Fixed(4)),
+        "Bears B gains the bonus");
+    assert!(s.objects.get(bears_a).unwrap().attachments.is_empty(),
+        "Bears A no longer lists Bonesplitter in attachments");
+    assert_eq!(s.objects.get(bones_bf).unwrap().attached_to, Some(bears_b));
+}
+
+/// CR 704.5q — if Bonesplitter ends up attached to a non-creature
+/// (here: forced by a direct state-level attach to another artifact),
+/// the SBA detaches it on the next pass. Bonesplitter stays on the
+/// battlefield.
+#[test]
+fn bonesplitter_attached_to_non_creature_detaches_via_sba() {
+    let (mut s, registry, ids) = fresh_game();
+    let bones = put_on_battlefield(&mut s, &registry, 0, ids.bonesplitter);
+    // Second Bonesplitter as the illegal target (artifact, non-creature).
+    let other_artifact = put_on_battlefield(&mut s, &registry, 0, ids.bonesplitter);
+
+    // Force-attach skipping the normal equip-cost pipeline.
+    arcana_core::effects::Effect::Attach {
+        equipment_or_aura: bones,
+        target: other_artifact,
+    }.execute(&mut s);
+    assert_eq!(s.objects.get(bones).unwrap().attached_to, Some(other_artifact),
+        "pre-SBA: forced attachment in place");
+
+    // SBA pass — CR 704.5q detaches.
+    arcana_core::sba::apply_state_based_actions(&mut s);
+
+    assert_eq!(s.objects.get(bones).unwrap().attached_to, None,
+        "CR 704.5q: illegal attachment detached");
+    assert!(s.objects.get(bones).unwrap().zone.is_battlefield(),
+        "Bonesplitter stays on the battlefield (not graveyard)");
+    assert!(s.objects.get(other_artifact).unwrap().attachments.is_empty(),
+        "the illegal holder drops Bonesplitter from its attachments list");
+}
+
+/// Equipped creature dies → Bonesplitter detaches on the same SBA
+/// pass (target no longer on battlefield).
+#[test]
+fn bonesplitter_equipped_creature_dies_detaches_bones() {
+    let (mut s, registry, ids) = fresh_game();
+    let bones = put_on_battlefield(&mut s, &registry, 0, ids.bonesplitter);
+    let bears = put_on_battlefield(&mut s, &registry, 0, ids.grizzly_bears);
+    arcana_core::effects::Effect::Attach {
+        equipment_or_aura: bones, target: bears,
+    }.execute(&mut s);
+    assert_eq!(s.objects.get(bones).unwrap().attached_to, Some(bears));
+
+    // Mark lethal damage on Bears, run SBAs.
+    s.objects.get_mut(bears).unwrap().damage_marked = 2;
+    arcana_core::sba::apply_state_based_actions(&mut s);
+
+    // Bears moved to graveyard (re-id). Bonesplitter's attached_to now
+    // points to a graveyard object; the 704.5q pass detaches it.
+    assert_eq!(s.objects.get(bones).unwrap().attached_to, None,
+        "Bonesplitter auto-detaches once target leaves battlefield");
+    assert!(s.objects.get(bones).unwrap().zone.is_battlefield(),
+        "Bonesplitter remains on the battlefield after detach");
+}
