@@ -28,10 +28,10 @@
 //! | 704.5j  | Legend rule (name duplicate)        | ✅ (deterministic keep-oldest) |
 //! | 704.5p  | ±1/±1 counter annihilation          | ✅ |
 //! | 704.5d,e| Tokens/copies in wrong zone         | ✅ |
-//! | 704.5q  | Equipment attached to illegal perm  | ✅ (Equipment only) |
+//! | 704.5q  | Equipment attached to illegal perm  | ✅ |
+//! | 704.5r  | Fortification attached to illegal perm | ✅ |
 //! | 704.5n  | Aura illegally attached or unattached | ✅ (zone-only; type-filter deferred) |
-//! | 704.5k,m | Fortification / saga-style attach  | ⬜ (deferred) |
-//! | 704.5r,s,t | Saga/battle/dungeon/ownership    | ⬜ (deferred) |
+//! | 704.5s,t,u | Saga/battle/dungeon/ownership    | ⬜ (deferred) |
 //!
 //! The legend rule per CR 704.5j says "that player chooses one" —
 //! for Phase 1 we **deterministically keep the legendary permanent
@@ -91,6 +91,7 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
         // triggers still see the pre-cease state.
         fired |= check_token_ceases_to_exist(state);  // CR 704.5d
         fired |= check_attachment_illegal(state);     // CR 704.5q
+        fired |= check_fortification_illegal(state);  // CR 704.5r
         fired |= check_aura_illegal(state);           // CR 704.5n
         fired |= check_player_losses(state);          // CR 704.5a, 704.5b, 704.5c
         if !fired { break; }
@@ -109,6 +110,7 @@ pub fn has_pending_state_based_actions(state: &GameState) -> bool {
         || pending_pt_annihilation(state)
         || pending_token_cease(state)
         || pending_attachment_illegal(state)
+        || pending_fortification_illegal(state)
         || pending_aura_illegal(state)
 }
 
@@ -402,10 +404,10 @@ fn pending_token_cease(state: &GameState) -> bool {
 /// unattached. It stays on the battlefield; this is a pure detach.
 ///
 /// Equipment detection is heuristic in Phase 2: any artifact (not also
-/// an enchantment) with `attached_to.is_some()` is treated as an
-/// Equipment-style attacher. Fortification support and proper Aura
-/// handling (CR 704.5n — illegal Auras go to graveyard) land as
-/// labeled followups.
+/// an enchantment) with `attached_to.is_some()` that isn't flagged as
+/// a Fortification is treated as an Equipment-style attacher.
+/// Fortifications have their own SBA ([`check_fortification_illegal`])
+/// because their legal target is a land, not a creature.
 fn check_attachment_illegal(state: &mut GameState) -> bool {
     let to_detach: Vec<(ObjectId, ObjectId)> = state.objects.iter()
         .filter(|o| is_equipment_style(o) && o.zone.is_battlefield())
@@ -438,12 +440,59 @@ fn pending_attachment_illegal(state: &GameState) -> bool {
 fn is_equipment_style(obj: &crate::objects::GameObject) -> bool {
     obj.characteristics.types.is_artifact()
         && !obj.characteristics.types.is_enchantment()
+        && !obj.characteristics.is_fortification
         && obj.attached_to.is_some()
 }
 
 fn is_legal_equipment_target(state: &GameState, target: ObjectId) -> bool {
     state.objects.get(target).is_some_and(|t|
         t.zone.is_battlefield() && t.is_creature())
+}
+
+// =============================================================================
+// 704.5r — Fortification attached to an illegal permanent
+// =============================================================================
+
+/// CR 704.5r — a Fortification attached to an illegal permanent
+/// (non-land or off the battlefield) or to a nonpermanent becomes
+/// unattached. Like the Equipment SBA this is a pure detach — the
+/// Fortification stays on the battlefield.
+///
+/// Detection rides on the [`Characteristics::is_fortification`] flag
+/// (synthesized by [`crate::registry::CardRegistry::register`] from
+/// the printed subtypes), which keeps this SBA registry-free.
+fn check_fortification_illegal(state: &mut GameState) -> bool {
+    let to_detach: Vec<(ObjectId, ObjectId)> = state.objects.iter()
+        .filter(|o| o.characteristics.is_fortification && o.zone.is_battlefield())
+        .filter_map(|o| o.attached_to.map(|t| (o.id, t)))
+        .filter(|(_, target)| !is_legal_fortification_target(state, *target))
+        .collect();
+    if to_detach.is_empty() { return false; }
+    for (fort_id, prior_target) in to_detach {
+        if let Some(obj) = state.objects.get_mut(fort_id) {
+            obj.detach();
+        }
+        if let Some(holder) = state.objects.get_mut(prior_target) {
+            holder.attachments.retain(|&id| id != fort_id);
+        }
+        state.emit(GameEvent::Detached {
+            equipment_or_aura: fort_id,
+            from: prior_target,
+        });
+    }
+    true
+}
+
+fn pending_fortification_illegal(state: &GameState) -> bool {
+    state.objects.iter()
+        .filter(|o| o.characteristics.is_fortification && o.zone.is_battlefield())
+        .filter_map(|o| o.attached_to)
+        .any(|target| !is_legal_fortification_target(state, target))
+}
+
+fn is_legal_fortification_target(state: &GameState, target: ObjectId) -> bool {
+    state.objects.get(target).is_some_and(|t|
+        t.zone.is_battlefield() && t.is_land())
 }
 
 // =============================================================================
@@ -1040,5 +1089,136 @@ mod tests {
             "both remain on the battlefield");
         assert!(s.objects.get(aura).is_some_and(|o|
             o.attached_to == Some(creature)));
+    }
+
+    // --- 704.5r: Fortification attachment ----------------------------------
+
+    fn put_land(s: &mut GameState, owner: PlayerId) -> ObjectId {
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::LAND.into(),
+            ..Default::default()
+        };
+        let mut obj = GameObject::new(id, owner, Zone::Battlefield, 1, chars);
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    fn put_fortification(s: &mut GameState, owner: PlayerId) -> ObjectId {
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::ARTIFACT.into(),
+            is_fortification: true,
+            ..Default::default()
+        };
+        let mut obj = GameObject::new(id, owner, Zone::Battlefield, 1, chars);
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    fn put_equipment(s: &mut GameState, owner: PlayerId) -> ObjectId {
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::ARTIFACT.into(),
+            ..Default::default()
+        };
+        let mut obj = GameObject::new(id, owner, Zone::Battlefield, 1, chars);
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    #[test]
+    fn fortification_on_legal_land_stays_attached() {
+        let mut s = GameState::new(2, 0);
+        let land = put_land(&mut s, 0);
+        let fort = put_fortification(&mut s, 0);
+        s.objects.get_mut(fort).unwrap().attached_to = Some(land);
+        s.objects.get_mut(land).unwrap().attachments.push(fort);
+
+        assert!(!pending_fortification_illegal(&s));
+        apply_state_based_actions(&mut s);
+        assert_eq!(s.zone_count(Zone::Battlefield), 2);
+        assert_eq!(s.objects.get(fort).unwrap().attached_to, Some(land));
+    }
+
+    #[test]
+    fn fortification_on_creature_detaches() {
+        // A Fortification attached to a non-land permanent becomes
+        // unattached (stays on the battlefield — unlike an illegally-
+        // attached Aura, which is moved to the graveyard).
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let fort = put_fortification(&mut s, 0);
+        s.objects.get_mut(fort).unwrap().attached_to = Some(creature);
+        s.objects.get_mut(creature).unwrap().attachments.push(fort);
+
+        assert!(pending_fortification_illegal(&s));
+        apply_state_based_actions(&mut s);
+
+        assert_eq!(s.zone_count(Zone::Battlefield), 2,
+            "both still on the battlefield");
+        assert_eq!(s.objects.get(fort).unwrap().attached_to, None,
+            "Fortification detached from creature");
+        assert!(s.objects.get(creature).unwrap().attachments.is_empty(),
+            "creature's attachments list cleared");
+    }
+
+    #[test]
+    fn fortification_whose_land_left_becomes_unattached() {
+        // When the host land leaves the battlefield, the engine clears
+        // attached_to on the Fortification; the SBA loop still runs the
+        // check, but no-ops because the Fort is already unattached.
+        let mut s = GameState::new(2, 0);
+        let land = put_land(&mut s, 0);
+        let fort = put_fortification(&mut s, 0);
+        s.objects.get_mut(fort).unwrap().attached_to = Some(land);
+        s.objects.get_mut(land).unwrap().attachments.push(fort);
+        // Ship the land to the graveyard directly.
+        s.move_object_to_zone(
+            land, Zone::Graveyard(0), MoveCause::StateBasedAction);
+
+        apply_state_based_actions(&mut s);
+
+        assert_eq!(s.objects.get(fort).unwrap().attached_to, None,
+            "Fortification left unattached once its land was gone");
+        assert_eq!(s.zone_count(Zone::Battlefield), 1,
+            "Fortification stays on the battlefield");
+    }
+
+    #[test]
+    fn equipment_sba_ignores_fortification_on_land() {
+        // Regression guard: before splitting the SBA, the Equipment
+        // heuristic (artifact + !enchantment + attached_to.is_some())
+        // would match a Fortification on a land and wrongly detach it
+        // because lands aren't creatures. With is_fortification now
+        // excluded from is_equipment_style, the Fort stays attached.
+        let mut s = GameState::new(2, 0);
+        let land = put_land(&mut s, 0);
+        let fort = put_fortification(&mut s, 0);
+        s.objects.get_mut(fort).unwrap().attached_to = Some(land);
+        s.objects.get_mut(land).unwrap().attachments.push(fort);
+
+        assert!(!pending_attachment_illegal(&s),
+            "Equipment SBA must ignore Fortifications");
+        apply_state_based_actions(&mut s);
+        assert_eq!(s.objects.get(fort).unwrap().attached_to, Some(land));
+    }
+
+    #[test]
+    fn equipment_on_land_still_detaches() {
+        // Symmetry check: a plain Equipment (not a Fortification)
+        // attached to a land is still illegal under CR 704.5q.
+        let mut s = GameState::new(2, 0);
+        let land = put_land(&mut s, 0);
+        let equip = put_equipment(&mut s, 0);
+        s.objects.get_mut(equip).unwrap().attached_to = Some(land);
+        s.objects.get_mut(land).unwrap().attachments.push(equip);
+
+        assert!(pending_attachment_illegal(&s));
+        apply_state_based_actions(&mut s);
+        assert_eq!(s.objects.get(equip).unwrap().attached_to, None);
     }
 }

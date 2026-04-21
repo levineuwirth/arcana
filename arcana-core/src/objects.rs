@@ -434,6 +434,13 @@ pub struct Characteristics {
     /// flag — that's a separate concern once an actual card forces it.
     #[serde(default)]
     pub is_aura: bool,
+    /// CR 704.5r distinguisher — true iff this object's subtypes
+    /// include "Fortification". Synthesized alongside [`Self::is_aura`]
+    /// so the SBA loop can tell an illegally-attached Fortification
+    /// (must be on a land) apart from an illegally-attached Equipment
+    /// (must be on a creature) without walking the interner.
+    #[serde(default)]
+    pub is_fortification: bool,
 }
 
 impl Characteristics {
@@ -482,6 +489,7 @@ mod tests {
             abilities_text: vec![],
             keywords: vec![],
             is_aura: false,
+            is_fortification: false,
         }
     }
 

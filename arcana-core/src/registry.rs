@@ -774,10 +774,13 @@ impl CardRegistry {
     pub fn new() -> Self {
         let mut interner = StringInterner::new();
         // Pre-intern subtype names the engine queries without card
-        // context. CR 704.5n (illegal Aura SBA) uses the "Aura"
-        // SmallString to synthesize [`Characteristics::is_aura`] at
-        // [`Self::register`] time.
+        // context. CR 704.5n (illegal Aura SBA) and CR 704.5r
+        // (illegal Fortification SBA) use the "Aura" / "Fortification"
+        // SmallStrings to synthesize [`Characteristics::is_aura`] /
+        // [`Characteristics::is_fortification`] at [`Self::register`]
+        // time.
         interner.intern("Aura");
+        interner.intern("Fortification");
         Self {
             next_card_id: 1,
             definitions: HashMap::default(),
@@ -805,14 +808,19 @@ impl CardRegistry {
         if self.by_name.insert(name, id).is_some() {
             panic!("CardRegistry::register: duplicate name for CardId {id}");
         }
-        // CR 704.5n — synthesize the Aura flag from the card's
-        // subtypes. Layer-effect subtype grants don't feed this yet
-        // (no Phase 2 card does); on-battlefield subtype changes
-        // would need to flip the flag as well.
+        // CR 704.5n / 704.5r — synthesize the Aura / Fortification
+        // flags from the card's subtypes. Layer-effect subtype grants
+        // don't feed this yet (no Phase 2 card does); on-battlefield
+        // subtype changes would need to flip the flags as well.
         let aura_sym = self.interner.lookup("Aura")
             .expect("CardRegistry::new interns \"Aura\"");
         if definition.base_characteristics.subtypes.contains(aura_sym) {
             definition.base_characteristics.is_aura = true;
+        }
+        let fort_sym = self.interner.lookup("Fortification")
+            .expect("CardRegistry::new interns \"Fortification\"");
+        if definition.base_characteristics.subtypes.contains(fort_sym) {
+            definition.base_characteristics.is_fortification = true;
         }
         // CR 711.4 — a Split card's off-stack characteristics combine
         // both halves. Synthesize and stash now, while the interner is
@@ -923,6 +931,7 @@ fn combine_split_characteristics(
         abilities_text,
         keywords,
         is_aura: left.is_aura || right.is_aura,
+        is_fortification: left.is_fortification || right.is_fortification,
     }
 }
 
@@ -1109,6 +1118,45 @@ mod tests {
         }));
         assert!(!r.get(anthem_id).unwrap().base_characteristics.is_aura,
             "non-Aura enchantment has is_aura = false");
+    }
+
+    /// CR 704.5r — registering an artifact with "Fortification" in
+    /// its subtypes flips [`Characteristics::is_fortification`] on.
+    /// Mirrors the is_aura path so the SBA loop can tell a
+    /// Fortification apart from a generic attached artifact
+    /// (Equipment) without walking the interner.
+    #[test]
+    fn fortification_subtype_registration_flips_is_fortification_flag() {
+        use crate::types::SubtypeSet;
+        let mut r = CardRegistry::new();
+        // Fortification card (Darksteel Garrison-shaped)
+        let fort_name = r.interner_mut().intern("Darksteel Garrison");
+        let subtypes = SubtypeSet::from_names(
+            r.interner_mut(), ["Fortification"]);
+        let fort_id = r.register(CardDefinition::new(fort_name, Characteristics {
+            name: fort_name,
+            mana_cost: Some(ManaCost::parse("{4}").unwrap()),
+            types: TypeLine::ARTIFACT.into(),
+            subtypes,
+            ..Default::default()
+        }));
+        assert!(r.get(fort_id).unwrap().base_characteristics.is_fortification,
+            "Fortification subtype synthesizes is_fortification = true");
+        assert!(!r.get(fort_id).unwrap().base_characteristics.is_aura,
+            "Fortification doesn't flip is_aura");
+        // Equipment card — distinct subtype, flag stays false.
+        let equip_name = r.interner_mut().intern("Bonesplitter");
+        let equip_subtypes = SubtypeSet::from_names(
+            r.interner_mut(), ["Equipment"]);
+        let equip_id = r.register(CardDefinition::new(equip_name, Characteristics {
+            name: equip_name,
+            mana_cost: Some(ManaCost::parse("{1}").unwrap()),
+            types: TypeLine::ARTIFACT.into(),
+            subtypes: equip_subtypes,
+            ..Default::default()
+        }));
+        assert!(!r.get(equip_id).unwrap().base_characteristics.is_fortification,
+            "Equipment is not a Fortification");
     }
 
     /// CR 711.4 — registering a split card synthesizes a combined-

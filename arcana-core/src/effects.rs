@@ -928,6 +928,7 @@ impl TokenDefinition {
             abilities_text: Vec::new(),
             keywords: self.keywords.clone(),
             is_aura: false,
+            is_fortification: false,
         }
     }
 }
