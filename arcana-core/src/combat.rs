@@ -673,12 +673,86 @@ impl GameState {
     /// attacker. Overrides the default for that attacker when
     /// `deal_combat_damage` runs.
     ///
-    /// Subsequent calls for the same attacker replace the prior
-    /// assignment.
-    pub fn set_damage_assignment(&mut self, assignment: DamageAssignment) {
-        let Some(combat) = self.combat.as_mut() else { return; };
+    /// Rejects distributions that violate CR 510.1c (order mismatch,
+    /// sub-lethal to an earlier blocker, wrong total). Returns `true`
+    /// on acceptance. Subsequent accepted calls for the same attacker
+    /// replace the prior assignment.
+    pub fn set_damage_assignment(&mut self, assignment: DamageAssignment) -> bool {
+        if !self.is_legal_damage_assignment(
+            assignment.attacker, &assignment.distribution)
+        {
+            return false;
+        }
+        let Some(combat) = self.combat.as_mut() else { return false; };
         combat.damage_assignments.retain(|a| a.attacker != assignment.attacker);
         combat.damage_assignments.push(assignment);
+        true
+    }
+
+    /// CR 510.1c legality predicate for a proposed assignment.
+    ///
+    /// Rules enforced:
+    /// 1. Each `(blocker, amount)` entry appears in `blocked_by` order
+    ///    (distribution is a prefix of the ordered blocker list).
+    /// 2. Every entry **except possibly the last** assigns ≥ the
+    ///    blocker's lethal damage (toughness − marked damage, or 1 if
+    ///    the attacker has deathtouch per CR 702.2c).
+    /// 3. Sum rule:
+    ///    - non-trample: sum == attacker's computed power.
+    ///    - trample (CR 702.19b): sum ≤ computed power; any shortfall
+    ///      (overflow to defender) requires every blocker to have
+    ///      received ≥ lethal.
+    pub fn is_legal_damage_assignment(
+        &self,
+        attacker: ObjectId,
+        distribution: &[(ObjectId, u32)],
+    ) -> bool {
+        let Some(combat) = self.combat.as_ref() else { return false; };
+        let Some(atk) = combat.attackers.iter().find(|a| a.object_id == attacker)
+            else { return false; };
+        let blocked_by = &atk.blocked_by;
+
+        // Rule 1a — length ≤ blocked_by length.
+        if distribution.len() > blocked_by.len() { return false; }
+        // Rule 1b — order matches prefix of blocked_by.
+        for (i, (id, _)) in distribution.iter().enumerate() {
+            if blocked_by[i] != *id { return false; }
+        }
+
+        let has_dt = self.has_keyword(attacker, &KeywordAbility::Deathtouch);
+        let has_trample = self.has_keyword(attacker, &KeywordAbility::Trample);
+        let lethal_of = |blk: ObjectId| -> u32 {
+            if has_dt { 1 } else { remaining_lethal(self, blk) }
+        };
+
+        // Rule 2 — earlier entries must have ≥ lethal.
+        for i in 0..distribution.len().saturating_sub(1) {
+            let (blk, amt) = distribution[i];
+            if amt < lethal_of(blk) { return false; }
+        }
+
+        // Rule 3 — sum constraint.
+        let atk_power = self.computed_power(attacker).unwrap_or(0);
+        if atk_power <= 0 {
+            return distribution.iter().all(|(_, a)| *a == 0);
+        }
+        let atk_power = atk_power as u32;
+        let total: u32 = distribution.iter().map(|(_, a)| *a).sum();
+
+        if has_trample {
+            if total > atk_power { return false; }
+            if total < atk_power {
+                // Overflow to defender — every live blocker must have
+                // received ≥ lethal.
+                if distribution.len() < blocked_by.len() { return false; }
+                for (blk, amt) in distribution {
+                    if *amt < lethal_of(*blk) { return false; }
+                }
+            }
+            true
+        } else {
+            total == atk_power
+        }
     }
 
     /// CR 511: assign and deal combat damage (regular strike).
@@ -1645,13 +1719,15 @@ mod tests {
             BlockerDeclaration { blocker: blk2, blocking: atk },
         ]);
 
-        // Attacker's controller chooses: 3 to blk1, 1 to blk2.
-        // (Not actually legal per CR 510.1c since 2 lethal to blk1
-        // not required — but we test the override is honored.)
-        s.set_damage_assignment(DamageAssignment {
+        // Attacker's controller chooses: 3 to blk1, 1 to blk2. Legal
+        // per CR 510.1c — blk1's lethal is 2, and 3 ≥ 2, so assigning
+        // more than lethal to an earlier blocker and spilling the
+        // remainder to the next is a valid choice.
+        let accepted = s.set_damage_assignment(DamageAssignment {
             attacker: atk,
             distribution: vec![(blk1, 3), (blk2, 1)],
         });
+        assert!(accepted, "distribution satisfies CR 510.1c");
         s.deal_combat_damage();
         assert_eq!(s.objects.get(blk1).unwrap().damage_marked, 3);
         assert_eq!(s.objects.get(blk2).unwrap().damage_marked, 1);
@@ -1747,6 +1823,116 @@ mod tests {
             "reordered first blocker takes its lethal first");
         assert_eq!(s.objects.get(b1).unwrap().damage_marked, 1,
             "remaining damage piles on the second blocker");
+    }
+
+    // --- CR 510.1c legality -----------------------------------------------
+
+    /// Set up a 5/5 attacker with two blockers in declared order
+    /// (b1=2/2, b2=1/4). Returns `(atk, b1, b2)`.
+    fn legality_scenario(s: &mut GameState) -> (ObjectId, ObjectId, ObjectId) {
+        let (atk, b1, b2) = put_multi_block_scenario(s);
+        // Put the ordering into PostDeclareBlockers so the validator's
+        // `combat.attackers[].blocked_by` reflects the declared order.
+        s.apply_blocker_ordering(vec![(atk, vec![b1, b2])]);
+        (atk, b1, b2)
+    }
+
+    #[test]
+    fn legality_accepts_exactly_lethal_in_order() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        // atk power = 5. Lethal to b1 (t=2) is 2; rest = 3 to b2.
+        assert!(s.is_legal_damage_assignment(
+            atk, &[(b1, 2), (b2, 3)]));
+    }
+
+    #[test]
+    fn legality_accepts_overkill_to_earlier_blocker() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        assert!(s.is_legal_damage_assignment(
+            atk, &[(b1, 3), (b2, 2)]));
+    }
+
+    #[test]
+    fn legality_accepts_all_damage_to_first_blocker() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, _b2) = legality_scenario(&mut s);
+        // Prefix distribution — b2 implicitly gets 0.
+        assert!(s.is_legal_damage_assignment(atk, &[(b1, 5)]));
+    }
+
+    #[test]
+    fn legality_rejects_sub_lethal_to_earlier_blocker() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        // b1 gets 1 (< lethal 2), b2 gets 4. Illegal.
+        assert!(!s.is_legal_damage_assignment(
+            atk, &[(b1, 1), (b2, 4)]));
+    }
+
+    #[test]
+    fn legality_rejects_order_mismatch() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        // Distribution swaps b1/b2; blocked_by order is [b1, b2].
+        assert!(!s.is_legal_damage_assignment(
+            atk, &[(b2, 4), (b1, 1)]));
+    }
+
+    #[test]
+    fn legality_rejects_sum_mismatch() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        // Sum 4 ≠ atk_power 5.
+        assert!(!s.is_legal_damage_assignment(
+            atk, &[(b1, 2), (b2, 2)]));
+    }
+
+    #[test]
+    fn legality_trample_allows_overflow_when_all_lethal() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        s.objects.get_mut(atk).unwrap().characteristics.keywords
+            .push(KeywordAbility::Trample);
+        // b1 lethal=2, b2 lethal=4. Assign [2, 4] = 6, but atk_power=5,
+        // so sum > power → reject. Use [2, 3]: sum 5, b2 needs 4 lethal
+        // but got 3. It's the last entry, so legal for non-trample.
+        // For trample with sum == power, no overflow, same legality
+        // check as non-trample (last entry free).
+        assert!(s.is_legal_damage_assignment(
+            atk, &[(b1, 2), (b2, 3)]));
+    }
+
+    #[test]
+    fn legality_trample_rejects_overflow_without_lethal_to_all() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        s.objects.get_mut(atk).unwrap().characteristics.keywords
+            .push(KeywordAbility::Trample);
+        // Set atk_power higher to make overflow possible.
+        s.objects.get_mut(atk).unwrap().characteristics.power
+            = Some(PtValue::Fixed(10));
+        // b1 lethal=2, b2 lethal=4. Assign [2, 3] (b2 sub-lethal) sum=5,
+        // overflow=5. Illegal — overflow requires all blockers lethal.
+        assert!(!s.is_legal_damage_assignment(
+            atk, &[(b1, 2), (b2, 3)]));
+        // Valid: [2, 4] sum=6, overflow=4, all blockers lethal. OK.
+        assert!(s.is_legal_damage_assignment(
+            atk, &[(b1, 2), (b2, 4)]));
+    }
+
+    #[test]
+    fn set_damage_assignment_rejects_illegal() {
+        let mut s = GameState::new(2, 0);
+        let (atk, b1, b2) = legality_scenario(&mut s);
+        let accepted = s.set_damage_assignment(DamageAssignment {
+            attacker: atk,
+            distribution: vec![(b1, 0), (b2, 5)],
+        });
+        assert!(!accepted, "sub-lethal to earlier blocker must be rejected");
+        assert!(s.combat.as_ref().unwrap().damage_assignments.is_empty(),
+            "rejected assignment must not be stored");
     }
 
     // --- default_damage_distribution ---------------------------------------
