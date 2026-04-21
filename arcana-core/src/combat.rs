@@ -80,6 +80,20 @@ pub struct CombatState {
     pub damage_assignments: Vec<DamageAssignment>,
     pub has_first_strike: bool,
     pub first_strike_done: bool,
+    /// CR 510.1c — set when `advance_phase` enters a damage sub-step
+    /// that has at least one attacker requiring a player-chosen
+    /// distribution (≥2 blockers dealing damage this pass). The engine
+    /// yields a [`DecisionContext::DistributeDamage`] in that state and
+    /// defers the actual damage deal until the active player responds
+    /// with [`Action::AssignCombatDamage`].
+    pub pending_damage_assignment: Option<PendingDamagePass>,
+}
+
+/// Which damage sub-step is awaiting CR 510.1c assignment.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PendingDamagePass {
+    FirstStrike,
+    Regular,
 }
 
 impl CombatState {
@@ -91,6 +105,7 @@ impl CombatState {
             damage_assignments: Vec::new(),
             has_first_strike: false,
             first_strike_done: false,
+            pending_damage_assignment: None,
         }
     }
 
@@ -891,6 +906,49 @@ impl GameState {
                 DamageTarget::Object(blk.blocking),
                 blk_power as u32, true);
         }
+    }
+
+    /// CR 510.1c — does `pass` have any attacker requiring a player-
+    /// chosen damage distribution (blocked by ≥2 live creatures and
+    /// dealing damage this pass)? When false, the engine can call the
+    /// damage-deal function directly; when true, it yields a
+    /// [`DecisionContext::DistributeDamage`] and waits for
+    /// [`Action::AssignCombatDamage`].
+    pub fn needs_damage_assignment(&self, pass: PendingDamagePass) -> bool {
+        !self.attackers_needing_damage_assignment(pass).is_empty()
+    }
+
+    /// Ordered list (by `combat.attackers` order) of attackers that
+    /// require a CR 510.1c distribution in `pass`.
+    pub fn attackers_needing_damage_assignment(
+        &self,
+        pass: PendingDamagePass,
+    ) -> Vec<ObjectId> {
+        let Some(combat) = self.combat.as_ref() else { return Vec::new(); };
+        use crate::collections::HashSet;
+        let dead: HashSet<ObjectId> = combat.attackers.iter()
+            .map(|a| a.object_id)
+            .chain(combat.blockers.iter().map(|b| b.object_id))
+            .filter(|id| self.is_dead_in_combat(*id))
+            .collect();
+        let internal_pass = match pass {
+            PendingDamagePass::FirstStrike => DamagePass::FirstStrike,
+            PendingDamagePass::Regular => DamagePass::Regular {
+                first_strike_already_ran: combat.first_strike_done,
+            },
+        };
+        combat.attackers.iter()
+            .filter(|a| {
+                if dead.contains(&a.object_id) { return false; }
+                if !self.should_deal_damage_this_pass(a.object_id, internal_pass) {
+                    return false;
+                }
+                let live_blockers = a.blocked_by.iter()
+                    .filter(|id| !dead.contains(id)).count();
+                live_blockers >= 2
+            })
+            .map(|a| a.object_id)
+            .collect()
     }
 
     /// Is this creature eligible to deal damage in the given pass?

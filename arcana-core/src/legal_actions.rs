@@ -86,6 +86,18 @@ pub fn legal_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> 
         return legal_special_actions(state, player, special);
     }
 
+    // CR 510.1c — a pending combat-damage assignment preempts every
+    // priority-style action; only the AssignCombatDamage submission
+    // (plus Concede) is legal.
+    if state.combat.as_ref()
+        .and_then(|c| c.pending_damage_assignment).is_some()
+        && player == state.active_player()
+    {
+        let mut out = enumerate_combat_damage_assignments(state);
+        out.push(Action::Concede);
+        return out;
+    }
+
     if let Some(combat_actions) = legal_combat_declaration_actions(state, player) {
         return combat_actions;
     }
@@ -296,6 +308,112 @@ fn enumerate_blocker_orderings(state: &GameState) -> Vec<Action> {
     acc.into_iter()
         .map(|orderings| Action::OrderBlockers { orderings })
         .collect()
+}
+
+/// CR 510.1c — enumerate every legal [`Action::AssignCombatDamage`]
+/// for the attackers currently needing a distribution. One entry per
+/// attacker in the action; Cartesian product across attackers.
+///
+/// Blowup rides on per-attacker distribution count, which scales
+/// polynomially with attacker power and blocker count (~O(P * k!)
+/// in the worst case). Seed-set scale keeps this comfortably small;
+/// a deeper-board refinement (sampling / heuristic pruning) will be
+/// required when training runs surface it.
+///
+/// Trample and single-blocker assignments land as labeled followups
+/// — today we only enumerate for multi-blocker non-trample attackers
+/// (the `needs_damage_assignment` gate). For a trample attacker in
+/// a multi-blocker pass, the default auto-lethal-then-overflow via
+/// `trample_damage_distribution` still fires because that attacker
+/// isn't in `attackers_needing_damage_assignment`'s multi-block
+/// criterion today — see combat::PendingDamagePass TODO.
+fn enumerate_combat_damage_assignments(state: &GameState) -> Vec<Action> {
+    let Some(combat) = state.combat.as_ref() else { return Vec::new(); };
+    let Some(pass) = combat.pending_damage_assignment else { return Vec::new(); };
+    let attackers = state.attackers_needing_damage_assignment(pass);
+    if attackers.is_empty() { return Vec::new(); }
+
+    let per_attacker: Vec<(ObjectId, Vec<Vec<(ObjectId, u32)>>)> =
+        attackers.iter()
+            .map(|&atk| (atk, enumerate_distributions_for_attacker(state, atk)))
+            .collect();
+
+    // Cartesian product across attackers.
+    let mut acc: Vec<Vec<crate::combat::DamageAssignment>> = vec![Vec::new()];
+    for (atk, dists) in &per_attacker {
+        let mut next: Vec<Vec<crate::combat::DamageAssignment>> = Vec::new();
+        for partial in &acc {
+            for d in dists {
+                let mut extended = partial.clone();
+                extended.push(crate::combat::DamageAssignment {
+                    attacker: *atk,
+                    distribution: d.clone(),
+                });
+                next.push(extended);
+            }
+        }
+        acc = next;
+    }
+    acc.into_iter()
+        .map(|distributions| Action::AssignCombatDamage { distributions })
+        .collect()
+}
+
+/// Enumerate every CR 510.1c–legal distribution of `attacker`'s
+/// computed power across its ordered `blocked_by`. Uses a recursive
+/// "terminate-here or pay-lethal-and-recurse" generator.
+fn enumerate_distributions_for_attacker(
+    state: &GameState,
+    attacker: ObjectId,
+) -> Vec<Vec<(ObjectId, u32)>> {
+    let Some(combat) = state.combat.as_ref() else { return Vec::new(); };
+    let Some(atk) = combat.attacker(attacker) else { return Vec::new(); };
+    let power = state.computed_power(attacker).unwrap_or(0).max(0) as u32;
+    if power == 0 { return vec![Vec::new()]; }
+
+    let has_dt = state.has_keyword(attacker, &crate::effects::KeywordAbility::Deathtouch);
+    // (id, lethal) pairs in damage-assignment order.
+    let ordered: Vec<(ObjectId, u32)> = atk.blocked_by.iter().map(|&id| {
+        let lethal = if has_dt { 1 } else { raw_remaining_lethal(state, id) };
+        (id, lethal)
+    }).collect();
+
+    let mut out: Vec<Vec<(ObjectId, u32)>> = Vec::new();
+    recurse_distributions(power, &ordered, Vec::new(), &mut out);
+    out
+}
+
+fn recurse_distributions(
+    remaining: u32,
+    blockers: &[(ObjectId, u32)],
+    current: Vec<(ObjectId, u32)>,
+    out: &mut Vec<Vec<(ObjectId, u32)>>,
+) {
+    if remaining == 0 {
+        out.push(current);
+        return;
+    }
+    if blockers.is_empty() { return; }
+    let (blk, lethal) = blockers[0];
+    let rest = &blockers[1..];
+    // Option 1 — terminate: dump all remaining on this blocker.
+    let mut term = current.clone();
+    term.push((blk, remaining));
+    out.push(term);
+    // Option 2 — pay lethal-or-more, continue to next blocker.
+    let lb = lethal.max(1);
+    for k in lb..remaining {
+        let mut next = current.clone();
+        next.push((blk, k));
+        recurse_distributions(remaining - k, rest, next, out);
+    }
+}
+
+fn raw_remaining_lethal(state: &GameState, id: ObjectId) -> u32 {
+    let Some(obj) = state.objects.get(id) else { return 0; };
+    let Some(t) = obj.raw_toughness_with_counters(None) else { return 0; };
+    if t <= 0 { return 0; }
+    (t as u32).saturating_sub(obj.damage_marked)
 }
 
 fn permutations(items: &[ObjectId]) -> Vec<Vec<ObjectId>> {
@@ -2609,6 +2727,80 @@ mod tests {
             o == &vec![(atk, vec![b1, b2])]));
         assert!(orderings.iter().any(|o|
             o == &vec![(atk, vec![b2, b1])]));
+    }
+
+    #[test]
+    fn enumerate_combat_damage_assignments_covers_legal_distributions() {
+        use crate::combat::{
+            AttackerDeclaration, BlockerDeclaration, DamageAssignment,
+            DefendingEntity, PendingDamagePass,
+        };
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(5, 5);
+            let mut obj = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            obj.controller = 0;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let b1 = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(1, 2);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let b2 = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(1, 4);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+        ]);
+        s.apply_blocker_ordering(vec![(atk, vec![b1, b2])]);
+        s.combat.as_mut().unwrap().pending_damage_assignment
+            = Some(PendingDamagePass::Regular);
+
+        let actions = legal_actions(&s, &reg);
+        let dists: Vec<Vec<DamageAssignment>> = actions.iter()
+            .filter_map(|a| match a {
+                Action::AssignCombatDamage { distributions } =>
+                    Some(distributions.clone()),
+                _ => None,
+            })
+            .collect();
+        // Power=5, b1 lethal=2, b2 lethal=4. Legal distributions:
+        // (5, 0), (2, 3), (3, 2), (4, 1). The enumerator generates in
+        // terminate-first + lethal-or-more recursion order. Canonical
+        // set is the 4 distributions above.
+        let flattened: std::collections::HashSet<_> = dists.iter()
+            .map(|d| d[0].distribution.clone())
+            .collect();
+        assert!(flattened.contains(&vec![(b1, 5)]),
+            "all damage to first blocker is legal");
+        assert!(flattened.contains(&vec![(b1, 2), (b2, 3)]),
+            "minimum-lethal-then-rest is legal");
+        assert!(flattened.contains(&vec![(b1, 3), (b2, 2)]),
+            "overkill-first, rest-to-second is legal");
+        assert!(flattened.contains(&vec![(b1, 4), (b2, 1)]));
+        // Illegal: sub-lethal to b1 with anything on b2.
+        assert!(!flattened.contains(&vec![(b1, 1), (b2, 4)]));
     }
 
     /// `put` but with a specific registered CardId so ability lookup

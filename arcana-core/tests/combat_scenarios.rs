@@ -5,9 +5,11 @@
 
 use arcana_core::actions::{Action, DecisionContext};
 use arcana_core::combat::{
-    AttackerDeclaration, BlockerDeclaration, CombatPhase, DefendingEntity,
+    AttackerDeclaration, BlockerDeclaration, CombatPhase, DamageAssignment,
+    DefendingEntity, PendingDamagePass,
 };
-use arcana_core::engine::{step, EngineYield};
+use arcana_core::engine::{advance_phase, step, EngineYield};
+use arcana_core::turn::{Phase, Step};
 use arcana_core::objects::{Characteristics, GameObject};
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameState;
@@ -80,4 +82,141 @@ fn engine_yields_order_blockers_after_multi_block() {
     // Ordering was applied.
     assert_eq!(s.combat.as_ref().unwrap()
         .attacker(atk).unwrap().blocked_by, vec![b2, b1]);
+}
+
+/// CR 510.1c end-to-end: after `advance_phase` reaches the combat-
+/// damage step with a multi-blocked attacker, the engine yields a
+/// `DecisionContext::DistributeDamage` and waits for the active
+/// player's `Action::AssignCombatDamage`. Submitting a valid
+/// distribution deals the damage and advances the step.
+#[test]
+fn engine_yields_distribute_damage_and_applies_assignment() {
+    let reg = CardRegistry::new();
+    let mut s = GameState::new(2, 0);
+    // Set turn state to Combat / DeclareBlockers so advance_phase
+    // transitions directly into the combat-damage step.
+    s.turn.phase = Phase::Combat;
+    s.turn.step = Step::DeclareBlockers;
+    s.begin_combat();
+    let atk = creature(&mut s, 0, 5, 5);
+    let b1 = creature(&mut s, 1, 2, 2);
+    let b2 = creature(&mut s, 1, 1, 4);
+
+    s.apply_declared_attackers(vec![AttackerDeclaration {
+        attacker: atk, defending: DefendingEntity::Player(1),
+    }]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        BlockerDeclaration { blocker: b1, blocking: atk },
+        BlockerDeclaration { blocker: b2, blocking: atk },
+    ]);
+    // Skip through OrderBlockers using the declared order.
+    s.apply_blocker_ordering(vec![(atk, vec![b1, b2])]);
+
+    // advance_phase runs the (phase, step) state machine one
+    // transition at a time. DeclareBlockers → CombatDamageRegular is
+    // step (1); the flag-setting / deal-damage logic lives on the
+    // CombatDamageRegular arm which needs step (2).
+    advance_phase(&mut s, &reg);
+    advance_phase(&mut s, &reg);
+    assert_eq!(s.turn.step, Step::CombatDamageRegular,
+        "advanced into the regular damage step");
+    assert_eq!(s.combat.as_ref().unwrap().pending_damage_assignment,
+        Some(PendingDamagePass::Regular),
+        "regular damage step is pending a CR 510.1c distribution");
+    assert_eq!(s.objects.get(b1).unwrap().damage_marked, 0,
+        "damage has NOT been dealt yet");
+
+    // Submit a legal distribution via step().
+    let (s, yld) = step(s, Action::AssignCombatDamage {
+        distributions: vec![DamageAssignment {
+            attacker: atk,
+            distribution: vec![(b1, 3), (b2, 2)],
+        }],
+    }, &reg);
+
+    // b1 took 3 (lethal); SBA re-id'd it into the graveyard.
+    // b2 took 2 (non-lethal); still on battlefield with the marked
+    // damage visible.
+    assert_eq!(s.zone_count(arcana_core::zones::Zone::Graveyard(1)), 1,
+        "b1 died from lethal assignment and landed in p1's graveyard");
+    assert_eq!(s.objects.get(b2).unwrap().damage_marked, 2,
+        "b2 took its share of damage per the submitted distribution");
+    assert_eq!(s.combat.as_ref().unwrap().pending_damage_assignment, None,
+        "pending flag cleared after assignment");
+    assert_eq!(s.turn.step, Step::EndCombat,
+        "step advanced past regular damage");
+    // Next yield is a normal priority window in the next step.
+    assert!(matches!(yld, EngineYield::PendingDecision { .. }));
+}
+
+/// Submitting an illegal distribution leaves the engine pending so
+/// the agent can retry. Verifies C2's `is_legal_damage_assignment`
+/// guards the C3 pipeline.
+#[test]
+fn assign_combat_damage_rejects_illegal_and_stays_pending() {
+    let reg = CardRegistry::new();
+    let mut s = GameState::new(2, 0);
+    s.turn.phase = Phase::Combat;
+    s.turn.step = Step::DeclareBlockers;
+    s.begin_combat();
+    let atk = creature(&mut s, 0, 5, 5);
+    let b1 = creature(&mut s, 1, 2, 2);
+    let b2 = creature(&mut s, 1, 1, 4);
+    s.apply_declared_attackers(vec![AttackerDeclaration {
+        attacker: atk, defending: DefendingEntity::Player(1),
+    }]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        BlockerDeclaration { blocker: b1, blocking: atk },
+        BlockerDeclaration { blocker: b2, blocking: atk },
+    ]);
+    s.apply_blocker_ordering(vec![(atk, vec![b1, b2])]);
+    advance_phase(&mut s, &reg);
+    advance_phase(&mut s, &reg);
+
+    // Illegal: 1 damage to b1 (< lethal 2), 4 to b2.
+    let (s, _) = step(s, Action::AssignCombatDamage {
+        distributions: vec![DamageAssignment {
+            attacker: atk,
+            distribution: vec![(b1, 1), (b2, 4)],
+        }],
+    }, &reg);
+
+    assert_eq!(s.combat.as_ref().unwrap().pending_damage_assignment,
+        Some(PendingDamagePass::Regular),
+        "illegal submission leaves pending flag intact");
+    assert_eq!(s.objects.get(b1).unwrap().damage_marked, 0,
+        "no damage dealt on rejected submission");
+}
+
+/// When no attacker needs CR 510.1c assignment (unblocked + single-
+/// blocker combat), the engine skips the yield and deals damage
+/// immediately, same as before.
+#[test]
+fn single_blocker_combat_skips_distribute_damage_yield() {
+    let reg = CardRegistry::new();
+    let mut s = GameState::new(2, 0);
+    s.turn.phase = Phase::Combat;
+    s.turn.step = Step::DeclareBlockers;
+    s.begin_combat();
+    let atk = creature(&mut s, 0, 3, 3);
+    let blk = creature(&mut s, 1, 2, 2);
+    s.apply_declared_attackers(vec![AttackerDeclaration {
+        attacker: atk, defending: DefendingEntity::Player(1),
+    }]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        BlockerDeclaration { blocker: blk, blocking: atk },
+    ]);
+
+    // Two calls: DeclareBlockers → CombatDamageRegular (step 1),
+    // CombatDamageRegular → deal-damage → EndCombat (step 2).
+    advance_phase(&mut s, &reg);
+    advance_phase(&mut s, &reg);
+    assert!(s.combat.as_ref().unwrap().pending_damage_assignment.is_none(),
+        "no pending flag when no multi-blocker attackers");
+    assert_eq!(s.objects.get(blk).unwrap().damage_marked, 3,
+        "damage dealt immediately");
+    assert_eq!(s.objects.get(atk).unwrap().damage_marked, 2);
 }

@@ -188,6 +188,10 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
             // and the next compute_next_decision call re-prompts.
         }
 
+        Action::AssignCombatDamage { distributions } => {
+            apply_assign_combat_damage(state, distributions);
+        }
+
         Action::MakeChoice(choice) => apply_make_choice(state, choice),
 
         Action::SubmitResolutionChoice { id, response } => {
@@ -1911,14 +1915,38 @@ pub fn advance_phase(state: &mut GameState, _registry: &CardRegistry) {
             emit_step_begins(state);
         }
         (Phase::Combat, Step::CombatDamage) => {
-            state.deal_first_strike_damage();
-            state.turn.step = Step::CombatDamageRegular;
-            emit_step_begins(state);
+            // CR 510.1c — if any attacker needs a player-chosen
+            // distribution in the first-strike pass, pause for the
+            // active player to submit it; otherwise deal immediately.
+            if state.needs_damage_assignment(
+                crate::combat::PendingDamagePass::FirstStrike)
+            {
+                let combat = state.combat.as_mut().unwrap();
+                combat.damage_assignments.clear();
+                combat.pending_damage_assignment =
+                    Some(crate::combat::PendingDamagePass::FirstStrike);
+                // Don't advance the step; compute_next_decision will
+                // yield a DistributeDamage decision. Step advances
+                // inside the AssignCombatDamage handler.
+            } else {
+                state.deal_first_strike_damage();
+                state.turn.step = Step::CombatDamageRegular;
+                emit_step_begins(state);
+            }
         }
         (Phase::Combat, Step::CombatDamageRegular) => {
-            state.deal_combat_damage();
-            state.turn.step = Step::EndCombat;
-            emit_step_begins(state);
+            if state.needs_damage_assignment(
+                crate::combat::PendingDamagePass::Regular)
+            {
+                let combat = state.combat.as_mut().unwrap();
+                combat.damage_assignments.clear();
+                combat.pending_damage_assignment =
+                    Some(crate::combat::PendingDamagePass::Regular);
+            } else {
+                state.deal_combat_damage();
+                state.turn.step = Step::EndCombat;
+                emit_step_begins(state);
+            }
         }
         (Phase::Combat, Step::EndCombat) => {
             state.end_combat();
@@ -1963,6 +1991,56 @@ fn grant_priority_for_current_step(state: &mut GameState) {
     // Default: active player receives priority (CR 117.1).
     let player = state.active_player();
     state.priority.give_to(player);
+}
+
+/// CR 510.1c handler: validate + post the player-chosen damage
+/// distributions, run the damage pass, advance the step. Rejects
+/// (no-op, stays pending) if any distribution is illegal or required
+/// attackers are missing, so the agent can re-submit.
+fn apply_assign_combat_damage(
+    state: &mut GameState,
+    distributions: Vec<crate::combat::DamageAssignment>,
+) {
+    let Some(combat) = state.combat.as_ref() else { return; };
+    let Some(pass) = combat.pending_damage_assignment else { return; };
+
+    // Every attacker requiring CR 510.1c assignment must be present.
+    let required: Vec<ObjectId> = state
+        .attackers_needing_damage_assignment(pass);
+    let provided: crate::collections::HashSet<ObjectId> =
+        distributions.iter().map(|d| d.attacker).collect();
+    if !required.iter().all(|a| provided.contains(a)) { return; }
+
+    // Validate every distribution before posting any — keeps the
+    // reject path atomic.
+    for d in &distributions {
+        if !state.is_legal_damage_assignment(d.attacker, &d.distribution) {
+            return;
+        }
+    }
+    for d in distributions {
+        state.set_damage_assignment(d);
+    }
+
+    // Deal the pass.
+    match pass {
+        crate::combat::PendingDamagePass::FirstStrike =>
+            state.deal_first_strike_damage(),
+        crate::combat::PendingDamagePass::Regular =>
+            state.deal_combat_damage(),
+    }
+
+    // Advance step + clear pending state.
+    if let Some(combat) = state.combat.as_mut() {
+        combat.pending_damage_assignment = None;
+        combat.damage_assignments.clear();
+    }
+    state.turn.step = match pass {
+        crate::combat::PendingDamagePass::FirstStrike => Step::CombatDamageRegular,
+        crate::combat::PendingDamagePass::Regular => Step::EndCombat,
+    };
+    emit_step_begins(state);
+    grant_priority_for_current_step(state);
 }
 
 // =============================================================================
@@ -2704,6 +2782,16 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
         };
     }
     if let Some(combat) = state.combat.as_ref() {
+        // CR 510.1c — a pending distribution decision preempts the
+        // normal combat-phase yield shape.
+        if let Some(pass) = combat.pending_damage_assignment {
+            let attackers = state.attackers_needing_damage_assignment(pass);
+            return EngineYield::PendingDecision {
+                player: state.active_player(),
+                legal_actions: legal_actions(state, registry),
+                context: DecisionContext::DistributeDamage { attackers },
+            };
+        }
         match combat.phase {
             CombatPhase::DeclareAttackers => {
                 return EngineYield::PendingDecision {

@@ -26,7 +26,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::combat::{AttackerDeclaration, BlockerDeclaration};
+use crate::combat::{AttackerDeclaration, BlockerDeclaration, DamageAssignment};
 use crate::objects::ObjectId;
 
 /// Alternative or cost-modifying cast path for [`Action::CastSpell`].
@@ -248,6 +248,15 @@ pub enum Action {
     /// [`Action::AssignCombatDamage`] in the combat-damage step.
     OrderBlockers { orderings: Vec<(ObjectId, Vec<ObjectId>)> },
 
+    /// CR 510.1c — per-attacker damage **distribution** in the combat-
+    /// damage sub-step. One [`DamageAssignment`] per multi-blocked
+    /// attacker dealing damage this pass. The engine validates each via
+    /// [`crate::state::GameState::is_legal_damage_assignment`]; an
+    /// invalid submission leaves the pending state in place so the
+    /// agent can retry. On acceptance, the damage pass runs and combat
+    /// advances.
+    AssignCombatDamage { distributions: Vec<DamageAssignment> },
+
     // === Resolution / in-engine choices ===================================
     /// A choice made during spell/ability resolution (chosen target,
     /// chosen color, distribute-damage amounts, etc.). Contextualized by
@@ -292,7 +301,8 @@ impl Action {
             CastSpell { .. } => ActionKind::Cast,
             ActivateAbility { .. } => ActionKind::Activate,
             PlayLand { .. } => ActionKind::PlayLand,
-            DeclareAttackers { .. } | DeclareBlockers { .. } | OrderBlockers { .. } => {
+            DeclareAttackers { .. } | DeclareBlockers { .. }
+            | OrderBlockers { .. } | AssignCombatDamage { .. } => {
                 ActionKind::Combat
             }
             MakeChoice(_) | SubmitResolutionChoice { .. } => ActionKind::ResolutionChoice,
@@ -725,10 +735,14 @@ pub enum DecisionContext {
     OrderBlockers {
         attackers: Vec<ObjectId>,
     },
-    /// Attacker must distribute damage among its blockers in order
-    /// (CR 510.1c).
+    /// CR 510.1c — active player must distribute each multi-blocked
+    /// attacker's combat damage among its blockers in the established
+    /// damage-assignment order. `attackers` lists every attacker
+    /// needing a distribution in the current damage sub-step; the
+    /// answering [`Action::AssignCombatDamage`] provides one
+    /// [`crate::combat::DamageAssignment`] per listed attacker.
     DistributeDamage {
-        attacker: ObjectId,
+        attackers: Vec<ObjectId>,
     },
     /// A choice made during resolution of a stack entry (e.g. Collected
     /// Company's "choose up to 2 creatures").
