@@ -195,7 +195,7 @@ fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) 
         Action::MakeChoice(choice) => apply_make_choice(state, choice),
 
         Action::SubmitResolutionChoice { id, response } => {
-            apply_resolution_choice(state, id, response);
+            apply_resolution_choice(state, registry, id, response);
         }
 
         Action::MulliganKeep => apply_mulligan_keep(state),
@@ -1104,6 +1104,7 @@ fn apply_play_land(
 /// the choice it was answering has already resolved).
 pub(crate) fn apply_resolution_choice(
     state: &mut GameState,
+    registry: &CardRegistry,
     id: u64,
     response: crate::actions::ChoiceResponse,
 ) {
@@ -1196,7 +1197,7 @@ pub(crate) fn apply_resolution_choice(
             if *answer {
                 // Yes: cast the hit for free; other_exiled goes to
                 // the bottom in random order.
-                cast_cascade_hit(state, pc.controller, pc.hit);
+                cast_cascade_hit(state, registry, pc.controller, pc.hit);
                 crate::effects::cascade_shuffle_to_bottom(
                     state, pc.controller, pc.other_exiled);
             } else {
@@ -1374,19 +1375,31 @@ fn apply_order_cards(
 /// empty targets and gets rules-countered. When resolution-time
 /// ChooseTargets lands for the cascade cast path, thread it through
 /// here.
-fn cast_cascade_hit(state: &mut GameState, player: PlayerId, hit: ObjectId) {
+///
+/// Stamps the card's printed `enters_with` clauses onto the stack
+/// entry so a cascaded permanent with "enters with N counters" gets
+/// the counters at CR 121.6a time — fixed-count clauses land; X-keyed
+/// clauses read `x_value = None` (cascade pays no mana) and stay at
+/// zero. Delve-count clauses likewise read zero.
+fn cast_cascade_hit(
+    state: &mut GameState,
+    registry: &CardRegistry,
+    player: PlayerId,
+    hit: ObjectId,
+) {
     let Some(obj) = state.objects.get(hit) else { return; };
     if obj.zone != crate::zones::Zone::Exile { return; }
     if obj.is_land() { return; }
-    // Limitation: the cascade may-cast path doesn't currently stamp
-    // `enters_with` on the stack entry, so a cascaded permanent with
-    // fixed "enters with N counters" won't receive them. X-keyed
-    // enters_with is still safe — cascade casts pay no mana, so
-    // `x_value` is `None` either way. Fixing this requires threading
-    // `&CardRegistry` through `apply_resolution_choice`; deferred.
+    let card_id = obj.card_id;
     let entry_id = state.announce_spell_on_stack(
         hit, player, crate::targets::TargetSelection::new(),
         Vec::new(), None, Vec::new());
+    let enters_with = registry.get(card_id)
+        .map(|def| def.enters_with.clone())
+        .unwrap_or_default();
+    if let Some(entry) = state.stack.iter_mut().find(|e| e.id == entry_id) {
+        entry.enters_with = enters_with;
+    }
     state.emit_spell_cast(entry_id);
 }
 
@@ -2974,7 +2987,7 @@ mod resolution_choice_framework_tests {
             ChoiceContext::Sba,
             ChoiceKind::YesNo { prompt: 0 },
         );
-        apply_resolution_choice(&mut s, good + 999, ChoiceResponse::YesNo { answer: true });
+        apply_resolution_choice(&mut s, &CardRegistry::new(), good + 999, ChoiceResponse::YesNo { answer: true });
     }
 
     /// Mismatched response shape (OrderCards answer to YesNo prompt) panics.
@@ -2988,7 +3001,7 @@ mod resolution_choice_framework_tests {
             ChoiceKind::YesNo { prompt: 0 },
         );
         apply_resolution_choice(
-            &mut s, id,
+            &mut s, &CardRegistry::new(), id,
             ChoiceResponse::OrderCards { placements: vec![] });
     }
 
@@ -3005,7 +3018,7 @@ mod resolution_choice_framework_tests {
             },
         );
         apply_resolution_choice(
-            &mut s, id,
+            &mut s, &CardRegistry::new(), id,
             ChoiceResponse::PickCards { picked: vec![1] });
         assert!(s.pending_choice.is_none());
     }
@@ -3061,7 +3074,7 @@ mod resolution_choice_framework_tests {
         // Submit reversed order on Top: c first → c becomes topmost,
         // then b, then a.
         apply_resolution_choice(
-            &mut s, id,
+            &mut s, &CardRegistry::new(), id,
             ChoiceResponse::OrderCards { placements: vec![
                 (c, CardDestination::TopOfLibrary),
                 (b, CardDestination::TopOfLibrary),
@@ -3103,7 +3116,7 @@ mod resolution_choice_framework_tests {
         crate::effects::Effect::Scry { player: 0, count: 2 }.execute(&mut s);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::OrderCards { placements: vec![
                 (ids[0], CardDestination::TopOfLibrary),
                 (ids[1], CardDestination::TopOfLibrary),
@@ -3125,7 +3138,7 @@ mod resolution_choice_framework_tests {
         // Submit l0 first to Bottom, then l1 to Bottom — submitted
         // order = placement order, so l0 ends up just above l1 at the
         // very bottom (l1 is the bottom-most card).
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::OrderCards { placements: vec![
                 (ids[0], CardDestination::BottomOfLibrary),
                 (ids[1], CardDestination::BottomOfLibrary),
@@ -3146,7 +3159,7 @@ mod resolution_choice_framework_tests {
         let pc_id = s.pending_choice.as_ref().unwrap().id;
         // Submit l1 first to Top, then l0 to Top. First-submitted =
         // topmost, so l1 ends on top, l0 second.
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::OrderCards { placements: vec![
                 (ids[1], CardDestination::TopOfLibrary),
                 (ids[0], CardDestination::TopOfLibrary),
@@ -3165,7 +3178,7 @@ mod resolution_choice_framework_tests {
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
         // Keep l0 on top, send l1 to the bottom.
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::OrderCards { placements: vec![
                 (ids[0], CardDestination::TopOfLibrary),
                 (ids[1], CardDestination::BottomOfLibrary),
@@ -3237,7 +3250,7 @@ mod resolution_choice_framework_tests {
         let pc_id = s.pending_choice.as_ref().unwrap().id;
         // Agent picks `b` as the keeper — NOT the oldest.
         apply_resolution_choice(
-            &mut s, pc_id,
+            &mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![b] });
 
         assert!(s.pending_choice.is_none());
@@ -3269,7 +3282,7 @@ mod resolution_choice_framework_tests {
         let first_id = pc.id;
         // Keep a1.
         apply_resolution_choice(
-            &mut s, first_id,
+            &mut s, &CardRegistry::new(), first_id,
             ChoiceResponse::PickCards { picked: vec![a1] });
 
         // The handler re-ran SBAs, which should have pushed the second
@@ -3286,7 +3299,7 @@ mod resolution_choice_framework_tests {
         }
         // Keep b2.
         apply_resolution_choice(
-            &mut s, second_id,
+            &mut s, &CardRegistry::new(), second_id,
             ChoiceResponse::PickCards { picked: vec![b2] });
 
         assert!(s.pending_choice.is_none());
@@ -3327,7 +3340,7 @@ mod resolution_choice_framework_tests {
         crate::effects::Effect::Surveil { player: 0, count: 3 }.execute(&mut s);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::OrderCards { placements: vec![
                 (ids[0], CardDestination::Graveyard),
                 (ids[1], CardDestination::Graveyard),
@@ -3353,7 +3366,7 @@ mod resolution_choice_framework_tests {
         crate::effects::Effect::Surveil { player: 0, count: 3 }.execute(&mut s);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::OrderCards { placements: vec![
                 (ids[0], CardDestination::TopOfLibrary),
                 (ids[1], CardDestination::TopOfLibrary),
@@ -3373,7 +3386,7 @@ mod resolution_choice_framework_tests {
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
         // Mill ids[1]; keep ids[2] on top (topmost), ids[0] second.
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::OrderCards { placements: vec![
                 (ids[2], CardDestination::TopOfLibrary),
                 (ids[0], CardDestination::TopOfLibrary),
@@ -3429,7 +3442,7 @@ mod resolution_choice_framework_tests {
         }.execute(&mut s);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![beast] });
 
         assert!(s.pending_choice.is_none());
@@ -3456,7 +3469,7 @@ mod resolution_choice_framework_tests {
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
         // min=0, so picking nothing is valid.
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![] });
 
         // Card stays in library; library got shuffled.
@@ -3480,7 +3493,7 @@ mod resolution_choice_framework_tests {
         }.execute(&mut s);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![beast] });
 
         // The revealed card re-id'd on move; its NEW id (the card now
@@ -3506,7 +3519,7 @@ mod resolution_choice_framework_tests {
         }.execute(&mut s);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![beast] });
 
         assert!(s.objects.get(beast).is_none());
@@ -3532,7 +3545,7 @@ mod resolution_choice_framework_tests {
         }.execute(&mut s);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![beast] });
 
         assert!(s.objects.get(beast).is_none(), "graveyard id consumed by re-id");
@@ -3563,7 +3576,7 @@ mod resolution_choice_framework_tests {
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
         // Discard h2 specifically.
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![h2] });
 
         // h1 stayed put; h2 re-id'd into graveyard.
@@ -3595,7 +3608,7 @@ mod resolution_choice_framework_tests {
         let pc = s.pending_choice.as_ref().unwrap();
         assert_eq!(pc.choosing_player, 1);
         let pc_id = pc.id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![h1] });
 
         assert!(s.objects.get(h1).is_none());
@@ -3619,7 +3632,7 @@ mod resolution_choice_framework_tests {
         // Agent sacrifices the 5/5, not the 1/1 — exercising the
         // agent-choice (not first-match) semantic.
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PickCards { picked: vec![b] });
 
         // a stayed put, b re-id'd into the graveyard.
@@ -3762,7 +3775,7 @@ mod resolution_choice_framework_tests {
         assert!(matches!(pc.kind, ChoiceKind::PayOrDecline { .. }));
         let pc_id = pc.id;
         let before_pool = s.player(0).mana_pool.total();
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PayOrDecline { pay: true });
 
         // Pool debited by 2 generic; Ward trigger drained and
@@ -3789,7 +3802,7 @@ mod resolution_choice_framework_tests {
         resolve_top_of_stack(&mut s, &registry);
 
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PayOrDecline { pay: false });
 
         // Spell countered via CounterStackEntry; Ward trigger itself
@@ -3898,7 +3911,7 @@ mod resolution_choice_framework_tests {
         // Resolve first (top) Ward trigger; pay.
         resolve_top_of_stack(&mut s, &registry);
         let pc_id = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pc_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
             ChoiceResponse::PayOrDecline { pay: true });
 
         // Resolve second Ward trigger; pay.
@@ -3906,7 +3919,7 @@ mod resolution_choice_framework_tests {
         let pc2_id = s.pending_choice.as_ref()
             .expect("second Ward prompt").id;
         assert!(pc2_id > pc_id);
-        apply_resolution_choice(&mut s, pc2_id,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc2_id,
             ChoiceResponse::PayOrDecline { pay: true });
 
         assert!(s.pending_choice.is_none());
@@ -3972,7 +3985,7 @@ mod resolution_choice_framework_tests {
 
         // Submitting Bottom should panic — it's not in the allowed set.
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            apply_resolution_choice(&mut s, pc_id,
+            apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
                 ChoiceResponse::OrderCards { placements: vec![
                     (ids[0], CardDestination::BottomOfLibrary),
                     (ids[1], CardDestination::TopOfLibrary),
@@ -5154,7 +5167,7 @@ mod tests {
                 .expect("expected per-copy ChooseTargets").clone();
             let mut sel = TargetSelection::new();
             sel.targets.push(TargetChoice::Player(1));
-            apply_resolution_choice(&mut s, pending.id,
+            apply_resolution_choice(&mut s, &CardRegistry::new(), pending.id,
                 crate::actions::ChoiceResponse::ChooseTargets { selection: sel });
         }
 
@@ -5258,6 +5271,25 @@ mod tests {
         ids
     }
 
+    /// Seed a single registered card on top of `player`'s library. The
+    /// object carries the real `card_id` so registry lookups during
+    /// cast resolution (e.g. `enters_with`) actually find it.
+    fn seed_library_registered(
+        state: &mut GameState,
+        registry: &CardRegistry,
+        player: PlayerId,
+        card_id: crate::types::CardId,
+    ) -> ObjectId {
+        let chars = registry.get(card_id)
+            .expect("seed_library_registered: card not in registry")
+            .initial_characteristics().clone();
+        let id = state.allocate_object_id();
+        state.objects.insert(crate::objects::GameObject::new(
+            id, player, crate::zones::Zone::Library(player), card_id, chars));
+        state.player_mut(player).library_top_to_bottom.push(id);
+        id
+    }
+
     fn basic_land_chars() -> Characteristics {
         Characteristics {
             mana_cost: None,
@@ -5323,7 +5355,7 @@ mod tests {
 
         // Answer yes.
         let pid = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pid,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pid,
             crate::actions::ChoiceResponse::YesNo { answer: true });
 
         // The instant should now be on the stack as a cast spell.
@@ -5335,6 +5367,71 @@ mod tests {
             "hit must be cast (on stack) after may-cast yes");
         // Land goes to bottom.
         assert_eq!(s.player(0).library_top_to_bottom.len(), 1);
+    }
+
+    /// Register a CMC-1 creature that enters with a +1/+1 counter.
+    /// Mirrors Modular-style printed `enters_with` clauses.
+    fn register_cmc1_counter_creature(
+        registry: &mut CardRegistry,
+    ) -> crate::types::CardId {
+        use crate::mana::ManaCost;
+        use crate::registry::{CardDefinition, EntersWithSpec};
+        use crate::types::{CounterKind, PtValue};
+        let name = registry.interner_mut().intern("Counter-Creature");
+        let def = CardDefinition::new(name, Characteristics {
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            ..Default::default()
+        }).with_enters_with(EntersWithSpec::Counters {
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        });
+        registry.register(def)
+    }
+
+    /// CR 702.85 + CR 121.6a — a cascaded permanent with a printed
+    /// `enters_with` clause gets the counters when it resolves. Fails
+    /// before the cast-cascade-hit path was threaded with the registry.
+    #[test]
+    fn cascade_may_cast_yes_applies_enters_with_clauses() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        use crate::types::CounterKind;
+        let mut registry = CardRegistry::new();
+        let cascader = register_cascade_card(&mut registry);
+        let creature = register_cmc1_counter_creature(&mut registry);
+        let mut s = GameState::new(2, 0);
+        // Top: the counter creature (CMC 1 < 4). Cascade hits it.
+        let creature_obj = seed_library_registered(
+            &mut s, &registry, 0, creature);
+        let mut targets = TargetSelection::new();
+        targets.targets.push(TargetChoice::Player(1));
+        let cast_id = announce_as_nth_spell(
+            &mut s, &registry, 0, cascader, targets, 0);
+        s.emit_spell_cast(cast_id);
+        run_sba_and_triggers(&mut s, &registry);
+        resolve_top_of_stack(&mut s, &registry);
+        assert!(s.pending_choice.is_some());
+
+        // Answer yes — with `&registry` so `cast_cascade_hit` can read
+        // the creature's printed enters_with.
+        let pid = s.pending_choice.as_ref().unwrap().id;
+        apply_resolution_choice(&mut s, &registry, pid,
+            crate::actions::ChoiceResponse::YesNo { answer: true });
+
+        // Resolve the cascaded spell (the permanent ETBs).
+        resolve_top_of_stack(&mut s, &registry);
+        run_sba_and_triggers(&mut s, &registry);
+
+        // The creature landed on the battlefield with one +1/+1 counter.
+        let bf_obj = s.objects.objects_in_zone(crate::zones::Zone::Battlefield)
+            .find(|o| o.card_id == creature)
+            .expect("cascaded creature on battlefield");
+        assert_eq!(bf_obj.count_counters(CounterKind::PlusOnePlusOne), 1,
+            "enters_with clause applied on cascade cast");
+        let _ = creature_obj;
     }
 
     #[test]
@@ -5354,7 +5451,7 @@ mod tests {
         resolve_top_of_stack(&mut s, &registry);
 
         let pid = s.pending_choice.as_ref().unwrap().id;
-        apply_resolution_choice(&mut s, pid,
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pid,
             crate::actions::ChoiceResponse::YesNo { answer: false });
 
         // Nothing should be on the stack from cascade (aside from the
@@ -5391,7 +5488,7 @@ mod tests {
             resolve_top_of_stack(&mut s, &registry);
             // Decline the may-cast so all 4 cards land at the bottom.
             let pid = s.pending_choice.as_ref().unwrap().id;
-            apply_resolution_choice(&mut s, pid,
+            apply_resolution_choice(&mut s, &CardRegistry::new(), pid,
                 crate::actions::ChoiceResponse::YesNo { answer: false });
             s.player(0).library_top_to_bottom.clone()
         }
