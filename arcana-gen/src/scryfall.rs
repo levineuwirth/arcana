@@ -92,6 +92,35 @@ pub struct Card {
     /// `"adventure"`, `"meld"`, `"saga"`, etc. Drives the Phase-3
     /// classifier's multi-face routing.
     pub layout: String,
+    /// Present on multi-face layouts (`split`, `adventure`,
+    /// `modal_dfc`, `transform`, `meld`, …). For those layouts the
+    /// top-level `oracle_text` is typically absent and each face
+    /// carries its own text, P/T, mana cost, etc. `None` for
+    /// single-face `normal` cards.
+    #[serde(default)]
+    pub card_faces: Option<Vec<CardFace>>,
+}
+
+/// One face of a multi-face card. Fields mirror the Card struct's
+/// card-scoped subset; anything not present on a given face is
+/// `None`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CardFace {
+    pub name: String,
+    #[serde(default)]
+    pub mana_cost: Option<String>,
+    #[serde(default)]
+    pub type_line: Option<String>,
+    #[serde(default)]
+    pub oracle_text: Option<String>,
+    #[serde(default)]
+    pub power: Option<String>,
+    #[serde(default)]
+    pub toughness: Option<String>,
+    #[serde(default)]
+    pub loyalty: Option<String>,
+    #[serde(default)]
+    pub colors: Option<Vec<String>>,
 }
 
 impl Card {
@@ -124,17 +153,43 @@ impl Card {
         self.type_line.contains("Battle")
     }
 
+    /// Oracle text surface usable by downstream analysis.
+    /// For single-face cards this is just `self.oracle_text`.
+    /// For multi-face cards the top-level field is typically `None`
+    /// and per-face text lives in `card_faces`; this joins all face
+    /// texts with `\n---\n` so downstream heuristics (tier
+    /// classifier, prompt retrieval) see the full card.
+    pub fn effective_oracle_text(&self) -> String {
+        if let Some(t) = &self.oracle_text {
+            if !t.is_empty() {
+                return t.clone();
+            }
+        }
+        match &self.card_faces {
+            Some(faces) => faces
+                .iter()
+                .filter_map(|f| f.oracle_text.as_deref())
+                .collect::<Vec<_>>()
+                .join("\n---\n"),
+            None => String::new(),
+        }
+    }
+
     /// Vanilla in the classical sense — a creature whose rules text
     /// is empty or only contains flavor (no keyword abilities, no
     /// triggered/activated abilities). Useful for tier-1 routing.
+    ///
+    /// Uses [`Self::effective_oracle_text`] so multi-face cards
+    /// (adventure, modal_dfc, split, transform) are checked against
+    /// the joined face text rather than the frequently-`None`
+    /// top-level `oracle_text`. Otherwise every adventure-layout
+    /// creature with `oracle_text: None` would false-positive as
+    /// vanilla.
     pub fn is_vanilla_creature(&self) -> bool {
         if !self.is_creature() {
             return false;
         }
-        match &self.oracle_text {
-            None => true,
-            Some(t) => t.trim().is_empty(),
-        }
+        self.effective_oracle_text().trim().is_empty()
     }
 }
 
