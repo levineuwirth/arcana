@@ -2,6 +2,10 @@
 **/*.rs.bk
 Cargo.lock
 
+# Profiling artifacts (cargo-flamegraph writes to cwd by default)
+perf.data*
+flamegraph.svg
+
 # IDE
 .idea/
 .vscode/

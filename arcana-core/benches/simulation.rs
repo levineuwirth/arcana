@@ -179,11 +179,66 @@ fn bench_single_step(c: &mut Criterion) {
     });
 }
 
+/// Per-field clone breakdown for the mid-game snapshot. Prints the
+/// sizing of each heavy field to stderr once, then benches the clone
+/// cost of each in isolation.
+///
+/// Individual numbers should sum to roughly the `full_state` number
+/// (Vec/HashMap clone overhead doesn't compose perfectly but is
+/// close). A large single field is a candidate for `im` persistent
+/// collections or Arc-wrapping.
+fn bench_clone_breakdown(c: &mut Criterion) {
+    let registry = seeded_registry();
+    let (state, _) = mid_game(&registry, 17, 120);
+
+    eprintln!("== mid-game sizing (seed=17, 120 steps) ==");
+    eprintln!("  objects.len()              = {}", state.objects.len());
+    eprintln!("  event_log.len()            = {}", state.event_log.len());
+    eprintln!("  stack.len()                = {}", state.stack.len());
+    eprintln!("  continuous_effects.len()   = {}", state.continuous_effects.len());
+    eprintln!("  replacement_effects.len()  = {}", state.replacement_effects.len());
+    eprintln!("  delayed_triggers.len()     = {}", state.delayed_triggers.len());
+    eprintln!("  lki.len()                  = {}", state.lki.len());
+    eprintln!("  p0.library.len()           = {}", state.players[0].library_top_to_bottom.len());
+    eprintln!("  p1.library.len()           = {}", state.players[1].library_top_to_bottom.len());
+
+    let mut g = c.benchmark_group("clone_breakdown");
+    g.bench_function("objects_arena", |b| {
+        b.iter(|| std::hint::black_box(state.objects.clone()));
+    });
+    g.bench_function("event_log", |b| {
+        b.iter(|| std::hint::black_box(state.event_log.clone()));
+    });
+    g.bench_function("players_vec", |b| {
+        b.iter(|| std::hint::black_box(state.players.clone()));
+    });
+    g.bench_function("stack", |b| {
+        b.iter(|| std::hint::black_box(state.stack.clone()));
+    });
+    g.bench_function("continuous_effects", |b| {
+        b.iter(|| std::hint::black_box(state.continuous_effects.clone()));
+    });
+    g.bench_function("replacement_effects", |b| {
+        b.iter(|| std::hint::black_box(state.replacement_effects.clone()));
+    });
+    g.bench_function("delayed_triggers", |b| {
+        b.iter(|| std::hint::black_box(state.delayed_triggers.clone()));
+    });
+    g.bench_function("lki", |b| {
+        b.iter(|| std::hint::black_box(state.lki.clone()));
+    });
+    g.bench_function("full_state", |b| {
+        b.iter(|| std::hint::black_box(state.clone()));
+    });
+    g.finish();
+}
+
 criterion_group!(
     benches,
     bench_full_game,
     bench_state_clone,
     bench_legal_actions,
     bench_single_step,
+    bench_clone_breakdown,
 );
 criterion_main!(benches);
