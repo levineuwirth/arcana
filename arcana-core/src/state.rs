@@ -1198,4 +1198,172 @@ mod tests {
         assert_eq!(s.player(0).life, 40);
         assert!(s.format.use_command_zone);
     }
+
+    // --- MDFC CR 712.2b revert for back-face SPELL paths -------------------
+    //
+    // The default_face_characteristics + swap_to_zone_reid revert loop is
+    // exercised today by the land back-face tests in
+    // seed_integration.rs. apply_cast_spell's MdfcBack branch also
+    // populates the snapshot for SPELL back faces, but no registered
+    // card has a spell back face, so those paths sit untested. These
+    // state-level tests simulate the cast-time swap + snapshot and
+    // verify the revert fires correctly when the object leaves either
+    // the stack (counter, fizzle) or the battlefield (death, bounce).
+
+    /// Build (front, back) characteristics pairs for a synthetic
+    /// MDFC whose back face is a 2/2 creature. Front is a 1/1
+    /// creature; both are vanilla.
+    fn synthetic_mdfc_chars(
+        interner: &mut crate::types::StringInterner,
+    ) -> (crate::objects::Characteristics, crate::objects::Characteristics) {
+        use crate::objects::Characteristics;
+        use crate::types::{TypeLine, PtValue};
+        let front_name = interner.intern("MDFC Front");
+        let back_name = interner.intern("MDFC Back");
+        let front = Characteristics {
+            name: front_name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{G}").unwrap()),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        let back = Characteristics {
+            name: back_name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}{G}").unwrap()),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        (front, back)
+    }
+
+    /// Simulate `apply_cast_spell`'s MdfcBack swap on an object
+    /// sitting in `zone`: swap chars to back, stash front on
+    /// `default_face_characteristics`, set `visible_face = 1`.
+    fn install_mdfc_back_cast_state(
+        s: &mut GameState, id: ObjectId,
+        front: crate::objects::Characteristics,
+        back: crate::objects::Characteristics,
+    ) {
+        let obj = s.objects.get_mut(id).expect("object in arena");
+        obj.characteristics = back;
+        obj.default_face_characteristics = Some(front);
+        obj.visible_face = 1;
+    }
+
+    #[test]
+    fn mdfc_back_face_creature_dies_and_reverts_in_graveyard() {
+        // CR 712.2b — a back-face creature that resolves to the
+        // battlefield sits as the 2/2 back face. On death the
+        // graveyard object reverts to the 1/1 front face.
+        use crate::objects::GameObject;
+        let mut interner = crate::types::StringInterner::new();
+        let (front, back) = synthetic_mdfc_chars(&mut interner);
+        let mut s = GameState::new(2, 0);
+        let obj_id = s.allocate_object_id();
+        // Place on battlefield with the back-face state apply_cast_spell
+        // would have installed at cast time and finalize_resolved_spell
+        // would have carried through the stack→battlefield swap.
+        s.objects.insert(GameObject::new(
+            obj_id, 0, crate::zones::Zone::Battlefield, 1, back.clone()));
+        install_mdfc_back_cast_state(&mut s, obj_id, front.clone(), back.clone());
+        assert!(s.objects.get(obj_id).unwrap().is_creature());
+        assert_eq!(s.objects.get(obj_id).unwrap().characteristics.name,
+            back.name);
+        assert_eq!(s.objects.get(obj_id).unwrap().visible_face, 1);
+
+        // Die — move to graveyard.
+        let new_id = s.move_object_to_zone(
+            obj_id, crate::zones::Zone::Graveyard(0),
+            crate::events::MoveCause::StateBasedAction).unwrap();
+
+        let grave = s.objects.get(new_id).expect("graveyard object");
+        assert_eq!(grave.characteristics.name, front.name,
+            "graveyard shows front-face name per CR 712.2b");
+        assert_eq!(grave.visible_face, 0,
+            "visible_face reset on revert");
+        assert!(grave.default_face_characteristics.is_none(),
+            "snapshot cleared after revert");
+        // P/T reflects front-face values.
+        assert_eq!(grave.characteristics.power,
+            Some(crate::types::PtValue::Fixed(1)));
+        assert_eq!(grave.characteristics.toughness,
+            Some(crate::types::PtValue::Fixed(1)));
+    }
+
+    #[test]
+    fn mdfc_back_face_spell_countered_on_stack_reverts_in_graveyard() {
+        // CR 712.2b — a back-face spell countered on the stack lands
+        // in the graveyard as its front face. Exercises the
+        // stack→graveyard leg of swap_to_zone_reid's revert (the
+        // land-play tests only cover the battlefield→graveyard leg).
+        use crate::objects::GameObject;
+        use crate::stack::{StackEntry, ModeChoice};
+        use crate::targets::TargetSelection;
+        let mut interner = crate::types::StringInterner::new();
+        let (front, back) = synthetic_mdfc_chars(&mut interner);
+        let mut s = GameState::new(2, 0);
+        let card_in_hand = s.allocate_object_id();
+        // Start in hand as front-face (the natural resting state).
+        s.objects.insert(GameObject::new(
+            card_in_hand, 0, crate::zones::Zone::Hand(0), 1, front.clone()));
+        // Simulate the MdfcBack swap apply_cast_spell would do before
+        // handing off to announce_spell_on_stack.
+        install_mdfc_back_cast_state(
+            &mut s, card_in_hand, front.clone(), back.clone());
+        let stack_id = s.announce_spell_on_stack(
+            card_in_hand, 0, TargetSelection::new(), Vec::<ModeChoice>::new(),
+            None, Vec::new());
+        assert_eq!(s.objects.get(stack_id).unwrap().characteristics.name,
+            back.name, "stack entry carries back-face chars");
+        assert_eq!(s.objects.get(stack_id).unwrap().visible_face, 1);
+
+        // Counter — pops the stack entry and routes to graveyard via
+        // swap_to_zone_reid, which runs the CR 712.2b revert.
+        let entry = s.remove_stack_entry_by_id(stack_id)
+            .expect("stack entry present");
+        assert!(matches!(entry,
+            StackEntry { .. }));
+        s.counter_resolved_spell(entry);
+
+        // Find the graveyard object (re-id again on the counter move).
+        let grave = s.objects.iter()
+            .find(|o| matches!(o.zone, crate::zones::Zone::Graveyard(_))
+                && o.characteristics.name == front.name)
+            .expect("countered spell in graveyard");
+        assert_eq!(grave.visible_face, 0,
+            "visible_face reset on counter-driven revert");
+        assert!(grave.default_face_characteristics.is_none(),
+            "snapshot cleared on counter-driven revert");
+    }
+
+    #[test]
+    fn front_face_cast_never_snapshots_and_revert_is_a_noop() {
+        // Negative control — a front-face cast doesn't populate
+        // default_face_characteristics, so the generic revert in
+        // swap_to_zone_reid is a no-op. Guards against a regression
+        // where an unrelated zone-change path wrongly initializes the
+        // snapshot.
+        use crate::objects::GameObject;
+        let mut interner = crate::types::StringInterner::new();
+        let (front, _back) = synthetic_mdfc_chars(&mut interner);
+        let mut s = GameState::new(2, 0);
+        let obj_id = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            obj_id, 0, crate::zones::Zone::Battlefield, 1, front.clone()));
+        assert!(s.objects.get(obj_id).unwrap()
+            .default_face_characteristics.is_none());
+
+        let new_id = s.move_object_to_zone(
+            obj_id, crate::zones::Zone::Graveyard(0),
+            crate::events::MoveCause::StateBasedAction).unwrap();
+
+        let grave = s.objects.get(new_id).unwrap();
+        assert_eq!(grave.characteristics.name, front.name);
+        assert_eq!(grave.visible_face, 0);
+        assert!(grave.default_face_characteristics.is_none(),
+            "no snapshot ever installed on a front-face cast");
+    }
 }
