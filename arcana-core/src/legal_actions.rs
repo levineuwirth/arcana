@@ -320,13 +320,10 @@ fn enumerate_blocker_orderings(state: &GameState) -> Vec<Action> {
 /// a deeper-board refinement (sampling / heuristic pruning) will be
 /// required when training runs surface it.
 ///
-/// Trample and single-blocker assignments land as labeled followups
-/// — today we only enumerate for multi-blocker non-trample attackers
-/// (the `needs_damage_assignment` gate). For a trample attacker in
-/// a multi-blocker pass, the default auto-lethal-then-overflow via
-/// `trample_damage_distribution` still fires because that attacker
-/// isn't in `attackers_needing_damage_assignment`'s multi-block
-/// criterion today — see combat::PendingDamagePass TODO.
+/// Trample (CR 702.19b) is handled via an extra "stop at the last
+/// blocker and let the remainder overflow to the defender" branch
+/// in [`recurse_distributions`]. Overflow requires every blocker to
+/// have received ≥ lethal, matching [`is_legal_damage_assignment`].
 fn enumerate_combat_damage_assignments(state: &GameState) -> Vec<Action> {
     let Some(combat) = state.combat.as_ref() else { return Vec::new(); };
     let Some(pass) = combat.pending_damage_assignment else { return Vec::new(); };
@@ -372,6 +369,8 @@ fn enumerate_distributions_for_attacker(
     if power == 0 { return vec![Vec::new()]; }
 
     let has_dt = state.has_keyword(attacker, &crate::effects::KeywordAbility::Deathtouch);
+    let has_trample = state.has_keyword(
+        attacker, &crate::effects::KeywordAbility::Trample);
     // (id, lethal) pairs in damage-assignment order.
     let ordered: Vec<(ObjectId, u32)> = atk.blocked_by.iter().map(|&id| {
         let lethal = if has_dt { 1 } else { raw_remaining_lethal(state, id) };
@@ -379,7 +378,7 @@ fn enumerate_distributions_for_attacker(
     }).collect();
 
     let mut out: Vec<Vec<(ObjectId, u32)>> = Vec::new();
-    recurse_distributions(power, &ordered, Vec::new(), &mut out);
+    recurse_distributions(power, &ordered, Vec::new(), has_trample, &mut out);
     out
 }
 
@@ -387,6 +386,7 @@ fn recurse_distributions(
     remaining: u32,
     blockers: &[(ObjectId, u32)],
     current: Vec<(ObjectId, u32)>,
+    has_trample: bool,
     out: &mut Vec<Vec<(ObjectId, u32)>>,
 ) {
     if remaining == 0 {
@@ -405,7 +405,20 @@ fn recurse_distributions(
     for k in lb..remaining {
         let mut next = current.clone();
         next.push((blk, k));
-        recurse_distributions(remaining - k, rest, next, out);
+        recurse_distributions(remaining - k, rest, next, has_trample, out);
+    }
+    // Option 3 (CR 702.19b trample) — pay ≥ lethal to this (last) blocker
+    // and stop. The unassigned remainder overflows to the defender;
+    // `is_legal_damage_assignment` reconstructs the overflow from
+    // `power - sum(distribution)`. Only valid as the final blocker,
+    // since every earlier blocker must be paid ≥ lethal before overflow
+    // can exist.
+    if has_trample && rest.is_empty() {
+        for k in lb..remaining {
+            let mut next = current.clone();
+            next.push((blk, k));
+            out.push(next);
+        }
     }
 }
 
@@ -2801,6 +2814,67 @@ mod tests {
         assert!(flattened.contains(&vec![(b1, 4), (b2, 1)]));
         // Illegal: sub-lethal to b1 with anything on b2.
         assert!(!flattened.contains(&vec![(b1, 1), (b2, 4)]));
+    }
+
+    #[test]
+    fn enumerate_trample_single_blocker_covers_overflow_range() {
+        // CR 702.19b — a 5/5 trample attacker vs a 2/2 blocker has four
+        // legal distributions: (blk, 2), (blk, 3), (blk, 4), (blk, 5).
+        // Each below 5 implicitly sends the remainder to the defender.
+        use crate::combat::{
+            AttackerDeclaration, BlockerDeclaration, DamageAssignment,
+            DefendingEntity, PendingDamagePass,
+        };
+        use crate::effects::KeywordAbility;
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(5, 5);
+            chars.keywords.push(KeywordAbility::Trample);
+            let mut obj = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            obj.controller = 0;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let blk = {
+            let id = s.allocate_object_id();
+            let chars = creature_chars(1, 2);
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            obj.controller = 1;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: blk, blocking: atk },
+        ]);
+        s.combat.as_mut().unwrap().pending_damage_assignment
+            = Some(PendingDamagePass::Regular);
+
+        let actions = legal_actions(&s, &reg);
+        let dists: std::collections::HashSet<Vec<(ObjectId, u32)>> = actions.iter()
+            .filter_map(|a| match a {
+                Action::AssignCombatDamage { distributions } =>
+                    Some(distributions.clone()),
+                _ => None,
+            })
+            .filter(|d| d.len() == 1)
+            .map(|d: Vec<DamageAssignment>| d[0].distribution.clone())
+            .collect();
+        assert!(dists.contains(&vec![(blk, 2)]), "lethal only, max overflow");
+        assert!(dists.contains(&vec![(blk, 3)]));
+        assert!(dists.contains(&vec![(blk, 4)]));
+        assert!(dists.contains(&vec![(blk, 5)]), "all damage to blocker");
+        // Sub-lethal isn't legal under trample (overflow requires lethal
+        // to every blocker first).
+        assert!(!dists.contains(&vec![(blk, 1)]));
     }
 
     /// `put` but with a specific registered CardId so ability lookup

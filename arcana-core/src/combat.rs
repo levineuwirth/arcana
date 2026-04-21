@@ -863,11 +863,20 @@ impl GameState {
                 // Decide the distribution. Trample is only consulted
                 // for the default path — an explicit
                 // [`DamageAssignment`] is trusted verbatim (agent's
-                // responsibility to be legal).
+                // responsibility to be legal). For a trample attacker,
+                // any shortfall between sum(distribution) and power
+                // overflows to the defender per CR 702.19b.
                 let explicit = combat.damage_assignments.iter()
                     .find(|a| a.attacker == atk.object_id);
                 let (dist, overflow_to_defender) = match explicit {
-                    Some(a) => (a.distribution.clone(), 0u32),
+                    Some(a) => {
+                        let overflow = if has_trample {
+                            let sum: u32 = a.distribution.iter()
+                                .map(|(_, x)| *x).sum();
+                            (atk_power as u32).saturating_sub(sum)
+                        } else { 0 };
+                        (a.distribution.clone(), overflow)
+                    }
                     None if has_trample => trample_damage_distribution(
                         self, &live_blockers, atk_power as u32, has_dt),
                     None => (
@@ -943,9 +952,28 @@ impl GameState {
                 if !self.should_deal_damage_this_pass(a.object_id, internal_pass) {
                     return false;
                 }
-                let live_blockers = a.blocked_by.iter()
-                    .filter(|id| !dead.contains(id)).count();
-                live_blockers >= 2
+                let live: Vec<ObjectId> = a.blocked_by.iter()
+                    .copied()
+                    .filter(|id| !dead.contains(id))
+                    .collect();
+                if live.len() >= 2 { return true; }
+                // CR 702.19b — trample with a single live blocker still
+                // needs a choice when the attacker's power exceeds the
+                // blocker's remaining lethal: the controller picks how
+                // much of the excess spills to the defender.
+                if live.len() == 1
+                    && self.has_keyword(a.object_id, &KeywordAbility::Trample)
+                {
+                    let power = self.computed_power(a.object_id).unwrap_or(0);
+                    if power <= 0 { return false; }
+                    let has_dt = self.has_keyword(
+                        a.object_id, &KeywordAbility::Deathtouch);
+                    let lethal = if has_dt { 1 } else {
+                        remaining_lethal(self, live[0])
+                    };
+                    return (power as u32) > lethal;
+                }
+                false
             })
             .map(|a| a.object_id)
             .collect()
@@ -2156,6 +2184,108 @@ mod tests {
         s.deal_combat_damage();
         // Regular pass: attacker has FS only (no DS), so doesn't strike
         // again. Player life unchanged.
+        assert_eq!(s.player(1).life, 20 - 2);
+    }
+
+    #[test]
+    fn needs_damage_assignment_includes_trample_single_blocker_with_overflow() {
+        // CR 702.19b — 5/5 Trample vs 2/2 blocker. Overflow is possible
+        // (power 5 > lethal 2), so the controller must be asked how to
+        // split damage between blocker and defender.
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 5, 5);
+        s.objects.get_mut(atk).unwrap().characteristics.keywords
+            .push(KeywordAbility::Trample);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let blk = put_creature(&mut s, 1, 2, 2);
+        ready(blk, &mut s);
+        s.apply_declared_blockers(vec![BlockerDeclaration {
+            blocker: blk, blocking: atk,
+        }]);
+        assert_eq!(
+            s.attackers_needing_damage_assignment(PendingDamagePass::Regular),
+            vec![atk]);
+    }
+
+    #[test]
+    fn needs_damage_assignment_skips_trample_single_blocker_without_overflow() {
+        // 3/3 Trample vs 4/4 blocker. Power 3 ≤ lethal 4 — no overflow
+        // is legal, so no choice to make.
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 3, 3);
+        s.objects.get_mut(atk).unwrap().characteristics.keywords
+            .push(KeywordAbility::Trample);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let blk = put_creature(&mut s, 1, 4, 4);
+        ready(blk, &mut s);
+        s.apply_declared_blockers(vec![BlockerDeclaration {
+            blocker: blk, blocking: atk,
+        }]);
+        assert!(
+            s.attackers_needing_damage_assignment(PendingDamagePass::Regular)
+                .is_empty());
+    }
+
+    #[test]
+    fn needs_damage_assignment_skips_non_trample_single_blocker() {
+        // 5/5 (no trample) vs 2/2 blocker. Single-blocker non-trample
+        // has only one legal distribution (all damage to the blocker),
+        // so no choice.
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 5, 5);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let blk = put_creature(&mut s, 1, 2, 2);
+        ready(blk, &mut s);
+        s.apply_declared_blockers(vec![BlockerDeclaration {
+            blocker: blk, blocking: atk,
+        }]);
+        assert!(
+            s.attackers_needing_damage_assignment(PendingDamagePass::Regular)
+                .is_empty());
+    }
+
+    #[test]
+    fn trample_single_blocker_explicit_assignment_controls_overflow() {
+        // 5/5 Trample vs 2/2 blocker. Controller picks [(blk, 3)] —
+        // 3 damage to blocker (which still kills it), 2 overflow to
+        // defender, rather than the auto distribution of 2+3.
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 5, 5);
+        s.objects.get_mut(atk).unwrap().characteristics.keywords
+            .push(KeywordAbility::Trample);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let blk = put_creature(&mut s, 1, 2, 2);
+        ready(blk, &mut s);
+        s.apply_declared_blockers(vec![BlockerDeclaration {
+            blocker: blk, blocking: atk,
+        }]);
+        let accepted = s.set_damage_assignment(DamageAssignment {
+            attacker: atk,
+            distribution: vec![(blk, 3)],
+        });
+        assert!(accepted, "3-to-blocker leaves 2 overflow — legal under trample");
+        s.deal_combat_damage();
+        assert_eq!(s.objects.get(blk).unwrap().damage_marked, 3);
         assert_eq!(s.player(1).life, 20 - 2);
     }
 

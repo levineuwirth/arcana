@@ -190,6 +190,55 @@ fn assign_combat_damage_rejects_illegal_and_stays_pending() {
         "no damage dealt on rejected submission");
 }
 
+/// CR 702.19b end-to-end: a trample attacker with a single blocker
+/// whose power exceeds the blocker's lethal damage still yields a
+/// `DecisionContext::DistributeDamage` — the controller chooses how
+/// much excess overflows to the defender. The engine respects the
+/// submitted assignment rather than auto-distributing.
+#[test]
+fn trample_single_blocker_yields_distribute_damage_with_overflow() {
+    use arcana_core::effects::KeywordAbility;
+    let reg = CardRegistry::new();
+    let mut s = GameState::new(2, 0);
+    s.turn.phase = Phase::Combat;
+    s.turn.step = Step::DeclareBlockers;
+    s.begin_combat();
+    let atk = creature(&mut s, 0, 5, 5);
+    s.objects.get_mut(atk).unwrap().characteristics.keywords
+        .push(KeywordAbility::Trample);
+    let blk = creature(&mut s, 1, 2, 2);
+    s.apply_declared_attackers(vec![AttackerDeclaration {
+        attacker: atk, defending: DefendingEntity::Player(1),
+    }]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        BlockerDeclaration { blocker: blk, blocking: atk },
+    ]);
+
+    advance_phase(&mut s, &reg);
+    advance_phase(&mut s, &reg);
+    assert_eq!(s.combat.as_ref().unwrap().pending_damage_assignment,
+        Some(PendingDamagePass::Regular),
+        "trample single-blocker with overflow capacity pends");
+    assert_eq!(s.objects.get(blk).unwrap().damage_marked, 0,
+        "damage waits for the controller's distribution");
+
+    // Controller picks 4 to blocker, 1 overflow to defender — a legal
+    // distribution that the auto-distribution would not have chosen.
+    let (s, _yld) = step(s, Action::AssignCombatDamage {
+        distributions: vec![DamageAssignment {
+            attacker: atk,
+            distribution: vec![(blk, 4)],
+        }],
+    }, &reg);
+    assert_eq!(s.zone_count(arcana_core::zones::Zone::Graveyard(1)), 1,
+        "blocker died (4 damage > 2 toughness)");
+    assert_eq!(s.player(1).life, 20 - 1,
+        "1 point of overflow reached the defender");
+    assert_eq!(s.combat.as_ref().unwrap().pending_damage_assignment, None);
+    assert_eq!(s.turn.step, Step::EndCombat);
+}
+
 /// When no attacker needs CR 510.1c assignment (unblocked + single-
 /// blocker combat), the engine skips the yield and deals damage
 /// immediately, same as before.
