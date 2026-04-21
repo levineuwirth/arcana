@@ -89,15 +89,12 @@ impl Default for FormatConfig {
 ///
 /// - `London` — current default. Shuffle hand back, redraw 7, owe
 ///   one card to the bottom per mulligan taken.
-/// - `Paris` — legacy. Shuffle hand back, redraw N-1 where N is
-///   the previous hand size.
-/// - `Vancouver` — legacy. Paris + scry 1 after keeping if any
-///   mulligans were taken.
-///
-/// Phase 1 only implements `London`. `Paris` and `Vancouver` are
-/// carried so existing replays / historical configs parse; the
-/// engine panics if a game actually uses them. Phase 2 adds
-/// support.
+/// - `Paris` — legacy. Shuffle hand back, redraw one card fewer
+///   than the previous hand size; no bottoming.
+/// - `Vancouver` — legacy. Same redraw as Paris; after keeping, if
+///   any mulligans were taken, scry 1. The scry step is pending
+///   separate wiring (it needs a scry-outside-stack dispatch path);
+///   until then Vancouver's redraw path matches Paris exactly.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MulliganRule {
     London,

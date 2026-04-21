@@ -1622,13 +1622,19 @@ fn apply_make_choice(state: &mut GameState, choice: ChoiceAction) {
 }
 
 fn apply_mulligan_keep(state: &mut GameState) {
-    // CR 103.4a — when a player keeps after taking N mulligans,
-    // they must put N cards from hand on the bottom of their
-    // library before the game begins.
+    // CR 103.4a — London: when a player keeps after taking N
+    // mulligans, they must put N cards from hand on the bottom of
+    // their library before the game begins. Paris and Vancouver
+    // express the per-mulligan cost as a smaller redraw (see
+    // [`apply_mulligan_again`]) instead, so there's nothing to put
+    // on the bottom at keep time. Vancouver's post-keep scry 1 is
+    // pending separate wiring (CR 103.4 historical variant).
     let player = state.priority_player();
     let owed = state.player(player).mulligans_taken;
+    let owes_bottoms = owed > 0
+        && state.format.mulligan_rule == crate::format::MulliganRule::London;
 
-    if owed > 0 {
+    if owes_bottoms {
         // Transition into the bottoming window; stay on this player
         // until they submit an `Action::BottomCards(ids)` of the
         // right length.
@@ -1637,7 +1643,7 @@ fn apply_mulligan_keep(state: &mut GameState) {
         return;
     }
 
-    // No mulligans → they're done deciding.
+    // No mulligans taken, or a non-London rule → they're done deciding.
     state.player_mut(player).mulligan_decided = true;
 
     if let Some(next) = next_undecided_mulligan_player(state) {
@@ -1649,14 +1655,24 @@ fn apply_mulligan_keep(state: &mut GameState) {
 }
 
 fn apply_mulligan_again(state: &mut GameState) {
+    use crate::format::MulliganRule;
     let player = state.priority_player();
-    // London mulligan: shuffle hand into library, redraw 7. Owes one
-    // card to the bottom per mulligan taken.
+    // Shuffle current hand back first; every rule agrees on that.
     shuffle_hand_into_library(state, player);
     state.player_mut(player).mulligans_taken =
         state.player(player).mulligans_taken.saturating_add(1);
-    let hand_size = state.format.starting_hand_size;
-    for _ in 0..hand_size {
+    let new_mulligans = state.player(player).mulligans_taken;
+    let starting = state.format.starting_hand_size;
+    // London redraws the full starting hand and charges one owed-
+    // bottom per mulligan at keep time. Paris/Vancouver redraw one
+    // card fewer per mulligan taken — so the first mulligan yields
+    // starting-1 cards, the second yields starting-2, and so on.
+    let redraw = match state.format.mulligan_rule {
+        MulliganRule::London => starting,
+        MulliganRule::Paris
+        | MulliganRule::Vancouver => starting.saturating_sub(new_mulligans),
+    };
+    for _ in 0..redraw {
         state.draw_one_card(player);
     }
     // Stay in mulligan decision for this player.
@@ -4646,6 +4662,113 @@ mod tests {
         // (the RNG could cycle), but we *do* know the library is the
         // same total size.
         let _ = hand_before;
+    }
+
+    // --- Paris / Vancouver mulligan (CR 103.4 historical variants) ---------
+
+    /// Build a two-player game under a custom [`MulliganRule`].
+    /// Returns the initial state and the mulligan yield for player 0.
+    fn start_with_rule(
+        seed: u64,
+        rule: crate::format::MulliganRule,
+    ) -> (GameState, EngineYield) {
+        let mut registry = crate::registry::CardRegistry::new();
+        let deck = register_mountain_deck(&mut registry, 60);
+        let mut f = crate::format::FormatConfig::standard_2026();
+        f.mulligan_rule = rule;
+        new_game_with_format(vec![deck.clone(), deck], f, &registry, seed)
+    }
+
+    #[test]
+    fn paris_mulligan_redraws_one_fewer_card_per_mulligan() {
+        // CR 103.4 historical — each Paris mulligan shrinks the
+        // redraw by 1: mull 1 → 6, mull 2 → 5, mull 3 → 4.
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(11, MulliganRule::Paris);
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 7);
+
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        assert_eq!(state.player(0).mulligans_taken, 1);
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 6,
+            "Paris mull 1 redraws 6");
+
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        assert_eq!(state.player(0).mulligans_taken, 2);
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 5,
+            "Paris mull 2 redraws 5");
+
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        assert_eq!(state.player(0).mulligans_taken, 3);
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 4,
+            "Paris mull 3 redraws 4");
+    }
+
+    #[test]
+    fn paris_keep_after_mulligan_skips_bottoming() {
+        // Paris doesn't owe bottoms — the smaller redraw is the cost.
+        // Keeping should advance straight to the next player's
+        // mulligan decision.
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(13, MulliganRule::Paris);
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        let (state, yld) = step(state, Action::MulliganKeep, &reg());
+
+        assert_eq!(state.priority.special_action,
+            Some(SpecialAction::MulliganDecision),
+            "Paris keep skips LondonMulliganBottomCards");
+        match yld {
+            EngineYield::PendingDecision { player, context, .. } => {
+                assert_eq!(player, 1);
+                assert!(matches!(context, DecisionContext::Mulligan));
+            }
+            _ => panic!("expected Mulligan for P1 after Paris keep"),
+        }
+        // Hand size stays at 6 (mull 1 redraw, no bottoming cost).
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 6);
+    }
+
+    #[test]
+    fn vancouver_mulligan_matches_paris_hand_size() {
+        // Vancouver shares Paris's redraw ladder (mull 1 → 6, etc.).
+        // The post-keep scry-1 is pending separate wiring and isn't
+        // exercised here.
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(17, MulliganRule::Vancouver);
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 6,
+            "Vancouver mull 1 redraws 6");
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 5,
+            "Vancouver mull 2 redraws 5");
+    }
+
+    #[test]
+    fn vancouver_keep_after_mulligan_skips_bottoming() {
+        // Like Paris, Vancouver doesn't pay the London bottoming cost.
+        // (It pays a post-keep scry 1 instead — not yet wired.)
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(19, MulliganRule::Vancouver);
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        let (state, _y) = step(state, Action::MulliganKeep, &reg());
+        assert_eq!(state.priority.special_action,
+            Some(SpecialAction::MulliganDecision),
+            "Vancouver keep skips LondonMulliganBottomCards");
+    }
+
+    #[test]
+    fn london_mulligan_regression_still_redraws_seven_and_owes_bottoms() {
+        // Guard against an accidental route of London through the
+        // Paris/Vancouver branches: mulligan must still redraw 7 and
+        // the subsequent keep must enter the bottoming window.
+        let (state, _y) = start(23);
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 7,
+            "London mulligan must redraw 7 regardless of mulligans_taken");
+        let (state, _y) = step(state, Action::MulliganKeep, &reg());
+        assert_eq!(
+            state.priority.special_action,
+            Some(SpecialAction::LondonMulliganBottomCards(1)),
+            "London keep after 1 mulligan must still owe 1 bottom");
     }
 
     // --- concede ------------------------------------------------------------
