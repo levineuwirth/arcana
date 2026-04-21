@@ -1223,9 +1223,9 @@ pub(crate) fn apply_resolution_choice(
             }
         }
 
-        // --- ChooseTargets mid-resolution (storm copies, CopySpell) --
-        // The pushing effect stashed an
-        // `ApplyTargetsToStackEntry` follow-up naming the entry
+        // --- ChooseTargets mid-resolution (storm copies, CopySpell,
+        // targeted triggered abilities). The pushing effect stashed
+        // an `ApplyTargetsToStackEntry` follow-up naming the entry
         // whose targets to overwrite. Clears the requirements slot.
         (
             ChoiceKind::ChooseTargets { .. },
@@ -1240,10 +1240,26 @@ pub(crate) fn apply_resolution_choice(
                 crate::actions::ChoiceFollowUp::ApplyTargetsToStackEntry {
                     entry_id,
                 } => {
+                    let is_triggered = state.stack.iter()
+                        .find(|e| e.id == entry_id)
+                        .is_some_and(|e| e.is_triggered());
+                    let controller = state.stack.iter()
+                        .find(|e| e.id == entry_id)
+                        .map(|e| e.controller);
                     if let Some(entry) =
                         state.stack.iter_mut().find(|e| e.id == entry_id)
                     {
                         entry.targets = selection.clone();
+                    }
+                    // CR 603.3b — triggered abilities that target emit
+                    // BecomesTarget as they go on the stack. Spell /
+                    // activated-ability targeting already emits at
+                    // cast/activate time; copy-spells via this path
+                    // don't emit today (separate gap).
+                    if is_triggered {
+                        if let Some(controller) = controller {
+                            emit_becomes_target_events(state, entry_id, controller);
+                        }
                     }
                 }
                 other => panic!(
@@ -1844,6 +1860,20 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
         apply_state_based_actions(state);
         if state.is_game_over() { state.clear_lki(); return; }
 
+        // 1b. Drain any targeted triggers that have been waiting for a
+        //     target prompt. Each pop either drops the trigger (no legal
+        //     targets, CR 603.3d) or pushes a stack entry + ChooseTargets
+        //     prompt; the latter case returns and the settle loop yields.
+        if !state.pending_trigger_queue.is_empty() {
+            if drain_one_queued_targeted_trigger(state, registry) {
+                // A choice was pushed — let settle detect it and yield.
+                return;
+            }
+            // Otherwise we dropped the head per CR 603.3d; loop and try
+            // the next entry (may still be more in the queue).
+            continue;
+        }
+
         // 2. Collect triggers from events since the last scan. We
         //    snapshot the cursor, advance it to the current tail, and
         //    operate on the snapshot. Triggers pushed during this
@@ -1871,23 +1901,15 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
 
         if pending.is_empty() { return; }
 
-        // 3. Push each pending trigger as a TriggeredAbility stack
-        //    entry. Order is already APNAP-sorted by
-        //    `collect_pending_triggers`.
+        // 3. Split pending triggers by targeted-ness. Untargeted ones
+        //    push to the stack immediately; targeted ones queue for
+        //    async target choice via the next iteration's drain.
         for pt in pending {
-            let entry_id = state.allocate_object_id();
-            let entry = crate::stack::StackEntry::new_triggered_ability(
-                entry_id,
-                pt.source,
-                pt.controller,
-                pt.trigger_id,
-                pt.trigger_event.clone(),
-                /*text=*/ String::new(),
-                crate::targets::TargetSelection::new(),
-                Vec::new(),
-            );
-            state.push_stack_entry(entry);
-            state.record_trigger_fired(pt.source, pt.trigger_id);
+            if ability_needs_targets(state, registry, &pt) {
+                state.pending_trigger_queue.push_back(pt);
+            } else {
+                push_trigger_stack_entry(state, pt, Vec::new());
+            }
         }
         // Loop — the push emitted no direct events, but on the next
         // iteration SBAs re-run just in case the trigger list
@@ -1898,6 +1920,98 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
     // (infinite trigger storm, cursor not advancing, etc.).
     panic!("run_sba_and_triggers: failed to settle in \
             {MAX_SETTLE_ITERATIONS} iterations");
+}
+
+/// Does this pending trigger's ability carry any target requirements?
+/// Looks the ability up via the source object's card_id; a missing
+/// source or missing ability entry is treated as "no targets" so the
+/// fallback "push with empty targets" path runs (consistent with
+/// pre-targeted-trigger behavior for synthesized triggers).
+fn ability_needs_targets(
+    state: &GameState,
+    registry: &CardRegistry,
+    pt: &crate::triggers::PendingTrigger,
+) -> bool {
+    let Some(obj) = state.object_or_lki(pt.source) else { return false; };
+    let Some(def) = registry.get(obj.card_id) else { return false; };
+    def.triggered_abilities.iter()
+        .find(|a| a.id == pt.trigger_id)
+        .is_some_and(|a| !a.target_requirements.is_empty())
+}
+
+/// Push a plain triggered-ability stack entry and record its frequency
+/// ledger bump. Returns the new entry's id so targeted-trigger
+/// callers can attach target requirements + choice prompts to it.
+fn push_trigger_stack_entry(
+    state: &mut GameState,
+    pt: crate::triggers::PendingTrigger,
+    requirements: Vec<crate::targets::TargetRequirement>,
+) -> ObjectId {
+    let entry_id = state.allocate_object_id();
+    let mut entry = crate::stack::StackEntry::new_triggered_ability(
+        entry_id,
+        pt.source,
+        pt.controller,
+        pt.trigger_id,
+        pt.trigger_event.clone(),
+        String::new(),
+        crate::targets::TargetSelection::new(),
+        Vec::new(),
+    );
+    entry.target_requirements = requirements;
+    state.push_stack_entry(entry);
+    state.record_trigger_fired(pt.source, pt.trigger_id);
+    entry_id
+}
+
+/// Pop the next queued targeted trigger and either drop it
+/// (CR 603.3d — no legal targets) or push its stack entry together
+/// with a `ChooseTargets` prompt. Returns `true` if a prompt was
+/// pushed (caller should yield); `false` if the entry was dropped
+/// (caller should loop to try the next).
+fn drain_one_queued_targeted_trigger(
+    state: &mut GameState,
+    registry: &CardRegistry,
+) -> bool {
+    let Some(pt) = state.pending_trigger_queue.pop_front() else { return false; };
+    // Re-look up the ability's target_requirements. The source might
+    // have changed zones (and so been re-id'd) between enqueue and
+    // drain — we use object_or_lki so leaves-the-battlefield triggers
+    // still find their printed text.
+    let requirements = {
+        let Some(obj) = state.object_or_lki(pt.source) else {
+            // Source vanished entirely; trigger drops silently.
+            return false;
+        };
+        let Some(def) = registry.get(obj.card_id) else { return false; };
+        let Some(ability) = def.triggered_abilities.iter()
+            .find(|a| a.id == pt.trigger_id)
+        else { return false; };
+        ability.target_requirements.clone()
+    };
+    if requirements.is_empty() {
+        // Defensive: caller mis-queued a non-targeted trigger. Push
+        // it like any other untargeted trigger.
+        push_trigger_stack_entry(state, pt, Vec::new());
+        return false;
+    }
+    // CR 603.3d — if no legal target set exists, the ability simply
+    // doesn't trigger: no stack entry, no ledger bump, no BecomesTarget.
+    if crate::legal_actions::enumerate_target_selections(
+        &requirements, state, pt.controller).is_empty()
+    {
+        return false;
+    }
+    let entry_id = push_trigger_stack_entry(state, pt.clone(), requirements.clone());
+    state.pending_target_requirements = Some(requirements);
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::ApplyTargetsToStackEntry { entry_id });
+    state.push_pending_choice(
+        pt.controller,
+        crate::actions::ChoiceContext::ResolvingStack(entry_id),
+        crate::actions::ChoiceKind::ChooseTargets { source: entry_id },
+    );
+    true
 }
 
 /// Walk every registered triggered ability on permanents currently
@@ -1966,6 +2080,7 @@ fn collect_pending_triggers(
                             trigger_id: WARD_TRIGGER_ID,
                             controller: ward_obj.controller,
                             trigger_event: event.clone(),
+                            targets: crate::targets::TargetSelection::new(),
                         });
                     }
                 }
@@ -2442,7 +2557,15 @@ fn resolution_target_requirements(
                 .map(|a| a.target_requirements.clone())
                 .unwrap_or_default()
         }
-        crate::stack::StackEntryKind::TriggeredAbility { .. } => Vec::new(),
+        crate::stack::StackEntryKind::TriggeredAbility { .. } => {
+            // Target requirements for a triggered ability live on the
+            // stack entry itself (populated at push-time from
+            // `TriggeredAbilityDef::target_requirements`), not on a
+            // per-cast spell ability. CR 608.2b rechecks them at
+            // resolution the same way as for spells / activated
+            // abilities.
+            entry.target_requirements.clone()
+        }
     }
 }
 
@@ -2524,6 +2647,7 @@ fn resolution_effects(
                 trigger_id: *trigger_id,
                 controller: entry.controller,
                 trigger_event: trigger_event.clone(),
+                targets: entry.targets.clone(),
             };
             (ability.effect)(state, &pt, registry)
         }
@@ -4352,6 +4476,7 @@ mod tests {
             effect: pinger_effect,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
         });
         registry.register(def)
     }
@@ -4386,6 +4511,251 @@ mod tests {
         let entry = state.top_of_stack().unwrap();
         assert!(entry.is_triggered());
         assert_eq!(entry.source, battlefield_id);
+    }
+
+    // --- Targeted triggered abilities (CR 603.3d) -------------------------
+
+    /// Register a card whose ETB trigger reads
+    /// "When ~ enters the battlefield, it deals 1 damage to target
+    /// creature". Used to exercise target_requirements +
+    /// BecomesTarget emission through the trigger pipeline.
+    fn register_etb_target_pinger(
+        registry: &mut crate::registry::CardRegistry,
+    ) -> crate::types::CardId {
+        use crate::triggers::{TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
+        use crate::effects::Effect;
+        use crate::events::DamageTarget;
+        use crate::targets::{TargetRequirement, TargetFilter, TargetCount, TargetChoice};
+        let name = registry.interner_mut().intern("Targeted Pinger");
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        fn targeted_pinger_effect(
+            _s: &GameState,
+            pt: &crate::triggers::PendingTrigger,
+            _: &crate::registry::CardRegistry,
+        ) -> Vec<Effect> {
+            // Read the chosen target off the PendingTrigger — populated
+            // from the stack entry's targets when this trigger resolves.
+            let Some(target) = pt.targets.targets.first() else { return Vec::new(); };
+            let TargetChoice::Object(id) = target else { return Vec::new(); };
+            vec![Effect::DealDamage {
+                source: pt.source,
+                target: DamageTarget::Object(*id),
+                amount: 1,
+            }]
+        }
+        let mut def = crate::registry::CardDefinition::new(name, chars);
+        def.triggered_abilities.push(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: targeted_pinger_effect,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Creature,
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+        });
+        registry.register(def)
+    }
+
+    #[test]
+    fn targeted_etb_with_legal_target_pushes_choose_targets() {
+        // Creature ETBs with its targeted trigger. Another creature is
+        // on the battlefield to serve as the legal target. Expectation:
+        // trigger goes through the queue and resurfaces as a
+        // ChooseTargets pending choice; the trigger is on the stack
+        // waiting for targets.
+        use crate::actions::{ChoiceContext, ChoiceKind};
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_etb_target_pinger(&mut registry);
+        let mut state = GameState::new(2, 0);
+        // Another creature to serve as the target.
+        let bear_id = state.allocate_object_id();
+        state.objects.insert(GameObject::new(
+            bear_id, 1, Zone::Battlefield, 0, creature_chars(2, 2)));
+        // Pinger enters the battlefield.
+        let pinger_id = state.allocate_object_id();
+        let def = registry.get(card).unwrap();
+        state.objects.insert(GameObject::new(
+            pinger_id, 0, Zone::Hand(0), card,
+            def.base_characteristics.clone()));
+        let pinger_on_bf = state.move_object_to_zone(
+            pinger_id, Zone::Battlefield, MoveCause::SpellResolution).unwrap();
+
+        run_sba_and_triggers(&mut state, &registry);
+
+        // Trigger is on the stack (targeted-trigger push happens
+        // in drain_one_queued_targeted_trigger); a ChooseTargets
+        // prompt is pending.
+        assert_eq!(state.stack_size(), 1,
+            "targeted trigger placed on stack");
+        let entry = state.top_of_stack().unwrap();
+        assert!(entry.is_triggered());
+        assert_eq!(entry.source, pinger_on_bf);
+        assert!(!entry.target_requirements.is_empty(),
+            "stack entry carries target requirements for re-check");
+
+        let pending = state.pending_choice.as_ref()
+            .expect("targeted trigger must push a ChooseTargets prompt");
+        assert!(matches!(pending.context, ChoiceContext::ResolvingStack(_)));
+        assert!(matches!(pending.kind, ChoiceKind::ChooseTargets { .. }));
+        assert_eq!(pending.choosing_player, 0);
+    }
+
+    #[test]
+    fn targeted_etb_with_no_legal_targets_drops_per_cr_603_3d() {
+        // CR 603.3d — no legal target available, so the ability
+        // simply doesn't trigger. Nothing on the stack; no prompt.
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_etb_target_pinger(&mut registry);
+        let mut state = GameState::new(2, 0);
+        // No other creatures on the battlefield — only the pinger
+        // itself (which is a creature, so technically a legal target;
+        // we remove it below). Actually the pinger IS a legal target
+        // for itself, so to force "no legal targets" we need to make
+        // no creatures other than... wait: the pinger ETBing means it
+        // IS on the battlefield by the time the trigger fires, and
+        // the filter is TargetFilter::Creature which would match
+        // the pinger. So we need a different force: use an
+        // additional constraint that excludes the pinger. Simplest:
+        // don't use this test for the self-targeting case. Instead
+        // test with no battlefield creatures via a different trigger
+        // shape — "target opponent's creature".
+        //
+        // Rewrite: register a pinger whose target is a creature an
+        // *opponent* controls. With no opponent creatures, no legal
+        // target.
+        use crate::triggers::{TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
+        use crate::effects::Effect;
+        use crate::events::DamageTarget;
+        use crate::targets::{
+            TargetRequirement, TargetFilter, TargetCount, TargetChoice,
+            ControllerConstraint,
+        };
+        let _ = card; // discard the generic pinger — use the restrictive one.
+        let name = registry.interner_mut().intern("Targeted Opponent Pinger");
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        fn opponent_pinger_effect(
+            _s: &GameState,
+            pt: &crate::triggers::PendingTrigger,
+            _: &crate::registry::CardRegistry,
+        ) -> Vec<Effect> {
+            let Some(target) = pt.targets.targets.first() else { return Vec::new(); };
+            let TargetChoice::Object(id) = target else { return Vec::new(); };
+            vec![Effect::DealDamage {
+                source: pt.source,
+                target: DamageTarget::Object(*id),
+                amount: 1,
+            }]
+        }
+        let mut def = crate::registry::CardDefinition::new(name, chars);
+        def.triggered_abilities.push(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: opponent_pinger_effect,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Creature,
+                count: TargetCount::Exactly(1),
+                controller: Some(ControllerConstraint::Opponent),
+            }],
+        });
+        let card_id = registry.register(def);
+
+        let pinger_id = state.allocate_object_id();
+        let def = registry.get(card_id).unwrap();
+        state.objects.insert(GameObject::new(
+            pinger_id, 0, Zone::Hand(0), card_id,
+            def.base_characteristics.clone()));
+        // No opponent creatures on the battlefield.
+        let _ = state.move_object_to_zone(
+            pinger_id, Zone::Battlefield, MoveCause::SpellResolution).unwrap();
+
+        run_sba_and_triggers(&mut state, &registry);
+
+        assert_eq!(state.stack_size(), 0,
+            "no legal targets → trigger doesn't land on the stack");
+        assert!(state.pending_choice.is_none(),
+            "no ChooseTargets prompt when the ability didn't trigger");
+        assert!(state.pending_trigger_queue.is_empty(),
+            "queue drained — the trigger was dropped per CR 603.3d");
+    }
+
+    #[test]
+    fn targeted_trigger_resolves_and_emits_becomes_target() {
+        // Full cycle: ETB → queue → prompt → submit target →
+        // BecomesTarget event fires → trigger resolves → target takes
+        // 1 damage.
+        use crate::actions::ChoiceResponse;
+        use crate::targets::{TargetChoice, TargetSelection};
+        use crate::events::GameEvent;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_etb_target_pinger(&mut registry);
+        let mut state = GameState::new(2, 0);
+        let bear_id = state.allocate_object_id();
+        state.objects.insert(GameObject::new(
+            bear_id, 1, Zone::Battlefield, 0, creature_chars(2, 2)));
+        let pinger_id = state.allocate_object_id();
+        let def = registry.get(card).unwrap();
+        state.objects.insert(GameObject::new(
+            pinger_id, 0, Zone::Hand(0), card,
+            def.base_characteristics.clone()));
+        let pinger_on_bf = state.move_object_to_zone(
+            pinger_id, Zone::Battlefield, MoveCause::SpellResolution).unwrap();
+
+        run_sba_and_triggers(&mut state, &registry);
+        let pending = state.pending_choice.as_ref().unwrap();
+        let choice_id = pending.id;
+        let entry_id = state.top_of_stack().unwrap().id;
+
+        // Submit bear as the target.
+        apply_resolution_choice(&mut state, &registry, choice_id,
+            ChoiceResponse::ChooseTargets {
+                selection: TargetSelection {
+                    targets: vec![TargetChoice::Object(bear_id)],
+                },
+            });
+
+        // After the choice, BecomesTarget must have fired, keyed to
+        // the triggered-ability entry (so Ward on the bear could pick
+        // it up if printed).
+        assert!(state.event_log.iter().any(|e| matches!(e,
+            GameEvent::BecomesTarget { target, source, controller: 0 }
+                if *target == bear_id && *source == entry_id)),
+            "BecomesTarget fires as the trigger's targets are declared");
+        // And the stack entry now has the target on it.
+        let entry = state.stack.iter().find(|e| e.id == entry_id).unwrap();
+        assert_eq!(entry.targets.targets.len(), 1);
+
+        // Resolve the trigger by running the dispatcher once more.
+        // In a real game this would go through priority + resolve;
+        // here we directly invoke resolve_top_of_stack.
+        resolve_top_of_stack(&mut state, &registry);
+
+        // Bear took 1 damage from the pinger.
+        assert_eq!(state.objects.get(bear_id).unwrap().damage_marked, 1,
+            "targeted trigger dealt 1 damage to its chosen target");
+        let _ = pinger_on_bf;
     }
 
     #[test]

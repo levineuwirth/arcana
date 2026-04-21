@@ -60,6 +60,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_install_attached_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
 }

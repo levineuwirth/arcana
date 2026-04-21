@@ -1316,13 +1316,16 @@ fn copy_spell_on_stack(state: &mut GameState, target: ObjectId) {
 /// follow-up, invoked after the agent answers, installs the layer-6
 /// grant on the chosen object.
 ///
-/// If the candidate set is empty, we still push the prompt with an
-/// empty candidate list and `min = 0` so the agent can trivially
-/// answer "picked nothing" — matches CR 603.3d's graceful handling
-/// of a triggered ability that resolves without a legal target.
-/// (We don't fizzle at trigger-announcement time because Phase 2-A
-/// does target choice mid-resolution, not pre-stack; see the
-/// TargetedTrigger gap note in the commit message.)
+/// Snapcaster picks a graveyard card with a `PickCards` prompt
+/// rather than through the general TargetedTrigger machinery
+/// ([`crate::triggers::TriggeredAbilityDef::target_requirements`]):
+/// that machinery targets battlefield / stack / player objects
+/// via [`crate::targets::TargetFilter`], whereas "target card in a
+/// graveyard" needs graveyard-zone iteration that the current
+/// TargetFilter set doesn't express. The PickCards stopgap is
+/// fine at seed-card scale; if a second "target-in-graveyard"
+/// triggered ability shows up we'll promote it to TargetFilter
+/// proper.
 fn snapcaster_grant_flashback(
     state: &mut GameState,
     source: ObjectId,

@@ -159,6 +159,14 @@ pub struct GameState {
     /// bottom-shuffle the full exiled list (incl. `hit`) via the
     /// engine's seeded RNG.
     pub pending_cascade: Option<PendingCascade>,
+    /// CR 603.3b/d — targeted triggered abilities that have matched
+    /// an event but haven't been put on the stack yet. Since target
+    /// choice is an agent decision and simultaneous triggers fire
+    /// in APNAP order, the engine processes them one at a time:
+    /// push stack entry + `ChooseTargets` prompt, yield, and on
+    /// choice resolution pop the next entry. Drained by
+    /// [`crate::engine::run_sba_and_triggers`].
+    pub pending_trigger_queue: std::collections::VecDeque<crate::triggers::PendingTrigger>,
     /// Last-known-information table (CR 603.10 / 400.7). When an
     /// object changes zones it becomes a new object with a new
     /// [`ObjectId`]; any ability that must "look back" at the
@@ -240,6 +248,7 @@ impl GameState {
             storm_count: 0,
             pending_target_requirements: None,
             pending_cascade: None,
+            pending_trigger_queue: std::collections::VecDeque::new(),
             next_object_id: FIRST_OBJECT_ID,
             result: None,
             event_log: Vec::new(),

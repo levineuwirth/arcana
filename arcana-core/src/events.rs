@@ -83,10 +83,12 @@ pub enum GameEvent {
     /// target of ..." triggers attach to.
     ///
     /// `source` is the stack-entry id of the targeting spell or
-    /// ability; `controller` is its caster/activator. Triggered
-    /// abilities that target don't emit this event in Phase 2-B —
-    /// triggered-ability target choice is still mid-resolution (the
-    /// TargetedTrigger gap documented in [`crate::effects`]).
+    /// ability; `controller` is its caster/activator. Emitted by
+    /// [`crate::engine::apply_cast_spell`] for spell casts, by
+    /// the activated-ability dispatch for activations, and by the
+    /// `ApplyTargetsToStackEntry` follow-up for triggered abilities
+    /// that declared targets as they went on the stack
+    /// (CR 603.3b).
     BecomesTarget {
         target: ObjectId,
         source: ObjectId,

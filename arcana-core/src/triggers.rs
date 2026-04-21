@@ -101,6 +101,14 @@ pub struct TriggeredAbilityDef {
     pub trigger_zones: Vec<Zone>,
     /// How often this can fire per turn / game.
     pub frequency: TriggerFrequency,
+    /// CR 603.3d — target requirements declared as the trigger goes
+    /// on the stack. Empty for non-targeted triggers (most seed
+    /// cards). When non-empty, the engine's settle loop pushes a
+    /// [`crate::actions::ChoiceKind::ChooseTargets`] prompt at the
+    /// same moment it pushes the trigger; if no legal target exists
+    /// per the combined requirements, the ability doesn't trigger
+    /// and never lands on the stack.
+    pub target_requirements: Vec<crate::targets::TargetRequirement>,
 }
 
 impl TriggeredAbilityDef {
@@ -151,6 +159,7 @@ impl TriggeredAbilityDef {
             trigger_id: self.id,
             controller: source_controller,
             trigger_event: event.clone(),
+            targets: crate::targets::TargetSelection::new(),
         })
     }
 }
@@ -395,6 +404,12 @@ pub struct PendingTrigger {
     pub trigger_id: TriggerId,
     pub controller: PlayerId,
     pub trigger_event: GameEvent,
+    /// Targets declared as the trigger went on the stack (CR 603.3b).
+    /// Empty for non-targeted triggers and for enqueued targeted
+    /// triggers that haven't been prompted yet; populated from
+    /// [`crate::stack::StackEntry::targets`] at resolution time so
+    /// the effect callback can read the chosen targets.
+    pub targets: crate::targets::TargetSelection,
 }
 
 /// Sort `triggers` in-place by APNAP order of their `controller` —
@@ -522,6 +537,7 @@ impl GameState {
                 trigger_id: 0, // delayed triggers have no persistent id
                 controller: t.controller,
                 trigger_event: event.clone(),
+                targets: crate::targets::TargetSelection::new(),
             }
         }).collect();
         sort_by_apnap(&mut out, self.active_player(), self.num_players());
@@ -836,6 +852,7 @@ mod tests {
             // Ability only functions on the battlefield.
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
         };
         let event = GameEvent::Dies { object_id: src };
         assert!(def.should_fire(&event, src, 0, &s).is_none());
@@ -857,6 +874,7 @@ mod tests {
             effect: no_effect,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
         };
         let event = GameEvent::EntersBattlefield {
             object_id: src, from_zone: Zone::Hand(0), was_cast: true,
@@ -875,6 +893,7 @@ mod tests {
             effect: no_effect,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::OncePerTurn,
+            target_requirements: Vec::new(),
         };
         let event = GameEvent::EntersBattlefield {
             object_id: src, from_zone: Zone::Hand(0), was_cast: true,
@@ -899,6 +918,7 @@ mod tests {
             effect: no_effect,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::OncePerGame,
+            target_requirements: Vec::new(),
         };
         let event = GameEvent::EntersBattlefield {
             object_id: src, from_zone: Zone::Hand(0), was_cast: true,
@@ -915,13 +935,14 @@ mod tests {
 
     #[test]
     fn sort_by_apnap_active_first() {
+        let empty = crate::targets::TargetSelection::new();
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 1,
-                trigger_event: GameEvent::TurnEnds { player: 0 } },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
             PendingTrigger { source: 2, trigger_id: 2, controller: 0,
-                trigger_event: GameEvent::TurnEnds { player: 0 } },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
-                trigger_event: GameEvent::TurnEnds { player: 0 } },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
         ];
         sort_by_apnap(&mut triggers, /*active=*/ 0, /*N=*/ 2);
         let controllers: Vec<_> = triggers.iter().map(|t| t.controller).collect();
@@ -933,13 +954,14 @@ mod tests {
 
     #[test]
     fn sort_by_apnap_three_players() {
+        let empty = crate::targets::TargetSelection::new();
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 0,
-                trigger_event: GameEvent::TurnEnds { player: 0 } },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
             PendingTrigger { source: 2, trigger_id: 2, controller: 2,
-                trigger_event: GameEvent::TurnEnds { player: 0 } },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
-                trigger_event: GameEvent::TurnEnds { player: 0 } },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
         ];
         // Active = 1, so APNAP order is 1, 2, 0.
         sort_by_apnap(&mut triggers, 1, 3);
@@ -964,6 +986,7 @@ mod tests {
             effect: draw_card_effect,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
         };
         let event = GameEvent::StepBegins { step: Step::Upkeep };
         // Two copies of the ability, one controlled by each player.

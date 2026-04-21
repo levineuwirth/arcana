@@ -1374,7 +1374,7 @@ fn legal_priority_actions(
 /// are enumerated per clause. Multi-target (`Exactly(2)`, `UpTo`,
 /// `Any`, `X`) fall back to a single empty selection so we never
 /// emit over-combinatorial action sets.
-fn enumerate_target_selections(
+pub(crate) fn enumerate_target_selections(
     requirements: &[TargetRequirement],
     state: &GameState,
     source_controller: PlayerId,

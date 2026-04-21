@@ -43,6 +43,7 @@ pub fn storm_trigger_def(trigger_id: TriggerId) -> TriggeredAbilityDef {
         // The card is on the stack when it's being cast.
         trigger_zones: vec![Zone::Stack],
         frequency: TriggerFrequency::EachTime,
+        target_requirements: Vec::new(),
     }
 }
 
@@ -89,6 +90,7 @@ pub fn cascade_trigger_def(trigger_id: TriggerId) -> TriggeredAbilityDef {
         effect: cascade_effect,
         trigger_zones: vec![Zone::Stack],
         frequency: TriggerFrequency::EachTime,
+        target_requirements: Vec::new(),
     }
 }
 
