@@ -26,11 +26,11 @@
 //!   text.
 //! * CR 711.4a — A player casting a split card chooses which half
 //!   to cast. The half not chosen has no effect.
-//! * CR 711.4b — In zones other than the stack, a split card has
-//!   the combined characteristics of both halves. This engine's
-//!   Phase 2 does not implement the combined view; queries against
-//!   the card in hand or graveyard see only the left (Fire) half.
-//!   Documented at [`CardDefinition::with_split_right`].
+//! * CR 711.4 — In zones other than the stack, Fire // Ice reports
+//!   the combined characteristics of both halves (combined name,
+//!   concatenated mana cost for a mana value of 4, both colors,
+//!   Instant type). Synthesized at registration by
+//!   [`arcana_core::registry::CardRegistry::register`].
 //! * Fuse (CR 702.102) — not implemented. Fire // Ice predates
 //!   Fuse; no current seed requires it.
 

@@ -42,7 +42,7 @@ use crate::stack::StackEntry;
 use crate::state::GameState;
 use crate::targets::{TargetRequirement, TargetSelection};
 use crate::triggers::TriggeredAbilityDef;
-use crate::types::{CardId, CounterKind, PlayerId, SmallString, StringInterner};
+use crate::types::{CardId, CounterKind, PlayerId, SmallString, StringInterner, SupertypeSet};
 
 // =============================================================================
 // Effect function signatures
@@ -117,6 +117,15 @@ pub struct CardDefinition {
     /// rides inline on the variant, keeping the type system's "is
     /// this card multi-face" check to a single `Option` match.
     pub alternate_face: Option<AlternateFace>,
+    /// CR 711.4 — combined-characteristics view for Split cards in
+    /// zones other than the stack. Populated by
+    /// [`CardRegistry::register`] when it sees a [`AlternateFace::Split`]
+    /// definition, with no content: left-face and right-face merged
+    /// (combined name, concatenated mana cost, union of colors / types
+    /// / subtypes / supertypes / keywords). `None` for every other
+    /// card. See [`Self::initial_characteristics`] for the hook that
+    /// routes hand / library / graveyard objects through this view.
+    pub combined_characteristics: Option<Characteristics>,
 }
 
 impl CardDefinition {
@@ -131,7 +140,17 @@ impl CardDefinition {
             triggered_abilities: Vec::new(),
             enters_with: Vec::new(),
             alternate_face: None,
+            combined_characteristics: None,
         }
+    }
+
+    /// Characteristics an off-stack game object for this card starts
+    /// with. For Split cards (CR 711.4) this returns the combined
+    /// both-halves view synthesized at registration time; for every
+    /// other card it returns [`Self::base_characteristics`].
+    pub fn initial_characteristics(&self) -> &Characteristics {
+        self.combined_characteristics.as_ref()
+            .unwrap_or(&self.base_characteristics)
     }
 
     pub fn with_spell_ability(mut self, ability: SpellAbilityDef) -> Self {
@@ -462,13 +481,14 @@ pub enum AlternateFace {
     /// permanent-on-battlefield residue — both halves resolve to
     /// graveyard as normal instants/sorceries.
     ///
-    /// CR 711.4b says split cards have the combined characteristics
-    /// of both halves in zones other than the stack. This engine's
-    /// Phase 2 does not implement that combined view; queries
-    /// against a split card in hand / graveyard see only the left
-    /// half. No current seed exercises the combined-char behavior
-    /// (it matters for effects like Knowledge Pool and Chromatic
-    /// Lantern's color-identity checks, which haven't landed).
+    /// CR 711.4 — in zones other than the stack, a split card has
+    /// the combined characteristics of both halves. That view is
+    /// synthesized by [`CardRegistry::register`] onto
+    /// [`CardDefinition::combined_characteristics`] and installed on
+    /// fresh objects via [`CardDefinition::initial_characteristics`];
+    /// [`crate::engine::apply_cast_spell`] swaps to the chosen half's
+    /// chars on cast and the stack-leave paths restore the combined
+    /// view on the graveyard / exile object.
     Split(CardFace),
 }
 
@@ -771,13 +791,27 @@ impl CardRegistry {
     /// Register a card. Returns the freshly assigned [`CardId`]. The
     /// card's name must be unique — a duplicate registration panics,
     /// which is the correct behavior for a programming bug.
-    pub fn register(&mut self, definition: CardDefinition) -> CardId {
+    pub fn register(&mut self, mut definition: CardDefinition) -> CardId {
         let id = self.next_card_id;
         self.next_card_id = self.next_card_id.checked_add(1)
             .expect("CardRegistry: CardId counter overflow");
         let name = definition.name;
         if self.by_name.insert(name, id).is_some() {
             panic!("CardRegistry::register: duplicate name for CardId {id}");
+        }
+        // CR 711.4 — a Split card's off-stack characteristics combine
+        // both halves. Synthesize and stash now, while the interner is
+        // available to intern the combined name.
+        if definition.combined_characteristics.is_none() {
+            if let Some(AlternateFace::Split(right)) =
+                definition.alternate_face.as_ref()
+            {
+                let combined = combine_split_characteristics(
+                    &definition.base_characteristics,
+                    &right.characteristics,
+                    &mut self.interner);
+                definition.combined_characteristics = Some(combined);
+            }
         }
         self.definitions.insert(id, definition);
         id
@@ -823,6 +857,57 @@ impl CardRegistry {
 
     pub fn len(&self) -> usize { self.definitions.len() }
     pub fn is_empty(&self) -> bool { self.definitions.is_empty() }
+}
+
+/// CR 711.4 — merge the characteristics of a split card's two halves
+/// into the view an object reports while in zones other than the
+/// stack. Name becomes `"{left} // {right}"` (newly interned); mana
+/// cost is the concatenation of both halves' components (so mana
+/// value is the sum of both halves); colors, types, subtypes,
+/// supertypes, keywords are unioned. Abilities text lists concatenate.
+/// Power / toughness / loyalty are always `None` — split halves are
+/// instants or sorceries, never permanents.
+fn combine_split_characteristics(
+    left: &Characteristics,
+    right: &Characteristics,
+    interner: &mut StringInterner,
+) -> Characteristics {
+    let left_name = interner.resolve(left.name).unwrap_or("").to_string();
+    let right_name = interner.resolve(right.name).unwrap_or("").to_string();
+    let combined_name = interner.intern(&format!("{left_name} // {right_name}"));
+    let combined_cost = match (
+        left.mana_cost.as_ref(), right.mana_cost.as_ref())
+    {
+        (Some(l), Some(r)) => {
+            let mut components = l.components.clone();
+            components.extend(r.components.iter().copied());
+            Some(crate::mana::ManaCost { components })
+        }
+        (Some(l), None) => Some(l.clone()),
+        (None, Some(r)) => Some(r.clone()),
+        (None, None) => None,
+    };
+    let mut subtypes = left.subtypes.clone();
+    for s in right.subtypes.iter() { subtypes.insert(s); }
+    let mut keywords = left.keywords.clone();
+    for kw in &right.keywords {
+        if !keywords.contains(kw) { keywords.push(kw.clone()); }
+    }
+    let mut abilities_text = left.abilities_text.clone();
+    abilities_text.extend(right.abilities_text.iter().copied());
+    Characteristics {
+        name: combined_name,
+        mana_cost: combined_cost,
+        colors: left.colors | right.colors,
+        types: left.types | right.types,
+        subtypes,
+        supertypes: SupertypeSet(left.supertypes.0 | right.supertypes.0),
+        power: None,
+        toughness: None,
+        loyalty: None,
+        abilities_text,
+        keywords,
+    }
 }
 
 // =============================================================================
@@ -974,5 +1059,67 @@ mod tests {
 
         let free = ActivationCost::free();
         assert!(!free.tap);
+    }
+
+    /// CR 711.4 — registering a split card synthesizes a combined-
+    /// characteristics view merging both halves' name, cost, colors,
+    /// and types. [`CardDefinition::initial_characteristics`] returns
+    /// that view for off-stack zones.
+    #[test]
+    fn split_card_registration_synthesizes_combined_characteristics() {
+        let mut r = CardRegistry::new();
+        let left_name = r.interner_mut().intern("Fire");
+        let left_chars = Characteristics {
+            name: left_name,
+            mana_cost: Some(ManaCost::parse("{1}{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        };
+        let right_name = r.interner_mut().intern("Ice");
+        let right_chars = Characteristics {
+            name: right_name,
+            mana_cost: Some(ManaCost::parse("{1}{U}").unwrap()),
+            colors: ColorSet::blue(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        };
+        let id = r.register(
+            CardDefinition::new(left_name, left_chars)
+                .with_split_right(CardFace {
+                    name: right_name,
+                    characteristics: right_chars,
+                    spell_ability: None,
+                }));
+        let def = r.get(id).expect("registered");
+        let combined = def.combined_characteristics.as_ref()
+            .expect("combined chars synthesized at registration");
+        let name_str = r.interner().resolve(combined.name).unwrap();
+        assert_eq!(name_str, "Fire // Ice");
+        assert_eq!(combined.mana_cost.as_ref().unwrap().mana_value(), 4,
+            "combined CMC = left + right = 2 + 2");
+        assert_eq!(combined.colors, ColorSet::red() | ColorSet::blue(),
+            "combined colors union both halves");
+        assert!(combined.types.is_instant(),
+            "Instant | Instant is still Instant");
+        // initial_characteristics routes to the combined view.
+        assert_eq!(
+            def.initial_characteristics().mana_cost.as_ref().unwrap().mana_value(),
+            4);
+        // Non-split cards fall through to base_characteristics.
+        let bolt_name = r.interner_mut().intern("Bolt-solo");
+        let bolt_id = r.register(CardDefinition::new(bolt_name, Characteristics {
+            name: bolt_name,
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        }));
+        let bolt_def = r.get(bolt_id).unwrap();
+        assert!(bolt_def.combined_characteristics.is_none());
+        assert_eq!(
+            bolt_def.initial_characteristics().mana_cost.as_ref().unwrap()
+                .mana_value(),
+            1);
     }
 }

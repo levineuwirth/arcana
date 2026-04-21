@@ -172,6 +172,19 @@ pub struct StackEntry {
     /// path and Phase 2 doesn't exercise it.
     #[serde(skip)]
     pub pre_adventure_characteristics: Option<Characteristics>,
+    /// CR 711.4 — combined-both-halves characteristics of a Split card
+    /// snapshotted at cast time. Populated for any cast of a Split
+    /// card (left via `CastModifier::None` or right via
+    /// `CastModifier::SplitRight`), where the announced object carried
+    /// the chosen half's characteristics while on the stack. On
+    /// resolution or counter, the routing path writes these back onto
+    /// the post-re-id graveyard object so the card reports its
+    /// combined view in every zone other than the stack.
+    ///
+    /// `None` for every non-Split cast. Skipped by serde for the same
+    /// reason as [`Self::pre_adventure_characteristics`].
+    #[serde(skip)]
+    pub pre_split_characteristics: Option<Characteristics>,
 }
 
 impl StackEntry {
@@ -208,6 +221,7 @@ impl StackEntry {
             kicked: false,
             // Caller (apply_cast_spell) populates only for Adventure casts.
             pre_adventure_characteristics: None,
+            pre_split_characteristics: None,
         }
     }
 
@@ -242,6 +256,7 @@ impl StackEntry {
             delve_count: 0,
             kicked: false,
             pre_adventure_characteristics: None,
+            pre_split_characteristics: None,
         }
     }
 
@@ -275,6 +290,7 @@ impl StackEntry {
             delve_count: 0,
             kicked: false,
             pre_adventure_characteristics: None,
+            pre_split_characteristics: None,
         }
     }
 
@@ -674,6 +690,16 @@ impl GameState {
             }
         }
 
+        // CR 711.4 — restore the split card's combined characteristics
+        // on the post-re-id graveyard / exile object so any future
+        // off-stack query sees the combined view.
+        if let Some(pre_split) = entry.pre_split_characteristics.as_ref() {
+            if let Some(obj) = self.objects.get_mut(new_id) {
+                obj.characteristics = pre_split.clone();
+                obj.visible_face = 0;
+            }
+        }
+
         self.emit(GameEvent::ZoneChange {
             object_id: id,
             from,
@@ -819,6 +845,16 @@ impl GameState {
                 if let Some(pre) = entry.pre_adventure_characteristics.as_ref() {
                     obj.characteristics = pre.clone();
                 }
+            }
+        }
+
+        // CR 711.4 — mirror finalize_resolved_spell: a countered or
+        // fizzled split spell returns to the graveyard with combined
+        // characteristics, not the cast-face-only view.
+        if let Some(pre_split) = entry.pre_split_characteristics.as_ref() {
+            if let Some(obj) = self.objects.get_mut(new_id) {
+                obj.characteristics = pre_split.clone();
+                obj.visible_face = 0;
             }
         }
 

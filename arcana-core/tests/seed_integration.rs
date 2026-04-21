@@ -35,7 +35,7 @@ fn put_in_hand(
     card_id: arcana_core::types::CardId,
 ) -> ObjectId {
     let obj_id = state.allocate_object_id();
-    let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+    let chars = registry.get(card_id).unwrap().initial_characteristics().clone();
     state.objects.insert(GameObject::new(
         obj_id, player, Zone::Hand(player), card_id, chars));
     obj_id
@@ -1305,7 +1305,7 @@ fn put_in_library(
     card_id: arcana_core::types::CardId,
 ) -> ObjectId {
     let obj_id = state.allocate_object_id();
-    let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+    let chars = registry.get(card_id).unwrap().initial_characteristics().clone();
     state.objects.insert(GameObject::new(
         obj_id, owner, Zone::Library(owner), card_id, chars));
     state.player_mut(owner).library_top_to_bottom.push(obj_id);
@@ -1323,7 +1323,7 @@ fn put_in_library_top(
     card_id: arcana_core::types::CardId,
 ) -> ObjectId {
     let obj_id = state.allocate_object_id();
-    let chars = registry.get(card_id).unwrap().base_characteristics.clone();
+    let chars = registry.get(card_id).unwrap().initial_characteristics().clone();
     state.objects.insert(GameObject::new(
         obj_id, owner, Zone::Library(owner), card_id, chars));
     state.player_mut(owner).library_top_to_bottom.insert(0, obj_id);
@@ -3865,6 +3865,71 @@ fn split_right_not_offered_without_blue_mana() {
         "fire castable with {{R}}{{1}}");
     assert!(ice_cast_action(&actions, fi).is_none(),
         "ice NOT offered without {{U}}");
+}
+
+/// CR 711.4 — a split card in hand reports the combined characteristics
+/// of both halves (combined name, concatenated mana cost, union of
+/// colors and types). The in-zone view is what cards-in-hand-matter
+/// queries read (mana-value checks, color-matters, etc.).
+#[test]
+fn split_card_in_hand_has_combined_characteristics() {
+    let (mut s, registry, ids) = fresh_game();
+    let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
+    let obj = s.objects.get(fi).unwrap();
+    let name_str = registry.interner().resolve(obj.characteristics.name).unwrap();
+    assert_eq!(name_str, "Fire // Ice",
+        "combined name in hand");
+    assert_eq!(obj.characteristics.mana_value(), 4,
+        "combined mana value = Fire(2) + Ice(2)");
+    assert!(obj.characteristics.colors.contains(arcana_core::types::Color::Red)
+        && obj.characteristics.colors.contains(arcana_core::types::Color::Blue),
+        "combined colors cover both halves");
+}
+
+/// CR 711.4 — after an Ice (right-half) cast resolves, the card sits
+/// in the graveyard with combined characteristics, not just Ice's.
+/// Earlier `#[ignore]`-marked DEBT: the resolving object used to
+/// carry right-face chars into the graveyard.
+#[test]
+fn split_card_returns_to_graveyard_with_combined_characteristics() {
+    let (mut s, registry, ids) = fresh_game();
+    let fi = put_in_hand(&mut s, &registry, 0, ids.fire_ice);
+    let bears = put_on_battlefield(&mut s, &registry, 1, ids.grizzly_bears);
+    let _lib_card = put_in_library_top(&mut s, &registry, 0, ids.mountain);
+    give_mana(&mut s, 0, ManaColor::Blue, 1);
+    give_mana(&mut s, 0, ManaColor::Colorless, 1);
+    priority_to_main(&mut s, 0);
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let cast = ice_cast_action(&actions, fi).expect("ice cast offered");
+    let cast = match cast {
+        Action::CastSpell { object_id, modes, mana_payment,
+                            additional_costs, x_value, cast_modifier,
+                            cost_reductions, .. } => Action::CastSpell {
+            object_id,
+            targets: arcana_core::targets::TargetSelection {
+                targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+            },
+            modes, mana_payment, additional_costs, x_value,
+            cast_modifier, cost_reductions,
+        },
+        _ => unreachable!(),
+    };
+
+    let (s, _) = step(s, cast, &registry);
+    let s = resolve_stack(s, &registry);
+
+    // Find the resolved Fire // Ice in p0's graveyard. swap_to_zone_reid
+    // assigns a fresh id, so we iterate by zone.
+    let gy = s.objects.objects_in_zone(Zone::Graveyard(0))
+        .next().expect("Fire // Ice in graveyard");
+    let name_str = registry.interner().resolve(gy.characteristics.name).unwrap();
+    assert_eq!(name_str, "Fire // Ice",
+        "graveyard object carries combined name, not right-face name");
+    assert_eq!(gy.characteristics.mana_value(), 4,
+        "graveyard object carries combined mana value");
+    assert_eq!(gy.visible_face, 0,
+        "visible_face reset to 0 off the stack");
 }
 
 #[test]

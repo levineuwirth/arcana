@@ -706,10 +706,21 @@ fn legal_priority_actions(
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
         if !is_instant_speed && !sorcery_speed_ok { continue; }
 
-        let Some(printed_cost) = obj.characteristics.mana_cost.clone() else { continue; };
+        // CR 711.4 — for a Split card the object's off-stack chars are
+        // the combined view; a Normal cast dispatches the left half,
+        // so cost, types, and colors come from `base_characteristics`.
+        // For every other card, `base_characteristics` and
+        // `obj.characteristics` agree in hand (no swap has occurred).
+        let cast_chars: &crate::objects::Characteristics = registry.get(obj.card_id)
+            .filter(|def| def.alternate_face.as_ref()
+                .and_then(|af| af.as_split()).is_some())
+            .map(|def| &def.base_characteristics)
+            .unwrap_or(&obj.characteristics);
+
+        let Some(printed_cost) = cast_chars.mana_cost.clone() else { continue; };
 
         let ctx = SpendContext::for_spell(
-            obj.characteristics.types, obj.characteristics.colors);
+            cast_chars.types, cast_chars.colors);
 
         // Target requirements and mode combinations. Modal spells
         // (CR 700.2) generate `C(N,k)` distinct mode subsets for each

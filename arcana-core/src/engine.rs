@@ -583,6 +583,14 @@ fn apply_cast_spell(
         crate::actions::CastModifier::MdfcBack);
     let is_split_right_cast = matches!(cast_modifier,
         crate::actions::CastModifier::SplitRight);
+    // A Normal cast of a Split card resolves as the left half; it
+    // still needs the combined→left swap so the stack entry carries
+    // left-half chars and `pre_split_characteristics` on the entry
+    // restores the combined view on leave-stack (CR 711.4).
+    let is_split_left_cast = matches!(cast_modifier,
+            crate::actions::CastModifier::None)
+        && card_def.and_then(|d| d.alternate_face.as_ref())
+            .and_then(|af| af.as_split()).is_some();
     let adventure_face = if is_adventure_cast {
         card_def.and_then(|d| d.alternate_face.as_ref())
             .and_then(|af| af.as_adventure())
@@ -619,27 +627,33 @@ fn apply_cast_spell(
             obj.visible_face = 1;
         }
     }
-    // Split right-half casts swap characteristics onto the stack
-    // entry. DEBT: Split cards have a different off-stack rule from
-    // MDFC — CR 711.4 says a Split card's characteristics in zones
-    // other than the stack are the COMBINED characteristics of both
-    // halves (Ice casts, then Fire // Ice sits in graveyard with
-    // combined chars). That's a separate behavior from 712.2b's
-    // front-face revert and needs its own commit. For now, a Split
-    // cast as right-half will show right-half chars in the
-    // graveyard — reachable with Fire // Ice but not tested by any
-    // current seed scenario. `visible_face = 1` is flagged for
-    // consistency and so a future Fuse implementation has a
-    // coherent per-face signal.
-    if is_split_right_cast {
+    // Split casts swap the object's characteristics to the chosen
+    // half while it sits on the stack, and snapshot the combined
+    // off-stack view onto the stack entry (stamped below) so
+    // `finalize_resolved_spell` / `counter_resolved_spell` can
+    // restore CR 711.4's combined view when the card moves to the
+    // graveyard. Left casts swap combined → base (left face) chars;
+    // right casts swap combined → right face chars. `visible_face`
+    // tracks which half is on the stack (0 = left, 1 = right).
+    let pre_split_chars = if is_split_right_cast {
         let swapped_chars = split_right_face.map(|f| f.characteristics.clone());
         if let (Some(swapped), Some(obj)) = (swapped_chars,
             state.objects.get_mut(object_id))
         {
-            obj.characteristics = swapped;
+            let prior = std::mem::replace(&mut obj.characteristics, swapped);
             obj.visible_face = 1;
-        }
-    }
+            Some(prior)
+        } else { None }
+    } else if is_split_left_cast {
+        let swapped_chars = card_def.map(|d| d.base_characteristics.clone());
+        if let (Some(swapped), Some(obj)) = (swapped_chars,
+            state.objects.get_mut(object_id))
+        {
+            let prior = std::mem::replace(&mut obj.characteristics, swapped);
+            obj.visible_face = 0;
+            Some(prior)
+        } else { None }
+    } else { None };
 
     let (spell_ability, enters_with) = if is_adventure_cast {
         // Adventure face supplies the spell ability; enters_with
@@ -681,6 +695,7 @@ fn apply_cast_spell(
         entry.delve_count = delve_count;
         entry.kicked = elected_kicker;
         entry.pre_adventure_characteristics = pre_adventure_chars;
+        entry.pre_split_characteristics = pre_split_chars;
     }
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
@@ -2717,7 +2732,7 @@ pub fn new_game_with_format(
             let id = state.allocate_object_id();
             let obj = GameObject::new(
                 id, player, Zone::Library(player),
-                card_id, def.base_characteristics.clone());
+                card_id, def.initial_characteristics().clone());
             state.objects.insert(obj);
             state.player_mut(player).library_top_to_bottom.push(id);
         }
