@@ -92,9 +92,10 @@ impl Default for FormatConfig {
 /// - `Paris` — legacy. Shuffle hand back, redraw one card fewer
 ///   than the previous hand size; no bottoming.
 /// - `Vancouver` — legacy. Same redraw as Paris; after keeping, if
-///   any mulligans were taken, scry 1. The scry step is pending
-///   separate wiring (it needs a scry-outside-stack dispatch path);
-///   until then Vancouver's redraw path matches Paris exactly.
+///   any mulligans were taken, the player scrys 1 before moving on.
+///   The scry prompt rides on
+///   [`crate::actions::ChoiceContext::MulliganScry`] so the engine
+///   dispatcher can tell it apart from a mid-resolution scry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MulliganRule {
     London,

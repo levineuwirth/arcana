@@ -456,6 +456,11 @@ pub enum ChoiceContext {
     ResolvingStack(ObjectId),
     /// State-based-action time choice (Legend rule tiebreak).
     Sba,
+    /// CR 103.4 Vancouver — post-keep scry 1 fired after a player
+    /// kept a mulligan'd hand. Lives outside any stack resolution,
+    /// so the dispatcher handles the OrderCards answer by advancing
+    /// the mulligan phase rather than resuming a stack entry.
+    MulliganScry { player: PlayerId },
     /// Some other engine-driven prompt that doesn't fit the above.
     Other,
 }

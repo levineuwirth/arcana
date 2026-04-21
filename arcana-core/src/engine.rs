@@ -1129,6 +1129,20 @@ pub(crate) fn apply_resolution_choice(
                 cards, allowed, placements);
         }
 
+        // --- OrderCards (Vancouver mulligan scry 1, CR 103.4) -------
+        // Lives outside any stack resolution: apply the placement,
+        // then advance the mulligan phase for this player.
+        (
+            ChoiceKind::OrderCards { cards, allowed },
+            ChoiceContext::MulliganScry { player },
+            ChoiceResponse::OrderCards { placements },
+        ) => {
+            let scry_player = *player;
+            apply_order_cards(state, pending.choosing_player,
+                cards, allowed, placements);
+            finish_mulligan_decision(state, scry_player);
+        }
+
         // --- PickCards mid-resolution (Tutor, Search, Reanimate, …) -
         // The pushing effect stored semantics in
         // `pending_choice_follow_up`; we dispatch on that.
@@ -1622,19 +1636,16 @@ fn apply_make_choice(state: &mut GameState, choice: ChoiceAction) {
 }
 
 fn apply_mulligan_keep(state: &mut GameState) {
-    // CR 103.4a — London: when a player keeps after taking N
-    // mulligans, they must put N cards from hand on the bottom of
-    // their library before the game begins. Paris and Vancouver
-    // express the per-mulligan cost as a smaller redraw (see
-    // [`apply_mulligan_again`]) instead, so there's nothing to put
-    // on the bottom at keep time. Vancouver's post-keep scry 1 is
-    // pending separate wiring (CR 103.4 historical variant).
+    // CR 103.4 — London owes bottom cards, Vancouver owes a scry 1
+    // if any mulligans were taken, Paris owes nothing. The two
+    // "owes something" branches both pause here without marking
+    // decided; the respective resume paths advance the phase.
+    use crate::format::MulliganRule;
     let player = state.priority_player();
     let owed = state.player(player).mulligans_taken;
-    let owes_bottoms = owed > 0
-        && state.format.mulligan_rule == crate::format::MulliganRule::London;
+    let rule = state.format.mulligan_rule;
 
-    if owes_bottoms {
+    if owed > 0 && rule == MulliganRule::London {
         // Transition into the bottoming window; stay on this player
         // until they submit an `Action::BottomCards(ids)` of the
         // right length.
@@ -1643,9 +1654,53 @@ fn apply_mulligan_keep(state: &mut GameState) {
         return;
     }
 
-    // No mulligans taken, or a non-London rule → they're done deciding.
-    state.player_mut(player).mulligan_decided = true;
+    if owed > 0 && rule == MulliganRule::Vancouver {
+        // CR 103.4 Vancouver — scry 1 after keeping if any
+        // mulligans were taken. If the library is empty the scry
+        // is a no-op (emit Scry(0) for observability and fall
+        // through to the "decided" path).
+        if push_mulligan_scry_choice(state, player) {
+            return;
+        }
+    }
 
+    finish_mulligan_decision(state, player);
+}
+
+/// Push an OrderCards pending choice for the Vancouver scry 1.
+/// Returns `true` if a choice was pushed (the caller must *not*
+/// mark the player as decided — the dispatcher does that when the
+/// choice is answered). Returns `false` when the library is empty
+/// and nothing is left to look at, in which case the caller should
+/// proceed with finishing the mulligan decision.
+fn push_mulligan_scry_choice(state: &mut GameState, player: PlayerId) -> bool {
+    let top = state.player(player).library_top_to_bottom.first().copied();
+    let Some(top_id) = top else {
+        state.emit(GameEvent::Scry { player, count: 0 });
+        return false;
+    };
+    state.emit(GameEvent::Scry { player, count: 1 });
+    state.push_pending_choice(
+        player,
+        crate::actions::ChoiceContext::MulliganScry { player },
+        crate::actions::ChoiceKind::OrderCards {
+            cards: vec![top_id],
+            allowed: vec![
+                crate::actions::CardDestination::TopOfLibrary,
+                crate::actions::CardDestination::BottomOfLibrary,
+            ],
+        },
+    );
+    true
+}
+
+/// Mark `player` as having finished the mulligan decision and hand
+/// off to the next undecided player, or end the mulligan phase if
+/// everyone has decided. Shared by the "keep with no mulligans",
+/// "keep after London bottom cards", and "keep after Vancouver
+/// scry" resume paths.
+fn finish_mulligan_decision(state: &mut GameState, player: PlayerId) {
+    state.player_mut(player).mulligan_decided = true;
     if let Some(next) = next_undecided_mulligan_player(state) {
         state.priority.begin_special_action(
             SpecialAction::MulliganDecision, next);
@@ -1720,13 +1775,7 @@ fn apply_bottom_cards(state: &mut GameState, ids: Vec<ObjectId>) {
     // Bottoming complete; lock in this player's opening hand and
     // move on.
     state.priority.end_special_action();
-    state.player_mut(player).mulligan_decided = true;
-    if let Some(next) = next_undecided_mulligan_player(state) {
-        state.priority.begin_special_action(
-            SpecialAction::MulliganDecision, next);
-    } else {
-        end_mulligan_phase(state);
-    }
+    finish_mulligan_decision(state, player);
 }
 
 fn apply_concede(state: &mut GameState) {
@@ -4743,16 +4792,152 @@ mod tests {
     }
 
     #[test]
-    fn vancouver_keep_after_mulligan_skips_bottoming() {
-        // Like Paris, Vancouver doesn't pay the London bottoming cost.
-        // (It pays a post-keep scry 1 instead — not yet wired.)
+    fn vancouver_keep_after_mulligan_pushes_scry_choice() {
+        // CR 103.4 Vancouver — after keeping with at least one
+        // mulligan, the player scrys 1 before moving on. The prompt
+        // rides on ChoiceContext::MulliganScry so the dispatcher can
+        // tell it apart from a mid-resolution scry.
+        use crate::actions::{ChoiceContext, ChoiceKind, CardDestination};
         use crate::format::MulliganRule;
         let (state, _y) = start_with_rule(19, MulliganRule::Vancouver);
         let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        let (state, yld) = step(state, Action::MulliganKeep, &reg());
+
+        let pending = state.pending_choice.as_ref()
+            .expect("Vancouver keep after mulligan must push a scry choice");
+        assert!(matches!(pending.context, ChoiceContext::MulliganScry { player: 0 }));
+        match &pending.kind {
+            ChoiceKind::OrderCards { cards, allowed } => {
+                assert_eq!(cards.len(), 1, "scry 1 looks at one card");
+                assert!(allowed.contains(&CardDestination::TopOfLibrary));
+                assert!(allowed.contains(&CardDestination::BottomOfLibrary));
+            }
+            other => panic!("expected OrderCards, got {other:?}"),
+        }
+        // Yield addresses the scrying player — P0, not P1.
+        match yld {
+            EngineYield::PendingDecision { player, context, .. } => {
+                assert_eq!(player, 0);
+                assert!(matches!(context,
+                    crate::actions::DecisionContext::ResolutionChoice { .. }));
+            }
+            _ => panic!("expected pending decision for Vancouver scry"),
+        }
+        // Mulligan isn't closed yet — player 0 is still undecided.
+        assert!(!state.player(0).mulligan_decided);
+    }
+
+    #[test]
+    fn vancouver_scry_top_leaves_card_on_top_and_advances() {
+        // Sending the top card back to the top of the library is the
+        // no-op branch of scry 1. After the response, player 1 is up
+        // to decide their own mulligan.
+        use crate::actions::{
+            CardDestination, ChoiceResponse, DecisionContext,
+        };
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(29, MulliganRule::Vancouver);
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
         let (state, _y) = step(state, Action::MulliganKeep, &reg());
-        assert_eq!(state.priority.special_action,
-            Some(SpecialAction::MulliganDecision),
-            "Vancouver keep skips LondonMulliganBottomCards");
+        let pending_id = state.pending_choice.as_ref().unwrap().id;
+        let top_before = state.player(0).library_top_to_bottom[0];
+
+        let (state, yld) = step(state, Action::SubmitResolutionChoice {
+            id: pending_id,
+            response: ChoiceResponse::OrderCards {
+                placements: vec![(top_before, CardDestination::TopOfLibrary)],
+            },
+        }, &reg());
+
+        assert!(state.pending_choice.is_none(),
+            "scry choice cleared after submission");
+        assert!(state.player(0).mulligan_decided,
+            "player 0 marked decided after scry completes");
+        assert_eq!(state.player(0).library_top_to_bottom[0], top_before,
+            "top card unchanged on TopOfLibrary placement");
+        match yld {
+            EngineYield::PendingDecision { player, context, .. } => {
+                assert_eq!(player, 1);
+                assert!(matches!(context, DecisionContext::Mulligan));
+            }
+            _ => panic!("expected mulligan yield for P1"),
+        }
+    }
+
+    #[test]
+    fn vancouver_scry_bottom_moves_card_to_bottom() {
+        use crate::actions::{CardDestination, ChoiceResponse};
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(31, MulliganRule::Vancouver);
+        let (state, _y) = step(state, Action::MulliganAgain, &reg());
+        let (state, _y) = step(state, Action::MulliganKeep, &reg());
+        let pending_id = state.pending_choice.as_ref().unwrap().id;
+        let top_before = state.player(0).library_top_to_bottom[0];
+        let lib_len_before = state.player(0).library_top_to_bottom.len();
+
+        let (state, _yld) = step(state, Action::SubmitResolutionChoice {
+            id: pending_id,
+            response: ChoiceResponse::OrderCards {
+                placements: vec![(top_before, CardDestination::BottomOfLibrary)],
+            },
+        }, &reg());
+
+        assert_eq!(state.player(0).library_top_to_bottom.len(), lib_len_before,
+            "library size preserved");
+        assert_ne!(state.player(0).library_top_to_bottom[0], top_before,
+            "a different card is now on top");
+        assert_eq!(*state.player(0).library_top_to_bottom.last().unwrap(), top_before,
+            "the scry'd card moved to the bottom");
+        assert!(state.player(0).mulligan_decided);
+    }
+
+    #[test]
+    fn vancouver_scry_on_empty_library_is_a_no_op() {
+        // CR 103.4 Vancouver with an empty library — emit Scry(0)
+        // for observability and advance as if no scry were owed.
+        use crate::events::GameEvent;
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(37, MulliganRule::Vancouver);
+        let (mut state, _y) = step(state, Action::MulliganAgain, &reg());
+        // Draw the library dry on player 0 before they submit keep.
+        // Moving every library card to hand is the simplest way to
+        // zero out the library without touching new infrastructure.
+        let lib_ids: Vec<_> = state.player(0)
+            .library_top_to_bottom.iter().copied().collect();
+        for id in lib_ids {
+            state.move_object_to_zone(
+                id, Zone::Hand(0), crate::events::MoveCause::AbilityResolution);
+        }
+        assert!(state.player(0).library_top_to_bottom.is_empty());
+
+        let log_before = state.event_log.len();
+        let (state, _yld) = step(state, Action::MulliganKeep, &reg());
+
+        assert!(state.pending_choice.is_none(),
+            "no scry choice pushed when the library is empty");
+        assert!(state.player(0).mulligan_decided,
+            "player 0 still advances to decided with an empty library");
+        assert!(state.event_log[log_before..].iter().any(|e|
+            matches!(e, GameEvent::Scry { player: 0, count: 0 })),
+            "Scry(0) emitted for observability");
+    }
+
+    #[test]
+    fn vancouver_keep_without_mulligan_does_not_scry() {
+        // No mulligan was taken → no scry owed. Keep should resolve
+        // straight to the next player's mulligan decision.
+        use crate::format::MulliganRule;
+        let (state, _y) = start_with_rule(41, MulliganRule::Vancouver);
+        let (state, yld) = step(state, Action::MulliganKeep, &reg());
+        assert!(state.pending_choice.is_none());
+        assert!(state.player(0).mulligan_decided);
+        match yld {
+            EngineYield::PendingDecision { player, context, .. } => {
+                assert_eq!(player, 1);
+                assert!(matches!(context, DecisionContext::Mulligan));
+            }
+            _ => panic!("expected mulligan yield for P1"),
+        }
     }
 
     #[test]
