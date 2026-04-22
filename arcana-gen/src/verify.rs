@@ -61,7 +61,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Configuration for a verify run. Currently only the scratch slot
 /// is parameterized; other knobs (cargo flags, timeout) are
@@ -94,7 +94,7 @@ pub enum VerifyResult {
 /// output. Rolls up a single primary span on a single message;
 /// messages with multiple primary spans yield multiple
 /// `CompileError` rows.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CompileError {
     /// Span file as reported by rustc. May be workspace-relative,
     /// manifest-relative, or absolute — filter via `ends_with`.
@@ -307,7 +307,7 @@ struct CargoSpan {
 // path helpers
 // =============================================================================
 
-fn scratch_path_for(slug: &str) -> PathBuf {
+pub(crate) fn scratch_path_for(slug: &str) -> PathBuf {
     let mut p = workspace_root();
     p.push("arcana-cards");
     p.push("src");

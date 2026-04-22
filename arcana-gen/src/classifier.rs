@@ -24,7 +24,7 @@ use crate::scryfall::{type_part, Card};
 
 /// Complexity tier for prompt routing. Higher tier = more complex
 /// expected prompt + retry budget.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 pub enum Tier {
     /// Pure vanilla: basic lands, creatures with no rules text.
     One,

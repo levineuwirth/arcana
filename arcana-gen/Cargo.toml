@@ -11,3 +11,6 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 ureq = { version = "2", features = ["json", "gzip"] }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

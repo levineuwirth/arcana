@@ -9,3 +9,4 @@ pub mod classifier;
 pub mod prompt;
 pub mod verify;
 pub mod llm;
+pub mod bakeoff;
