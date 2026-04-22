@@ -52,6 +52,10 @@ pub mod eve;
 pub mod m14;
 pub mod mrd;
 
+/// Staging area for arcana-gen card generations. See the module
+/// docs — this is intermediate storage, not a stable public API.
+pub mod generated;
+
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
 

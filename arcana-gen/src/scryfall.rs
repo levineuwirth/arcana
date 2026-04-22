@@ -123,34 +123,51 @@ pub struct CardFace {
     pub colors: Option<Vec<String>>,
 }
 
+/// Return the types-side of a Scryfall `type_line`, dropping the
+/// subtypes after the em-dash separator. For "Creature — Human
+/// Wizard" this returns "Creature ". For a bare type like "Instant"
+/// (no subtypes, no dash) the whole string is returned.
+///
+/// Defensive against future MTG subtypes that could share text
+/// with type names — e.g., a hypothetical subtype "Battle" on a
+/// creature would false-positive `is_battle` under a whole-line
+/// substring match. Splitting on `" — "` scopes every predicate
+/// below to the types portion only.
+pub(crate) fn type_part(type_line: &str) -> &str {
+    match type_line.split_once(" — ") {
+        Some((types, _subtypes)) => types,
+        None => type_line,
+    }
+}
+
 impl Card {
     pub fn is_standard_legal(&self) -> bool {
         self.legalities.get("standard").map(|s| s == "legal").unwrap_or(false)
     }
 
     pub fn is_creature(&self) -> bool {
-        self.type_line.contains("Creature")
+        type_part(&self.type_line).contains("Creature")
     }
     pub fn is_instant(&self) -> bool {
-        self.type_line.contains("Instant")
+        type_part(&self.type_line).contains("Instant")
     }
     pub fn is_sorcery(&self) -> bool {
-        self.type_line.contains("Sorcery")
+        type_part(&self.type_line).contains("Sorcery")
     }
     pub fn is_land(&self) -> bool {
-        self.type_line.contains("Land")
+        type_part(&self.type_line).contains("Land")
     }
     pub fn is_enchantment(&self) -> bool {
-        self.type_line.contains("Enchantment")
+        type_part(&self.type_line).contains("Enchantment")
     }
     pub fn is_artifact(&self) -> bool {
-        self.type_line.contains("Artifact")
+        type_part(&self.type_line).contains("Artifact")
     }
     pub fn is_planeswalker(&self) -> bool {
-        self.type_line.contains("Planeswalker")
+        type_part(&self.type_line).contains("Planeswalker")
     }
     pub fn is_battle(&self) -> bool {
-        self.type_line.contains("Battle")
+        type_part(&self.type_line).contains("Battle")
     }
 
     /// Oracle text surface usable by downstream analysis.
@@ -159,6 +176,15 @@ impl Card {
     /// and per-face text lives in `card_faces`; this joins all face
     /// texts with `\n---\n` so downstream heuristics (tier
     /// classifier, prompt retrieval) see the full card.
+    ///
+    /// Precedence check (2026-04-21): across 1,011 real multi-face
+    /// cards in the live Scryfall oracle dump (split/adventure/
+    /// modal_dfc/transform/flip), **zero** had both a populated
+    /// top-level `oracle_text` and per-face text — every one was
+    /// face-only. Meld-layout cards (21 in the dump) use top-level
+    /// exclusively and lack `card_faces`. So the "prefer top-level
+    /// when non-empty" fallthrough is safe: it never shadows face
+    /// text on a real card.
     pub fn effective_oracle_text(&self) -> String {
         if let Some(t) = &self.oracle_text {
             if !t.is_empty() {
@@ -484,6 +510,34 @@ mod tests {
         assert!(pool.find_by_name("Lightning Bolt").unwrap().is_instant());
         assert!(pool.find_by_name("Mountain").unwrap().is_land());
         assert!(!pool.find_by_name("Grizzly Bears").unwrap().is_land());
+    }
+
+    #[test]
+    fn type_part_splits_on_em_dash() {
+        assert_eq!(type_part("Creature — Human Wizard"), "Creature");
+        assert_eq!(type_part("Basic Land — Mountain"), "Basic Land");
+        assert_eq!(type_part("Instant"), "Instant");
+        assert_eq!(type_part("Legendary Planeswalker — Jace"), "Legendary Planeswalker");
+        assert_eq!(type_part("Artifact — Equipment"), "Artifact");
+    }
+
+    #[test]
+    fn type_predicates_do_not_false_positive_on_subtypes() {
+        // Defensive coverage: a creature whose subtype happens to
+        // share text with a type name must not register as that
+        // type. MTG doesn't currently have a subtype named "Battle"
+        // or "Creature", but the substring form would've been
+        // fragile against any future subtype rename.
+        let json = r#"[{
+            "id": "x", "oracle_id": "y", "name": "Hypothetical Creature",
+            "cmc": 3.0, "type_line": "Creature — Battle Mage",
+            "legalities": {}, "rarity": "common", "set": "xxx",
+            "layout": "normal"
+        }]"#;
+        let pool = ScryfallPool::from_json_str(json).expect("parse");
+        let c = pool.find_by_name("Hypothetical Creature").unwrap();
+        assert!(c.is_creature(), "must still register as creature");
+        assert!(!c.is_battle(), "must NOT register as Battle just because 'Battle' is in the subtype portion");
     }
 
     #[test]

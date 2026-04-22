@@ -28,6 +28,7 @@ dist/
 build/
 .venv/
 
-# Generated card data (large, can be regenerated)
-# arcana-cards/src/generated/*.rs
-# Uncomment above if you want to exclude generated card code from git
+# Volatile verify-pipeline scratch file (overwritten every run).
+# arcana-cards/build.rs writes a stub on fresh clones so the crate
+# still compiles before verify has ever run.
+arcana-cards/src/generated/_scratch/candidate.rs

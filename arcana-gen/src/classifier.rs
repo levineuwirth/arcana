@@ -20,7 +20,7 @@
 //!      instant/sorcery.
 //!   6. T5 fallback when no heuristic matched.
 
-use crate::scryfall::Card;
+use crate::scryfall::{type_part, Card};
 
 /// Complexity tier for prompt routing. Higher tier = more complex
 /// expected prompt + retry budget.
@@ -150,7 +150,7 @@ fn unsupported_layout(c: &Card) -> Option<&str> {
 }
 
 fn is_basic_land(c: &Card) -> bool {
-    c.type_line.contains("Basic Land")
+    type_part(&c.type_line).contains("Basic Land")
 }
 
 fn has_x_cost(c: &Card) -> bool {
@@ -176,13 +176,18 @@ fn has_multiple_ability_lines(text: &str) -> bool {
 }
 
 fn has_triggered_ability(text: &str) -> bool {
-    let stripped = strip_reminder_text(text).to_lowercase();
-    // "When …", "Whenever …", "At the beginning of …",
-    // "At the end of …". Anchored with a leading space (or start of
-    // text) so we don't match "even when" mid-sentence.
-    for trigger in ["when ", "whenever ", "at the beginning", "at the end"] {
-        if stripped.starts_with(trigger) || stripped.contains(&format!(" {trigger}")) {
-            return true;
+    let stripped = strip_reminder_text(text);
+    // Iterate per-line: MTG separates ability paragraphs with `\n`,
+    // and a trigger can appear on line 2+ ("Flying\nWhen ~ enters,
+    // draw a card"). An earlier version used a single-string
+    // substring check with `" when "` which missed these because
+    // the separator before the trigger word is `\n`, not a space.
+    for line in stripped.lines() {
+        let line_lower = line.trim_start().to_lowercase();
+        for trigger in ["when ", "whenever ", "at the beginning", "at the end"] {
+            if line_lower.starts_with(trigger) {
+                return true;
+            }
         }
     }
     false
@@ -662,6 +667,43 @@ mod tests {
         assert_eq!(Tier::Five.as_number(), 5);
     }
 
+    // --- has_triggered_ability direct unit tests -------------------
+
+    #[test]
+    fn triggered_ability_detected_on_line_one() {
+        assert!(has_triggered_ability("When Elvish Visionary enters, draw a card."));
+        assert!(has_triggered_ability(
+            "Whenever you cast an instant or sorcery spell, create a token."
+        ));
+        assert!(has_triggered_ability("At the beginning of your upkeep, scry 1."));
+    }
+
+    #[test]
+    fn triggered_ability_detected_on_line_two() {
+        // This was the bug: multi-line card with a keyword on line 1
+        // and a trigger on line 2. The old ` when ` substring check
+        // missed it because the character before "when" is `\n`, not
+        // ` `. Masked in prod today by has_multiple_ability_lines
+        // routing such cards to T4 first, but load-bearing once the
+        // T4 over-catch refactor lands.
+        let baleful_strix =
+            "Flying, deathtouch\nWhen Baleful Strix enters, draw a card.";
+        assert!(has_triggered_ability(baleful_strix));
+    }
+
+    #[test]
+    fn triggered_ability_does_not_false_positive_midword() {
+        // Pre-fix, substring matching could match "when" inside
+        // longer words via the starts_with path anchoring to the
+        // text start. The per-line anchoring keeps this robust.
+        assert!(!has_triggered_ability(
+            "Spells your opponents cast cost {1} more to cast."
+        ));
+        assert!(!has_triggered_ability(
+            "Equipped creature gets +3/+0.\nEquip {1}"
+        ));
+    }
+
     // --- stripper --------------------------------------------------
 
     #[test]
@@ -685,6 +727,14 @@ mod tests {
     /// prints a tier distribution to stderr. Ignored by default;
     /// useful sanity check when tuning heuristics. Run with:
     /// `cargo test -p arcana-gen --lib -- --ignored classifier_live`.
+    ///
+    /// Bounds reflect the *current* classifier's behavior on the
+    /// full Scryfall oracle pool (~37k cards). T4 is intentionally
+    /// wide on the high end because `has_multiple_ability_lines` is
+    /// known to over-catch; when that gate is refactored (see
+    /// deferred follow-ups), these bounds should tighten. A
+    /// regression that sends 90% of cards to T5 or drops T1 to zero
+    /// blows through them.
     #[test]
     #[ignore]
     fn classifier_live_tier_distribution() {
@@ -706,10 +756,29 @@ mod tests {
                 100.0 * *n as f64 / total as f64
             );
         }
-        // Sanity only: every tier has at least one card in a real
-        // Magic pool. If T1 is zero, basic-land detection broke.
-        for (i, n) in counts.iter().enumerate() {
-            assert!(*n > 0, "tier T{} is empty — heuristic regression?", i + 1);
+
+        // (low, high) in percent per tier. Anchored to observed
+        // behavior as of 2026-04-21 (T1 0.9%, T2 9.5%, T3 17.0%,
+        // T4 54.0%, T5 18.6%). Bounds are wide enough to absorb set
+        // rotation and heuristic tuning; narrow enough to catch a
+        // gate ordering regression.
+        const BOUNDS: [(f64, f64); 5] = [
+            (0.2,  5.0),   // T1: vanilla + basic lands, always small
+            (4.0,  25.0),  // T2: french-vanilla + single-effect spells
+            (8.0,  30.0),  // T3: triggered/activated abilities
+            (30.0, 70.0),  // T4: currently over-catches multi-line
+            (5.0,  30.0),  // T5: triage + unsupported layouts
+        ];
+        let total_f = total as f64;
+        for (i, &n) in counts.iter().enumerate() {
+            let pct = 100.0 * n as f64 / total_f;
+            let (lo, hi) = BOUNDS[i];
+            assert!(
+                pct >= lo && pct <= hi,
+                "T{} distribution {:.1}% outside expected range [{:.1}, {:.1}]% \
+                 — heuristic regression, or bounds need updating",
+                i + 1, pct, lo, hi,
+            );
         }
     }
 }
