@@ -8,3 +8,4 @@ pub mod scryfall;
 pub mod classifier;
 pub mod prompt;
 pub mod verify;
+pub mod llm;

@@ -40,6 +40,7 @@
 
 use crate::classifier::Tier;
 use crate::scryfall::Card;
+use crate::verify::CompileError;
 
 // =============================================================================
 // public API
@@ -112,19 +113,86 @@ impl std::fmt::Display for Unsupported {
 
 impl std::error::Error for Unsupported {}
 
+/// The previous (failed) attempt for a retry prompt. Carries the
+/// code the model emitted plus the compile errors `verify::check`
+/// extracted from it, so the next prompt can surface exactly what
+/// went wrong.
+#[derive(Debug, Clone)]
+pub struct PreviousAttempt<'a> {
+    pub code: &'a str,
+    pub errors: &'a [CompileError],
+}
+
 /// Render a prompt for `card` at `tier`. Returns [`Unsupported`]
 /// when the (tier, card) combination is outside v1 scope — callers
 /// should bucket / histogram the error variant to track coverage
 /// loss.
 pub fn render_prompt(card: &Card, tier: Tier) -> Result<Prompt, Unsupported> {
     let shape = select_shape(card, tier)?;
-    let user = match shape {
+    let user = user_for_shape(card, shape);
+    Ok(Prompt { system: SYSTEM_PROMPT.to_string(), user, shape })
+}
+
+/// Render a retry prompt. Same (card, tier) routing as the one-shot
+/// path — same system prompt, same few-shots, same target spec —
+/// with an appended block carrying the previous attempt's source
+/// and the compile errors `verify::check` extracted from it.
+///
+/// Design: keeping the full original prompt context (not just "here
+/// was your code, here were the errors") means the model retains
+/// the API-discipline framing and the shape-specific reference
+/// cards at the moment it needs them most. The retry block is
+/// additive, not substitutive.
+pub fn render_retry_prompt(
+    card: &Card,
+    tier: Tier,
+    previous: &PreviousAttempt,
+) -> Result<Prompt, Unsupported> {
+    let shape = select_shape(card, tier)?;
+    let mut user = user_for_shape(card, shape);
+    user.push_str("\n\n=== PREVIOUS ATTEMPT ===\n```rust\n");
+    user.push_str(previous.code);
+    if !previous.code.ends_with('\n') {
+        user.push('\n');
+    }
+    user.push_str("```\n\n=== COMPILE ERRORS ===\n");
+    if previous.errors.is_empty() {
+        user.push_str("(no structured errors captured — the previous attempt failed but produced no parseable diagnostics; common for syntax errors. Look for unbalanced braces, missing semicolons, or stray tokens.)\n");
+    } else {
+        for err in previous.errors {
+            user.push_str(&format_compile_error(err));
+            user.push('\n');
+        }
+    }
+    user.push_str(
+        "\nProduce a corrected version of the file. Address the specific errors above. \
+        Output only the Rust source — no markdown fences, no prose, no explanation.",
+    );
+    Ok(Prompt { system: SYSTEM_PROMPT.to_string(), user, shape })
+}
+
+fn user_for_shape(card: &Card, shape: PromptShape) -> String {
+    match shape {
         PromptShape::VanillaCreature => user_vanilla_creature(card),
         PromptShape::FrenchVanillaCreature => user_french_vanilla_creature(card),
         PromptShape::SingleEffectSpell => user_single_effect_spell(card),
         PromptShape::TriggeredAbilityCreature => user_triggered_ability_creature(card),
-    };
-    Ok(Prompt { system: SYSTEM_PROMPT.to_string(), user, shape })
+    }
+}
+
+/// One-line textual rendering of a compile error for inclusion in a
+/// retry prompt. Shape: `<file>:<line>:<col> [<code>] <level>: <message>`.
+/// Missing error codes render as `-` (common for syntax errors).
+fn format_compile_error(err: &CompileError) -> String {
+    format!(
+        "{}:{}:{} [{}] {}: {}",
+        err.file,
+        err.line,
+        err.column,
+        err.code.as_deref().unwrap_or("-"),
+        err.level,
+        err.message,
+    )
 }
 
 fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
@@ -608,6 +676,114 @@ mod tests {
         let p = render_prompt(&c, Tier::Three).expect("ok");
         assert!(p.user.contains("Elvish Visionary"));
         assert!(p.user.contains("Young Pyromancer"));
+    }
+
+    // --- retry prompt ---------------------------------------------------
+
+    fn mk_error(file: &str, line: u32, col: u32, code: Option<&str>, level: &str, msg: &str) -> CompileError {
+        CompileError {
+            file: file.to_string(),
+            line,
+            column: col,
+            level: level.to_string(),
+            code: code.map(String::from),
+            message: msg.to_string(),
+        }
+    }
+
+    #[test]
+    fn retry_prompt_embeds_previous_code_and_errors() {
+        let c = mk_card(|c| {
+            c.name = "Shock".into();
+            c.type_line = "Instant".into();
+            c.oracle_text = Some("Shock deals 2 damage to any target.".into());
+        });
+        let previous_code = "pub fn register() { /* broken */ }";
+        let errors = [mk_error(
+            "src/generated/_scratch/candidate.rs",
+            3, 17,
+            Some("E0425"),
+            "error",
+            "cannot find function `missing_fn` in this scope",
+        )];
+        let prev = PreviousAttempt { code: previous_code, errors: &errors };
+        let p = render_retry_prompt(&c, Tier::Two, &prev).expect("ok");
+
+        // Keeps original few-shot context.
+        assert!(p.user.contains("Lightning Bolt"), "retry keeps original few-shots");
+        assert!(p.user.contains("Shock"), "retry keeps target card");
+
+        // Appends the retry block.
+        assert!(p.user.contains("PREVIOUS ATTEMPT"));
+        assert!(p.user.contains(previous_code));
+        assert!(p.user.contains("COMPILE ERRORS"));
+        assert!(p.user.contains("E0425"));
+        assert!(p.user.contains("cannot find function `missing_fn`"));
+        assert!(p.user.contains("Output only the Rust source"));
+    }
+
+    #[test]
+    fn retry_prompt_handles_empty_error_list() {
+        // Some failures (particularly syntax errors) surface zero
+        // structured CompileError rows — verify returns FailedInCandidate
+        // with an empty error vec is unlikely but possible. The retry
+        // prompt should degrade gracefully, not panic or produce an
+        // empty error block.
+        let c = mk_card(|c| {
+            c.name = "Shock".into();
+            c.type_line = "Instant".into();
+            c.oracle_text = Some("Shock deals 2 damage to any target.".into());
+        });
+        let prev = PreviousAttempt {
+            code: "this is not valid rust }",
+            errors: &[],
+        };
+        let p = render_retry_prompt(&c, Tier::Two, &prev).expect("ok");
+        assert!(p.user.contains("no structured errors captured"));
+        assert!(p.user.contains("unbalanced braces"));
+    }
+
+    #[test]
+    fn retry_prompt_respects_unsupported_shapes() {
+        // A retry for an out-of-scope card is still Unsupported.
+        let c = mk_card(|c| {
+            c.name = "Some Battle".into();
+            c.type_line = "Battle — Siege".into();
+            c.oracle_text = Some("Nothing important".into());
+        });
+        let prev = PreviousAttempt { code: "", errors: &[] };
+        assert!(render_retry_prompt(&c, Tier::Four, &prev).is_err());
+    }
+
+    #[test]
+    fn format_compile_error_is_single_line() {
+        let err = mk_error(
+            "src/generated/_scratch/candidate.rs",
+            14, 5,
+            Some("E0308"),
+            "error",
+            "mismatched types",
+        );
+        let s = format_compile_error(&err);
+        assert!(!s.contains('\n'), "formatter must produce exactly one line");
+        assert!(s.contains("E0308"));
+        assert!(s.contains("mismatched types"));
+        assert!(s.contains("14:5"));
+    }
+
+    #[test]
+    fn format_compile_error_handles_missing_code() {
+        // Syntax errors often have no rustc error code. The formatter
+        // should substitute a `-` sentinel, not panic.
+        let err = mk_error(
+            "src/generated/_scratch/candidate.rs",
+            10, 1,
+            None,
+            "error",
+            "expected `}`, found `fn`",
+        );
+        let s = format_compile_error(&err);
+        assert!(s.contains("[-]"), "missing code should render as `-`; got: {s}");
     }
 
     #[test]
