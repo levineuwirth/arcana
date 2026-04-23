@@ -13,11 +13,10 @@
 //!
 //! * [`OllamaClient`] — real HTTP against a local Ollama instance.
 //!   Cost is always `None` (local inference is free).
-//! * [`AnthropicClient`] — skeleton only. Response parsing is wired
-//!   (so when we flip it on, we trust the extraction path); the
-//!   HTTP call itself `unimplemented!()`s to keep us from burning
-//!   credits on infra shakedown. Flip the switch when the budget
-//!   question is resolved.
+//! * [`AnthropicClient`] — real HTTP against the Messages API.
+//!   Per-model pricing passed in at construction so token counts
+//!   get converted to USD on the fly and surface in bake-off JSONL
+//!   + report output.
 //! * [`MockClient`] — canned-response queue for unit tests.
 //!
 //! # Determinism
@@ -200,20 +199,16 @@ impl LlmClient for OllamaClient {
 // AnthropicClient (skeleton — HTTP call intentionally unimplemented)
 // =============================================================================
 
-/// Anthropic Messages API client. **Response parsing is wired**
-/// (trusted shape: extract `content[0].text`, token counts from
-/// `usage.{input,output}_tokens`, cost from token counts × model
-/// pricing). **HTTP call is [`unimplemented!()`]** — we're not
-/// spending credits on infrastructure shakedown. Flip it on when
-/// the budget question resolves. When you do, rerun bake-off
-/// measurements from scratch; don't mix skeleton-phase data with
-/// live-phase data.
+/// Anthropic Messages API client. Wires a sync HTTP call against
+/// `/v1/messages`, parses the standard response shape
+/// (`content[0].text` + `usage.{input,output}_tokens`), and
+/// converts token counts to USD via the [`AnthropicPricing`]
+/// supplied at construction.
 ///
-/// Fields are `#[allow(dead_code)]` because they're held for the
-/// eventual live `complete()` implementation. `parse_response` and
-/// `compute_cost` are exercised by tests today to lock in the
-/// response-extraction path.
-#[allow(dead_code)]
+/// Anthropic does not document strong determinism guarantees, even
+/// with `temperature=0` — downstream consumers (bake-off) should
+/// treat Anthropic rows as single-sample draws, not reproducible
+/// fixtures.
 #[derive(Debug, Clone)]
 pub struct AnthropicClient {
     model_id: String,
@@ -260,9 +255,8 @@ impl AnthropicClient {
     }
 
     /// Parse an already-fetched Anthropic Messages API response
-    /// body into a [`Completion`]. Exposed so tests (and the
-    /// eventual wired `complete()`) share one parse path.
-    #[allow(dead_code)]
+    /// body into a [`Completion`]. Shared between `complete()` and
+    /// the offline unit tests so there is one parse path.
     fn parse_response(&self, body: &str, duration: Duration) -> Result<Completion> {
         let resp: AnthropicResponse = serde_json::from_str(body)
             .context("parsing Anthropic response body")?;
@@ -282,7 +276,6 @@ impl AnthropicClient {
         })
     }
 
-    #[allow(dead_code)]
     fn compute_cost(&self, input_tokens: u32, output_tokens: u32) -> f64 {
         let input = (input_tokens as f64) / 1_000_000.0 * self.pricing.input_per_mtok;
         let output = (output_tokens as f64) / 1_000_000.0 * self.pricing.output_per_mtok;
@@ -290,14 +283,26 @@ impl AnthropicClient {
     }
 }
 
-#[allow(dead_code)]
+#[derive(Serialize)]
+struct AnthropicRequest<'a> {
+    model: &'a str,
+    max_tokens: u32,
+    system: &'a str,
+    messages: Vec<AnthropicRequestMessage<'a>>,
+}
+
+#[derive(Serialize)]
+struct AnthropicRequestMessage<'a> {
+    role: &'a str,
+    content: &'a str,
+}
+
 #[derive(Deserialize)]
 struct AnthropicResponse {
     content: Vec<AnthropicContentBlock>,
     usage: AnthropicUsage,
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
 struct AnthropicContentBlock {
     #[serde(rename = "type")]
@@ -306,7 +311,6 @@ struct AnthropicContentBlock {
     text: String,
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
 struct AnthropicUsage {
     input_tokens: u32,
@@ -318,14 +322,46 @@ impl LlmClient for AnthropicClient {
         &self.model_id
     }
 
-    fn complete(&self, _system: &str, _user: &str) -> Result<Completion> {
-        // Intentionally unwired — see struct doc. The parse path is
-        // available via `parse_response` and tested independently.
-        unimplemented!(
-            "AnthropicClient HTTP call is intentionally unwired; flip \
-             on when budget is resolved. Use OllamaClient for local \
-             bake-offs today."
-        )
+    fn complete(&self, system: &str, user: &str) -> Result<Completion> {
+        let agent = ureq::AgentBuilder::new().timeout(self.timeout).build();
+
+        let body = AnthropicRequest {
+            model: &self.model_id,
+            max_tokens: self.max_tokens,
+            system,
+            messages: vec![AnthropicRequestMessage { role: "user", content: user }],
+        };
+
+        let url = format!("{}/v1/messages", self.endpoint.trim_end_matches('/'));
+
+        let start = Instant::now();
+        let response = match agent
+            .post(&url)
+            .set("x-api-key", &self.api_key)
+            .set("anthropic-version", "2023-06-01")
+            .set("content-type", "application/json")
+            .send_json(&body)
+        {
+            Ok(r) => r,
+            // Unpack 4xx/5xx bodies — bad API keys, rate limits, and
+            // malformed requests all surface here and the response
+            // body is the actionable content.
+            Err(ureq::Error::Status(code, resp)) => {
+                let body_text = resp.into_string().unwrap_or_default();
+                return Err(anyhow!(
+                    "Anthropic API returned HTTP {code}: {body_text}"
+                ));
+            }
+            Err(e) => {
+                return Err(anyhow!("Anthropic API transport error: {e}"));
+            }
+        };
+        let body_text = response
+            .into_string()
+            .context("reading Anthropic response body")?;
+        let duration = start.elapsed();
+
+        self.parse_response(&body_text, duration)
     }
 }
 
@@ -492,25 +528,47 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "intentionally unwired")]
-    fn anthropic_complete_panics_until_wired() {
-        let c = AnthropicClient::new(
-            "claude",
-            "k",
-            AnthropicPricing { input_per_mtok: 0.0, output_per_mtok: 0.0 },
-        );
-        let _ = c.complete("s", "u");
-    }
-
-    #[test]
     fn llm_client_is_object_safe() {
-        // Doesn't actually call anything — just forces the trait
-        // object construction at compile time so a future change
-        // that breaks object-safety fails this test loudly.
+        // Forces trait object construction at compile time so a
+        // future change that breaks object-safety fails loudly
+        // here instead of deep in the bake-off driver.
         let clients: Vec<Box<dyn LlmClient>> = vec![
             Box::new(MockClient::new("a", vec![])),
             Box::new(OllamaClient::new("m", "http://localhost:11434")),
+            Box::new(AnthropicClient::new(
+                "claude",
+                "k",
+                AnthropicPricing { input_per_mtok: 0.0, output_per_mtok: 0.0 },
+            )),
         ];
-        assert_eq!(clients.len(), 2);
+        assert_eq!(clients.len(), 3);
+    }
+
+    /// Live API smoke test. Skipped unless `ANTHROPIC_API_KEY` is set
+    /// — a bare `cargo test --ignored` on a machine without the key
+    /// no-ops rather than fails. Uses Haiku to minimize spend
+    /// (ballpark $0.0001/call).
+    #[test]
+    #[ignore]
+    fn anthropic_complete_smoke_test_live() {
+        let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") else {
+            eprintln!("ANTHROPIC_API_KEY not set; skipping");
+            return;
+        };
+        let client = AnthropicClient::new(
+            "claude-haiku-4-5-20251001",
+            api_key,
+            AnthropicPricing { input_per_mtok: 1.0, output_per_mtok: 5.0 },
+        );
+        let comp = client
+            .complete(
+                "You are terse. Reply with exactly one word.",
+                "Respond with the word: ok",
+            )
+            .expect("API call succeeded");
+        assert!(!comp.text.is_empty(), "response text was empty");
+        assert!(comp.prompt_tokens.unwrap() > 0);
+        assert!(comp.completion_tokens.unwrap() > 0);
+        assert!(comp.cost_usd.unwrap() > 0.0);
     }
 }

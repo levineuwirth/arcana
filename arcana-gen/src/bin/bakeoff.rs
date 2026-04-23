@@ -12,9 +12,11 @@
 //!     --seed 0
 //! ```
 //!
-//! The binary handles local Ollama models only. `AnthropicClient` is
-//! skeleton-only in this version — flip it on and extend this CLI
-//! when the budget question resolves.
+//! Ollama models via `--model`. Anthropic models via
+//! `--anthropic-model`; the API key is read from the
+//! `ANTHROPIC_API_KEY` env var, and pricing is derived from the
+//! model id (flagship Claude 4.x table built in) or overridden with
+//! `--anthropic-pricing IN/OUT` (USD per million tokens).
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -22,7 +24,7 @@ use std::process::ExitCode;
 use anyhow::{anyhow, Context, Result};
 use arcana_gen::bakeoff::{self, format_report, BakeoffConfig};
 use arcana_gen::classifier::Tier;
-use arcana_gen::llm::{LlmClient, OllamaClient};
+use arcana_gen::llm::{AnthropicClient, AnthropicPricing, LlmClient, OllamaClient};
 use arcana_gen::scryfall::ScryfallPool;
 
 fn main() -> ExitCode {
@@ -73,22 +75,53 @@ fn real_main() -> Result<()> {
     );
     eprintln!("  T4 control sample:  {}", config.t4_control_sample);
     eprintln!(
-        "  models:             {}",
-        args.models.join(", ")
+        "  ollama models:      {}",
+        if args.models.is_empty() {
+            "(none)".to_string()
+        } else {
+            args.models.join(", ")
+        }
+    );
+    eprintln!(
+        "  anthropic models:   {}",
+        if args.anthropic_models.is_empty() {
+            "(none)".to_string()
+        } else {
+            args.anthropic_models.join(", ")
+        }
     );
     eprintln!("  output:             {}", config.output_path.display());
     eprintln!("===============================");
 
     // Build clients.
-    let clients: Vec<OllamaClient> = args
-        .models
-        .iter()
-        .map(|m| {
-            OllamaClient::new(m, &args.ollama_endpoint).with_seed(config.seed)
-        })
-        .collect();
+    let mut clients: Vec<Box<dyn LlmClient>> = Vec::new();
+    for m in &args.models {
+        clients.push(Box::new(
+            OllamaClient::new(m, &args.ollama_endpoint).with_seed(config.seed),
+        ));
+    }
+    if !args.anthropic_models.is_empty() {
+        let api_key = std::env::var("ANTHROPIC_API_KEY").context(
+            "ANTHROPIC_API_KEY env var is required when --anthropic-model is set",
+        )?;
+        for m in &args.anthropic_models {
+            let pricing = args
+                .anthropic_pricing_override
+                .unwrap_or_else(|| default_anthropic_pricing(m));
+            eprintln!(
+                "  anthropic pricing:  {} — ${}/MTok in, ${}/MTok out",
+                m, pricing.input_per_mtok, pricing.output_per_mtok,
+            );
+            clients.push(Box::new(AnthropicClient::new(m, &api_key, pricing)));
+        }
+    }
+    if clients.is_empty() {
+        return Err(anyhow!(
+            "at least one --model or --anthropic-model is required"
+        ));
+    }
     let client_refs: Vec<&dyn LlmClient> =
-        clients.iter().map(|c| c as &dyn LlmClient).collect();
+        clients.iter().map(|c| c.as_ref()).collect();
 
     // Load pool.
     let pool = ScryfallPool::load_default()
@@ -106,6 +139,8 @@ fn real_main() -> Result<()> {
 #[derive(Debug)]
 struct Args {
     models: Vec<String>,
+    anthropic_models: Vec<String>,
+    anthropic_pricing_override: Option<AnthropicPricing>,
     sample_size_per_tier: usize,
     max_attempts: usize,
     seed: u64,
@@ -118,6 +153,8 @@ struct Args {
 
 fn parse_args(raw: Vec<String>) -> Result<Args> {
     let mut models = Vec::new();
+    let mut anthropic_models: Vec<String> = Vec::new();
+    let mut anthropic_pricing_override: Option<AnthropicPricing> = None;
     let mut sample_size_per_tier: usize = 30;
     let mut max_attempts: usize = 3;
     let mut seed: u64 = 0;
@@ -135,6 +172,18 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                 models.push(
                     it.next().ok_or_else(|| anyhow!("--model needs a value"))?,
                 );
+            }
+            "--anthropic-model" => {
+                anthropic_models.push(
+                    it.next()
+                        .ok_or_else(|| anyhow!("--anthropic-model needs a value"))?,
+                );
+            }
+            "--anthropic-pricing" => {
+                let spec = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--anthropic-pricing needs a value"))?;
+                anthropic_pricing_override = Some(parse_pricing(&spec)?);
             }
             "--sample-size-per-tier" => {
                 sample_size_per_tier = it
@@ -189,13 +238,15 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         }
     }
 
-    if models.is_empty() {
+    if models.is_empty() && anthropic_models.is_empty() {
         return Err(anyhow!(
-            "at least one --model is required (e.g. --model qwen3:235b-instruct)"
+            "at least one --model or --anthropic-model is required"
         ));
     }
     Ok(Args {
         models,
+        anthropic_models,
+        anthropic_pricing_override,
         sample_size_per_tier,
         max_attempts,
         seed,
@@ -205,6 +256,34 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         ollama_endpoint,
         output,
     })
+}
+
+/// Parse `--anthropic-pricing IN/OUT` (USD per million tokens).
+fn parse_pricing(spec: &str) -> Result<AnthropicPricing> {
+    let (lhs, rhs) = spec
+        .split_once('/')
+        .ok_or_else(|| anyhow!("--anthropic-pricing must be IN/OUT, got '{spec}'"))?;
+    let input_per_mtok: f64 =
+        lhs.trim().parse().context("--anthropic-pricing input")?;
+    let output_per_mtok: f64 =
+        rhs.trim().parse().context("--anthropic-pricing output")?;
+    Ok(AnthropicPricing { input_per_mtok, output_per_mtok })
+}
+
+/// Conservative default pricing table for flagship Claude 4.x models.
+/// Unknown model ids fall back to Opus pricing so cost estimates
+/// overshoot rather than understate. Override with
+/// `--anthropic-pricing IN/OUT` for precise numbers.
+fn default_anthropic_pricing(model_id: &str) -> AnthropicPricing {
+    if model_id.contains("opus") {
+        AnthropicPricing { input_per_mtok: 15.0, output_per_mtok: 75.0 }
+    } else if model_id.contains("sonnet") {
+        AnthropicPricing { input_per_mtok: 3.0, output_per_mtok: 15.0 }
+    } else if model_id.contains("haiku") {
+        AnthropicPricing { input_per_mtok: 1.0, output_per_mtok: 5.0 }
+    } else {
+        AnthropicPricing { input_per_mtok: 15.0, output_per_mtok: 75.0 }
+    }
 }
 
 fn parse_tier_list(spec: &str) -> Result<Vec<Tier>> {
@@ -237,19 +316,28 @@ fn default_output_path() -> PathBuf {
 
 fn print_usage() {
     eprintln!(
-        r#"Usage: bakeoff --model <tag> [--model <tag> ...] [options]
+        r#"Usage: bakeoff [--model <tag>] [--anthropic-model <id>] ... [options]
 
-Required:
-  --model <tag>                  Ollama model tag; repeatable
+At least one model must be supplied. --model and --anthropic-model
+are repeatable and may be mixed.
 
-Options:
+Ollama:
+  --model <tag>                  Local Ollama tag (e.g. qwen3:235b-instruct-q4_K_M)
+  --ollama-endpoint <url>        Default http://localhost:11434
+
+Anthropic:
+  --anthropic-model <id>         Messages API model id (e.g. claude-sonnet-4-6)
+                                 Requires ANTHROPIC_API_KEY env var.
+  --anthropic-pricing IN/OUT     Override per-MTok pricing (USD). Default is a
+                                 flagship-tier table keyed on model id.
+
+Sweep:
   --sample-size-per-tier <n>     Default 30
   --max-attempts <n>             Default 3 (set to 1 for one-shot-only)
   --seed <u64>                   Default 0
   --tiers <list>                 Comma-separated tier numbers; default 1,2,3
   --t4-control <n>               T4 sanity-anchor sample size; default 10
   --no-preflight                 Skip the 3-card pre-sweep smoke test
-  --ollama-endpoint <url>        Default http://localhost:11434
   --output <path>                Default target/bakeoff-runs/<timestamp>.jsonl
 
 Outputs a compact summary to stdout and detailed per-(card, model)
