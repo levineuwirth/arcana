@@ -17,6 +17,15 @@
 //! `ANTHROPIC_API_KEY` env var, and pricing is derived from the
 //! model id (flagship Claude 4.x table built in) or overridden with
 //! `--anthropic-pricing IN/OUT` (USD per million tokens).
+//!
+//! OpenAI-compatible endpoints via `--openai-model` +
+//! `--openai-endpoint` (required pairing). The API key env var name
+//! defaults to `OPENAI_API_KEY` and is configurable with
+//! `--openai-api-key-env`; if the named var is unset, requests go
+//! without an `Authorization` header, which is what local servers
+//! (vLLM, llama.cpp, LMStudio, …) want. Pricing is optional via
+//! `--openai-pricing IN/OUT` — leave it unset for local inference
+//! so `cost_usd` stays `None` in the JSONL.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -24,7 +33,10 @@ use std::process::ExitCode;
 use anyhow::{anyhow, Context, Result};
 use arcana_gen::bakeoff::{self, format_report, BakeoffConfig};
 use arcana_gen::classifier::Tier;
-use arcana_gen::llm::{AnthropicClient, AnthropicPricing, LlmClient, OllamaClient};
+use arcana_gen::llm::{
+    AnthropicClient, AnthropicPricing, LlmClient, OllamaClient, OpenAiCompatibleClient,
+    OpenAiPricing,
+};
 use arcana_gen::scryfall::ScryfallPool;
 
 fn main() -> ExitCode {
@@ -90,6 +102,18 @@ fn real_main() -> Result<()> {
             args.anthropic_models.join(", ")
         }
     );
+    eprintln!(
+        "  openai models:      {}",
+        if args.openai_models.is_empty() {
+            "(none)".to_string()
+        } else {
+            format!(
+                "{} @ {}",
+                args.openai_models.join(", "),
+                args.openai_endpoint.as_deref().unwrap_or("<missing>")
+            )
+        }
+    );
     eprintln!("  output:             {}", config.output_path.display());
     eprintln!("===============================");
 
@@ -115,9 +139,41 @@ fn real_main() -> Result<()> {
             clients.push(Box::new(AnthropicClient::new(m, &api_key, pricing)));
         }
     }
+    if !args.openai_models.is_empty() {
+        let endpoint = args.openai_endpoint.as_ref().ok_or_else(|| {
+            anyhow!("--openai-endpoint is required when --openai-model is set")
+        })?;
+        let openai_key = std::env::var(&args.openai_api_key_env).ok();
+        if openai_key.is_none() {
+            eprintln!(
+                "  openai auth:        ${} unset — sending requests without Authorization header",
+                args.openai_api_key_env,
+            );
+        } else {
+            eprintln!(
+                "  openai auth:        Bearer token from ${}",
+                args.openai_api_key_env,
+            );
+        }
+        for m in &args.openai_models {
+            let mut client = OpenAiCompatibleClient::new(m, endpoint)
+                .with_seed(config.seed);
+            if let Some(k) = &openai_key {
+                client = client.with_api_key(k);
+            }
+            if let Some(p) = args.openai_pricing_override {
+                eprintln!(
+                    "  openai pricing:     {} — ${}/MTok in, ${}/MTok out",
+                    m, p.input_per_mtok, p.output_per_mtok,
+                );
+                client = client.with_pricing(p);
+            }
+            clients.push(Box::new(client));
+        }
+    }
     if clients.is_empty() {
         return Err(anyhow!(
-            "at least one --model or --anthropic-model is required"
+            "at least one --model, --anthropic-model, or --openai-model is required"
         ));
     }
     let client_refs: Vec<&dyn LlmClient> =
@@ -141,6 +197,10 @@ struct Args {
     models: Vec<String>,
     anthropic_models: Vec<String>,
     anthropic_pricing_override: Option<AnthropicPricing>,
+    openai_models: Vec<String>,
+    openai_endpoint: Option<String>,
+    openai_api_key_env: String,
+    openai_pricing_override: Option<OpenAiPricing>,
     sample_size_per_tier: usize,
     max_attempts: usize,
     seed: u64,
@@ -155,6 +215,10 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     let mut models = Vec::new();
     let mut anthropic_models: Vec<String> = Vec::new();
     let mut anthropic_pricing_override: Option<AnthropicPricing> = None;
+    let mut openai_models: Vec<String> = Vec::new();
+    let mut openai_endpoint: Option<String> = None;
+    let mut openai_api_key_env: String = "OPENAI_API_KEY".to_string();
+    let mut openai_pricing_override: Option<OpenAiPricing> = None;
     let mut sample_size_per_tier: usize = 30;
     let mut max_attempts: usize = 3;
     let mut seed: u64 = 0;
@@ -183,7 +247,34 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                 let spec = it
                     .next()
                     .ok_or_else(|| anyhow!("--anthropic-pricing needs a value"))?;
-                anthropic_pricing_override = Some(parse_pricing(&spec)?);
+                let (i, o) = parse_pricing(&spec, "--anthropic-pricing")?;
+                anthropic_pricing_override =
+                    Some(AnthropicPricing { input_per_mtok: i, output_per_mtok: o });
+            }
+            "--openai-model" => {
+                openai_models.push(
+                    it.next()
+                        .ok_or_else(|| anyhow!("--openai-model needs a value"))?,
+                );
+            }
+            "--openai-endpoint" => {
+                openai_endpoint = Some(
+                    it.next()
+                        .ok_or_else(|| anyhow!("--openai-endpoint needs a value"))?,
+                );
+            }
+            "--openai-api-key-env" => {
+                openai_api_key_env = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--openai-api-key-env needs a value"))?;
+            }
+            "--openai-pricing" => {
+                let spec = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--openai-pricing needs a value"))?;
+                let (i, o) = parse_pricing(&spec, "--openai-pricing")?;
+                openai_pricing_override =
+                    Some(OpenAiPricing { input_per_mtok: i, output_per_mtok: o });
             }
             "--sample-size-per-tier" => {
                 sample_size_per_tier = it
@@ -238,15 +329,24 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         }
     }
 
-    if models.is_empty() && anthropic_models.is_empty() {
+    if models.is_empty() && anthropic_models.is_empty() && openai_models.is_empty() {
         return Err(anyhow!(
-            "at least one --model or --anthropic-model is required"
+            "at least one --model, --anthropic-model, or --openai-model is required"
+        ));
+    }
+    if !openai_models.is_empty() && openai_endpoint.is_none() {
+        return Err(anyhow!(
+            "--openai-endpoint is required when --openai-model is set"
         ));
     }
     Ok(Args {
         models,
         anthropic_models,
         anthropic_pricing_override,
+        openai_models,
+        openai_endpoint,
+        openai_api_key_env,
+        openai_pricing_override,
         sample_size_per_tier,
         max_attempts,
         seed,
@@ -258,16 +358,20 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     })
 }
 
-/// Parse `--anthropic-pricing IN/OUT` (USD per million tokens).
-fn parse_pricing(spec: &str) -> Result<AnthropicPricing> {
+/// Parse an `IN/OUT` pricing spec (USD per million tokens) for any of
+/// the `--*-pricing` flags. `flag` is the user-facing flag name for
+/// error messages.
+fn parse_pricing(spec: &str, flag: &str) -> Result<(f64, f64)> {
     let (lhs, rhs) = spec
         .split_once('/')
-        .ok_or_else(|| anyhow!("--anthropic-pricing must be IN/OUT, got '{spec}'"))?;
+        .ok_or_else(|| anyhow!("{flag} must be IN/OUT, got '{spec}'"))?;
     let input_per_mtok: f64 =
-        lhs.trim().parse().context("--anthropic-pricing input")?;
-    let output_per_mtok: f64 =
-        rhs.trim().parse().context("--anthropic-pricing output")?;
-    Ok(AnthropicPricing { input_per_mtok, output_per_mtok })
+        lhs.trim().parse().with_context(|| format!("{flag} input"))?;
+    let output_per_mtok: f64 = rhs
+        .trim()
+        .parse()
+        .with_context(|| format!("{flag} output"))?;
+    Ok((input_per_mtok, output_per_mtok))
 }
 
 /// Conservative default pricing table for flagship Claude 4.x models.
@@ -316,10 +420,10 @@ fn default_output_path() -> PathBuf {
 
 fn print_usage() {
     eprintln!(
-        r#"Usage: bakeoff [--model <tag>] [--anthropic-model <id>] ... [options]
+        r#"Usage: bakeoff [--model <tag>] [--anthropic-model <id>] [--openai-model <id>] ... [options]
 
-At least one model must be supplied. --model and --anthropic-model
-are repeatable and may be mixed.
+At least one model must be supplied. All three model flags are
+repeatable and may be mixed in one run.
 
 Ollama:
   --model <tag>                  Local Ollama tag (e.g. qwen3:235b-instruct-q4_K_M)
@@ -330,6 +434,18 @@ Anthropic:
                                  Requires ANTHROPIC_API_KEY env var.
   --anthropic-pricing IN/OUT     Override per-MTok pricing (USD). Default is a
                                  flagship-tier table keyed on model id.
+
+OpenAI-compatible (OpenAI, Together, Fireworks, Groq, DeepSeek, vLLM,
+llama.cpp server, LMStudio, ...):
+  --openai-model <id>            Repeatable; all share --openai-endpoint.
+  --openai-endpoint <url>        Required. Base URL through /v1 (e.g.
+                                 https://api.openai.com/v1, http://m3:8000/v1).
+                                 No default — avoids accidental spending.
+  --openai-api-key-env <VAR>     Env var holding the Bearer token. Default
+                                 OPENAI_API_KEY. If unset, no Authorization
+                                 header is sent (appropriate for local servers).
+  --openai-pricing IN/OUT        Per-MTok USD. Leave unset for local inference
+                                 so cost_usd stays None in the JSONL.
 
 Sweep:
   --sample-size-per-tier <n>     Default 30

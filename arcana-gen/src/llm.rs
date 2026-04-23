@@ -17,6 +17,12 @@
 //!   Per-model pricing passed in at construction so token counts
 //!   get converted to USD on the fly and surface in bake-off JSONL
 //!   + report output.
+//! * [`OpenAiCompatibleClient`] — HTTP against any OpenAI-shaped
+//!   `/v1/chat/completions` endpoint (OpenAI itself, Together,
+//!   Fireworks, Groq, DeepSeek, vLLM, llama.cpp server, LMStudio, …).
+//!   API key is optional (local servers don't need one). Pricing is
+//!   optional (`None` → cost_usd stays `None`, the right default for
+//!   local inference).
 //! * [`MockClient`] — canned-response queue for unit tests.
 //!
 //! # Determinism
@@ -25,7 +31,10 @@
 //! and same model produce identical completions. Anthropic's API
 //! does not provide strong determinism guarantees even with
 //! temperature=0 — document at the consumer level that Anthropic
-//! completions are non-reproducible.
+//! completions are non-reproducible. OpenAI's `seed` parameter is
+//! best-effort (may regress with model upgrades); vLLM and
+//! llama.cpp server honor it strictly. We pass it through; the
+//! consumer interprets.
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
@@ -366,6 +375,222 @@ impl LlmClient for AnthropicClient {
 }
 
 // =============================================================================
+// OpenAiCompatibleClient
+// =============================================================================
+
+/// Client for any OpenAI-shaped `/v1/chat/completions` endpoint.
+///
+/// Works against:
+///   * OpenAI itself (`https://api.openai.com/v1`)
+///   * Hosted drop-ins (Together, Fireworks, Groq, DeepSeek, …)
+///   * Local inference servers exposing an OpenAI-compatible API
+///     (vLLM, llama.cpp server, LMStudio, TabbyAPI, …)
+///
+/// API key and pricing are both optional — the no-key / no-pricing
+/// configuration is what you want for a local vLLM or llama.cpp
+/// server on the LAN.
+#[derive(Debug, Clone)]
+pub struct OpenAiCompatibleClient {
+    model_id: String,
+    endpoint: String,
+    api_key: Option<String>,
+    pricing: Option<OpenAiPricing>,
+    timeout: Duration,
+    temperature: f32,
+    seed: Option<u64>,
+    max_tokens: u32,
+}
+
+/// Per-model pricing in USD per million tokens. Mirrors the
+/// Anthropic shape; keep as its own type so a CLI typo mixing the
+/// two can't silently typecheck.
+#[derive(Debug, Clone, Copy)]
+pub struct OpenAiPricing {
+    pub input_per_mtok: f64,
+    pub output_per_mtok: f64,
+}
+
+impl OpenAiCompatibleClient {
+    /// Build a client for `model_id` at `endpoint` (the `/v1` base;
+    /// the chat-completions path is appended by `complete()`).
+    /// Defaults: temperature = 0.2, timeout = 180s, max_tokens = 4096,
+    /// no API key, no pricing, no seed.
+    pub fn new(
+        model_id: impl Into<String>,
+        endpoint: impl Into<String>,
+    ) -> Self {
+        Self {
+            model_id: model_id.into(),
+            endpoint: endpoint.into(),
+            api_key: None,
+            pricing: None,
+            timeout: Duration::from_secs(180),
+            temperature: 0.2,
+            seed: None,
+            max_tokens: 4096,
+        }
+    }
+
+    pub fn with_api_key(mut self, key: impl Into<String>) -> Self {
+        self.api_key = Some(key.into());
+        self
+    }
+
+    pub fn with_pricing(mut self, pricing: OpenAiPricing) -> Self {
+        self.pricing = Some(pricing);
+        self
+    }
+
+    pub fn with_timeout(mut self, t: Duration) -> Self {
+        self.timeout = t;
+        self
+    }
+
+    pub fn with_temperature(mut self, t: f32) -> Self {
+        self.temperature = t;
+        self
+    }
+
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
+        self
+    }
+
+    pub fn with_max_tokens(mut self, n: u32) -> Self {
+        self.max_tokens = n;
+        self
+    }
+
+    /// Parse an already-fetched `/v1/chat/completions` body into a
+    /// [`Completion`]. Shared between `complete()` and the offline
+    /// unit tests. Tolerates a missing `usage` object: some local
+    /// servers omit it entirely, in which case token counts and
+    /// cost all come back `None`.
+    fn parse_response(&self, body: &str, duration: Duration) -> Result<Completion> {
+        let resp: OpenAiResponse = serde_json::from_str(body)
+            .context("parsing OpenAI-compatible response body")?;
+        let text = resp
+            .choices
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow!("no choices in OpenAI-compatible response"))?
+            .message
+            .content;
+        let (prompt_tokens, completion_tokens, cost_usd) = match (resp.usage, self.pricing) {
+            (Some(u), Some(p)) => {
+                let cost = (u.prompt_tokens as f64) / 1_000_000.0 * p.input_per_mtok
+                    + (u.completion_tokens as f64) / 1_000_000.0 * p.output_per_mtok;
+                (Some(u.prompt_tokens), Some(u.completion_tokens), Some(cost))
+            }
+            (Some(u), None) => (Some(u.prompt_tokens), Some(u.completion_tokens), None),
+            (None, _) => (None, None, None),
+        };
+        Ok(Completion {
+            text,
+            prompt_tokens,
+            completion_tokens,
+            cost_usd,
+            duration,
+        })
+    }
+}
+
+#[derive(Serialize)]
+struct OpenAiRequest<'a> {
+    model: &'a str,
+    messages: Vec<OpenAiRequestMessage<'a>>,
+    temperature: f32,
+    max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    seed: Option<u64>,
+    stream: bool,
+}
+
+#[derive(Serialize)]
+struct OpenAiRequestMessage<'a> {
+    role: &'a str,
+    content: &'a str,
+}
+
+#[derive(Deserialize)]
+struct OpenAiResponse {
+    choices: Vec<OpenAiChoice>,
+    #[serde(default)]
+    usage: Option<OpenAiUsage>,
+}
+
+#[derive(Deserialize)]
+struct OpenAiChoice {
+    message: OpenAiResponseMessage,
+}
+
+#[derive(Deserialize)]
+struct OpenAiResponseMessage {
+    content: String,
+}
+
+#[derive(Deserialize)]
+struct OpenAiUsage {
+    prompt_tokens: u32,
+    completion_tokens: u32,
+}
+
+impl LlmClient for OpenAiCompatibleClient {
+    fn model_id(&self) -> &str {
+        &self.model_id
+    }
+
+    fn complete(&self, system: &str, user: &str) -> Result<Completion> {
+        let agent = ureq::AgentBuilder::new().timeout(self.timeout).build();
+
+        let body = OpenAiRequest {
+            model: &self.model_id,
+            messages: vec![
+                OpenAiRequestMessage { role: "system", content: system },
+                OpenAiRequestMessage { role: "user", content: user },
+            ],
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            seed: self.seed,
+            stream: false,
+        };
+
+        let url = format!(
+            "{}/chat/completions",
+            self.endpoint.trim_end_matches('/')
+        );
+
+        let start = Instant::now();
+        let mut req = agent
+            .post(&url)
+            .set("content-type", "application/json");
+        if let Some(key) = &self.api_key {
+            req = req.set("authorization", &format!("Bearer {key}"));
+        }
+        let response = match req.send_json(&body) {
+            Ok(r) => r,
+            Err(ureq::Error::Status(code, resp)) => {
+                let body_text = resp.into_string().unwrap_or_default();
+                return Err(anyhow!(
+                    "OpenAI-compatible endpoint at {url} returned HTTP {code}: {body_text}"
+                ));
+            }
+            Err(e) => {
+                return Err(anyhow!(
+                    "OpenAI-compatible endpoint transport error at {url}: {e}"
+                ));
+            }
+        };
+        let body_text = response
+            .into_string()
+            .context("reading OpenAI-compatible response body")?;
+        let duration = start.elapsed();
+
+        self.parse_response(&body_text, duration)
+    }
+}
+
+// =============================================================================
 // MockClient (tests only, but public so external integration tests can use it)
 // =============================================================================
 
@@ -540,8 +765,120 @@ mod tests {
                 "k",
                 AnthropicPricing { input_per_mtok: 0.0, output_per_mtok: 0.0 },
             )),
+            Box::new(OpenAiCompatibleClient::new("gpt-x", "http://localhost:8000/v1")),
         ];
-        assert_eq!(clients.len(), 3);
+        assert_eq!(clients.len(), 4);
+    }
+
+    // -- OpenAI-compatible client --------------------------------------
+
+    #[test]
+    fn openai_parse_extracts_text_and_usage_and_cost() {
+        let body = r#"{
+            "id": "chatcmpl-1",
+            "object": "chat.completion",
+            "choices": [
+                {"index": 0, "message": {"role": "assistant", "content": "Hello!"}}
+            ],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
+        }"#;
+        let client = OpenAiCompatibleClient::new("gpt-mock", "http://x/v1").with_pricing(
+            OpenAiPricing { input_per_mtok: 10.0, output_per_mtok: 30.0 },
+        );
+        let comp = client
+            .parse_response(body, Duration::from_millis(42))
+            .expect("parse");
+        assert_eq!(comp.text, "Hello!");
+        assert_eq!(comp.prompt_tokens, Some(100));
+        assert_eq!(comp.completion_tokens, Some(50));
+        // 100 @ 10/M = 0.001; 50 @ 30/M = 0.0015; total 0.0025.
+        assert!((comp.cost_usd.unwrap() - 0.0025).abs() < 1e-9);
+    }
+
+    #[test]
+    fn openai_parse_no_usage_no_pricing_yields_none_fields() {
+        // Many local servers (old llama.cpp, etc.) omit the usage
+        // block entirely. The client must tolerate that and return
+        // None for token counts + cost rather than erroring.
+        let body = r#"{
+            "choices": [
+                {"message": {"role": "assistant", "content": "hi"}}
+            ]
+        }"#;
+        let client = OpenAiCompatibleClient::new("local", "http://x/v1");
+        let comp = client
+            .parse_response(body, Duration::from_millis(1))
+            .expect("parse");
+        assert_eq!(comp.text, "hi");
+        assert!(comp.prompt_tokens.is_none());
+        assert!(comp.completion_tokens.is_none());
+        assert!(comp.cost_usd.is_none());
+    }
+
+    #[test]
+    fn openai_parse_usage_present_but_no_pricing_gives_tokens_but_not_cost() {
+        // Hosted endpoint returns usage, but the user didn't supply
+        // pricing — we still record token counts for later analysis
+        // and leave cost unset.
+        let body = r#"{
+            "choices": [{"message": {"role": "assistant", "content": "ok"}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5}
+        }"#;
+        let client = OpenAiCompatibleClient::new("local", "http://x/v1");
+        let comp = client
+            .parse_response(body, Duration::from_millis(1))
+            .expect("parse");
+        assert_eq!(comp.prompt_tokens, Some(10));
+        assert_eq!(comp.completion_tokens, Some(5));
+        assert!(comp.cost_usd.is_none());
+    }
+
+    #[test]
+    fn openai_parse_errors_on_empty_choices() {
+        let body = r#"{"choices": []}"#;
+        let client = OpenAiCompatibleClient::new("local", "http://x/v1");
+        let err = client
+            .parse_response(body, Duration::from_millis(1))
+            .unwrap_err();
+        assert!(err.to_string().contains("no choices"));
+    }
+
+    #[test]
+    fn openai_client_builder_defaults() {
+        let c = OpenAiCompatibleClient::new("gpt", "http://localhost:8000/v1");
+        assert_eq!(c.model_id(), "gpt");
+        assert_eq!(c.temperature, 0.2);
+        assert_eq!(c.timeout, Duration::from_secs(180));
+        assert_eq!(c.seed, None);
+        assert!(c.api_key.is_none());
+        assert!(c.pricing.is_none());
+    }
+
+    /// Live API smoke test. Uses a cheap OpenAI model when
+    /// `OPENAI_API_KEY` is set; skips otherwise. Endpoint defaults to
+    /// `https://api.openai.com/v1` here (in the CLI the user supplies
+    /// it explicitly to avoid accidental spending).
+    #[test]
+    #[ignore]
+    fn openai_complete_smoke_test_live() {
+        let Ok(api_key) = std::env::var("OPENAI_API_KEY") else {
+            eprintln!("OPENAI_API_KEY not set; skipping");
+            return;
+        };
+        let model = std::env::var("OPENAI_SMOKE_MODEL")
+            .unwrap_or_else(|_| "gpt-4o-mini".to_string());
+        let endpoint = std::env::var("OPENAI_SMOKE_ENDPOINT")
+            .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
+        let client = OpenAiCompatibleClient::new(model, endpoint)
+            .with_api_key(api_key)
+            .with_max_tokens(16);
+        let comp = client
+            .complete(
+                "You are terse. Reply with exactly one word.",
+                "Respond with: ok",
+            )
+            .expect("API call succeeded");
+        assert!(!comp.text.is_empty(), "response text was empty");
     }
 
     /// Live API smoke test. Skipped unless `ANTHROPIC_API_KEY` is set
