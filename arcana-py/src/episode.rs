@@ -208,6 +208,13 @@ pub struct PyTrajectory {
     /// list at that decision step.
     #[pyo3(get)]
     pub action_indices: Py<PyArray1<i32>>,
+    /// `(N,)` int32. Number of legal actions at each decision step.
+    /// Indices `0..n_legals[t]` are the valid action range at step
+    /// `t`. Required for masked-action training so a policy with
+    /// fixed-K_max output can mask illegal positions before
+    /// log-softmax.
+    #[pyo3(get)]
+    pub n_legals: Py<PyArray1<i32>>,
     /// `(N,)` float32. Per-step reward (0 except possibly at
     /// terminal).
     #[pyo3(get)]
@@ -388,6 +395,15 @@ fn trajectory_to_py(py: Python<'_>, traj: &Trajectory) -> PyResult<Py<PyTrajecto
         }
     }
 
+    // --- Legal-action counts (N,) int32.
+    let nlegal_arr = PyArray1::<i32>::zeros(py, [n], false);
+    {
+        let slice = unsafe { nlegal_arr.as_slice_mut()? };
+        for (i, step) in traj.steps.iter().enumerate() {
+            slice[i] = step.n_legal as i32;
+        }
+    }
+
     // --- Rewards (N,) float32.
     let rew_arr = PyArray1::<f32>::zeros(py, [n], false);
     {
@@ -403,6 +419,7 @@ fn trajectory_to_py(py: Python<'_>, traj: &Trajectory) -> PyResult<Py<PyTrajecto
             perspective: traj.perspective as u8,
             observations: obs_arr.unbind(),
             action_indices: idx_arr.unbind(),
+            n_legals: nlegal_arr.unbind(),
             rewards: rew_arr.unbind(),
             final_reward: traj.final_reward,
         },

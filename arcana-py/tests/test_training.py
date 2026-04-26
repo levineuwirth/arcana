@@ -11,6 +11,7 @@ from arcana.training import (
     build_batch,
     collect_episodes,
     episode_summary,
+    legal_action_stats,
     returns_for,
     to_torch,
 )
@@ -81,18 +82,22 @@ def test_build_batch_concatenates_perspective_steps():
     batch = build_batch(eps, perspective=0, gamma=1.0)
     obs = batch["observations"]
     idx = batch["action_indices"]
+    nl = batch["n_legals"]
     ret = batch["returns"]
     eid = batch["episode_ids"]
 
     # All arrays have the same length B.
     assert obs.ndim == 2
     assert obs.shape[1] == arcana.BASIC_E2_DIM_TWO_PLAYERS
-    assert obs.shape[0] == idx.shape[0] == ret.shape[0] == eid.shape[0]
+    assert obs.shape[0] == idx.shape[0] == nl.shape[0] == ret.shape[0] == eid.shape[0]
     # Numpy dtypes match the contract.
     assert obs.dtype == np.float32
     assert idx.dtype == np.int32
+    assert nl.dtype == np.int32
     assert ret.dtype == np.float32
     assert eid.dtype == np.int32
+    # action_index < n_legal at every step (training invariant).
+    assert (idx < nl).all()
     # episode_ids only references included episodes.
     assert int(eid.max(initial=-1)) < len(eps)
 
@@ -160,6 +165,55 @@ def test_episode_summary_counts_match_outcomes():
 
 def test_episode_summary_empty_input():
     assert episode_summary([], perspective=0) == {"n": 0}
+
+
+# -- legal_action_stats --------------------------------------------
+
+
+def test_legal_action_stats_summarizes_n_legal_distribution():
+    eps = collect_episodes(
+        n_episodes=20,
+        policy_a=arcana.policies.progress_biased(seed=11),
+        policy_b=arcana.policies.progress_biased(seed=22),
+        base_seed=0,
+        max_steps=2000,
+    )
+    stats = legal_action_stats(eps)
+    assert stats["n_steps"] > 0
+    assert stats["min"] >= 1, "every decision has at least one legal action"
+    assert stats["min"] <= stats["p50"] <= stats["p99"] <= stats["max"]
+    assert stats["mean"] >= stats["min"]
+    # Bucket histogram sums to total step count.
+    assert sum(stats["bucket_counts"].values()) == stats["n_steps"]
+
+
+def test_legal_action_stats_handles_empty_input():
+    stats = legal_action_stats([])
+    assert stats["n_steps"] == 0
+    assert stats["bucket_counts"] == {}
+
+
+# -- returns_for vectorization (regression vs reference) -----------
+
+
+def test_returns_for_matches_loop_implementation():
+    """Vectorized returns must match a naive Python loop on
+    representative inputs."""
+    rng = np.random.default_rng(0)
+    for size in [1, 5, 20, 200]:
+        rewards = rng.standard_normal(size).astype(np.float32)
+        for gamma in [0.5, 0.9, 0.99, 1.0]:
+            # Reference: backwards Python loop.
+            ref = np.zeros_like(rewards, dtype=np.float32)
+            g = 0.0
+            for t in range(size - 1, -1, -1):
+                g = float(rewards[t]) + gamma * g
+                ref[t] = g
+            got = returns_for(rewards, gamma=gamma)
+            np.testing.assert_allclose(
+                got, ref, rtol=1e-5, atol=1e-5,
+                err_msg=f"size={size} gamma={gamma}",
+            )
 
 
 # -- to_torch (only if torch is installed) -------------------------

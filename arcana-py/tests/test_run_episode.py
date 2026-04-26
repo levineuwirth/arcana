@@ -65,6 +65,15 @@ def test_trajectory_arrays_are_struct_of_arrays_and_contiguous():
         assert idx.flags["C_CONTIGUOUS"]
         assert (idx >= 0).all()  # no -1 sentinels in normal play
 
+        # n_legals: (N,) int32, contiguous, all >= 1, action_index < n_legal.
+        nl = traj.n_legals
+        assert nl.dtype == np.int32
+        assert nl.ndim == 1
+        assert nl.shape[0] == obs.shape[0]
+        assert nl.flags["C_CONTIGUOUS"]
+        assert (nl >= 1).all()
+        assert (idx < nl).all(), "every chosen action_index must be < n_legal"
+
         # rewards: (N,) float32.
         rew = traj.rewards
         assert rew.dtype == np.float32

@@ -197,6 +197,17 @@ pub struct TrajectoryStep {
     /// harness couldn't locate (which currently panics, so this
     /// stays `None` only for future relaxations).
     pub action_index: Option<usize>,
+    /// Number of legal actions at the moment this decision was made.
+    /// Required for masked-action training: indices `0..n_legal` are
+    /// valid this step, indices `n_legal..K_max` are illegal.
+    ///
+    /// **Position-dependence assumption.** Action indices are
+    /// per-decision-point — index 5 at one timestep is unrelated to
+    /// index 5 at another. v0 stores only the count, not the legal-
+    /// action list itself. This is enough for vanilla policy nets;
+    /// off-policy correction / importance sampling would need the
+    /// full list, which would be an additive future change.
+    pub n_legal: u32,
     /// Per-step reward. Always 0 except possibly at the terminal
     /// step, where it equals the perspective's terminal reward.
     pub reward: f32,
@@ -347,6 +358,7 @@ pub fn run_episode(
                     observation: obs,
                     action: action.clone(),
                     action_index: Some(action_index),
+                    n_legal: legal_actions.len() as u32,
                     reward: 0.0,
                 });
 
