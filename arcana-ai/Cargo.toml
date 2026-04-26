@@ -6,6 +6,9 @@ edition = "2021"
 [dependencies]
 arcana-core = { path = "../arcana-core" }
 arcana-cards = { path = "../arcana-cards" }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
