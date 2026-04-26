@@ -102,6 +102,7 @@ pub enum PolicyChoice {
 /// seeds — uninstructed agents can mulligan to oblivion or spin
 /// without making progress. Use [`ProgressBiasedRandomPolicy`] for
 /// integration tests that need reliable termination.
+#[derive(Clone)]
 pub struct RandomPolicy {
     rng: ChaCha8Rng,
 }
@@ -133,6 +134,7 @@ impl Policy for RandomPolicy {
 /// This matches the engine's existing integration-test policy, so
 /// the harness's regression run uses the same "known-terminates"
 /// behavior arcana-core already validates.
+#[derive(Clone)]
 pub struct ProgressBiasedRandomPolicy {
     rng: ChaCha8Rng,
 }
@@ -168,6 +170,7 @@ impl Policy for ProgressBiasedRandomPolicy {
 /// Always returns `PolicyChoice::Index(0)`. Useful as a debug
 /// baseline and as a deterministic policy in tests where the
 /// reproducible-trajectory shape matters more than realistic play.
+#[derive(Clone)]
 pub struct FirstActionPolicy;
 
 impl Policy for FirstActionPolicy {

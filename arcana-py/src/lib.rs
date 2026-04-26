@@ -20,6 +20,7 @@ use pyo3::prelude::*;
 
 pub mod conversions;
 pub mod env;
+pub mod episode;
 
 /// Module entry point. Name must match the cdylib name
 /// (`arcana_py`) for PyO3 to register it correctly. Maturin's
@@ -30,6 +31,7 @@ pub mod env;
 #[pymodule]
 fn arcana_py(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<env::MtgEnv>()?;
+    episode::register(m)?;
     m.add(
         "BASIC_E2_DIM_TWO_PLAYERS",
         arcana_ai::observation::BASIC_E2_DIM_TWO_PLAYERS,
