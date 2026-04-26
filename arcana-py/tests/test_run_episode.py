@@ -3,6 +3,8 @@
 Run with `maturin develop && pytest arcana-py/tests/`.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -143,10 +145,12 @@ def test_different_seeds_produce_different_trajectories():
 def test_python_callable_policy_works():
     """A trivial Python policy that always picks index 0 should run
     end-to-end. Equivalent to `policies.first_action()` but
-    exercises the FFI callback path."""
+    exercises the FFI callback path. Uses **kwargs per the
+    forward-compat recommendation so the FutureWarning doesn't
+    fire."""
     calls = {"count": 0}
 
-    def always_first(obs, n_legal):
+    def always_first(obs, n_legal, **kwargs):
         calls["count"] += 1
         assert isinstance(obs, np.ndarray)
         assert obs.dtype == np.float32
@@ -162,11 +166,47 @@ def test_python_callable_policy_works():
 
 
 def test_python_policy_invalid_index_raises():
-    def bad(obs, n_legal):
+    # NOTE: PyO3 surfaces panics as PanicException, a subclass of
+    # BaseException but not Exception. Until v1 refactors
+    # Policy::select_action to return Result<usize, PyErr>, exceptions
+    # raised from Python policies don't preserve their original type
+    # (an out-of-range index becomes a PanicException, not an
+    # IndexError). Catching BaseException is correct for v0; tighten
+    # this to IndexError when the v1 PyErr propagation path lands.
+    def bad(obs, n_legal, **kwargs):
         return n_legal + 100  # always out of range
 
     with pytest.raises(BaseException):
         arcana.run_episode(seed=0, policy_a=bad, max_steps=10)
+
+
+def test_python_policy_without_kwargs_warns():
+    """Forward-compat guardrail. A policy without **kwargs should
+    warn at episode construction so the breakage is visible immediately
+    rather than silent at v1 release when kinds= is added."""
+
+    def no_kwargs(obs, n_legal):
+        return 0
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", FutureWarning)
+        # max_steps=2 keeps the test cheap; we only care about the
+        # warning firing at construction, not the episode outcome.
+        arcana.run_episode(seed=0, policy_a=no_kwargs, max_steps=2)
+    future_warnings = [w for w in caught if issubclass(w.category, FutureWarning)]
+    assert future_warnings, "expected a FutureWarning for missing **kwargs"
+    assert "**kwargs" in str(future_warnings[0].message)
+
+
+def test_python_policy_with_kwargs_does_not_warn():
+    def with_kwargs(obs, n_legal, **kwargs):
+        return 0
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", FutureWarning)
+        arcana.run_episode(seed=0, policy_a=with_kwargs, max_steps=2)
+    future_warnings = [w for w in caught if issubclass(w.category, FutureWarning)]
+    assert not future_warnings, f"unexpected FutureWarning(s): {future_warnings}"
 
 
 def test_invalid_policy_arg_rejected():
@@ -178,7 +218,7 @@ def test_invalid_policy_arg_rejected():
 
 
 def test_can_mix_rust_and_python_policies():
-    def py_pol(obs, n_legal):
+    def py_pol(obs, n_legal, **kwargs):
         return 0
 
     result = arcana.run_episode(

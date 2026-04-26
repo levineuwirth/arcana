@@ -26,6 +26,8 @@ Currently exported (v0):
     arcana.__version__                — package version string.
 """
 
+import inspect
+import warnings
 from dataclasses import dataclass, field
 
 from . import policies
@@ -37,8 +39,75 @@ from .arcana_py import (
     PyPolicy as Policy,
     PyTrajectory as Trajectory,
     __version__,
-    run_episode,
 )
+from .arcana_py import run_episode as _rust_run_episode
+
+
+def run_episode(
+    seed: int = 0,
+    policy_a=None,
+    policy_b=None,
+    max_turns: int = 200,
+    max_steps: int = 5000,
+):
+    """Drive one self-play episode end-to-end.
+
+    Both policy slots accept either an `arcana.Policy` (built-in
+    constructed via `arcana.policies.*`) or a plain Python callable
+    `(obs: np.ndarray, n_legal: int) -> int`. Passing `None`
+    defaults to `policies.random()` seeded from the episode seed.
+
+    `seed` deterministically determines the entire episode trace —
+    re-running with the same seed produces byte-identical
+    trajectories.
+
+    The GIL is held for the duration of this call. Other Python
+    threads cannot run during episode execution; this matters only
+    for parallel-episode workloads, which should use process-level
+    parallelism (multiprocessing.Pool) on top of single-episode
+    primitives until in-Rust vectorization lands.
+    """
+    _validate_callable_policy(policy_a)
+    _validate_callable_policy(policy_b)
+    return _rust_run_episode(
+        seed=seed,
+        policy_a=policy_a,
+        policy_b=policy_b,
+        max_turns=max_turns,
+        max_steps=max_steps,
+    )
+
+
+def _validate_callable_policy(p) -> None:
+    """Warn if `p` is a Python callable that doesn't accept **kwargs.
+
+    Forward-compat guardrail: future versions may pass extra keyword
+    arguments to policies (e.g. `kinds=` for action introspection).
+    Catching the breakage at policy construction with a clear
+    FutureWarning is cheaper than the silent breakage at v1 release.
+    """
+    if p is None or not callable(p):
+        # None or a PyPolicy handle (PyPolicy isn't callable from Python).
+        return
+    try:
+        sig = inspect.signature(p)
+    except (ValueError, TypeError):
+        # C builtins and some objects don't have introspectable signatures.
+        # Skip rather than guess.
+        return
+    has_kwargs = any(
+        param.kind == inspect.Parameter.VAR_KEYWORD
+        for param in sig.parameters.values()
+    )
+    if not has_kwargs:
+        warnings.warn(
+            "Python policy callable should accept **kwargs for forward "
+            "compatibility. Future versions may pass additional keyword "
+            "arguments (e.g. kinds=). Recommended signature: "
+            "(obs, n_legal, **kwargs) -> int",
+            FutureWarning,
+            stacklevel=3,
+        )
 
 
 @dataclass(frozen=True)
