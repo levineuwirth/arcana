@@ -11,5 +11,5 @@ crate-type = ["cdylib"]
 arcana-core = { path = "../arcana-core" }
 arcana-cards = { path = "../arcana-cards" }
 arcana-ai = { path = "../arcana-ai" }
-# pyo3 = { version = "0.22", features = ["extension-module"] }
-# Uncomment when ready to build Python bindings
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py310"] }
+numpy = "0.23"

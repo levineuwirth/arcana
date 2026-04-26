@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "arcana"
+version = "0.1.0"
+description = "Arcana Engine — Magic: The Gathering rules engine for AI research"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.maturin]
+module-name = "arcana.arcana_py"
+python-source = "python"
+features = ["pyo3/extension-module"]

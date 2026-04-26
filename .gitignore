@@ -27,6 +27,11 @@ __pycache__/
 dist/
 build/
 .venv/
+.pytest_cache/
+
+# maturin / PyO3 build artifacts dropped into the package tree
+arcana-py/python/arcana/*.so
+arcana-py/python/arcana/*.pyd
 
 # Volatile verify-pipeline scratch file (overwritten every run).
 # arcana-cards/build.rs writes a stub on fresh clones so the crate
