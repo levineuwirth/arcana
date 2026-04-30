@@ -56,7 +56,8 @@ fn real_main() -> Result<()> {
         sample_size_per_tier: args.sample_size_per_tier,
         tiers: args.tiers.clone(),
         max_attempts: args.max_attempts,
-        seed: args.seed,
+        card_seed: args.card_seed,
+        model_seed: args.model_seed,
         output_path: args.output.clone().unwrap_or_else(default_output_path),
         t4_control_sample: args.t4_control,
         preflight_card_names: vec![
@@ -69,11 +70,12 @@ fn real_main() -> Result<()> {
         config.preflight_card_names.clear();
     }
 
-    // Print header: seed + sample size + model list. Anyone reading
+    // Print header: seeds + sample size + model list. Anyone reading
     // output two months from now needs this to reproduce or compare.
     eprintln!("===============================");
     eprintln!("bakeoff run");
-    eprintln!("  seed:               {}", config.seed);
+    eprintln!("  card_seed:          {}", config.card_seed);
+    eprintln!("  model_seed:         {}", config.model_seed);
     eprintln!("  sample size/tier:   {}", config.sample_size_per_tier);
     eprintln!("  max attempts:       {}", config.max_attempts);
     eprintln!(
@@ -117,11 +119,13 @@ fn real_main() -> Result<()> {
     eprintln!("  output:             {}", config.output_path.display());
     eprintln!("===============================");
 
-    // Build clients.
+    // Build clients. Model RNG is seeded from `model_seed` so cluster
+    // shards can hold `card_seed` constant and vary `model_seed` to
+    // get independent trials of the same card set.
     let mut clients: Vec<Box<dyn LlmClient>> = Vec::new();
     for m in &args.models {
         clients.push(Box::new(
-            OllamaClient::new(m, &args.ollama_endpoint).with_seed(config.seed),
+            OllamaClient::new(m, &args.ollama_endpoint).with_seed(config.model_seed),
         ));
     }
     if !args.anthropic_models.is_empty() {
@@ -157,7 +161,7 @@ fn real_main() -> Result<()> {
         }
         for m in &args.openai_models {
             let mut client = OpenAiCompatibleClient::new(m, endpoint)
-                .with_seed(config.seed);
+                .with_seed(config.model_seed);
             if let Some(k) = &openai_key {
                 client = client.with_api_key(k);
             }
@@ -203,7 +207,8 @@ struct Args {
     openai_pricing_override: Option<OpenAiPricing>,
     sample_size_per_tier: usize,
     max_attempts: usize,
-    seed: u64,
+    card_seed: u64,
+    model_seed: u64,
     tiers: Vec<Tier>,
     t4_control: usize,
     no_preflight: bool,
@@ -221,7 +226,13 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     let mut openai_pricing_override: Option<OpenAiPricing> = None;
     let mut sample_size_per_tier: usize = 30;
     let mut max_attempts: usize = 3;
-    let mut seed: u64 = 0;
+    // `--seed` (legacy) sets both card_seed and model_seed unless
+    // they're individually overridden. Keep it as a back-compat
+    // shorthand for single-shot runs; cluster-shard workflows use
+    // --card-seed / --model-seed directly.
+    let mut seed: Option<u64> = None;
+    let mut card_seed_override: Option<u64> = None;
+    let mut model_seed_override: Option<u64> = None;
     let mut tiers: Vec<Tier> =
         vec![Tier::One, Tier::Two, Tier::Three];
     let mut t4_control: usize = 10;
@@ -291,11 +302,28 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                     .context("--max-attempts")?;
             }
             "--seed" => {
-                seed = it
+                let v: u64 = it
                     .next()
                     .ok_or_else(|| anyhow!("--seed needs a value"))?
                     .parse()
                     .context("--seed")?;
+                seed = Some(v);
+            }
+            "--card-seed" => {
+                let v: u64 = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--card-seed needs a value"))?
+                    .parse()
+                    .context("--card-seed")?;
+                card_seed_override = Some(v);
+            }
+            "--model-seed" => {
+                let v: u64 = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--model-seed needs a value"))?
+                    .parse()
+                    .context("--model-seed")?;
+                model_seed_override = Some(v);
             }
             "--tiers" => {
                 let spec = it.next().ok_or_else(|| anyhow!("--tiers needs a value"))?;
@@ -339,6 +367,11 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
             "--openai-endpoint is required when --openai-model is set"
         ));
     }
+    // Resolve seeds. --card-seed / --model-seed individually override
+    // --seed; --seed (legacy) sets both; nothing set ⇒ both default 0.
+    let card_seed = card_seed_override.or(seed).unwrap_or(0);
+    let model_seed = model_seed_override.or(seed).unwrap_or(0);
+
     Ok(Args {
         models,
         anthropic_models,
@@ -349,7 +382,8 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         openai_pricing_override,
         sample_size_per_tier,
         max_attempts,
-        seed,
+        card_seed,
+        model_seed,
         tiers,
         t4_control,
         no_preflight,
@@ -450,7 +484,15 @@ llama.cpp server, LMStudio, ...):
 Sweep:
   --sample-size-per-tier <n>     Default 30
   --max-attempts <n>             Default 3 (set to 1 for one-shot-only)
-  --seed <u64>                   Default 0
+  --seed <u64>                   Set both --card-seed and --model-seed.
+                                 Back-compat shorthand for single-shot runs.
+  --card-seed <u64>              Seed for the card sampler. Default 0.
+                                 Hold constant across cluster shards so every
+                                 shard sees the same card set.
+  --model-seed <u64>             Seed forwarded to model RNGs (Ollama,
+                                 OpenAI-compatible). Default 0. Vary across
+                                 cluster shards for independent trials of the
+                                 same card set. Anthropic's API ignores it.
   --tiers <list>                 Comma-separated tier numbers; default 1,2,3
   --t4-control <n>               T4 sanity-anchor sample size; default 10
   --no-preflight                 Skip the 3-card pre-sweep smoke test

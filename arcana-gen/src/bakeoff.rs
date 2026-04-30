@@ -70,7 +70,15 @@ pub struct BakeoffConfig {
     /// to match typical production retry budgets. Set to 1 for
     /// pure one-shot comparisons.
     pub max_attempts: usize,
-    pub seed: u64,
+    /// Seed for the card sampler. Determines which cards land in
+    /// the sample. Hold this constant across shards / replicate
+    /// jobs so every shard sees the same card set.
+    pub card_seed: u64,
+    /// Seed forwarded to model clients (Ollama / OpenAI-compatible).
+    /// Vary this across shards / replicate jobs to get independent
+    /// trials of the same cards. Anthropic ignores it (the
+    /// Messages API doesn't accept a seed).
+    pub model_seed: u64,
     pub output_path: PathBuf,
     /// Number of T4 cards sampled as a classifier sanity anchor.
     /// Expected to all route to Unsupported; a surprise passes-
@@ -89,7 +97,8 @@ impl Default for BakeoffConfig {
             sample_size_per_tier: 30,
             tiers: vec![Tier::One, Tier::Two, Tier::Three],
             max_attempts: 3,
-            seed: 0,
+            card_seed: 0,
+            model_seed: 0,
             output_path: default_output_path(),
             t4_control_sample: 10,
             preflight_card_names: vec![
@@ -160,7 +169,12 @@ pub struct ModelSummary {
 #[derive(Debug, Clone, Serialize)]
 pub struct BakeoffReport {
     pub total_cards_sampled: usize,
-    pub sample_seed: u64,
+    /// Seed used for card sampling.
+    pub card_seed: u64,
+    /// Seed used for model RNG. Different from `card_seed` lets
+    /// you run replicate trials of the same card set with varied
+    /// model behavior (cluster-shard pattern).
+    pub model_seed: u64,
     /// Unsupported reasons keyed by their `Display` string, with
     /// counts. Identical across all models in a run — surfaces
     /// pipeline-coverage failures distinctly from model failures.
@@ -311,9 +325,10 @@ pub fn run(
     // 3. Sample
     let sampled = sample_cards(pool, config);
     eprintln!(
-        "bakeoff: sampled {} cards (seed={}, size_per_tier={}, t4_control={})",
+        "bakeoff: sampled {} cards (card_seed={}, model_seed={}, size_per_tier={}, t4_control={})",
         sampled.len(),
-        config.seed,
+        config.card_seed,
+        config.model_seed,
         config.sample_size_per_tier,
         config.t4_control_sample,
     );
@@ -389,7 +404,8 @@ pub fn run(
     }
     Ok(BakeoffReport {
         total_cards_sampled: sampled.len(),
-        sample_seed: config.seed,
+        card_seed: config.card_seed,
+        model_seed: config.model_seed,
         unsupported,
         per_model: per_model_out,
         output_path: config.output_path.clone(),
@@ -592,7 +608,7 @@ fn run_card_for_model(
 // =============================================================================
 
 fn sample_cards(pool: &ScryfallPool, config: &BakeoffConfig) -> Vec<(Card, Tier)> {
-    let mut rng = ChaCha8Rng::seed_from_u64(config.seed);
+    let mut rng = ChaCha8Rng::seed_from_u64(config.card_seed);
 
     // Bucket Standard-legal cards by classifier tier.
     let mut by_tier: HashMap<Tier, Vec<&Card>> = HashMap::new();
@@ -757,10 +773,12 @@ pub fn format_report(report: &BakeoffReport) -> String {
     out.push_str(&format!(
         "=== Bake-off Report ===\n\
          total cards sampled: {}\n\
-         seed: {}\n\
+         card_seed: {}\n\
+         model_seed: {}\n\
          JSONL path: {}\n\n",
         report.total_cards_sampled,
-        report.sample_seed,
+        report.card_seed,
+        report.model_seed,
         report.output_path.display(),
     ));
     if !report.unsupported.is_empty() {
@@ -894,7 +912,8 @@ mod tests {
             sample_size_per_tier: 10,
             tiers: vec![Tier::One, Tier::Two, Tier::Three],
             max_attempts: 2,
-            seed: 42,
+            card_seed: 42,
+            model_seed: 42,
             output_path: output,
             t4_control_sample: 5,
             preflight_card_names: vec![], // skip preflight in tests
@@ -993,6 +1012,38 @@ mod tests {
     // real arcana-cards-level breakage occurs during a bake-off.
 
     #[test]
+    fn sample_cards_uses_card_seed_not_model_seed() {
+        // Cluster-shard contract: different model_seeds with the
+        // same card_seed must produce identical card samples. This
+        // is what lets shards run independent trials of the same
+        // card set in parallel.
+        let pool = ScryfallPool::from_json_str(FIXTURE_POOL).expect("fixture parses");
+        let mut config_a = mk_config(PathBuf::from("/tmp/unused_a"));
+        let mut config_b = mk_config(PathBuf::from("/tmp/unused_b"));
+        config_a.card_seed = 7;
+        config_a.model_seed = 100;
+        config_b.card_seed = 7;
+        config_b.model_seed = 999;
+        let a = sample_cards(&pool, &config_a);
+        let b = sample_cards(&pool, &config_b);
+        let a_names: Vec<_> = a.iter().map(|(c, _)| c.name.clone()).collect();
+        let b_names: Vec<_> = b.iter().map(|(c, _)| c.name.clone()).collect();
+        assert_eq!(a_names, b_names, "model_seed must not affect card sampling");
+
+        // Different card_seeds DO yield different samples (assuming
+        // the pool is large enough — fixture is small but the seed
+        // change should still permute order).
+        config_b.card_seed = 99;
+        let c = sample_cards(&pool, &config_b);
+        let c_names: Vec<_> = c.iter().map(|(c, _)| c.name.clone()).collect();
+        // With a 2-card pool, different shuffle seeds may still
+        // produce the same order half the time. Skip the strict
+        // inequality assertion; the constancy assertion above is
+        // the load-bearing one.
+        let _ = c_names;
+    }
+
+    #[test]
     fn sample_cards_is_deterministic_under_seed() {
         // Non-ignored — pure function, no cargo spawn. Same seed
         // must yield the same sample, run to run.
@@ -1009,14 +1060,16 @@ mod tests {
     fn format_report_includes_seed_and_output_path() {
         let report = BakeoffReport {
             total_cards_sampled: 42,
-            sample_seed: 123,
+            card_seed: 123,
+            model_seed: 456,
             unsupported: HashMap::new(),
             per_model: HashMap::new(),
             output_path: PathBuf::from("/some/path.jsonl"),
         };
         let s = format_report(&report);
         assert!(s.contains("42"), "total cards must appear");
-        assert!(s.contains("123"), "seed must appear");
+        assert!(s.contains("123"), "card_seed must appear");
+        assert!(s.contains("456"), "model_seed must appear");
         assert!(s.contains("/some/path.jsonl"), "jsonl path must appear");
     }
 
