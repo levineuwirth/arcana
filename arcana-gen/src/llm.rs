@@ -399,6 +399,12 @@ pub struct OpenAiCompatibleClient {
     temperature: f32,
     seed: Option<u64>,
     max_tokens: u32,
+    /// Provider-specific keys merged into every request body.
+    /// Common use: Qwen3 thinking-mode toggle via
+    /// `{"chat_template_kwargs": {"enable_thinking": false}}`.
+    /// Keys here override the client's own (`model`, `messages`,
+    /// etc.) — caller's responsibility not to clobber.
+    extra_body: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 /// Per-model pricing in USD per million tokens. Mirrors the
@@ -428,6 +434,7 @@ impl OpenAiCompatibleClient {
             temperature: 0.2,
             seed: None,
             max_tokens: 4096,
+            extra_body: None,
         }
     }
 
@@ -458,6 +465,19 @@ impl OpenAiCompatibleClient {
 
     pub fn with_max_tokens(mut self, n: u32) -> Self {
         self.max_tokens = n;
+        self
+    }
+
+    /// Merge `extra` into every request body sent by this client.
+    /// Use for provider-specific kwargs the standard
+    /// `/v1/chat/completions` schema doesn't carry — most commonly
+    /// `chat_template_kwargs` for Qwen3 / similar thinking-mode
+    /// toggles. Replaces any previous extra_body call.
+    pub fn with_extra_body(
+        mut self,
+        extra: serde_json::Map<String, serde_json::Value>,
+    ) -> Self {
+        self.extra_body = Some(extra);
         self
     }
 
@@ -535,6 +555,44 @@ struct OpenAiUsage {
     completion_tokens: u32,
 }
 
+/// Build the JSON request body for `/v1/chat/completions`, merging
+/// in any caller-supplied `extra_body` keys at the top level.
+/// Extracted from `complete()` so the merge logic can be tested
+/// without spawning HTTP. Caller-supplied keys overwrite the
+/// client's own (`model`, `messages`, etc.); the caller is
+/// responsible for not clobbering required fields.
+fn build_openai_request_body(
+    model: &str,
+    system: &str,
+    user: &str,
+    temperature: f32,
+    max_tokens: u32,
+    seed: Option<u64>,
+    extra_body: Option<&serde_json::Map<String, serde_json::Value>>,
+) -> Result<serde_json::Value> {
+    let body = OpenAiRequest {
+        model,
+        messages: vec![
+            OpenAiRequestMessage { role: "system", content: system },
+            OpenAiRequestMessage { role: "user", content: user },
+        ],
+        temperature,
+        max_tokens,
+        seed,
+        stream: false,
+    };
+    let mut value = serde_json::to_value(&body)
+        .context("serializing OpenAI request body")?;
+    if let Some(extra) = extra_body {
+        if let serde_json::Value::Object(map) = &mut value {
+            for (k, v) in extra {
+                map.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    Ok(value)
+}
+
 impl LlmClient for OpenAiCompatibleClient {
     fn model_id(&self) -> &str {
         &self.model_id
@@ -543,17 +601,15 @@ impl LlmClient for OpenAiCompatibleClient {
     fn complete(&self, system: &str, user: &str) -> Result<Completion> {
         let agent = ureq::AgentBuilder::new().timeout(self.timeout).build();
 
-        let body = OpenAiRequest {
-            model: &self.model_id,
-            messages: vec![
-                OpenAiRequestMessage { role: "system", content: system },
-                OpenAiRequestMessage { role: "user", content: user },
-            ],
-            temperature: self.temperature,
-            max_tokens: self.max_tokens,
-            seed: self.seed,
-            stream: false,
-        };
+        let body = build_openai_request_body(
+            &self.model_id,
+            system,
+            user,
+            self.temperature,
+            self.max_tokens,
+            self.seed,
+            self.extra_body.as_ref(),
+        )?;
 
         let url = format!(
             "{}/chat/completions",
@@ -852,6 +908,66 @@ mod tests {
         assert_eq!(c.seed, None);
         assert!(c.api_key.is_none());
         assert!(c.pricing.is_none());
+        assert!(c.extra_body.is_none());
+    }
+
+    #[test]
+    fn openai_request_body_without_extras_has_standard_shape() {
+        let body = build_openai_request_body(
+            "qwen3", "you are terse", "say ok", 0.2, 16, Some(42), None,
+        )
+        .expect("build");
+        let obj = body.as_object().unwrap();
+        assert_eq!(obj["model"], "qwen3");
+        assert_eq!(obj["max_tokens"], 16);
+        assert_eq!(obj["seed"], 42);
+        assert_eq!(obj["stream"], false);
+        assert!(obj.contains_key("messages"));
+        // No accidental extra keys.
+        let keys: std::collections::HashSet<&str> =
+            obj.keys().map(|s| s.as_str()).collect();
+        for required in ["model", "messages", "temperature", "max_tokens", "seed", "stream"] {
+            assert!(keys.contains(required), "missing key {required}");
+        }
+    }
+
+    #[test]
+    fn openai_request_body_merges_extra_keys_at_top_level() {
+        // Qwen3 thinking-mode toggle is the canonical use case.
+        let mut extra = serde_json::Map::new();
+        extra.insert(
+            "chat_template_kwargs".to_string(),
+            serde_json::json!({ "enable_thinking": false }),
+        );
+        let body = build_openai_request_body(
+            "qwen3", "sys", "user", 0.2, 16, None, Some(&extra),
+        )
+        .expect("build");
+        let obj = body.as_object().unwrap();
+        // Standard keys preserved.
+        assert_eq!(obj["model"], "qwen3");
+        assert!(obj.contains_key("messages"));
+        // Extra key merged at top level.
+        assert_eq!(
+            obj["chat_template_kwargs"],
+            serde_json::json!({ "enable_thinking": false })
+        );
+    }
+
+    #[test]
+    fn openai_request_body_extra_keys_override_standard() {
+        // Document the override semantic. Caller's responsibility
+        // not to clobber required fields, but if they do, they win.
+        let mut extra = serde_json::Map::new();
+        extra.insert(
+            "temperature".to_string(),
+            serde_json::Value::from(0.99),
+        );
+        let body = build_openai_request_body(
+            "qwen3", "sys", "user", 0.2, 16, None, Some(&extra),
+        )
+        .expect("build");
+        assert_eq!(body["temperature"], 0.99);
     }
 
     /// Live API smoke test. Uses a cheap OpenAI model when

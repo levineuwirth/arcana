@@ -1,0 +1,40 @@
+# Bake-off configuration against LMStudio's OpenAI-compatible server.
+#
+# LMStudio exposes a /v1 API at localhost:1234 by default. Start the
+# server from LMStudio's "Local Server" tab, load the models you
+# want to compare, then `uv run python smoke_test.py`.
+
+lmstudio:
+  base_url: "http://localhost:1234/v1"
+  api_key: "lm-studio"            # placeholder; LMStudio ignores
+  models:                          # repeatable; each is one --openai-model
+    - "qwen3-235b-instruct"
+    - "glm-4.5"
+
+  # Provider-specific kwargs merged into every request body. Common
+  # use: Qwen3 thinking-mode toggle. Comment out for non-Qwen3 models
+  # or when you want to leave the model's default thinking behavior.
+  # extra_body:
+  #   chat_template_kwargs:
+  #     enable_thinking: false
+
+# Bake-off run parameters. Maps 1:1 onto the bakeoff binary's CLI
+# flags. card_seed and model_seed are independent — hold card_seed
+# constant across replicate runs, vary model_seed for independent
+# trials of the same card set.
+bakeoff:
+  binary: "../../../target/release/bakeoff"   # relative to this dir
+  sample_size_per_tier: 30
+  max_attempts: 3
+  tiers: [1, 2, 3]
+  t4_control: 10
+  card_seed: 0
+  model_seed: 0
+  output_dir: "../../../target/bakeoff-runs/lmstudio"
+  no_preflight: false
+
+# Smoke-test parameters.
+smoke:
+  prompt: "Reply with exactly one word: ok"
+  max_tokens: 16
+  seed: 42

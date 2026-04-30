@@ -1,0 +1,9 @@
+[project]
+name = "arcana-bakeoff-lmstudio"
+version = "0.1.0"
+description = "YAML-driven launcher for the arcana bake-off against LMStudio"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.40.0",
+    "pyyaml>=6.0",
+]

@@ -159,6 +159,12 @@ fn real_main() -> Result<()> {
                 args.openai_api_key_env,
             );
         }
+        if let Some(eb) = &args.openai_extra_body {
+            eprintln!(
+                "  openai extra_body:  {}",
+                serde_json::Value::Object(eb.clone()),
+            );
+        }
         for m in &args.openai_models {
             let mut client = OpenAiCompatibleClient::new(m, endpoint)
                 .with_seed(config.model_seed);
@@ -171,6 +177,9 @@ fn real_main() -> Result<()> {
                     m, p.input_per_mtok, p.output_per_mtok,
                 );
                 client = client.with_pricing(p);
+            }
+            if let Some(eb) = &args.openai_extra_body {
+                client = client.with_extra_body(eb.clone());
             }
             clients.push(Box::new(client));
         }
@@ -205,6 +214,7 @@ struct Args {
     openai_endpoint: Option<String>,
     openai_api_key_env: String,
     openai_pricing_override: Option<OpenAiPricing>,
+    openai_extra_body: Option<serde_json::Map<String, serde_json::Value>>,
     sample_size_per_tier: usize,
     max_attempts: usize,
     card_seed: u64,
@@ -224,6 +234,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     let mut openai_endpoint: Option<String> = None;
     let mut openai_api_key_env: String = "OPENAI_API_KEY".to_string();
     let mut openai_pricing_override: Option<OpenAiPricing> = None;
+    let mut openai_extra_body: Option<serde_json::Map<String, serde_json::Value>> = None;
     let mut sample_size_per_tier: usize = 30;
     let mut max_attempts: usize = 3;
     // `--seed` (legacy) sets both card_seed and model_seed unless
@@ -286,6 +297,20 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                 let (i, o) = parse_pricing(&spec, "--openai-pricing")?;
                 openai_pricing_override =
                     Some(OpenAiPricing { input_per_mtok: i, output_per_mtok: o });
+            }
+            "--openai-extra-body" => {
+                let raw = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--openai-extra-body needs a value"))?;
+                let parsed: serde_json::Value = serde_json::from_str(&raw)
+                    .context("--openai-extra-body must be valid JSON")?;
+                let map = parsed
+                    .as_object()
+                    .ok_or_else(|| {
+                        anyhow!("--openai-extra-body must be a JSON object (got {parsed})")
+                    })?
+                    .clone();
+                openai_extra_body = Some(map);
             }
             "--sample-size-per-tier" => {
                 sample_size_per_tier = it
@@ -380,6 +405,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         openai_endpoint,
         openai_api_key_env,
         openai_pricing_override,
+        openai_extra_body,
         sample_size_per_tier,
         max_attempts,
         card_seed,
@@ -453,7 +479,11 @@ fn default_output_path() -> PathBuf {
 }
 
 fn print_usage() {
+    // Use "{}" + raw-string arg so the help text can contain literal
+    // `{` / `}` (e.g. JSON examples in --openai-extra-body) without
+    // being interpreted as format placeholders.
     eprintln!(
+        "{}",
         r#"Usage: bakeoff [--model <tag>] [--anthropic-model <id>] [--openai-model <id>] ... [options]
 
 At least one model must be supplied. All three model flags are
@@ -480,6 +510,11 @@ llama.cpp server, LMStudio, ...):
                                  header is sent (appropriate for local servers).
   --openai-pricing IN/OUT        Per-MTok USD. Leave unset for local inference
                                  so cost_usd stays None in the JSONL.
+  --openai-extra-body <json>     JSON object merged into every request body.
+                                 Use for provider-specific kwargs the standard
+                                 OpenAI schema doesn't carry. Example for Qwen3
+                                 thinking-mode toggle:
+                                 '{"chat_template_kwargs":{"enable_thinking":false}}'
 
 Sweep:
   --sample-size-per-tier <n>     Default 30
