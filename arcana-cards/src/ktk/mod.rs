@@ -14,3 +14,4 @@ pub mod alabaster_kirin;
 pub mod bloodfire_expert;
 pub mod jeskai_student;
 pub mod highspire_mantis;
+pub mod mantis_rider;

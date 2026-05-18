@@ -17,3 +17,4 @@ pub mod wall_of_air;
 pub mod anaba_bodyguard;
 pub mod goblin_sky_raider;
 pub mod skyhunter_prowler;
+pub mod pincher_beetles;

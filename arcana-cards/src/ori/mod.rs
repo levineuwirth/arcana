@@ -6,3 +6,4 @@ pub mod maritime_guard;
 pub mod eagle_of_the_watch;
 pub mod knight_of_the_pilgrim_s_road;
 pub mod guardians_of_meletis;
+pub mod iroas_s_champion;

@@ -3,3 +3,4 @@ pub mod sickle_ripper;
 pub mod boros_swiftblade;
 pub mod skyhunter_skirmisher;
 pub mod simic_initiate;
+pub mod hearthfire_hobgoblin;

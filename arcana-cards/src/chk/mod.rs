@@ -9,3 +9,4 @@ pub mod moss_kami;
 pub mod samurai_enforcers;
 pub mod jukai_messenger;
 pub mod devoted_retainer;
+pub mod humble_budoka;

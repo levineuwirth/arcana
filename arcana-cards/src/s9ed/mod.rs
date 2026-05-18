@@ -20,3 +20,4 @@ pub mod bog_imp;
 pub mod goblin_chariot;
 pub mod storm_crow;
 pub mod anaconda;
+pub mod king_cheetah;

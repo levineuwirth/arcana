@@ -6,3 +6,6 @@ pub mod wildwood_patrol;
 pub mod ripscale_predator;
 pub mod vizkopa_vampire;
 pub mod gurmag_swiftwing;
+pub mod rakdos_shred_freak;
+pub mod pitiless_gorgon;
+pub mod vernadi_shieldmate;

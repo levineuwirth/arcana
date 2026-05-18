@@ -3,3 +3,4 @@ pub mod ruination_wurm;
 pub mod gutter_skulk;
 pub mod adaptive_snapjaw;
 pub mod assault_griffin;
+pub mod drakewing_krasis;

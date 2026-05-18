@@ -3,3 +3,4 @@
 //! side by side, the caster chooses one at cast time.
 
 pub mod fire_ice;
+pub mod gaea_s_skyfolk;

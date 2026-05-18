@@ -6,3 +6,6 @@
 
 pub mod slippery_bogle;
 pub mod smoldering_butcher;
+pub mod hobgoblin_dragoon;
+pub mod nip_gwyllion;
+pub mod stalker_hag;

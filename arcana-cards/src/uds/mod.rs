@@ -5,3 +5,4 @@ pub mod goliath_beetle;
 pub mod goblin_berserker;
 pub mod tormented_angel;
 pub mod squirming_mass;
+pub mod elvish_lookout;

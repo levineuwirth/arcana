@@ -17,3 +17,4 @@ pub mod gilacorn;
 pub mod frog_squirrels;
 pub mod sokka_wolf_cove_s_protector;
 pub mod tundra_wall;
+pub mod fire_nation_ambushers;

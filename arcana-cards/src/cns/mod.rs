@@ -7,3 +7,4 @@ pub mod plated_seastrider;
 pub mod enraged_revolutionary;
 pub mod ajani_s_sunstriker;
 pub mod courier_hawk;
+pub mod sky_spirit;

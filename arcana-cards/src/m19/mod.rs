@@ -12,3 +12,4 @@ pub mod vigilant_baloth;
 pub mod sun_sentinel;
 pub mod two_headed_zombie;
 pub mod daggerback_basilisk;
+pub mod hired_blade;

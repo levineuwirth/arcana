@@ -3,3 +3,4 @@ pub mod hulking_bugbear;
 pub mod underdark_basilisk;
 pub mod rimeshield_frost_giant;
 pub mod steadfast_paladin;
+pub mod adult_gold_dragon;

@@ -382,6 +382,16 @@ pub mod gnt;
 
 pub mod otj;
 
+pub mod pls;
+
+pub mod cmb2;
+
+pub mod s2x2;
+
+pub mod anb;
+
+pub mod inv;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

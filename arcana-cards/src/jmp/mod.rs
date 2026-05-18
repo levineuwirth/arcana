@@ -12,3 +12,4 @@ pub mod gifted_aetherborn;
 pub mod brushstrider;
 pub mod knight_of_the_tusk;
 pub mod lightning_visionary;
+pub mod pouncing_cheetah;

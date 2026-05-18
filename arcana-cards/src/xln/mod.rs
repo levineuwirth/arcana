@@ -9,3 +9,4 @@ pub mod skyblade_of_the_legion;
 pub mod shining_aerosaur;
 pub mod charging_monstrosaur;
 pub mod huatli_s_snubhorn;
+pub mod sky_terror;

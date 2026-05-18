@@ -2,3 +2,5 @@
 pub mod old_ghastbark;
 pub mod loamdragger_giant;
 pub mod wildslayer_elves;
+pub mod wasp_lancer;
+pub mod zealous_guardian;

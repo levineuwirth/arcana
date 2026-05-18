@@ -3,3 +3,4 @@ pub mod spined_karok;
 pub mod ageless_guardian;
 pub mod moldering_karok;
 pub mod twinscroll_shaman;
+pub mod needlethorn_drake;

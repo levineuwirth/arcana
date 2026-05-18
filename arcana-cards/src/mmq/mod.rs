@@ -7,3 +7,4 @@ pub mod lightning_hounds;
 pub mod bog_smugglers;
 pub mod misshapen_fiend;
 pub mod gerrard_s_irregulars;
+pub mod deadly_insect;

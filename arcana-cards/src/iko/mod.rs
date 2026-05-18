@@ -4,3 +4,4 @@ pub mod savai_sabertooth;
 pub mod gloom_pangolin;
 pub mod mosscoat_goriak;
 pub mod maned_serval;
+pub mod crystacean;

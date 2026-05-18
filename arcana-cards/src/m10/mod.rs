@@ -6,3 +6,5 @@ pub mod kelinore_bat;
 pub mod bog_wraith;
 pub mod viashino_spearhunter;
 pub mod emerald_oryx;
+pub mod mist_leopard;
+pub mod kalonian_behemoth;
