@@ -205,7 +205,9 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         "evolve" => "Evolve",
         // `soulshift` is parametrised `Soulshift(u8)` (N in rules
         // text) → dropped like Toxic/Renown, asserted by neither.
-        "scavenge" => "Scavenge",
+        // `scavenge` is parametrised `Scavenge(ManaCost)` (cost in
+        // rules text) → dropped like Cycling/Ward, asserted by neither
+        // (Pass 4.4b made it a real graveyard activated ability).
         "changeling" => "Changeling",
         // Pass 3.8 — Banding recognized (choice-control; Phase-1
         // inert, documented DEBT). Asserted like any unit keyword.

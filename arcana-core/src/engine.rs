@@ -1019,6 +1019,7 @@ fn apply_activate_ability(
             ability_index,
             targets,
             x_value: None,
+            card_id,
         };
         let effects: Vec<crate::effects::Effect> = match registry.get(card_id) {
             Some(d) => d.activated_abilities.get(ability_index)
@@ -2992,6 +2993,7 @@ fn resolution_effects(
                 ability_index: idx,
                 targets: entry.targets.clone(),
                 x_value: entry.x_value,
+                card_id: *card_id,
             };
             (ability.effect)(state, &ctx, registry)
         }
@@ -8778,6 +8780,116 @@ mod tests {
         assert!(s.objects.objects_in_zone(Zone::Hand(0))
             .any(|o| o.card_id == filler), "drew the library card");
         assert_eq!(s.objects.objects_in_zone(Zone::Library(0)).count(), 0);
+    }
+
+    // --- Pass 4.4b: Scavenge (synthesized from the keyword) ---------------
+
+    fn register_scavenge_creature(
+        registry: &mut CardRegistry,
+        cost: &str,
+        power: i32,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern(&unique_card_name());
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{B}").unwrap()),
+            colors: ColorSet::black(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(power)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![crate::effects::KeywordAbility::Scavenge(
+                crate::mana::ManaCost::parse(cost).unwrap())],
+            ..Default::default()
+        };
+        registry.register(crate::registry::CardDefinition::new(name, chars))
+    }
+
+    /// Drop a vanilla 2/2 onto the battlefield to serve as a counter
+    /// target (card id 1 — unregistered sentinel, fine for a target).
+    fn battlefield_target(s: &mut GameState, owner: PlayerId) -> ObjectId {
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            mana_cost: Some(crate::mana::ManaCost::parse("{G}").unwrap()),
+            colors: ColorSet::green(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        let mut obj = crate::objects::GameObject::new(
+            id, owner, Zone::Battlefield, 1, chars);
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    #[test]
+    fn scavenge_ability_synthesized_from_keyword() {
+        let mut registry = CardRegistry::new();
+        let card = register_scavenge_creature(&mut registry, "{1}{B}", 3);
+        let def = registry.get(card).unwrap();
+        let sc = def.activated_abilities.iter()
+            .find(|a| a.cost.exile_self)
+            .expect("scavenge ability must be synthesized");
+        assert!(!sc.is_instant_speed, "scavenge is sorcery speed");
+        assert!(matches!(sc.activation_zone,
+            crate::registry::ActivationZone::Graveyard));
+        assert_eq!(sc.target_requirements.len(), 1);
+        assert_eq!(sc.cost.mana_cost,
+            crate::mana::ManaCost::parse("{1}{B}").unwrap());
+        assert_eq!(def.activated_abilities.iter()
+            .filter(|a| a.cost.exile_self).count(), 1);
+    }
+
+    #[test]
+    fn scavenge_from_graveyard_exiles_self_and_pumps_target() {
+        let mut registry = CardRegistry::new();
+        let card = register_scavenge_creature(&mut registry, "{1}{B}", 3);
+        let mut s = GameState::new(2, 0);
+        put_in_graveyard(&mut s, &registry, 0, card);
+        let target = battlefield_target(&mut s, 0);
+        give_mana(&mut s, 0, "{1}{B}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let scav = actions.iter().find(|a| matches!(a,
+            Action::ActivateAbility { .. }))
+            .expect("scavenge offered from graveyard at sorcery speed")
+            .clone();
+        let (mut s, _) = step(s, scav, &registry);
+        // Exile-self cost paid (card re-id'd into exile).
+        assert!(s.objects.objects_in_zone(Zone::Exile)
+            .any(|o| o.card_id == card), "scavenged card exiled as cost");
+        assert!(s.objects.objects_in_zone(Zone::Graveyard(0))
+            .all(|o| o.card_id != card), "no longer in graveyard");
+        assert!(!s.stack_is_empty());
+        resolve_top_of_stack(&mut s, &registry);
+        // Target got power-many (3) +1/+1 counters.
+        assert_eq!(s.objects.get(target).unwrap()
+            .count_counters(crate::types::CounterKind::PlusOnePlusOne), 3);
+    }
+
+    #[test]
+    fn scavenge_not_offered_at_instant_speed() {
+        // Outside a main phase ⇒ not sorcery-speed ⇒ no scavenge
+        // action (CR 702.41a "Activate only as a sorcery").
+        let mut registry = CardRegistry::new();
+        let card = register_scavenge_creature(&mut registry, "{B}", 2);
+        let mut s = GameState::new(2, 0);
+        put_in_graveyard(&mut s, &registry, 0, card);
+        battlefield_target(&mut s, 0);
+        give_mana(&mut s, 0, "{B}");
+        s.priority.give_to(0);
+        // Combat (not a main phase) — sorcery-speed gate is closed.
+        s.turn.phase = crate::turn::Phase::Combat;
+        s.turn.step = crate::turn::Step::DeclareAttackers;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        assert!(!actions.iter().any(|a| matches!(a,
+            Action::ActivateAbility { .. })),
+            "scavenge must not be offered outside a main phase");
     }
 
     #[test]

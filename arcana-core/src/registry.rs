@@ -75,6 +75,12 @@ pub struct ActivationContext {
     pub ability_index: usize,
     pub targets: TargetSelection,
     pub x_value: Option<u32>,
+    /// Registry key of the source card. Stable across the source
+    /// object's zone-change re-id (CR 400.7), so effects that read the
+    /// source's *printed* characteristics still work after a cost
+    /// moved the card (Scavenge exiles its source, then needs the
+    /// card's printed power at resolution).
+    pub card_id: CardId,
 }
 
 // =============================================================================
@@ -364,6 +370,16 @@ fn synthesize_keyword_abilities(def: &mut CardDefinition) {
             def.activated_abilities.push(cycling_ability(cost));
         }
     }
+    let scavenge: Option<crate::mana::ManaCost> =
+        def.base_characteristics.keywords.iter().find_map(|kw| match kw {
+            KA::Scavenge(c) => Some(c.clone()),
+            _ => None,
+        });
+    if let Some(cost) = scavenge {
+        if !has_effect(def, scavenge_pump) {
+            def.activated_abilities.push(scavenge_ability(cost));
+        }
+    }
 }
 
 /// Build the canonical Cycling activated ability (CR 702.29a):
@@ -390,6 +406,65 @@ pub(crate) fn cycling_ability(cost: crate::mana::ManaCost)
         face_gate: None,
         effect: cycling_draw_one,
     }
+}
+
+/// Build the canonical Scavenge activated ability (CR 702.41a):
+/// "[cost], Exile this card from your graveyard: Put a number of
+/// +1/+1 counters equal to this card's power on target creature.
+/// Activate only as a sorcery." Synthesized from the
+/// [`crate::effects::KeywordAbility::Scavenge`] keyword by
+/// [`CardRegistry::register`].
+pub(crate) fn scavenge_ability(cost: crate::mana::ManaCost)
+    -> ActivatedAbilityDef
+{
+    ActivatedAbilityDef {
+        text: format!(
+            "Scavenge {cost} ({cost}, Exile this card from your \
+             graveyard: Put a number of +1/+1 counters equal to this \
+             card's power on target creature. Activate only as a \
+             sorcery.)"),
+        cost: ActivationCost {
+            mana_cost: cost,
+            exile_self: true,
+            ..ActivationCost::default()
+        },
+        target_requirements: vec![TargetRequirement {
+            filter: crate::targets::TargetFilter::Creature,
+            count: crate::targets::TargetCount::Exactly(1),
+            controller: None,
+        }],
+        is_mana_ability: false,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Graveyard,
+        is_instant_speed: false,
+        face_gate: None,
+        effect: scavenge_pump,
+    }
+}
+
+/// Canonical Scavenge effect (CR 702.41a): place a number of +1/+1
+/// counters equal to the scavenged card's *printed* power on the
+/// target creature. The card has already been exiled as a cost (and
+/// re-id'd), so the power is read from the registry definition via
+/// the stable [`ActivationContext::card_id`], not the live object.
+/// Zero or negative printed power places no counters.
+fn scavenge_pump(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
+) -> Vec<crate::effects::Effect> {
+    let Some(target) = ctx.targets.targets.first()
+        .and_then(|t| t.object_id()) else { return Vec::new(); };
+    let power = reg.get(ctx.card_id)
+        .and_then(|d| d.base_characteristics.power)
+        .and_then(|p| p.resolve(None))
+        .unwrap_or(0);
+    if power <= 0 { return Vec::new(); }
+    vec![crate::effects::Effect::AddCounters {
+        target,
+        kind: crate::types::CounterKind::PlusOnePlusOne,
+        count: power as u32,
+    }]
 }
 
 /// Canonical cycling effect: the activator draws a card (CR 702.29a).
@@ -768,6 +843,13 @@ pub struct ActivationCost {
     /// source id; the shared cost-payment path then moves the card
     /// to its owner's graveyard and emits `Discarded`.
     pub discard_self: bool,
+    /// CR 702.41a (Scavenge) — exile the ability's source from the
+    /// graveyard as part of the cost. Legal-action enumeration emits
+    /// [`crate::actions::AdditionalCostPayment::ExileFromGraveyard`]
+    /// with the source id; the shared cost-payment path moves it to
+    /// exile. Distinct from [`Self::sacrifice`] (battlefield→graveyard)
+    /// and [`Self::discard_self`] (hand→graveyard).
+    pub exile_self: bool,
 }
 
 impl ActivationCost {

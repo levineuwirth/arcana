@@ -1102,10 +1102,15 @@ pub enum KeywordAbility {
     /// the owner's graveyard Spirits with mana value ≤ N; the pick
     /// returns to hand.
     Soulshift(u8),
-    /// CR 702.41a — Scavenge. A graveyard activated ability. Phase-1
-    /// never activates it (no agent), so the card functions; the
-    /// ability is deferred. (Mirrors Cycling-style optional value.)
-    Scavenge,
+    /// CR 702.41a — Scavenge [cost]. "[cost], Exile this card from
+    /// your graveyard: Put a number of +1/+1 counters equal to this
+    /// card's power on target creature. Activate only as a sorcery."
+    /// Fully wired (Pass 4.4b): the cost-bearing keyword is synthesized
+    /// by [`crate::registry::CardRegistry::register`] into a graveyard
+    /// activated ability (sorcery speed, exile-self cost) whose effect
+    /// reads the card's printed power and places that many +1/+1
+    /// counters on the target via the counter-placement pipeline.
+    Scavenge(crate::mana::ManaCost),
     /// CR 702.73a — Changeling. "This is every creature type." DEBT:
     /// the all-types CDA is recognized but inert — no tribal-matters
     /// card exists in the catalog (same posture as Afterlife's

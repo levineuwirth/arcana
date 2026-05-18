@@ -1973,6 +1973,13 @@ fn build_additional_costs(
         // Discarded event.
         v.push(crate::actions::AdditionalCostPayment::Discard(source));
     }
+    if cost.exile_self {
+        // CR 702.41a — Scavenge's "Exile this card from your
+        // graveyard" cost. ExileFromGraveyard moves the source to
+        // exile via the shared additional-cost path.
+        v.push(crate::actions::AdditionalCostPayment::ExileFromGraveyard(
+            vec![source]));
+    }
     if cost.life > 0 {
         v.push(crate::actions::AdditionalCostPayment::PayLife(cost.life));
     }
