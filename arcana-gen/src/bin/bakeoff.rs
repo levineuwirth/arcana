@@ -78,9 +78,16 @@ fn real_main() -> Result<()> {
         let pool = ScryfallPool::load_default()
             .context("loading Scryfall oracle-cards pool (cache or download)")?;
         eprintln!("bakeoff: loaded {} cards from pool", pool.len());
-        let (sup, unsup) = bakeoff::dump_prompts(&pool, &config, dir)?;
+        let shapes = args.shapes.as_ref();
+        if let Some(s) = shapes {
+            eprintln!(
+                "bakeoff: shape filter — only {}",
+                s.iter().cloned().collect::<Vec<_>>().join(", ")
+            );
+        }
+        let (sup, unsup) = bakeoff::dump_prompts(&pool, &config, dir, shapes)?;
         println!(
-            "dumped {sup} prompt(s), {unsup} unsupported → {}",
+            "dumped {sup} prompt(s), {unsup} skipped/unsupported → {}",
             dir.display()
         );
         return Ok(());
@@ -245,6 +252,10 @@ struct Args {
     dump_prompts: Option<PathBuf>,
     /// Sample the whole oracle pool instead of Standard-legal only.
     all_sets: bool,
+    /// Restrict dumped prompts to these `PromptShape` names. `None`
+    /// = all shapes. Used to run only the safe declarative class
+    /// (vanilla + french-vanilla), excluding stub-prone spells.
+    shapes: Option<std::collections::HashSet<String>>,
 }
 
 fn parse_args(raw: Vec<String>) -> Result<Args> {
@@ -273,6 +284,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     let mut output: Option<PathBuf> = None;
     let mut dump_prompts: Option<PathBuf> = None;
     let mut all_sets = false;
+    let mut shapes: Option<std::collections::HashSet<String>> = None;
 
     let mut it = raw.into_iter();
     while let Some(arg) = it.next() {
@@ -406,6 +418,36 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
             "--all-sets" => {
                 all_sets = true;
             }
+            "--shapes" => {
+                let spec = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--shapes needs a value"))?;
+                let mut set = std::collections::HashSet::new();
+                for tok in spec.split(',').map(|s| s.trim()).filter(|s| !s.is_empty())
+                {
+                    // Accept friendly aliases or exact PromptShape names.
+                    let name = match tok.to_lowercase().as_str() {
+                        "vanilla" | "vanillacreature" => "VanillaCreature",
+                        "french-vanilla" | "french_vanilla"
+                        | "frenchvanillacreature" => "FrenchVanillaCreature",
+                        "spell" | "singleeffectspell" => "SingleEffectSpell",
+                        "triggered" | "triggeredabilitycreature" => {
+                            "TriggeredAbilityCreature"
+                        }
+                        other => {
+                            return Err(anyhow!(
+                                "--shapes: unknown shape '{other}' \
+                                 (use vanilla, french-vanilla, spell, triggered)"
+                            ))
+                        }
+                    };
+                    set.insert(name.to_string());
+                }
+                if set.is_empty() {
+                    return Err(anyhow!("--shapes given but no shapes parsed"));
+                }
+                shapes = Some(set);
+            }
             "-h" | "--help" => {
                 print_usage();
                 std::process::exit(0);
@@ -454,6 +496,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         output,
         dump_prompts,
         all_sets,
+        shapes,
     })
 }
 
@@ -583,6 +626,12 @@ Subagent backend:
                                  Standard-legal only. Needed for large runs
                                  of a structurally-safe class (vanilla /
                                  french-vanilla) where Standard is too thin.
+  --shapes <list>                Comma list restricting dumped prompts by
+                                 shape: vanilla, french-vanilla, spell,
+                                 triggered. Cards routed elsewhere are
+                                 recorded but not emitted. Use
+                                 'vanilla,french-vanilla' for the safe
+                                 declarative class (no resolver bodies).
 
 Outputs a compact summary to stdout and detailed per-(card, model)
 JSONL to the output path. JSONL rows are flushed per-line for

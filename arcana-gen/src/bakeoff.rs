@@ -921,6 +921,7 @@ pub fn dump_prompts(
     pool: &ScryfallPool,
     config: &BakeoffConfig,
     out_dir: &Path,
+    allowed_shapes: Option<&std::collections::HashSet<String>>,
 ) -> Result<(usize, usize)> {
     let prompts_dir = out_dir.join("prompts");
     std::fs::create_dir_all(&prompts_dir)
@@ -964,6 +965,23 @@ pub fn dump_prompts(
         };
         match render_prompt(card, *tier) {
             Ok(prompt) => {
+                let shape_name = prompt_shape_name(prompt.shape);
+                // Shape filter: a card the classifier routed to a
+                // shape outside the requested set is recorded but
+                // not emitted (e.g. exclude SingleEffectSpell to run
+                // only the safe declarative class).
+                if let Some(allowed) = allowed_shapes {
+                    if !allowed.contains(shape_name) {
+                        row.unsupported_reason =
+                            Some(format!("shape filtered: {shape_name}"));
+                        unsupported += 1;
+                        let line = serde_json::to_string(&row)
+                            .context("serializing DumpRow")?;
+                        writeln!(manifest, "{line}")
+                            .context("writing manifest row")?;
+                        continue;
+                    }
+                }
                 let fname = format!("{idx:03}_{slug}.txt");
                 let body = format!(
                     "# Arcana card-gen prompt — {name} (T{tier}, {shape})\n\
