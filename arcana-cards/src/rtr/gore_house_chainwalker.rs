@@ -1,13 +1,8 @@
 //! Gore-House Chainwalker — `{1}{R}` 2/1 Human Warrior with Unleash.
-//! Return to Ravnica common; one of the Rakdos guild's Unleash creatures,
-//! trading blocking ability for the option to enter with a +1/+1 counter.
+//! A Rakdos warrior who fights harder when unchained.
 //!
 //! # Rules references
-//!
-//! * CR 702.96 — Unleash. As this creature enters, you may put a +1/+1
-//!   counter on it. If it has a +1/+1 counter on it, it can't block.
-//!   Both ETB-scaling and the blocking restriction are handled by the
-//!   Unleash keyword wiring in the engine.
+//! * CR 702.97 — Unleash
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

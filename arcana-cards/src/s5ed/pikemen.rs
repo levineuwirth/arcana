@@ -1,21 +1,9 @@
-//! Pikemen — `{1}{W}` 1/1 Human Soldier with First Strike and Banding.
-//! Legends common (1994); a cheap white soldier pairing first-strike
-//! deterrence with banding's cooperative combat-damage-assignment control.
+//! Pikemen — `{1}{W}` 1/1 Human Soldier with First strike, Banding.
+//! A disciplined unit of pike-bearing soldiers that strikes first and fights in formation.
 //!
 //! # Rules references
-//!
-//! * CR 702.7 — First Strike. Deals combat damage in the first combat
-//!   damage step; opposing creatures without first/double strike deal
-//!   damage in the second step.
-//! * CR 702.21 — Banding. Any creatures with banding, and up to one
-//!   without, can attack in a band. Bands are blocked as a group. If
-//!   any creatures with banding you control are blocking or being
-//!   blocked by a creature, you divide that creature's combat damage,
-//!   not its controller, among any of the creatures it's being blocked
-//!   by or is blocking.
-//!
-//! Both keywords are base characteristics on this card; listing them
-//! in `keywords` is sufficient — the runtime pipeline handles the rest.
+//! * CR 702.7 — First strike
+//! * CR 702.22 — Banding
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

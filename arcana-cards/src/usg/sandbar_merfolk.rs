@@ -1,15 +1,8 @@
-//! Sandbar Merfolk — `{U}` 1/1 Merfolk with Cycling {2}
-//! (Urza's Saga, common).
-//!
-//! # Rules text
-//!
-//! Cycling {2} ({2}, Discard this card: Draw a card.)
+//! Sandbar Merfolk — `{U}` 1/1 Merfolk with Cycling `{2}`.
+//! A merfolk of the sandbar who can be cycled to draw a card.
 //!
 //! # Rules references
-//!
-//! * CR 702.28 — Cycling. A player may pay the cycling cost and discard the
-//!   card to draw a card. Engine records the cost via
-//!   `KeywordAbility::Cycling(ManaCost::parse("{2}"))`.
+//! * CR 702.29 — Cycling
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

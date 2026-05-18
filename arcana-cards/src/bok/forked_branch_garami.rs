@@ -1,21 +1,9 @@
-//! Forked-Branch Garami — `{3}{G}{G}` 4/4 Spirit with Soulshift(4).
-//! Betrayers of Kamigawa uncommon; a green Spirit whose oracle text
-//! prints "Soulshift 4, soulshift 4", each instance independently
-//! allowing the return of a Spirit card with mana value 4 or less when
-//! it dies. The two identical instances collapse to a single
-//! `KeywordAbility::Soulshift(4)` entry in the keyword vec; the
-//! multi-return semantics are handled at the rules layer.
+//! Forked-Branch Garami — `{3}{G}{G}` 4/4 Spirit with Soulshift 4.
+//! A branching spirit who returns fallen companions; printed "soulshift 4" appears
+//! twice on the physical card, but Scryfall records a single keyword entry — emitted once.
 //!
 //! # Rules references
-//!
-//! * CR 702.45 — Soulshift N. "When this creature dies, you may return
-//!   target Spirit card with mana value N or less from your graveyard
-//!   to your hand." N is 4 for this card; encoded as
-//!   `KeywordAbility::Soulshift(4)` where the `u8` argument carries the
-//!   mana-value threshold.
-//!
-//! The keyword is a base characteristic; the runtime soulshift pipeline
-//! reads the `(N)` argument to enforce the mana-value cap.
+//! * CR 702.45 — Soulshift
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

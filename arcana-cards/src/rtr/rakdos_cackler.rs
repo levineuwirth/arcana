@@ -1,13 +1,8 @@
-//! Rakdos Cackler — `{B/R}` 1/1 Creature — Devil with Unleash.
-//! Return to Ravnica uncommon; may enter with a +1/+1 counter but
-//! cannot block while it has a +1/+1 counter on it.
+//! Rakdos Cackler — `{B/R}` 1/1 Devil with Unleash.
+//! A cackling Rakdos devil who fights harder when given free rein.
 //!
 //! # Rules references
-//!
-//! * CR 702.97 — Unleash. You may have this creature enter with a
-//!   +1/+1 counter on it. It can't block as long as it has a +1/+1
-//!   counter on it. Engine handles both the optional ETB counter and
-//!   the blocking restriction.
+//! * CR 702.97 — Unleash
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

@@ -1,13 +1,8 @@
 //! Dead Reveler — `{2}{B}` 2/3 Zombie with Unleash.
-//! Return to Ravnica common; a Rakdos Zombie with Unleash that trades
-//! blocking ability for the option to enter with a +1/+1 counter.
+//! A Rakdos zombie that revels all the harder when unshackled.
 //!
 //! # Rules references
-//!
-//! * CR 702.96 — Unleash. As this creature enters, you may put a +1/+1
-//!   counter on it. If it has a +1/+1 counter on it, it can't block.
-//!   Both ETB-scaling and the blocking restriction are handled by the
-//!   Unleash keyword wiring in the engine.
+//! * CR 702.97 — Unleash
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

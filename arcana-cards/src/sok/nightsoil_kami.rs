@@ -1,18 +1,8 @@
-//! Nightsoil Kami — `{4}{G}{G}` 6/4 Spirit with Soulshift(5).
-//! Saviors of Kamigawa common; a large green Spirit that returns a
-//! Spirit card with mana value 5 or less from the graveyard when it
-//! dies.
+//! Nightsoil Kami — `{4}{G}{G}` 6/4 Spirit with Soulshift 5.
+//! A massive earth-spirit who shepherds fallen spirits back from death.
 //!
 //! # Rules references
-//!
-//! * CR 702.45 — Soulshift N. "When this creature dies, you may return
-//!   target Spirit card with mana value N or less from your graveyard
-//!   to your hand." N is 5 for this card; encoded as
-//!   `KeywordAbility::Soulshift(5)` where the `u8` argument carries the
-//!   mana-value threshold.
-//!
-//! The keyword is a base characteristic; the runtime soulshift pipeline
-//! reads the `(N)` argument to enforce the mana-value cap.
+//! * CR 702.45 — Soulshift
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

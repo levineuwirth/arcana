@@ -1,14 +1,8 @@
-//! Barkweave Crusher — `{3}{G}` 2/5 Creature — Elemental Warrior with Enlist.
-//! A green enlist creature that can tap a non-attacking ally to temporarily
-//! add its power to the Crusher's for the turn.
+//! Barkweave Crusher — `{3}{G}` 2/5 Elemental Warrior with Enlist.
+//! A powerful elemental warrior that enrols allies in its charges.
 //!
 //! # Rules references
-//!
-//! * CR 702.154 — Enlist. As this creature attacks, you may tap a nonattacking
-//!   creature you control without summoning sickness. When you do, add its
-//!   power to this creature's until end of turn. The runtime enlist pipeline
-//!   handles the tap and the power boost; listing the keyword in `keywords`
-//!   is all that is required here.
+//! * CR 702.154 — Enlist
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

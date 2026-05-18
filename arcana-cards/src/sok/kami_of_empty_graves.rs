@@ -1,17 +1,8 @@
-//! Kami of Empty Graves — `{3}{B}` 4/1 Spirit with Soulshift(3).
-//! Saviors of Kamigawa common; a black Spirit that returns a Spirit
-//! card with mana value 3 or less from the graveyard when it dies.
+//! Kami of Empty Graves — `{3}{B}` 4/1 Spirit with Soulshift 3.
+//! A hollow spirit that passes its essence to fallen comrades.
 //!
 //! # Rules references
-//!
-//! * CR 702.45 — Soulshift N. "When this creature dies, you may return
-//!   target Spirit card with mana value N or less from your graveyard
-//!   to your hand." N is 3 for this card; encoded as
-//!   `KeywordAbility::Soulshift(3)` where the `u8` argument carries the
-//!   mana-value threshold.
-//!
-//! The keyword is a base characteristic; the runtime soulshift pipeline
-//! reads the `(N)` argument to enforce the mana-value cap.
+//! * CR 702.45 — Soulshift
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

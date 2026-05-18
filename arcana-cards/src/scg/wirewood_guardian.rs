@@ -1,24 +1,8 @@
-//! Wirewood Guardian — `{5}{G}{G}` 6/6 Elf Mutant with Forestcycling {2}
-//! (Onslaught, common).
-//!
-//! # Rules text
-//!
-//! Forestcycling {2} ({2}, Discard this card: Search your library for a
-//! Forest card, reveal it, put it into your hand, then shuffle.)
-//!
-//! # Keyword mapping notes
-//!
-//! Scryfall parses this card as: Landcycling, Forestcycling, Typecycling,
-//! Cycling. Per engine conventions, all typecycling/landcycling variants
-//! collapse to the generic `Cycling` with their printed cost. Emitting a
-//! single `KeywordAbility::Cycling(ManaCost::parse("{2}"))`.
+//! Wirewood Guardian — `{5}{G}{G}` 6/6 Elf Mutant with Cycling `{2}` (forestcycling).
+//! A massive elf mutant of the Wirewood forest; can be cycled to search for a Forest.
 //!
 //! # Rules references
-//!
-//! * CR 702.28 — Cycling. A player may pay the cycling cost and discard the
-//!   card to search their library for the appropriate land type. The
-//!   type-search variant is not separately modeled in the engine; the
-//!   `Cycling` keyword records the cost.
+//! * CR 702.29 — Cycling (forestcycling maps to generic Cycling with printed cost)
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

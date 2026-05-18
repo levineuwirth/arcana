@@ -1,19 +1,8 @@
 //! Benalish Hero — `{W}` 1/1 Human Soldier with Banding.
-//! Alpha common (1993); one of the original Banding creatures. A cheap
-//! white weenie whose rules text is entirely the Banding keyword.
+//! A heroic soldier from Benalia who inspires coordinated defense.
 //!
 //! # Rules references
-//!
-//! * CR 702.21 — Banding. Any creatures with banding, and up to one
-//!   without, can attack in a band. Bands are blocked as a group. If
-//!   any creatures with banding you control are blocking or being blocked
-//!   by a creature, you divide that creature's combat damage, not its
-//!   controller, among any of the creatures it's being blocked by or is
-//!   blocking.
-//!
-//! Banding is a base characteristic on this card; the runtime combat
-//! pipeline handles the mechanic once `KeywordAbility::Banding` is
-//! present in `keywords`.
+//! * CR 702.22 — Banding
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

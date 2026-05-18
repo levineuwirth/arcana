@@ -1,15 +1,8 @@
-//! Ridge Rannet — `{5}{R}{R}` 6/4 Beast with Cycling {2}
-//! (Onslaught, common).
-//!
-//! # Rules text
-//!
-//! Cycling {2} ({2}, Discard this card: Draw a card.)
+//! Ridge Rannet — `{5}{R}{R}` 6/4 Beast with Cycling `{2}`.
+//! A fearsome beast of the ridges that can be cycled away.
 //!
 //! # Rules references
-//!
-//! * CR 702.28 — Cycling. A player may pay the cycling cost and discard the
-//!   card to draw a card. Engine records the cost via
-//!   `KeywordAbility::Cycling(ManaCost::parse("{2}"))`.
+//! * CR 702.29 — Cycling
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

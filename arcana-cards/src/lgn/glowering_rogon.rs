@@ -1,15 +1,8 @@
-//! Glowering Rogon — `{5}{G}` 4/4 Creature — Beast with Amplify 1.
-//!
-//! Legions (2003). As it enters, its controller may reveal any number of
-//! Beast cards from their hand; it enters with a +1/+1 counter for each
-//! revealed card (Amplify 1).
+//! Glowering Rogon — `{5}{G}` 4/4 Beast with Amplify 1.
+//! A fearsome beast that grows larger as more creatures of its kin arrive alongside it.
 //!
 //! # Rules references
-//!
-//! * CR 702.37 — Amplify. As this creature enters the battlefield, reveal
-//!   any number of cards of the creature's subtype(s) from your hand and put
-//!   N +1/+1 counters on it for each card revealed (N=1 here). Engine wiring
-//!   handles the ETB reveal-and-counter mechanic.
+//! * CR 702.37 — Amplify
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

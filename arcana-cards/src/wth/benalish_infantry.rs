@@ -1,15 +1,8 @@
 //! Benalish Infantry — `{2}{W}` 1/3 Human Soldier with Banding.
-//! Mirage common; a defensive white creature representing the stalwart
-//! Benalish soldiery through the banding keyword.
+//! A stalwart infantry soldier from Benalia who fights best in formation.
 //!
 //! # Rules references
-//!
-//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
-//!   with the controller of creatures with banding in the band assigning combat
-//!   damage for any creature blocked by or blocking the band.
-//!
-//! Banding is the sole keyword; listing it in `keywords` is sufficient —
-//! the runtime pipelines do the rest.
+//! * CR 702.22 — Banding
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

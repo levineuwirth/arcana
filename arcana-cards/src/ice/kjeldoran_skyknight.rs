@@ -1,18 +1,10 @@
-//! Kjeldoran Skyknight — `{2}{W}` 1/1 Human Knight with Flying, First strike,
-//! and Banding. Ice Age common; a classic Kjeldoran white weenie combining
-//! evasion with the banding combat mechanic.
+//! Kjeldoran Skyknight — `{2}{W}` 1/1 Human Knight with Flying, First strike, Banding.
+//! A disciplined aerial knight from the Kjeldoran order.
 //!
 //! # Rules references
-//!
-//! * CR 702.9 — Flying. Can only be blocked by creatures with Flying or Reach.
-//! * CR 702.7 — First strike. Deals combat damage before creatures without
-//!   first strike or double strike.
-//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
-//!   with the controller of creatures with banding in the band assigning combat
-//!   damage for any creature blocked by or blocking the band.
-//!
-//! All three keywords are base characteristics; listing them in `keywords` is
-//! sufficient — the runtime pipelines do the rest.
+//! * CR 702.9 — Flying
+//! * CR 702.7 — First strike
+//! * CR 702.22 — Banding
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

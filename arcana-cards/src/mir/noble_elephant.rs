@@ -1,17 +1,9 @@
-//! Noble Elephant — `{3}{W}` 2/2 Elephant with Trample and Banding.
-//! Mirage common; a straightforward white trample-banding creature in the
-//! same vein as War Elephant, emphasising the noble-beast flavour.
+//! Noble Elephant — `{3}{W}` 2/2 Elephant with Banding, Trample.
+//! A noble beast of the plains that charges alongside allies.
 //!
 //! # Rules references
-//!
-//! * CR 702.19 — Trample. Excess combat damage may be assigned to the
-//!   defending player or planeswalker even when the creature is blocked.
-//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
-//!   with the controller of creatures with banding in the band assigning combat
-//!   damage for any creature blocked by or blocking the band.
-//!
-//! Both keywords are base characteristics; listing them in `keywords` is
-//! sufficient — the runtime pipelines do the rest.
+//! * CR 702.22 — Banding
+//! * CR 702.19 — Trample
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

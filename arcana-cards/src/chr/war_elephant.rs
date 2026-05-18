@@ -1,17 +1,9 @@
-//! War Elephant — `{3}{W}` 2/2 Elephant with Trample and Banding.
-//! Mirage common; an unusual combination of trample and banding on a white
-//! creature, reflecting the war-beast flavour of the card.
+//! War Elephant — `{3}{W}` 2/2 Elephant with Banding, Trample.
+//! A battle-trained elephant that charges through enemy lines.
 //!
 //! # Rules references
-//!
-//! * CR 702.19 — Trample. Excess combat damage may be assigned to the
-//!   defending player or planeswalker even when the creature is blocked.
-//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
-//!   with the controller of creatures with banding in the band assigning combat
-//!   damage for any creature blocked by or blocking the band.
-//!
-//! Both keywords are base characteristics; listing them in `keywords` is
-//! sufficient — the runtime pipelines do the rest.
+//! * CR 702.22 — Banding
+//! * CR 702.19 — Trample
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

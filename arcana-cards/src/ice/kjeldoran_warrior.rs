@@ -1,15 +1,8 @@
 //! Kjeldoran Warrior — `{W}` 1/1 Human Warrior with Banding.
-//! Ice Age common; a cheap white creature representing the disciplined
-//! Kjeldoran military tradition through the banding keyword.
+//! A disciplined Kjeldoran fighter who excels at coordinated combat.
 //!
 //! # Rules references
-//!
-//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
-//!   with the controller of creatures with banding in the band assigning combat
-//!   damage for any creature blocked by or blocking the band.
-//!
-//! Banding is the sole keyword; listing it in `keywords` is sufficient —
-//! the runtime pipelines do the rest.
+//! * CR 702.22 — Banding
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

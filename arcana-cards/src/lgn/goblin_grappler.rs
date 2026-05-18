@@ -1,16 +1,8 @@
 //! Goblin Grappler — `{R}` 1/1 Goblin with Provoke.
-//! Onslaught common; when this creature attacks, the defending player
-//! may have a target creature they control untap and block it if able.
+//! A scrappy goblin that forces enemy creatures to block it.
 //!
 //! # Rules references
-//!
-//! * CR 702.38 — Provoke. Whenever this creature attacks, you may
-//!   have target creature defending player controls untap and block
-//!   this creature if able. Engine wiring lives in the combat
-//!   declare-blockers pipeline.
-//!
-//! Provoke is a fully-implemented keyword; listing it in `keywords`
-//! is sufficient — the runtime pipelines do the rest.
+//! * CR 702.39 — Provoke
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

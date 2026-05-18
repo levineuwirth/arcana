@@ -1,12 +1,8 @@
-//! Yoked Plowbeast — `{5}{W}{W}` 5/5 Beast with Cycling {2}.
-//! A large white creature with Cycling {2}, providing card-draw flexibility
-//! when the full casting cost is prohibitive.
+//! Yoked Plowbeast — `{5}{W}{W}` 5/5 Beast with Cycling `{2}`.
+//! A mighty draft beast that can be cycled away when raw power isn't needed.
 //!
 //! # Rules references
-//!
-//! * CR 702.28 — Cycling. Pay the cycling cost, discard this card: draw a
-//!   card. Implemented as `KeywordAbility::Cycling(ManaCost)`. The
-//!   type-search variant is not separately modeled; generic Cycling is used.
+//! * CR 702.29 — Cycling
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

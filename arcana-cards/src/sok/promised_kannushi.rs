@@ -1,18 +1,8 @@
-//! Promised Kannushi — `{G}` 1/1 Human Druid with Soulshift(7).
-//! Saviors of Kamigawa common; an efficient one-drop that returns a
-//! Spirit card with mana value 7 or less from the graveyard when it
-//! dies.
+//! Promised Kannushi — `{G}` 1/1 Human Druid with Soulshift 7.
+//! A druid pledged to guide fallen spirits back to the mortal realm.
 //!
 //! # Rules references
-//!
-//! * CR 702.45 — Soulshift N. "When this creature dies, you may return
-//!   target Spirit card with mana value N or less from your graveyard
-//!   to your hand." N is 7 for this card; encoded as
-//!   `KeywordAbility::Soulshift(7)` where the `u8` argument carries the
-//!   mana-value threshold.
-//!
-//! The keyword is a base characteristic; the runtime soulshift pipeline
-//! reads the `(N)` argument to enforce the mana-value cap.
+//! * CR 702.45 — Soulshift
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

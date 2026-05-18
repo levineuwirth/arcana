@@ -1,13 +1,8 @@
-//! Thunder-Thrash Elder — `{2}{R}` 1/1 Creature — Lizard Warrior with Devour 3.
-//! Shards of Alara uncommon; enters with three times as many +1/+1
-//! counters as creatures sacrificed to it as it entered.
+//! Thunder-Thrash Elder — `{2}{R}` 1/1 Lizard Warrior with Devour 3.
+//! An elder lizard warrior who grows immensely powerful by devouring others.
 //!
 //! # Rules references
-//!
-//! * CR 702.82 — Devour N. As this creature enters, you may sacrifice
-//!   any number of creatures. It enters with N times that many +1/+1
-//!   counters on it. Engine handles the ETB sacrifice and counter
-//!   placement.
+//! * CR 702.82 — Devour
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
