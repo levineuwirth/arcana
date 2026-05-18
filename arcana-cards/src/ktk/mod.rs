@@ -4,3 +4,4 @@
 //! gets +1/+1 until end of turn."
 
 pub mod monastery_swiftspear;
+pub mod rotting_mastodon;

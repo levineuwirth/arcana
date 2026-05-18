@@ -2,3 +2,4 @@
 
 pub mod murder;
 pub mod snapcaster_mage;
+pub mod thraben_purebloods;

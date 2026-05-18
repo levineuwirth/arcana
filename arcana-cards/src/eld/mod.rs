@@ -3,3 +3,4 @@
 //! (multi-face cast paths — creature face + adventure half).
 
 pub mod bonecrusher_giant;
+pub mod knight_of_the_keep;

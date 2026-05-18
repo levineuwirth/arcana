@@ -52,6 +52,140 @@ pub mod eve;
 pub mod m14;
 pub mod mrd;
 
+pub mod fdn;
+
+pub mod m13;
+
+pub mod s10e;
+
+pub mod xln;
+
+pub mod mmq;
+
+pub mod gs1;
+
+pub mod rix;
+
+pub mod bok;
+
+pub mod rna;
+
+pub mod por;
+
+pub mod m20;
+
+pub mod dgm;
+
+pub mod ice;
+
+pub mod m12;
+
+pub mod s7ed;
+
+pub mod ptk;
+
+pub mod jmp;
+
+pub mod tsb;
+
+pub mod war;
+
+pub mod me4;
+
+pub mod thb;
+
+pub mod bbd;
+
+pub mod tpr;
+
+pub mod s9ed;
+
+pub mod me3;
+
+pub mod dft;
+
+pub mod s99;
+
+pub mod bng;
+
+pub mod dtk;
+
+pub mod tdc;
+
+pub mod nph;
+
+pub mod soi;
+
+pub mod tsp;
+
+pub mod tle;
+
+pub mod m10;
+
+pub mod ths;
+
+pub mod leg;
+
+pub mod som;
+
+pub mod s8ed;
+
+pub mod s00;
+
+pub mod frf;
+
+pub mod grn;
+
+pub mod mir;
+
+pub mod shm;
+
+pub mod ala;
+
+pub mod ust;
+
+pub mod arb;
+
+pub mod mm3;
+
+pub mod s6ed;
+
+pub mod w17;
+
+pub mod chr;
+
+pub mod cns;
+
+pub mod p02;
+
+pub mod oana;
+
+pub mod m21;
+
+pub mod mom;
+
+pub mod m19;
+
+pub mod vis;
+
+pub mod gtc;
+
+pub mod cmm;
+
+pub mod kld;
+
+pub mod stx;
+
+pub mod ori;
+
+pub mod cn2;
+
+pub mod roe;
+
+pub mod gpt;
+
+pub mod a25;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

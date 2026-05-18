@@ -4,3 +4,6 @@
 //! a 1/1 red Elemental creature token").
 
 pub mod young_pyromancer;
+pub mod sliver_construct;
+pub mod undead_minotaur;
+pub mod minotaur_abomination;
