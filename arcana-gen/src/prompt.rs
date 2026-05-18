@@ -465,7 +465,13 @@ Composites (wrap the above):
 === TARGET CARD ===
 {spec}
 
-The resolver must return the `Effect`s that implement the rules text, using the references AND the ENGINE EFFECT CATALOG above. Only if the card's effect genuinely cannot be expressed with any catalog variant, return `Vec::new()` AND add a `// GAP: <what is missing>` comment naming the specific capability — never invent an `Effect` variant or a field not shown. Generate the Rust source. Output only the file contents.",
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — NOT from the reference cards (those are for code structure only). Transcribe verbatim, do not infer or recall from the card's name:
+- `mana_cost`: pass the spec's `Mana cost` string EXACTLY into `ManaCost::parse(\"…\")` (same pips, same generic number). If the spec has no `Mana cost` line, omit `mana_cost`.
+- `colors`: exactly the colors of the mana cost's colored pips (W→white, U→blue, B→black, R→red, G→green; colorless/no pips → `ColorSet::new()`); combine with `|`. Never add a color the cost doesn't have.
+- `types`: exactly the spec's `Type line` (Instant → `TypeLine::INSTANT.into()`, Sorcery → `TypeLine::SORCERY.into()`).
+- power/toughness/supertypes: exactly as in the spec (instants/sorceries have none).
+
+Then the resolver returns the `Effect`s implementing the rules text, using the references AND the ENGINE EFFECT CATALOG above. Only if the effect genuinely cannot be expressed with any catalog variant, return `Vec::new()` AND add a `// GAP: <what is missing>` comment naming the specific capability — never invent an `Effect` variant or a field not shown. Generate the Rust source. Output only the file contents.",
         spec = card_spec(card),
     )
 }
