@@ -1,14 +1,15 @@
-//! Slitherhead — `{B/G}` 1/1 Plant Zombie with Scavenge {1}{B/G}.
-//! Ravnica: City of Guilds uncommon; a hybrid black-green creature
-//! that can be scavenged from the graveyard to place +1/+1 counters
-//! equal to its power on a target creature.
+//! Slitherhead — `{B/G}` 1/1 Plant Zombie with Scavenge {0}.
+//! Return to Ravnica common (reprinted in Ravnica Remastered); a
+//! hybrid black-green creature that scavenges from the graveyard for
+//! free to place +1/+1 counters equal to its power on a creature.
 //!
 //! # Rules references
 //!
 //! * CR 702.41a — Scavenge. Activated ability usable only from the
-//!   graveyard, only as a sorcery: pay the scavenge cost, exile this
-//!   card from your graveyard, and put a number of +1/+1 counters
-//!   equal to this card's power on target creature.
+//!   graveyard, only as a sorcery: pay the scavenge cost ({0} here —
+//!   Slitherhead scavenges for free), exile this card from your
+//!   graveyard, and put a number of +1/+1 counters equal to this
+//!   card's power on target creature.
 //!   Engine implementation: `KeywordAbility::Scavenge(ManaCost)` —
 //!   the registry synthesizes the canonical graveyard activated
 //!   ability from the keyword (Pass 4.4b).
@@ -36,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Scavenge(
-            ManaCost::parse("{1}{B/G}").expect("valid cost"))],
+            ManaCost::parse("{0}").expect("valid cost"))],
         ..Default::default()
     };
 
