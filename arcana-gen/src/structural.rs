@@ -169,6 +169,11 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         "shadow" => "Shadow",
         "horsemanship" => "Horsemanship",
         "skulk" => "Skulk",
+        // Pass 3.1 — damage-as-counters, fully enforced. (`Toxic` is
+        // parametrised `Toxic(u8)`; like Ward its N isn't in the
+        // Scryfall keyword list, so it's dropped — not asserted.)
+        "wither" => "Wither",
+        "infect" => "Infect",
         _ => return None,
     })
 }

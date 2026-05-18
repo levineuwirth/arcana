@@ -4,3 +4,4 @@ pub mod loamdragger_giant;
 pub mod wildslayer_elves;
 pub mod wasp_lancer;
 pub mod zealous_guardian;
+pub mod scuzzback_scrapper;

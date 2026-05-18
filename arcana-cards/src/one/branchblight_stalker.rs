@@ -1,9 +1,17 @@
 //! Branchblight Stalker — `{1}{G}` 3/1 Phyrexian Elf Scout with Toxic 2.
+//! March of the Machine common; a green Toxic 2 creature at 2 mana.
 //!
-//! Toxic is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will
-//! flag this for human routing.
+//! # Rules references
+//!
+//! * CR 702.164 — Toxic N. Players dealt combat damage by this creature
+//!   also get N poison counters (in addition to any other effects).
+//!   Engine wiring handles the additional poison counter assignment in
+//!   the combat damage pipeline.
+//!
+//! Toxic is a fully implemented parametrized keyword in the engine;
+//! `KeywordAbility::Toxic(2)` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -27,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Toxic(2)],
         ..Default::default()
     };
 

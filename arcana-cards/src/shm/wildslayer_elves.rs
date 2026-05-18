@@ -1,14 +1,16 @@
 //! Wildslayer Elves — `{3}{G}` 3/3 Elf Warrior with Wither.
-//!
-//! Wither (this deals damage to creatures in the form of -1/-1
-//! counters) is not present in the demonstrated `KeywordAbility`
-//! variants, so keywords is left empty. The verify pipeline will
-//! flag this gap.
+//! Eventide common; a green Wither creature at 4 mana.
 //!
 //! # Rules references
 //!
-//! * CR 702.77 — Wither (not yet in engine API).
+//! * CR 702.79 — Wither. This creature deals damage to creatures in the
+//!   form of -1/-1 counters. Engine wiring handles the counter substitution
+//!   in the damage-dealing pipeline.
+//!
+//! Wither is a fully implemented keyword in the engine; listing it in
+//! `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -30,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Wither],
         ..Default::default()
     };
 

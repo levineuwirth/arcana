@@ -1,12 +1,17 @@
 //! Smoldering Butcher — `{3}{B}` 4/2 Elemental Warrior with Wither.
-//! Has wither (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
+//! Eventide common; a black Wither creature at 4 mana with above-curve
+//! power.
 //!
 //! # Rules references
 //!
-//! * CR 702.77 — Wither. This creature deals damage to creatures in the
-//!   form of -1/-1 counters.
+//! * CR 702.79 — Wither. This creature deals damage to creatures in the
+//!   form of -1/-1 counters. Engine wiring handles the counter substitution
+//!   in the damage-dealing pipeline.
+//!
+//! Wither is a fully implemented keyword in the engine; listing it in
+//! `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Wither],
         ..Default::default()
     };
 

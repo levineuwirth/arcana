@@ -1,13 +1,14 @@
-//! Lost Leonin — `{1}{W}` 2/1 Phyrexian Cat Soldier.
-//! Has Infect (keyword not yet in engine API; best-effort stub).
+//! Lost Leonin — `{1}{W}` 2/1 Phyrexian Cat Soldier with Infect.
+//! New Phyrexia common; a cheap white infect creature used in
+//! aggressive poison-counter strategies.
 //!
 //! # Rules references
 //!
-//! * Infect — This creature deals damage to creatures in the form of -1/-1
-//!   counters and to players in the form of poison counters.
-//!   Not expressible with current KeywordAbility variants;
-//!   verify pipeline will flag for human routing.
+//! * CR 702.90 — Infect. This creature deals damage to creatures in
+//!   the form of -1/-1 counters and to players in the form of poison
+//!   counters. Engine wiring handles both substitution effects.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -31,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Infect],
         ..Default::default()
     };
 

@@ -316,27 +316,65 @@ impl GameState {
                 None => return,
             };
         if amount == 0 { return; }
+        // CR 702.90/702.91/702.180 — wither / infect / toxic reshape
+        // how this source's damage lands. Read from the source's
+        // post-layer keywords so granted wither/infect counts too.
+        let (deals_minus_counters, player_poison_not_life, toxic_n) = {
+            let (mut wither_like, mut infect, mut toxic) = (false, false, 0u32);
+            for k in self.effective_keywords(source) {
+                match k {
+                    KeywordAbility::Wither => wither_like = true,
+                    KeywordAbility::Infect => { wither_like = true; infect = true; }
+                    KeywordAbility::Toxic(n) => toxic += n as u32,
+                    _ => {}
+                }
+            }
+            (wither_like, infect, toxic)
+        };
         match target {
             DamageTarget::Object(id) => {
                 // CR 702.2b — Deathtouch damage flags the target for
                 // the SBA regardless of how much damage is marked.
                 let source_has_dt = self.has_keyword(source, &KeywordAbility::Deathtouch);
                 let Some(obj) = self.objects.get_mut(id) else { return; };
-                obj.mark_damage(amount);
+                if deals_minus_counters {
+                    // CR 702.90b/702.91b — dealt as −1/−1 counters
+                    // instead of marked damage (still "damage dealt").
+                    obj.add_counters(CounterKind::MinusOneMinusOne, amount);
+                } else {
+                    obj.mark_damage(amount);
+                }
                 if source_has_dt {
                     obj.has_deathtouch_damage = true;
                 }
                 self.emit(GameEvent::DamageDealt {
                     source, target, amount, is_combat,
                 });
+                if deals_minus_counters {
+                    self.emit(GameEvent::CounterAdded {
+                        object_id: id,
+                        kind: CounterKind::MinusOneMinusOne,
+                        count: amount,
+                    });
+                }
             }
             DamageTarget::Player(p) => {
                 if (p as usize) >= self.players.len() { return; }
                 self.emit(GameEvent::DamageDealt {
                     source, target, amount, is_combat,
                 });
-                self.player_mut(p).life -= amount as i32;
-                self.emit(GameEvent::LifeLost { player: p, amount });
+                if player_poison_not_life {
+                    // CR 702.91c — Infect: poison counters, not life.
+                    self.player_mut(p).poison_counters += amount;
+                } else {
+                    self.player_mut(p).life -= amount as i32;
+                    self.emit(GameEvent::LifeLost { player: p, amount });
+                }
+                // CR 702.180c — Toxic N: extra poison on *combat*
+                // damage to a player, in addition to the above.
+                if is_combat && toxic_n > 0 {
+                    self.player_mut(p).poison_counters += toxic_n;
+                }
             }
         }
 
@@ -2411,6 +2449,56 @@ mod tests {
         assert_eq!(s.player(1).life, 17);
         assert!(s.event_log.iter().any(|e|
             matches!(e, GameEvent::LifeLost { player: 1, amount: 3 })));
+    }
+
+    // --- Pass 3.1: Wither / Infect / Toxic --------------------------------
+
+    fn with_kw(s: &mut GameState, id: ObjectId, kw: KeywordAbility) {
+        s.objects.get_mut(id).unwrap().characteristics.keywords.push(kw);
+    }
+
+    #[test]
+    fn wither_damages_creature_as_minus_counters() {
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 2, 2);
+        with_kw(&mut s, src, KeywordAbility::Wither);
+        let victim = put_creature(&mut s, 1, 3, 3);
+        s.deal_damage(src, DamageTarget::Object(victim), 2, true);
+        let v = s.objects.get(victim).unwrap();
+        assert_eq!(v.damage_marked, 0, "wither must not mark damage");
+        assert_eq!(v.count_counters(CounterKind::MinusOneMinusOne), 2);
+    }
+
+    #[test]
+    fn infect_creature_minus_counters_player_poison() {
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 2, 2);
+        with_kw(&mut s, src, KeywordAbility::Infect);
+        let victim = put_creature(&mut s, 1, 3, 3);
+        s.deal_damage(src, DamageTarget::Object(victim), 1, true);
+        assert_eq!(
+            s.objects.get(victim).unwrap()
+                .count_counters(CounterKind::MinusOneMinusOne),
+            1
+        );
+        s.deal_damage(src, DamageTarget::Player(1), 4, true);
+        assert_eq!(s.player(1).poison_counters, 4);
+        assert_eq!(s.player(1).life, 20, "infect deals poison, not life");
+    }
+
+    #[test]
+    fn toxic_adds_poison_only_on_combat_damage_to_player() {
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 2, 2);
+        with_kw(&mut s, src, KeywordAbility::Toxic(2));
+        // Combat damage: life loss AND +2 poison (toxic is in addition).
+        s.deal_damage(src, DamageTarget::Player(1), 3, true);
+        assert_eq!(s.player(1).life, 17);
+        assert_eq!(s.player(1).poison_counters, 2);
+        // Non-combat damage from the same source: no toxic poison.
+        s.deal_damage(src, DamageTarget::Player(1), 1, false);
+        assert_eq!(s.player(1).life, 16);
+        assert_eq!(s.player(1).poison_counters, 2);
     }
 
     // --- Trample ----------------------------------------------------------

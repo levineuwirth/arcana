@@ -1,16 +1,17 @@
 //! Scourge Servant — `{4}{B}` 3/3 Phyrexian Zombie with Infect.
+//! Scars of Mirrodin common; a black Infect creature at 5 mana.
 //!
 //! # Rules references
 //!
-//! * CR 702.90 — Infect. This creature deals damage to creatures in
-//!   the form of -1/-1 counters and to players in the form of poison
-//!   counters.
+//! * CR 702.90 — Infect. This creature deals damage to creatures in the
+//!   form of -1/-1 counters and to players in the form of poison counters.
+//!   Engine wiring handles the counter substitution in the damage-dealing
+//!   pipeline.
 //!
-//! NOTE: `Infect` is not present in the demonstrated `KeywordAbility`
-//! variant list. The `keywords` field is left empty so this file
-//! compiles; the verify pipeline will flag the missing variant and a
-//! human will route it.
+//! Infect is a fully implemented keyword in the engine; listing it in
+//! `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -32,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Infect],
         ..Default::default()
     };
 

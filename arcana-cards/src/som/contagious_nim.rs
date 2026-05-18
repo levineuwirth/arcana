@@ -1,14 +1,14 @@
 //! Contagious Nim — `{2}{B}` 2/2 Phyrexian Zombie with Infect.
+//! Scars of Mirrodin common; a black infect creature that spreads
+//! poison counters via combat damage to players.
 //!
 //! # Rules references
 //!
-//! * CR 702.90 — Infect. This creature deals damage to creatures in the form
-//!   of -1/-1 counters and to players in the form of poison counters.
-//!
-//! Infect is not among the demonstrated `KeywordAbility` variants, so this
-//! card is registered without the keyword pending engine support. The verify
-//! pipeline will flag the gap.
+//! * CR 702.90 — Infect. This creature deals damage to creatures in
+//!   the form of -1/-1 counters and to players in the form of poison
+//!   counters. Engine wiring handles both substitution effects.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -30,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Infect],
         ..Default::default()
     };
 

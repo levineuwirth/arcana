@@ -987,7 +987,20 @@ pub enum KeywordAbility {
     Bloodthirst, Modular, Flanking, BattleCry, Undying, Persist,
     Afterlife, Mentor, Riot, Devour, Sunburst, Dethrone, Scavenge,
     Fading, Vanishing, Renown, Evolve, Graft, Provoke, Amplify,
-    Enlist, Changeling, Infect, Wither, Toxic,
+    Enlist, Changeling,
+    // --- Damage-as-counters / poison (Pass 3.1). Fully enforced in
+    //     `combat::GameState::deal_damage`; honest L2-pass. ---
+    /// CR 702.90b — Wither. Damage this deals to a creature is dealt
+    /// as that many −1/−1 counters instead of being marked.
+    Wither,
+    /// CR 702.91b/c — Infect. Damage this deals to a creature is
+    /// dealt as −1/−1 counters; damage to a player is dealt as that
+    /// many poison counters instead of life loss.
+    Infect,
+    /// CR 702.180c — Toxic N. When this deals combat damage to a
+    /// player, that player also gets N poison counters (the combat
+    /// damage / life loss still happens — toxic is *in addition*).
+    Toxic(u8),
     /// CR 702.16 — Protection from a quality. DEBT: can't be dealt
     /// damage by, equipped/enchanted by, blocked by, or targeted by
     /// sources that match the quality.

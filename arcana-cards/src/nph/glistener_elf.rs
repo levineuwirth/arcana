@@ -1,9 +1,17 @@
 //! Glistener Elf — `{G}` 1/1 Phyrexian Elf Warrior with Infect.
+//! New Phyrexia common; the iconic one-drop Infect creature.
 //!
-//! Infect is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will
-//! flag this for human routing.
+//! # Rules references
+//!
+//! * CR 702.90 — Infect. This creature deals damage to creatures in the
+//!   form of -1/-1 counters and to players in the form of poison counters.
+//!   Engine wiring handles the counter substitution in the damage-dealing
+//!   pipeline.
+//!
+//! Infect is a fully implemented keyword in the engine; listing it in
+//! `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -27,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Infect],
         ..Default::default()
     };
 

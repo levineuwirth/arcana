@@ -37,17 +37,17 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
 /// A card carrying one is honest catalog *data* but a non-functional
 /// *card*, so it must be quarantined as an L3 stub (never landed)
 /// until a future pass implements real semantics. Names match the
-/// enum variant idents exactly as they appear in source. The truly
-/// static evasion keywords made real this pass (Fear, Intimidate,
-/// Shadow, Horsemanship, Skulk) are deliberately absent — they pass
-/// honestly.
+/// enum variant idents exactly as they appear in source. Keywords
+/// made real in earlier passes are deliberately absent — they pass
+/// honestly: the Pass-2 evasion set (Fear, Intimidate, Shadow,
+/// Horsemanship, Skulk) and the Pass-3.1 damage-as-counters set
+/// (Wither, Infect, Toxic).
 const DEFERRED_KEYWORDS: &[&str] = &[
     "Banding", "Rampage", "Bushido", "Exalted", "Soulshift", "Unleash",
     "Bloodthirst", "Modular", "Flanking", "BattleCry", "Undying",
     "Persist", "Afterlife", "Mentor", "Riot", "Devour", "Sunburst",
     "Dethrone", "Scavenge", "Fading", "Vanishing", "Renown", "Evolve",
-    "Graft", "Provoke", "Amplify", "Enlist", "Changeling", "Infect",
-    "Wither", "Toxic",
+    "Graft", "Provoke", "Amplify", "Enlist", "Changeling",
 ];
 
 /// Does `src` reference `KeywordAbility::<variant>` (the next char

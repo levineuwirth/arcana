@@ -9,3 +9,4 @@ pub mod smoldering_butcher;
 pub mod hobgoblin_dragoon;
 pub mod nip_gwyllion;
 pub mod stalker_hag;
+pub mod harvest_gwyllion;
