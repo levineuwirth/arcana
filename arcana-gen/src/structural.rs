@@ -187,6 +187,11 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         "mentor" => "Mentor",
         "dethrone" => "Dethrone",
         "enlist" => "Enlist",
+        // Pass 3.4 — block-time combat statics, fully enforced.
+        // (`Rampage`/`Bushido` are parametrised; N is in rules text,
+        // dropped like Toxic/Renown.)
+        "flanking" => "Flanking",
+        "provoke" => "Provoke",
         _ => return None,
     })
 }

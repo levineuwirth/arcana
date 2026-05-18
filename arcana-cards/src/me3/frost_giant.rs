@@ -1,9 +1,17 @@
-//! Frost Giant — `{3}{R}{R}{R}` 4/4 Giant with Rampage 2.
+//! Frost Giant — `{3}{R}{R}{R}` 4/4 Creature — Giant with Rampage 2.
+//! Legends uncommon (1994); a mono-red Giant that grows significantly
+//! larger when blocked by multiple creatures.
 //!
-//! Rampage is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will
-//! flag this for human routing.
+//! # Rules references
+//!
+//! * CR 702.23 — Rampage N. Whenever this creature becomes blocked, it gets
+//!   +N/+N until end of turn for each creature blocking it beyond the first.
+//!   Engine wiring is handled by the `Rampage(N)` parametrized keyword variant.
+//!
+//! Rampage is a fully implemented parametrized keyword; listing it in `keywords`
+//! as `KeywordAbility::Rampage(2)` is sufficient — the runtime pipeline does the rest.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -23,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Rampage(2)],
         ..Default::default()
     };
 

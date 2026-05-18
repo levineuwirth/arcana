@@ -1,12 +1,15 @@
-//! Inner-Chamber Guard — `{1}{W}` 0/2 Human Samurai with Bushido.
-//! Has bushido 2 (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
+//! Inner-Chamber Guard — `{1}{W}` 0/2 Human Samurai with Bushido 2.
+//! Saviors of Kamigawa common; a defensive samurai that surges to
+//! +2/+2 whenever it blocks or becomes blocked.
 //!
 //! # Rules references
 //!
-//! * CR 702.44 — Bushido. Whenever this creature blocks or becomes blocked,
-//!   it gets +N/+N until end of turn.
+//! * CR 702.44 — Bushido N. Whenever this creature blocks or becomes
+//!   blocked, it gets +N/+N until end of turn. Engine wiring handles
+//!   the triggered bonus; listing `Bushido(2)` in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bushido(2)],
         ..Default::default()
     };
 

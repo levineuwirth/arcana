@@ -1,9 +1,17 @@
-//! Wolverine Pack — `{2}{G}{G}` 2/4 Wolverine with Rampage 2.
-//! Rampage 2 (whenever this creature becomes blocked, it gets +2/+2 until
-//! end of turn for each creature blocking it beyond the first). Rampage is
-//! not in the demonstrated KeywordAbility set; the verify pipeline will
-//! flag the gap.
+//! Wolverine Pack — `{2}{G}{G}` 2/4 Creature — Wolverine with Rampage 2.
+//! The Dark common (1994); a mono-green Wolverine that punishes opponents
+//! who block with multiple creatures.
+//!
+//! # Rules references
+//!
+//! * CR 702.23 — Rampage N. Whenever this creature becomes blocked, it gets
+//!   +N/+N until end of turn for each creature blocking it beyond the first.
+//!   Engine wiring is handled by the `Rampage(N)` parametrized keyword variant.
+//!
+//! Rampage is a fully implemented parametrized keyword; listing it in `keywords`
+//! as `KeywordAbility::Rampage(2)` is sufficient — the runtime pipeline does the rest.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -23,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Rampage(2)],
         ..Default::default()
     };
 

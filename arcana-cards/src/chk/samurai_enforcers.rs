@@ -1,14 +1,15 @@
 //! Samurai Enforcers — `{4}{W}{W}` 4/4 Human Samurai with Bushido 2.
+//! Saviors of Kamigawa uncommon; a powerful white samurai that gets
+//! +2/+2 whenever it blocks or becomes blocked.
 //!
 //! # Rules references
 //!
-//! * CR 702.45 — Bushido. Whenever this creature blocks or becomes blocked,
-//!   it gets +N/+N until end of turn.
-//!
-//! Bushido is not among the demonstrated `KeywordAbility` variants, so this
-//! card is registered without the keyword pending engine support. The verify
-//! pipeline will flag the gap.
+//! * CR 702.44 — Bushido N. Whenever this creature blocks or becomes
+//!   blocked, it gets +N/+N until end of turn. Engine wiring handles
+//!   the triggered bonus; listing `Bushido(2)` in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -30,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bushido(2)],
         ..Default::default()
     };
 

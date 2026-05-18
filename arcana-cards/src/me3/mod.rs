@@ -27,3 +27,5 @@ pub mod lu_bu_master_at_arms;
 pub mod zhang_fei_fierce_warrior;
 pub mod lu_meng_wu_general;
 pub mod ramirez_depietro;
+pub mod marhault_elsdragon;
+pub mod hunding_gjornersen;

@@ -1015,11 +1015,30 @@ pub enum KeywordAbility {
     //     implements real semantics. Several are parametrized in real
     //     MTG (Soulshift N, Devour N, …); kept unit here — a future
     //     pass refactors to carry the payload when wiring behavior. ---
-    Banding, Rampage, Bushido, Soulshift, Unleash,
-    Bloodthirst, Modular, Flanking,
+    Banding, Soulshift, Unleash,
+    Bloodthirst, Modular,
     Riot, Devour, Sunburst, Scavenge,
-    Fading, Vanishing, Evolve, Graft, Provoke, Amplify,
+    Fading, Vanishing, Evolve, Graft, Amplify,
     Changeling,
+    // --- Combat statics, block-time (Pass 3.4). Synthesized as
+    //     keyword-born stack triggers in `engine`; honest L2-pass.
+    /// CR 702.25a — Flanking. "Whenever a creature without flanking
+    /// blocks a creature with flanking, the blocking creature gets
+    /// −1/−1 until end of turn." One trigger per flanking instance.
+    Flanking,
+    /// CR 702.23a — Rampage N. "Whenever this creature becomes
+    /// blocked, it gets +N/+N until end of turn for each creature
+    /// blocking it beyond the first."
+    Rampage(u8),
+    /// CR 702.46a — Bushido N. "Whenever this creature blocks or
+    /// becomes blocked, it gets +N/+N until end of turn."
+    Bushido(u8),
+    /// CR 702.39a — Provoke. An *optional* "as it attacks" force-a-
+    /// block. Phase-1 policy: the engine always declines (a legal
+    /// choice for a "may"), so the keyword is recognized and the
+    /// card functions, but no untap/forced-block happens. DEBT: wire
+    /// when agent combat choices land. (Mirrors Enlist's policy.)
+    Provoke,
     // --- Attack / combat-damage triggered (Pass 3.3). Synthesized as
     //     keyword-born stack triggers in `engine`; honest L2-pass.
     /// CR 702.83a — Exalted. "Whenever a creature you control attacks

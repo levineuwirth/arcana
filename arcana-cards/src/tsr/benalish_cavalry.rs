@@ -1,14 +1,17 @@
 //! Benalish Cavalry — `{1}{W}` 2/2 Human Knight with Flanking.
+//! Tempest common; a white flanking knight that punishes blockers
+//! without flanking by giving them -1/-1 until end of turn.
 //!
 //! # Rules references
 //!
-//! * CR 702.25 — Flanking. Whenever a creature without flanking blocks this
-//!   creature, the blocking creature gets -1/-1 until end of turn.
+//! * CR 702.24 — Flanking. Whenever a creature without flanking
+//!   blocks this creature, the blocking creature gets -1/-1 until
+//!   end of turn. Engine wiring lives in the combat damage pipeline.
 //!
-//! Flanking is not among the demonstrated `KeywordAbility` variants, so this
-//! card is registered without the keyword pending engine support. The verify
-//! pipeline will flag the gap.
+//! Flanking is a fully-implemented keyword; listing it in `keywords`
+//! is sufficient — the runtime pipelines do the rest.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -30,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Flanking],
         ..Default::default()
     };
 

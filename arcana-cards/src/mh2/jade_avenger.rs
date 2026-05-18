@@ -1,12 +1,15 @@
 //! Jade Avenger — `{1}{G}` 2/2 Frog Samurai with Bushido 2.
-//! Has Bushido 2 (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
+//! Kamigawa: Neon Dynasty common; gets +2/+2 whenever it blocks or
+//! becomes blocked.
 //!
 //! # Rules references
 //!
-//! * CR 702.45 — Bushido. Whenever this creature blocks or becomes
-//!   blocked, it gets +2/+2 until end of turn.
+//! * CR 702.44 — Bushido N. Whenever this creature blocks or becomes
+//!   blocked, it gets +N/+N until end of turn. Engine wiring handles
+//!   the triggered bonus; listing `Bushido(2)` in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bushido(2)],
         ..Default::default()
     };
 

@@ -1,12 +1,15 @@
-//! Nezumi Ronin — `{2}{B}` 3/1 Rat Samurai.
-//! Has Bushido 1 (keyword not yet in engine API; best-effort stub).
+//! Nezumi Ronin — `{2}{B}` 3/1 Rat Samurai with Bushido 1.
+//! Betrayers of Kamigawa common; an aggressive rat samurai that gets
+//! +1/+1 whenever it blocks or becomes blocked.
 //!
 //! # Rules references
 //!
-//! * Bushido N — Whenever this creature blocks or becomes blocked, it gets
-//!   +N/+N until end of turn. Not expressible with current KeywordAbility
-//!   variants; verify pipeline will flag for human routing.
+//! * CR 702.44 — Bushido N. Whenever this creature blocks or becomes
+//!   blocked, it gets +N/+N until end of turn. Engine wiring handles
+//!   the triggered bonus; listing `Bushido(1)` in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bushido(1)],
         ..Default::default()
     };
 

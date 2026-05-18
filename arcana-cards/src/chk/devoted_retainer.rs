@@ -1,9 +1,15 @@
 //! Devoted Retainer — `{W}` 1/1 Human Samurai with Bushido 1.
+//! Champions of Kamigawa common; a humble one-drop samurai that gets
+//! +1/+1 whenever it blocks or becomes blocked.
 //!
-//! Bushido is not expressible with the current `KeywordAbility` variants;
-//! the verify pipeline will flag this gap. The card is registered with an
-//! empty keyword list as a best-effort compilable file.
+//! # Rules references
+//!
+//! * CR 702.44 — Bushido N. Whenever this creature blocks or becomes
+//!   blocked, it gets +N/+N until end of turn. Engine wiring handles
+//!   the triggered bonus; listing `Bushido(1)` in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -25,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bushido(1)],
         ..Default::default()
     };
 

@@ -1,12 +1,15 @@
-//! Ronin Cavekeeper — `{5}{R}` 4/3 Human Samurai.
-//! Has Bushido 2 (keyword not yet in engine API; best-effort stub).
+//! Ronin Cavekeeper — `{5}{R}` 4/3 Human Samurai with Bushido 2.
+//! Saviors of Kamigawa common; a heavy red samurai that gets +2/+2
+//! whenever it blocks or becomes blocked.
 //!
 //! # Rules references
 //!
-//! * Bushido N — Whenever this creature blocks or becomes blocked, it gets
-//!   +N/+N until end of turn. Not expressible with current KeywordAbility
-//!   variants; verify pipeline will flag for human routing.
+//! * CR 702.44 — Bushido N. Whenever this creature blocks or becomes
+//!   blocked, it gets +N/+N until end of turn. Engine wiring handles
+//!   the triggered bonus; listing `Bushido(2)` in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bushido(2)],
         ..Default::default()
     };
 

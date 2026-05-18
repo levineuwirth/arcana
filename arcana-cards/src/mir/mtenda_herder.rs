@@ -1,19 +1,17 @@
 //! Mtenda Herder — `{W}` 1/1 Human Scout with Flanking.
-//! A Mirage-block common; Flanking gives blocking creatures -1/-1
-//! until end of turn, discouraging smaller creatures from trading
-//! with this Scout.
+//! Mirage common; a cheap white flanker that punishes blockers
+//! without flanking by giving them -1/-1 until end of turn.
 //!
 //! # Rules references
 //!
 //! * CR 702.24 — Flanking. Whenever a creature without flanking
 //!   blocks this creature, the blocking creature gets -1/-1 until
-//!   end of turn.
+//!   end of turn. Engine wiring lives in the combat damage pipeline.
 //!
-//! NOTE: `KeywordAbility::Flanking` is not present in the currently
-//! demonstrated API surface. The keyword list is left empty as a
-//! best-effort stub; the verify pipeline will flag this gap for a
-//! human to wire the Flanking variant when it is added to the engine.
+//! Flanking is a fully-implemented keyword; listing it in `keywords`
+//! is sufficient — the runtime pipelines do the rest.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -35,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Flanking],
         ..Default::default()
     };
 

@@ -2227,6 +2227,52 @@ fn collect_pending_triggers(
             }
         }
 
+        // 3e. Synthesized block-time combat statics (Pass 3.4).
+        //     Flanking + Bushido-as-blocker fire per `CreatureBlocks`
+        //     pairing; Rampage + Bushido-as-blocked fire once per
+        //     blocked attacker via `CreatureBlocked`.
+        {
+            use crate::effects::KeywordAbility as KA;
+            let push = |src: ObjectId, tid: crate::types::TriggerId,
+                        pend: &mut Vec<crate::triggers::PendingTrigger>| {
+                let ctrl = state.objects.get(src)
+                    .map(|o| o.controller).unwrap_or(0);
+                pend.push(crate::triggers::PendingTrigger {
+                    source: src, trigger_id: tid, controller: ctrl,
+                    trigger_event: event.clone(),
+                    targets: crate::targets::TargetSelection::new(),
+                });
+            };
+            match event {
+                crate::events::GameEvent::CreatureBlocks { blocker, attacker } => {
+                    let atk_kw = state.effective_keywords(*attacker);
+                    let blk_kw = state.effective_keywords(*blocker);
+                    let blocker_has_flanking =
+                        blk_kw.iter().any(|k| matches!(k, KA::Flanking));
+                    if atk_kw.iter().any(|k| matches!(k, KA::Flanking))
+                        && !blocker_has_flanking
+                    {
+                        push(*attacker, FLANKING_TRIGGER_ID, &mut pending);
+                    }
+                    if blk_kw.iter().any(|k| matches!(k, KA::Bushido(_))) {
+                        push(*blocker, BUSHIDO_TRIGGER_ID, &mut pending);
+                    }
+                }
+                crate::events::GameEvent::CreatureBlocked { attacker, blockers } => {
+                    let kw = state.effective_keywords(*attacker);
+                    if kw.iter().any(|k| matches!(k, KA::Rampage(_)))
+                        && blockers.len() > 1
+                    {
+                        push(*attacker, RAMPAGE_TRIGGER_ID, &mut pending);
+                    }
+                    if kw.iter().any(|k| matches!(k, KA::Bushido(_))) {
+                        push(*attacker, BUSHIDO_TRIGGER_ID, &mut pending);
+                    }
+                }
+                _ => {}
+            }
+        }
+
         // 4. Auto-applied keyword triggers that bypass the stack in
         //    Phase 1. These are known, bounded behaviors we don't yet
         //    route through the full TriggeredAbilityDef system.
@@ -2787,6 +2833,11 @@ fn resolution_effects(
                 return attack_trigger_resolve(
                     state, entry.source, *trigger_id, trigger_event);
             }
+            // Pass 3.4 — block-time combat statics.
+            if is_combat_static_trigger(*trigger_id) {
+                return combat_static_trigger_resolve(
+                    state, entry.source, *trigger_id, trigger_event);
+            }
             let source = entry.source;
             let Some(obj) = state.objects.get(source)
                 .or_else(|| state.lki.get(&source))
@@ -2856,6 +2907,14 @@ pub(crate) fn is_attack_trigger(tid: crate::types::TriggerId) -> bool {
             || x == MENTOR_TRIGGER_ID
             || x == DETHRONE_TRIGGER_ID
             || x == RENOWN_TRIGGER_ID)
+}
+
+/// Is `tid` one of the Pass 3.4 block-time combat-static sentinels?
+pub(crate) fn is_combat_static_trigger(tid: crate::types::TriggerId) -> bool {
+    matches!(tid,
+        x if x == FLANKING_TRIGGER_ID
+            || x == RAMPAGE_TRIGGER_ID
+            || x == BUSHIDO_TRIGGER_ID)
 }
 
 /// Resolution effects for a synthesized Undying / Persist / Afterlife
@@ -2993,6 +3052,56 @@ fn attack_trigger_resolve(
         // synthesis; just place the counter on the attacker.
         return vec![Effect::AddCounters {
             target: source, kind: PlusOnePlusOne, count: 1 }];
+    }
+    Vec::new()
+}
+
+/// Resolution effects for a synthesized Pass 3.4 block-time combat
+/// static (Flanking / Rampage / Bushido). The pairing/blocker-count
+/// gate was applied at synthesis; N is re-read from the keyword
+/// permanent's live (layers-aware) keywords here.
+fn combat_static_trigger_resolve(
+    state: &GameState,
+    source: ObjectId,
+    trigger_id: crate::types::TriggerId,
+    trigger_event: &crate::events::GameEvent,
+) -> Vec<crate::effects::Effect> {
+    use crate::effects::{Effect, KeywordAbility as KA};
+    let eot = crate::layers::Duration::EndOfTurn;
+
+    if trigger_id == FLANKING_TRIGGER_ID {
+        let crate::events::GameEvent::CreatureBlocks { blocker, attacker } =
+            trigger_event else { return Vec::new(); };
+        // One −1/−1 per flanking instance on the attacker (CR 702.25b).
+        let n = state.effective_keywords(*attacker).iter()
+            .filter(|k| matches!(k, KA::Flanking)).count();
+        return (0..n).map(|_| Effect::Pump {
+            target: *blocker, power: -1, toughness: -1,
+            duration: eot, keywords: vec![],
+        }).collect();
+    }
+    if trigger_id == RAMPAGE_TRIGGER_ID {
+        let crate::events::GameEvent::CreatureBlocked { blockers, .. } =
+            trigger_event else { return Vec::new(); };
+        let n = state.effective_keywords(source).into_iter()
+            .find_map(|k| match k { KA::Rampage(n) => Some(n as i32), _ => None });
+        let Some(n) = n else { return Vec::new(); };
+        let extra = blockers.len().saturating_sub(1) as i32;
+        if extra == 0 { return Vec::new(); }
+        let amt = n * extra;
+        return vec![Effect::Pump {
+            target: source, power: amt, toughness: amt,
+            duration: eot, keywords: vec![],
+        }];
+    }
+    if trigger_id == BUSHIDO_TRIGGER_ID {
+        let n = state.effective_keywords(source).into_iter()
+            .find_map(|k| match k { KA::Bushido(n) => Some(n as i32), _ => None });
+        let Some(n) = n else { return Vec::new(); };
+        return vec![Effect::Pump {
+            target: source, power: n, toughness: n,
+            duration: eot, keywords: vec![],
+        }];
     }
     Vec::new()
 }
@@ -3194,6 +3303,14 @@ pub(crate) const BATTLE_CRY_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 101
 pub(crate) const MENTOR_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 102;
 pub(crate) const DETHRONE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 103;
 pub(crate) const RENOWN_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 104;
+
+// Pass 3.4 — block-time combat statics, synthesized on
+// `CreatureBlocks` (Flanking, Bushido-as-blocker) or `CreatureBlocked`
+// (Rampage, Bushido-as-blocked). Provoke is NOT here — Phase-1
+// declines it, like Enlist.
+pub(crate) const FLANKING_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 110;
+pub(crate) const RAMPAGE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 111;
+pub(crate) const BUSHIDO_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 112;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -5169,6 +5286,143 @@ mod tests {
             state.objects.get(a).unwrap()
                 .count_counters(CounterKind::PlusOnePlusOne),
             2);
+    }
+
+    // --- Pass 3.4: block-time combat statics ------------------------------
+
+    fn deploy_owned(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        card: crate::types::CardId,
+        owner: crate::types::PlayerId,
+    ) -> ObjectId {
+        let id = state.allocate_object_id();
+        let def = registry.get(card).unwrap();
+        state.objects.insert(GameObject::new(
+            id, owner, Zone::Hand(owner), card,
+            def.base_characteristics.clone()));
+        let bf = state.move_object_to_zone(
+            id, Zone::Battlefield, MoveCause::SpellResolution).unwrap();
+        state.objects.get_mut(bf).unwrap().status.summoning_sick = false;
+        bf
+    }
+
+    /// Declare `atk` (owned by p0) attacking p1, then `pairs` blocks
+    /// (blocker owned by p1).
+    fn declare_combat(
+        state: &mut GameState,
+        atk: Vec<ObjectId>,
+        pairs: Vec<(ObjectId, ObjectId)>,
+    ) {
+        use crate::combat::{AttackerDeclaration, BlockerDeclaration,
+            DefendingEntity};
+        state.begin_combat();
+        state.enter_declare_attackers();
+        state.apply_declared_attackers(
+            atk.into_iter().map(|a| AttackerDeclaration {
+                attacker: a, defending: DefendingEntity::Player(1),
+            }).collect());
+        state.enter_declare_blockers();
+        state.apply_declared_blockers(
+            pairs.into_iter().map(|(b, a)| BlockerDeclaration {
+                blocker: b, blocking: a,
+            }).collect());
+    }
+
+    #[test]
+    fn flanking_weakens_nonflanking_blocker() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let fa = register_kw_creature(&mut registry, vec![KeywordAbility::Flanking]);
+        let pl = register_kw_creature(&mut registry, vec![]);
+        let mut state = GameState::new(2, 0);
+        let attacker = deploy_ready(&mut state, &registry, fa);
+        let blocker = deploy_owned(&mut state, &registry, pl, 1);
+
+        declare_combat(&mut state, vec![attacker], vec![(blocker, attacker)]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1, "flanking should fire");
+        resolve_top_of_stack(&mut state, &registry);
+
+        assert_eq!(state.computed_power(blocker), Some(1), "2/2 −1/−1 = 1/1");
+        assert_eq!(state.computed_toughness(blocker), Some(1));
+    }
+
+    #[test]
+    fn flanking_silent_against_flanking_blocker() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let fa = register_kw_creature(&mut registry, vec![KeywordAbility::Flanking]);
+        let fb = register_kw_creature(&mut registry, vec![KeywordAbility::Flanking]);
+        let mut state = GameState::new(2, 0);
+        let attacker = deploy_ready(&mut state, &registry, fa);
+        let blocker = deploy_owned(&mut state, &registry, fb, 1);
+
+        declare_combat(&mut state, vec![attacker], vec![(blocker, attacker)]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 0, "blocker also has flanking");
+    }
+
+    #[test]
+    fn rampage_pumps_per_blocker_beyond_first() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let ra = register_kw_creature(&mut registry, vec![KeywordAbility::Rampage(2)]);
+        let b1 = register_kw_creature(&mut registry, vec![]);
+        let b2 = register_kw_creature(&mut registry, vec![]);
+        let mut state = GameState::new(2, 0);
+        let attacker = deploy_ready(&mut state, &registry, ra);
+        let blk1 = deploy_owned(&mut state, &registry, b1, 1);
+        let blk2 = deploy_owned(&mut state, &registry, b2, 1);
+
+        declare_combat(&mut state, vec![attacker],
+            vec![(blk1, attacker), (blk2, attacker)]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+
+        // 2 blockers → 1 beyond the first → +2/+2 (Rampage 2).
+        assert_eq!(state.computed_power(attacker), Some(4));
+        assert_eq!(state.computed_toughness(attacker), Some(4));
+    }
+
+    #[test]
+    fn bushido_pumps_when_blocked() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let ba = register_kw_creature(&mut registry, vec![KeywordAbility::Bushido(1)]);
+        let pl = register_kw_creature(&mut registry, vec![]);
+        let mut state = GameState::new(2, 0);
+        let attacker = deploy_ready(&mut state, &registry, ba);
+        let blocker = deploy_owned(&mut state, &registry, pl, 1);
+
+        declare_combat(&mut state, vec![attacker], vec![(blocker, attacker)]);
+        run_sba_and_triggers(&mut state, &registry);
+        // becomes-blocked Bushido (one trigger).
+        assert!(state.stack_size() >= 1);
+        while state.stack_size() > 0 { resolve_top_of_stack(&mut state, &registry); }
+
+        assert_eq!(state.computed_power(attacker), Some(3), "2/2 +1/+1");
+        assert_eq!(state.computed_toughness(attacker), Some(3));
+    }
+
+    #[test]
+    fn bushido_pumps_when_blocking() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let pl = register_kw_creature(&mut registry, vec![]);
+        let bb = register_kw_creature(&mut registry, vec![KeywordAbility::Bushido(2)]);
+        let mut state = GameState::new(2, 0);
+        let attacker = deploy_ready(&mut state, &registry, pl);
+        let blocker = deploy_owned(&mut state, &registry, bb, 1);
+
+        declare_combat(&mut state, vec![attacker], vec![(blocker, attacker)]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+
+        assert_eq!(state.computed_power(blocker), Some(4), "2/2 +2/+2");
+        assert_eq!(state.computed_toughness(blocker), Some(4));
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------
