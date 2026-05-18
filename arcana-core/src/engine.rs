@@ -3775,8 +3775,11 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
         // normal combat-phase yield shape.
         if let Some(pass) = combat.pending_damage_assignment {
             let attackers = state.attackers_needing_damage_assignment(pass);
+            // CR 702.22 — banding redirects the assignment choice to
+            // the defending player when an attacker is band-blocked.
+            let chooser = state.damage_assignment_chooser(&attackers);
             return EngineYield::PendingDecision {
-                player: state.active_player(),
+                player: chooser,
                 legal_actions: legal_actions(state, registry),
                 context: DecisionContext::DistributeDamage { attackers },
             };

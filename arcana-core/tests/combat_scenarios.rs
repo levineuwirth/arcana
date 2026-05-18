@@ -16,6 +16,7 @@ use arcana_core::state::GameState;
 use arcana_core::types::{PlayerId, PtValue, TypeLine};
 use arcana_core::ObjectId;
 use arcana_core::zones::Zone;
+use arcana_core::effects::KeywordAbility;
 
 fn creature(s: &mut GameState, owner: PlayerId, p: i32, t: i32) -> ObjectId {
     let id = s.allocate_object_id();
@@ -148,6 +149,58 @@ fn engine_yields_distribute_damage_and_applies_assignment() {
         "step advanced past regular damage");
     // Next yield is a normal priority window in the next step.
     assert!(matches!(yld, EngineYield::PendingDecision { .. }));
+}
+
+/// Pass 4.2b — CR 702.22 end-to-end: when a multi-blocked attacker
+/// is blocked by a creature with banding, the engine yields the
+/// `DistributeDamage` decision to the DEFENDING player (the banding
+/// blocker's controller), not the attacking player.
+#[test]
+fn banding_blocker_yields_distribute_damage_to_defender() {
+    let reg = CardRegistry::new();
+    let mut s = GameState::new(2, 0);
+    s.turn.phase = Phase::Combat;
+    s.turn.step = Step::DeclareBlockers;
+    s.begin_combat();
+    let atk = creature(&mut s, 0, 5, 5);
+    let b1 = creature(&mut s, 1, 2, 2);
+    let b2 = creature(&mut s, 1, 1, 4);
+    s.objects.get_mut(b1).unwrap()
+        .characteristics.keywords.push(KeywordAbility::Banding);
+
+    s.apply_declared_attackers(vec![AttackerDeclaration {
+        attacker: atk, defending: DefendingEntity::Player(1),
+    }]);
+    s.enter_declare_blockers();
+    s.apply_declared_blockers(vec![
+        BlockerDeclaration { blocker: b1, blocking: atk },
+        BlockerDeclaration { blocker: b2, blocking: atk },
+    ]);
+    s.apply_blocker_ordering(vec![(atk, vec![b1, b2])]);
+    advance_phase(&mut s, &reg);
+    advance_phase(&mut s, &reg);
+    assert_eq!(s.combat.as_ref().unwrap().pending_damage_assignment,
+        Some(PendingDamagePass::Regular));
+
+    // Observe the pending decision (PassPriority is a no-op while a
+    // distribution is pending) — it must be routed to player 1.
+    let (s, yld) = step(s, Action::PassPriority, &reg);
+    match yld {
+        EngineYield::PendingDecision {
+            context: DecisionContext::DistributeDamage { .. }, player, ..
+        } => assert_eq!(player, 1,
+            "banding sends the assignment choice to the defender"),
+        other => panic!("expected DistributeDamage yield, got {other:?}"),
+    }
+
+    // The defender's submitted distribution still applies normally.
+    let (s, _) = step(s, Action::AssignCombatDamage {
+        distributions: vec![DamageAssignment {
+            attacker: atk, distribution: vec![(b1, 3), (b2, 2)],
+        }],
+    }, &reg);
+    assert_eq!(s.combat.as_ref().unwrap().pending_damage_assignment, None);
+    assert_eq!(s.objects.get(b2).unwrap().damage_marked, 2);
 }
 
 /// Submitting an illegal distribution leaves the engine pending so

@@ -1054,16 +1054,20 @@ pub enum KeywordAbility {
     //     implements real semantics. Several are parametrized in real
     //     MTG (Soulshift N, Devour N, …); kept unit here — a future
     //     pass refactors to carry the payload when wiring behavior. ---
-    /// CR 702.22 — Banding. Recognized keyword. Banding is purely a
-    /// *choice-control* ability: it changes **which player** assigns
-    /// combat damage (the banding blocker's controller assigns the
-    /// attacker's damage; a banding attacker's controller assigns the
-    /// blockers' damage). Phase-1 combat damage assignment is
-    /// deterministic (lethal-in-order default; no agent posts a
-    /// non-default `DamageAssignment`), so the control-swap has no
-    /// observable effect and the card functions as printed. DEBT:
-    /// wire the attacker↔defender assignment-control swap when agent
-    /// combat choices land. (Same posture as Enlist/Provoke.)
+    /// CR 702.22 — Banding. A *choice-control* ability: it changes
+    /// **which player** assigns combat damage. Wired (Pass 4.2b) for
+    /// the blocking side — when an attacker is blocked by a creature
+    /// with banding, the engine yields the `DistributeDamage`
+    /// decision to the defending player (the banding blocker's
+    /// controller) instead of the attacker's controller (see
+    /// [`crate::combat::GameState::damage_assignment_chooser`]). The
+    /// attacking-side (a band choosing how its blockers assign to it)
+    /// is not modeled — the engine has no band grouping and each
+    /// blocker deals all its damage to its one attacker, so there is
+    /// no such choice to redirect. Phase-1 simplification: a single
+    /// combined distribution decision, so a mixed banding/non-banding
+    /// attacker batch routes wholly to the defender (exact for the
+    /// common single-attacker / all-banding / no-banding cases).
     Banding,
     /// CR 702.172 — Warp (an alternative-cost / exile-return cast
     /// modifier). Deferred alongside Banding: it's a cast-time

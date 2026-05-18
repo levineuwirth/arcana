@@ -1181,6 +1181,36 @@ impl GameState {
     /// [`crate::combat::AttackerAssignment::blocked_by`] is only the
     /// declared-order list from declare-blockers and doesn't self-
     /// update when the first-strike pass kills a blocker.
+    /// CR 702.22 — who assigns the combat damage for the
+    /// `DistributeDamage` decision over `attackers`. Default is the
+    /// active (attacking) player. Banding: if any of those attackers
+    /// is blocked by a creature with banding, the *defending* player
+    /// (the banding blocker's controller) assigns instead.
+    ///
+    /// Phase-1 simplification (DEBT): the engine yields one combined
+    /// distribution decision, so if banding affects *any* attacker in
+    /// the batch the whole decision goes to that attacker's defending
+    /// player. Exact for the common single-attacker case and for
+    /// all-banding / no-banding batches; a mixed batch is the only
+    /// imprecise case (rare — no agent builds bands). The attacking-
+    /// side of banding (a band choosing how blockers assign to it) is
+    /// not modeled: the engine has no band grouping and each blocker
+    /// deals all its damage to its one attacker, so there is no such
+    /// choice to redirect.
+    pub fn damage_assignment_chooser(&self, attackers: &[ObjectId]) -> PlayerId {
+        let active = self.active_player();
+        let Some(combat) = self.combat.as_ref() else { return active; };
+        for &atk in attackers {
+            let Some(info) = combat.attacker(atk) else { continue; };
+            let banded = info.blocked_by.iter().any(|&b|
+                self.has_keyword(b, &crate::effects::KeywordAbility::Banding));
+            if banded {
+                return info.defending_player;
+            }
+        }
+        active
+    }
+
     pub fn live_blockers_of(&self, attacker: ObjectId) -> Vec<ObjectId> {
         let Some(combat) = self.combat.as_ref() else { return Vec::new(); };
         let Some(atk) = combat.attacker(attacker) else { return Vec::new(); };
@@ -2952,5 +2982,45 @@ mod tests {
 
         assert_eq!(s.player(1).life, 18);
         assert!(s.combat.is_none());
+    }
+
+    // --- Pass 4.2b: Banding chooser-swap (CR 702.22) ----------------------
+
+    fn multiblock(s: &mut GameState, atk: ObjectId, b1: ObjectId, b2: ObjectId) {
+        s.enter_declare_attackers();
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+        ]);
+    }
+
+    #[test]
+    fn damage_assignment_chooser_defaults_to_active_player() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 5, 5); ready(atk, &mut s);
+        let b1 = put_creature(&mut s, 1, 2, 2);
+        let b2 = put_creature(&mut s, 1, 1, 4);
+        multiblock(&mut s, atk, b1, b2);
+        assert_eq!(s.damage_assignment_chooser(&[atk]), 0,
+            "no banding ⇒ the attacking player assigns (CR 510.1c)");
+    }
+
+    #[test]
+    fn banding_blocker_moves_assignment_to_defender() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 5, 5); ready(atk, &mut s);
+        let b1 = put_creature(&mut s, 1, 2, 2);
+        let b2 = put_creature(&mut s, 1, 1, 4);
+        with_kw(&mut s, b1, KeywordAbility::Banding);
+        multiblock(&mut s, atk, b1, b2);
+        assert_eq!(s.damage_assignment_chooser(&[atk]), 1,
+            "a banding blocker ⇒ the defending player assigns the \
+             attacker's combat damage (CR 702.22)");
     }
 }
