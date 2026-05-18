@@ -676,6 +676,11 @@ pub enum ChoiceFollowUp {
     /// creature, then put `per` × (number sacrificed) +1/+1 counters
     /// on `devourer`. Empty pick = sacrificed nothing (legal).
     DevourSacrifice { devourer: ObjectId, per: u8 },
+    /// Pass 4.1d — Amplify (CR 702.37a). Pair with a
+    /// [`ChoiceKind::PickCards`] response: reveal each picked hand
+    /// card (mark known to all players), then put `per` × count
+    /// +1/+1 counters on `amplifier`. Empty pick = revealed nothing.
+    AmplifyReveal { amplifier: ObjectId, per: u8 },
 }
 
 // =============================================================================

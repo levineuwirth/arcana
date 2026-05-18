@@ -304,6 +304,11 @@ pub enum Effect {
     /// the follow-up sacrifices the picks and puts `per` × count
     /// +1/+1 counters on the devourer.
     DevourSacrifice { devourer: ObjectId, per: u8 },
+    /// Pass 4.1d — Amplify (CR 702.37a). Posts the optional "reveal
+    /// any number of hand cards sharing a creature type" choice for
+    /// `amplifier`; the follow-up reveals the picks and puts `per` ×
+    /// count +1/+1 counters on the amplifier.
+    AmplifyReveal { amplifier: ObjectId, per: u8 },
     /// CR 701.20a — Search `player`'s library for a matching card, put
     /// it into hand, then shuffle. `reveal` adds a public-info mark.
     /// Phase 1 picks the first matching id (deterministic); TODO
@@ -806,6 +811,9 @@ impl Effect {
             Effect::DevourSacrifice { devourer, per } => {
                 push_devour_choice(state, *devourer, *per);
             }
+            Effect::AmplifyReveal { amplifier, per } => {
+                push_amplify_choice(state, *amplifier, *per);
+            }
             Effect::TutorToHand { player, filter, reveal } => {
                 push_search_choice(
                     state, *player, Zone::Library(*player), filter,
@@ -1104,8 +1112,13 @@ pub enum KeywordAbility {
     /// mana-spend color record, so it enters with 0 (functional
     /// creature, situational bonus deferred).
     Sunburst,
-    /// CR 702.37a — Amplify N. As it enters, you may reveal sharing-
-    /// type cards for N counters each. Phase-1 reveals 0.
+    /// CR 702.37a — Amplify N. "As this enters, you may reveal any
+    /// number of cards from your hand that share a creature type
+    /// with it. It enters with N +1/+1 counters for each." Fully
+    /// wired (Pass 4.1d): ETB synthesized trigger →
+    /// [`Effect::AmplifyReveal`] posts a real `PickCards{0,all}` over
+    /// type-sharing hand cards; the follow-up reveals them and adds
+    /// N×count counters. Same Phase-1 timing DEBT as Devour.
     Amplify(u8),
     /// CR 702.82a — Devour N. "As this enters, you may sacrifice any
     /// number of creatures. It enters with N +1/+1 counters for each
@@ -2032,6 +2045,37 @@ fn push_devour_choice(state: &mut GameState, devourer: ObjectId, per: u8) {
     state.pending_choice_follow_up = Some(
         crate::actions::ChoiceFollowUp::DevourSacrifice {
             devourer, per });
+    state.push_pending_choice(
+        controller,
+        ctx,
+        crate::actions::ChoiceKind::PickCards {
+            candidates, min: 0, max,
+        },
+    );
+}
+
+/// Push the optional Amplify choice (CR 702.37a): the amplifier's
+/// controller may reveal any number of hand cards that share a
+/// creature type with the amplifier; `per` counters per reveal.
+/// `PickCards{min:0,max:all}`. No prompt if no sharing card in hand.
+fn push_amplify_choice(state: &mut GameState, amplifier: ObjectId, per: u8) {
+    let Some(amp) = state.objects.get(amplifier) else { return; };
+    let controller = amp.controller;
+    let amp_subtypes: Vec<_> = amp.characteristics.subtypes.iter().collect();
+    let candidates: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| matches!(o.zone, Zone::Hand(p) if p == controller))
+        .filter(|o| amp_subtypes.iter()
+            .any(|s| o.characteristics.subtypes.contains(*s)))
+        .map(|o| o.id)
+        .collect();
+    if candidates.is_empty() { return; }
+    let max = candidates.len() as u32;
+    let ctx = match state.currently_resolving {
+        Some(e) => crate::actions::ChoiceContext::ResolvingStack(e),
+        None => crate::actions::ChoiceContext::Other,
+    };
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::AmplifyReveal { amplifier, per });
     state.push_pending_choice(
         controller,
         ctx,

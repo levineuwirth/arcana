@@ -1550,6 +1550,20 @@ fn apply_choice_follow_up(
                     *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
             }
         }
+        ChoiceFollowUp::AmplifyReveal { amplifier, per } => {
+            let revealed = chosen.len() as u32;
+            for id in chosen {
+                for p in 0..state.num_players() {
+                    state.player_mut(p).known_cards.insert(*id);
+                }
+            }
+            let total = per as u32 * revealed;
+            if total > 0 {
+                state.place_counters(
+                    crate::replacement::CounterTarget::Object(amplifier),
+                    crate::types::CounterKind::PlusOnePlusOne, total);
+            }
+        }
         ChoiceFollowUp::DevourSacrifice { devourer, per } => {
             let eaten = chosen.len() as u32;
             for id in chosen {
@@ -2347,22 +2361,29 @@ fn collect_pending_triggers(
                 }
             }
         }
-        // Pass 4.1c — Devour: the entering creature itself, if it has
-        // Devour(n), may sacrifice creatures for n counters each.
+        // Pass 4.1c/d — Devour / Amplify: the entering creature
+        // itself, if it has the keyword, posts an ETB choice.
         if let crate::events::GameEvent::EntersBattlefield { object_id, .. } = event {
             use crate::effects::KeywordAbility as KA;
-            let is_devourer = state.objects.get(*object_id)
-                .is_some_and(|o| o.is_creature() && o.zone.is_battlefield())
-                && state.effective_keywords(*object_id).iter()
-                    .any(|k| matches!(k, KA::Devour(_)));
-            if is_devourer {
+            let live = state.objects.get(*object_id)
+                .is_some_and(|o| o.is_creature() && o.zone.is_battlefield());
+            if live {
+                let kws = state.effective_keywords(*object_id);
                 let c = state.objects.get(*object_id)
                     .map(|o| o.controller).unwrap_or(0);
-                pending.push(crate::triggers::PendingTrigger {
-                    source: *object_id, trigger_id: DEVOUR_TRIGGER_ID,
-                    controller: c, trigger_event: event.clone(),
-                    targets: crate::targets::TargetSelection::new(),
-                });
+                let mut synth = |tid: crate::types::TriggerId| {
+                    pending.push(crate::triggers::PendingTrigger {
+                        source: *object_id, trigger_id: tid,
+                        controller: c, trigger_event: event.clone(),
+                        targets: crate::targets::TargetSelection::new(),
+                    });
+                };
+                if kws.iter().any(|k| matches!(k, KA::Devour(_))) {
+                    synth(DEVOUR_TRIGGER_ID);
+                }
+                if kws.iter().any(|k| matches!(k, KA::Amplify(_))) {
+                    synth(AMPLIFY_TRIGGER_ID);
+                }
             }
         }
         // Fading/Vanishing upkeep tick — active player's permanents.
@@ -3048,7 +3069,7 @@ pub(crate) fn is_combat_static_trigger(tid: crate::types::TriggerId) -> bool {
 /// Fading/Vanishing upkeep tick)?
 pub(crate) fn is_misc_trigger(tid: crate::types::TriggerId) -> bool {
     tid == EVOLVE_TRIGGER_ID || tid == FADEVANISH_TRIGGER_ID
-        || tid == DEVOUR_TRIGGER_ID
+        || tid == DEVOUR_TRIGGER_ID || tid == AMPLIFY_TRIGGER_ID
 }
 
 /// Resolution effects for a synthesized Undying / Persist / Afterlife
@@ -3298,6 +3319,14 @@ fn misc_trigger_resolve(
         let Some(per) = per else { return Vec::new(); };
         return vec![Effect::DevourSacrifice { devourer: source, per }];
     }
+    if trigger_id == AMPLIFY_TRIGGER_ID {
+        // CR 702.37a — "you may reveal any number of cards from hand
+        // that share a creature type with this; +N counters each".
+        let per = state.effective_keywords(source).into_iter()
+            .find_map(|k| match k { KA::Amplify(n) => Some(n), _ => None });
+        let Some(per) = per else { return Vec::new(); };
+        return vec![Effect::AmplifyReveal { amplifier: source, per }];
+    }
     // FADEVANISH: pick the counter kind from the source's keyword.
     let kind = state.effective_keywords(source).into_iter()
         .find_map(|k| match k {
@@ -3543,6 +3572,8 @@ pub(crate) const EVOLVE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 120;
 pub(crate) const FADEVANISH_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 121;
 // Pass 4.1c — Devour now posts a real sacrifice choice at ETB.
 pub(crate) const DEVOUR_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 122;
+// Pass 4.1d — Amplify posts a real reveal choice at ETB.
+pub(crate) const AMPLIFY_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 123;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -5391,6 +5422,43 @@ mod tests {
         registry.register(crate::registry::CardDefinition::new(name, chars))
     }
 
+    /// Register a `p/t` creature with subtype `sub` and `kws`.
+    fn register_typed(
+        registry: &mut crate::registry::CardRegistry,
+        sub: &str,
+        kws: Vec<crate::effects::KeywordAbility>,
+        p: i32, t: i32,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern(&unique_card_name());
+        let mut subtypes = crate::types::SubtypeSet::default();
+        subtypes.insert_name(registry.interner_mut(), sub);
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}{G}").unwrap()),
+            colors: ColorSet::green(),
+            types: TypeLine::CREATURE.into(),
+            subtypes,
+            power: Some(PtValue::Fixed(p)),
+            toughness: Some(PtValue::Fixed(t)),
+            keywords: kws,
+            ..Default::default()
+        };
+        registry.register(crate::registry::CardDefinition::new(name, chars))
+    }
+
+    /// Put `card` directly into player 0's hand, return its id.
+    fn in_hand(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        card: crate::types::CardId,
+    ) -> ObjectId {
+        let id = state.allocate_object_id();
+        let def = registry.get(card).unwrap();
+        state.objects.insert(GameObject::new(
+            id, 0, Zone::Hand(0), card, def.base_characteristics.clone()));
+        id
+    }
+
     /// Put `card` directly into player 0's graveyard, return its id.
     fn in_graveyard(
         state: &mut GameState,
@@ -6051,6 +6119,63 @@ mod tests {
             state.objects.get(devourer).unwrap()
                 .count_counters(crate::types::CounterKind::PlusOnePlusOne),
             0);
+    }
+
+    // --- Pass 4.1d: Amplify ETB reveal choice -----------------------------
+
+    #[test]
+    fn amplify_reveals_type_sharing_cards_for_counters() {
+        use crate::effects::KeywordAbility::Amplify;
+        let mut registry = crate::registry::CardRegistry::new();
+        let amp = register_typed(&mut registry, "Beast", vec![Amplify(1)], 2, 2);
+        let beast = register_typed(&mut registry, "Beast", vec![], 1, 1);
+        let goblin = register_typed(&mut registry, "Goblin", vec![], 1, 1);
+        let mut state = GameState::new(2, 0);
+        let b1 = in_hand(&mut state, &registry, beast);
+        let b2 = in_hand(&mut state, &registry, beast);
+        let g = in_hand(&mut state, &registry, goblin);
+
+        let amplifier = deploy(&mut state, &registry, amp);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1, "Amplify synthesizes an ETB trigger");
+        resolve_top_of_stack(&mut state, &registry);
+        let pc = state.pending_choice.clone().expect("Amplify posts a reveal choice");
+        let cands = match pc.kind {
+            crate::actions::ChoiceKind::PickCards { candidates, .. } => candidates,
+            other => panic!("expected PickCards, got {other:?}"),
+        };
+        assert!(cands.contains(&b1) && cands.contains(&b2),
+            "the two Beast cards in hand are revealable");
+        assert!(!cands.contains(&g), "the Goblin shares no type with the Beast");
+
+        apply_resolution_choice(&mut state, &registry, pc.id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![b1, b2] });
+        assert_eq!(
+            state.objects.get(amplifier).unwrap()
+                .count_counters(crate::types::CounterKind::PlusOnePlusOne),
+            2, "Amplify 1 × 2 revealed = 2 counters");
+        assert!(state.player(1).known_cards.contains(&b1),
+            "revealed cards become known to all players");
+    }
+
+    #[test]
+    fn amplify_decline_no_counters() {
+        use crate::effects::KeywordAbility::Amplify;
+        let mut registry = crate::registry::CardRegistry::new();
+        let amp = register_typed(&mut registry, "Beast", vec![Amplify(2)], 2, 2);
+        let beast = register_typed(&mut registry, "Beast", vec![], 1, 1);
+        let mut state = GameState::new(2, 0);
+        in_hand(&mut state, &registry, beast);
+        let amplifier = deploy(&mut state, &registry, amp);
+        run_sba_and_triggers(&mut state, &registry);
+        resolve_top_of_stack(&mut state, &registry);
+        let pc = state.pending_choice.clone().expect("prompt expected");
+        apply_resolution_choice(&mut state, &registry, pc.id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![] });
+        assert_eq!(
+            state.objects.get(amplifier).unwrap()
+                .count_counters(crate::types::CounterKind::PlusOnePlusOne),
+            0, "declining reveals nothing");
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------
