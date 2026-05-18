@@ -298,6 +298,8 @@ const FS_YOUNG_PYROMANCER: &str =
     include_str!("../../arcana-cards/src/m14/young_pyromancer.rs");
 const FS_PREORDAIN: &str =
     include_str!("../../arcana-cards/src/m11/preordain.rs");
+const FS_SERVO_EXHIBITION: &str =
+    include_str!("../../arcana-cards/src/aer/servo_exhibition.rs");
 
 // =============================================================================
 // shared target-card spec block
@@ -402,10 +404,59 @@ REFERENCE — Preordain ({{U}} sorcery, 'Scry 2, then draw a card' — shows a n
 {FS_PREORDAIN}
 ```
 
+REFERENCE — Servo Exhibition ({{1}}{{W}} sorcery, 'Create two 1/1 colorless Servo artifact creature tokens' — shows `Effect::CreateToken` with a `TokenDefinition` built from an interned subtype name):
+```rust
+{FS_SERVO_EXHIBITION}
+```
+
+ENGINE EFFECT CATALOG — these `Effect` variants are part of the engine API and are ALL permitted in addition to the ones in the references above. Construct them exactly as written. `p` means a `PlayerId` (use `entry.controller` for 'you'; for 'target player'/'target opponent' read it from the target like Lightning Bolt's `TargetChoice::Player` arm). `id` means an `ObjectId` read from `entry.targets.targets.first()` (single-target shape — see Murder/Lightning Bolt). Imports: `Effect`, `TokenDefinition`, `DiscardChoice` from `arcana_core::effects`; `Duration` from `arcana_core::layers`; `CounterKind` from `arcana_core::types`; `Zone` from `arcana_core::zones`; `ObjectFilter` from `arcana_core::targets`.
+
+Card flow (no target — player is `entry.controller` or a target player):
+- `Effect::DrawCards {{ player: p, count: u32 }}`
+- `Effect::Discard {{ player: p, count: u32, choice: DiscardChoice::ControllerChooses }}`  (or `::OpponentChooses` / `::Random` — pick per oracle text; 'that player discards' → the target player)
+- `Effect::Mill {{ player: p, count: u32 }}`
+- `Effect::Surveil {{ player: p, count: u32 }}`  ·  `Effect::Scry {{ player: p, count: u32 }}`
+
+Life:
+- `Effect::GainLife {{ player: p, amount: u32 }}`  ·  `Effect::LoseLife {{ player: p, amount: u32 }}`
+- `Effect::SetLifeTotal {{ player: p, amount: u32 }}`
+
+Single permanent / card target (`id` from the first target):
+- `Effect::DestroyPermanent {{ target: id }}`  ·  `Effect::ExilePermanent {{ target: id }}`
+- `Effect::ReturnToHand {{ target: id }}`  (bounce a permanent)
+- `Effect::Tap {{ target: id }}`  ·  `Effect::Untap {{ target: id }}`
+- `Effect::PutOnTopOfLibrary {{ target: id }}`  ·  `Effect::PutOnBottomOfLibrary {{ target: id }}`
+- `Effect::ReturnFromGraveyardToHand {{ target: id }}`  (Raise Dead — target a creature card in a graveyard)
+- `Effect::ReturnFromGraveyardToBattlefield {{ target: id }}`  (Reanimate — target a creature card in a graveyard)
+- `Effect::ExileFromGraveyard {{ target: id }}`
+- `Effect::AddCounters {{ target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }}`  ·  `Effect::RemoveCounters {{ .. }}`
+- `Effect::Pump {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }}`  ('+X/+X until end of turn'; put granted evergreen `KeywordAbility` values in `keywords`)
+- `Effect::SetBasePT {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }}`  ('becomes a 1/1')
+- `Effect::GrantKeyword {{ target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }}`
+- `Effect::Regenerate {{ target: id }}`  ·  `Effect::Transform {{ target: id }}`
+
+Two-object / combat:
+- `Effect::Fight {{ a: id1, b: id2 }}`  (a fights b — for 'target creature fights another target creature' read two targets)
+
+Tokens:
+- `Effect::CreateToken {{ controller: p, token: TokenDefinition {{ .. }} }}`  (see Servo Exhibition for the full `TokenDefinition` shape; repeat the `Effect::CreateToken` for 'create N')
+
+Search the library (shuffle is automatic):
+- `Effect::TutorToHand {{ player: p, filter: ObjectFilter::creature(), reveal: true }}`
+- `Effect::TutorToBattlefield {{ player: p, filter: ObjectFilter::creature(), tapped: false }}`
+- `ObjectFilter` builders: `ObjectFilter::creature()`, `ObjectFilter::permanent()`, `ObjectFilter::new().with_types(TypeLine::LAND)` (chain `.with_colors(...)`, `.with_types_any(...)`, `.without_types(...)`).
+
+Stack:
+- `Effect::Counter {{ target: id }}`  (counter target spell — `id` is the spell's stack-object id; see Counterspell)
+
+Composites (wrap the above):
+- `Effect::ForEach {{ targets: vec![/* ObjectIds */], effect: Box::new(Effect::DestroyPermanent {{ target: arcana_core::objects::NULL_OBJECT_ID }}) }}`  — 'destroy/affect EACH/ALL matching': enumerate the ids from `state` and apply the inner effect once per id. Use this for board wipes and 'deals N damage to each creature'.
+- `Effect::Conditional {{ condition, then: Box::new(..), otherwise: Some(Box::new(..)) }}`  ·  `Effect::Sequence(vec![..])`
+
 === TARGET CARD ===
 {spec}
 
-The resolver must return the `Effect`s that implement the rules text. If the card's effect genuinely cannot be expressed with the `Effect` variants shown across these references, return `Vec::new()` AND add a `// GAP: <what is missing>` comment naming the missing variant — do not invent an `Effect` variant. Generate the Rust source. Output only the file contents.",
+The resolver must return the `Effect`s that implement the rules text, using the references AND the ENGINE EFFECT CATALOG above. Only if the card's effect genuinely cannot be expressed with any catalog variant, return `Vec::new()` AND add a `// GAP: <what is missing>` comment naming the specific capability — never invent an `Effect` variant or a field not shown. Generate the Rust source. Output only the file contents.",
         spec = card_spec(card),
     )
 }
@@ -673,7 +724,7 @@ mod tests {
     }
 
     #[test]
-    fn spell_prompt_embeds_all_three_references() {
+    fn spell_prompt_embeds_all_references_and_effect_catalog() {
         let c = mk_card(|c| {
             c.name = "Disenchant".into();
             c.type_line = "Instant".into();
@@ -683,6 +734,17 @@ mod tests {
         assert!(p.user.contains("Lightning Bolt"));
         assert!(p.user.contains("Murder"));
         assert!(p.user.contains("Counterspell"));
+        assert!(p.user.contains("Preordain"));
+        assert!(p.user.contains("Servo Exhibition"));
+        // The engine-derived allowlist must be present with the
+        // high-frequency variants the diagnostic flagged.
+        assert!(p.user.contains("ENGINE EFFECT CATALOG"));
+        for v in ["Effect::CreateToken", "Effect::Pump",
+                  "Effect::ExilePermanent", "Effect::Discard",
+                  "Effect::ReturnFromGraveyardToBattlefield",
+                  "Effect::ForEach", "Effect::Fight"] {
+            assert!(p.user.contains(v), "catalog must list {v}");
+        }
     }
 
     #[test]
