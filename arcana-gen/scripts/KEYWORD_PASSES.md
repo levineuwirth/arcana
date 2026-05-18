@@ -1,17 +1,19 @@
 # Keyword rules passes (Pass 3.x)
 
-> **STATUS: Passes 3.1–3.7 COMPLETE** (commits 3d32a0a, bae9519,
-> da33990, 128fb2b, d66c8f0, 072dbb8, fec53ba). 31 deferred markers
-> resolved → catalog 1010 → **1023**, every landed card attested
-> clean by `verify_catalog.py` against committed bytes. The only
-> remaining `DEFERRED_KEYWORDS` are **Banding** (full CR 702.22
-> combat banding — worst ROI) and **Warp** (cast-time alternative
-> cost); their cards stay honestly quarantined until dedicated
-> passes. Keywords whose choice/mana parts can't yet be honestly
-> resolved (Enlist, Provoke, Soulshift, Scavenge, Devour, Amplify,
-> Unleash, Sunburst, Cycling-activation, Changeling-all-types,
-> Afterlife-Spirit-subtype) use documented deterministic Phase-1
-> policies — DEBT noted at each site.
+> **STATUS: Passes 3.1–3.8 COMPLETE** (commits 3d32a0a, bae9519,
+> da33990, 128fb2b, d66c8f0, 072dbb8, fec53ba, 8acd186). All
+> deferred markers resolved → catalog 1010 → **1023**, every landed
+> card attested clean by `verify_catalog.py` against committed
+> bytes. The **lone remaining `DEFERRED_KEYWORDS` entry is Warp**
+> (cast-time alternative cost — a recognized no-op would
+> misrepresent the card); its cards stay honestly quarantined until
+> a dedicated pass. Keywords whose choice/mana parts can't yet be
+> honestly resolved (Banding, Enlist, Provoke, Soulshift, Scavenge,
+> Devour, Amplify, Unleash, Sunburst, Cycling-activation,
+> Changeling-all-types, Afterlife-Spirit-subtype) use documented
+> deterministic Phase-1 policies — DEBT noted at each site.
+> Scoped re-lands now use `land_cards.py --only <idx,...>` (no
+> staging dir).
 
 Passes 0–2 are landed: prompt/contract fixes, landwalk (real),
 evasion keywords (Fear/Intimidate/Shadow/Horsemanship/Skulk real) +
