@@ -45,14 +45,14 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
 /// (Undying, Persist, Afterlife) and the Pass-3.3 attack /
 /// combat-damage set (Exalted, BattleCry, Mentor, Dethrone, Renown,
 /// Enlist) and the Pass-3.4 block-time combat statics (Flanking,
-/// Rampage, Bushido, Provoke — Enlist/Provoke are Phase-1-declined
-/// optional abilities, still honestly functional).
+/// Rampage, Bushido, Provoke) and the Pass-3.5 ETB-scaling set
+/// (Modular, Graft, Bloodthirst, Sunburst, Amplify, Devour, Unleash,
+/// Riot — choice/mana parts use a documented deterministic Phase-1
+/// policy, still honestly functional).
 const DEFERRED_KEYWORDS: &[&str] = &[
-    "Banding", "Soulshift", "Unleash",
-    "Bloodthirst", "Modular",
-    "Riot", "Devour", "Sunburst",
+    "Banding", "Soulshift",
     "Scavenge", "Fading", "Vanishing", "Evolve",
-    "Graft", "Amplify", "Changeling",
+    "Changeling",
 ];
 
 /// Does `src` reference `KeywordAbility::<variant>` (the next char

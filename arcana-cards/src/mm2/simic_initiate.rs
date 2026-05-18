@@ -1,14 +1,16 @@
 //! Simic Initiate — `{G}` 0/0 Human Mutant with Graft 1.
+//! Dissension common; enters with one +1/+1 counter (Graft 1) and can
+//! move that counter to another creature as it enters.
 //!
 //! # Rules references
 //!
-//! * CR 702.57 — Graft. This creature enters with a +1/+1 counter on it.
+//! * CR 702.57 — Graft. This creature enters with N +1/+1 counters on it.
 //!   Whenever another creature enters, you may move a +1/+1 counter from
-//!   this creature onto it.
-//!
-//! Graft is not in the demonstrated KeywordAbility API; this file is a
-//! best-effort stub. The verify pipeline will flag the gap.
+//!   this creature onto it. N=1 for this card. ETB-scaling and the
+//!   triggered counter-move are handled by the Graft(1) keyword wiring
+//!   in the engine.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -30,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(0)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Graft(1)],
         ..Default::default()
     };
 

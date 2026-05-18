@@ -2507,6 +2507,11 @@ fn apply_assign_combat_damage(
 fn untap_step(state: &mut GameState) {
     let ap = state.active_player();
     state.player_mut(ap).reset_land_plays();
+    // CR 702.54a — Bloodthirst's "this turn" window resets here, the
+    // first step of the new turn (before any damage can be dealt).
+    for pl in state.players.iter_mut() {
+        pl.damaged_this_turn = false;
+    }
     // CR 502.1 — untap the active player's permanents; remove
     // summoning sickness from their creatures.
     // TODO(keywords): honor "doesn't untap" effects (e.g., Stasis).
@@ -5423,6 +5428,67 @@ mod tests {
 
         assert_eq!(state.computed_power(blocker), Some(4), "2/2 +2/+2");
         assert_eq!(state.computed_toughness(blocker), Some(4));
+    }
+
+    // --- Pass 3.5: enters-with-counters / ETB scaling ---------------------
+
+    fn etb_plus_counters(
+        kws: Vec<crate::effects::KeywordAbility>,
+    ) -> u32 {
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, kws);
+        let mut state = GameState::new(2, 0);
+        let id = deploy(&mut state, &registry, card);
+        state.objects.get(id).unwrap()
+            .count_counters(CounterKind::PlusOnePlusOne)
+    }
+
+    #[test]
+    fn modular_and_graft_enter_with_n_counters() {
+        use crate::effects::KeywordAbility::*;
+        assert_eq!(etb_plus_counters(vec![Modular(2)]), 2);
+        assert_eq!(etb_plus_counters(vec![Graft(1)]), 1);
+    }
+
+    #[test]
+    fn riot_takes_the_counter_phase1() {
+        use crate::effects::KeywordAbility::Riot;
+        assert_eq!(etb_plus_counters(vec![Riot]), 1);
+    }
+
+    #[test]
+    fn declined_or_uncomputable_etb_keywords_yield_zero() {
+        use crate::effects::KeywordAbility::*;
+        assert_eq!(etb_plus_counters(vec![Devour(3)]), 0);
+        assert_eq!(etb_plus_counters(vec![Amplify(2)]), 0);
+        assert_eq!(etb_plus_counters(vec![Sunburst]), 0);
+        assert_eq!(etb_plus_counters(vec![Unleash]), 0);
+    }
+
+    #[test]
+    fn bloodthirst_conditional_on_opponent_damage() {
+        use crate::effects::KeywordAbility::Bloodthirst;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![Bloodthirst(2)]);
+
+        // No opponent damaged this turn → 0.
+        let mut s1 = GameState::new(2, 0);
+        let a = deploy(&mut s1, &registry, card);
+        assert_eq!(
+            s1.objects.get(a).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            0);
+
+        // Opponent (p1) was dealt damage this turn → enters with N.
+        let mut s2 = GameState::new(2, 0);
+        s2.deal_damage(999, crate::events::DamageTarget::Player(1), 1, false);
+        let b = deploy(&mut s2, &registry, card);
+        assert_eq!(
+            s2.objects.get(b).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            2);
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

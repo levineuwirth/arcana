@@ -192,6 +192,12 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         // dropped like Toxic/Renown.)
         "flanking" => "Flanking",
         "provoke" => "Provoke",
+        // Pass 3.5 — ETB scaling, fully enforced. (Modular/Graft/
+        // Bloodthirst/Devour/Amplify are parametrised; N is in rules
+        // text, dropped like Toxic/Renown/Rampage.)
+        "sunburst" => "Sunburst",
+        "unleash" => "Unleash",
+        "riot" => "Riot",
         _ => return None,
     })
 }

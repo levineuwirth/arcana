@@ -1015,11 +1015,43 @@ pub enum KeywordAbility {
     //     implements real semantics. Several are parametrized in real
     //     MTG (Soulshift N, Devour N, …); kept unit here — a future
     //     pass refactors to carry the payload when wiring behavior. ---
-    Banding, Soulshift, Unleash,
-    Bloodthirst, Modular,
-    Riot, Devour, Sunburst, Scavenge,
-    Fading, Vanishing, Evolve, Graft, Amplify,
+    Banding, Soulshift, Scavenge,
+    Fading, Vanishing, Evolve,
     Changeling,
+    // --- Enters-with-counters / ETB scaling (Pass 3.5). Folded into
+    //     `collect_etb_replacements` so counters are present *as the
+    //     permanent enters* (CR 614 replacement — composes with
+    //     Hardened Scales/Doubling Season, beats the 0/0 SBA). The
+    //     choice-driven parts use a documented deterministic Phase-1
+    //     policy (decline / minimum). Honest L2-pass.
+    /// CR 702.43a — Modular N. Enters with N +1/+1 counters. DEBT:
+    /// the dies→move-counters half declines under Phase-1 policy.
+    Modular(u8),
+    /// CR 702.57a — Graft N. Enters with N +1/+1 counters. DEBT:
+    /// the another-creature-ETB move-a-counter half declines.
+    Graft(u8),
+    /// CR 702.54a — Bloodthirst N. Enters with N +1/+1 counters if
+    /// an opponent was dealt damage this turn.
+    Bloodthirst(u8),
+    /// CR 702.43a — Sunburst. Enters with a +1/+1 (or charge)
+    /// counter per color of mana spent. DEBT: Phase-1 has no
+    /// mana-spend color record, so it enters with 0 (functional
+    /// creature, situational bonus deferred).
+    Sunburst,
+    /// CR 702.37a — Amplify N. As it enters, you may reveal sharing-
+    /// type cards for N counters each. Phase-1 reveals 0.
+    Amplify(u8),
+    /// CR 702.81a — Devour N. As it enters, you may sacrifice
+    /// creatures for N counters each. Phase-1 sacrifices 0.
+    Devour(u8),
+    /// CR 702.96a — Unleash. May enter with a +1/+1 counter (then
+    /// can't block). Phase-1 declines the counter (enters as a
+    /// normal blocker).
+    Unleash,
+    /// CR 702.136a — Riot. Enters with your choice of a +1/+1
+    /// counter or haste. Phase-1 deterministically takes the +1/+1
+    /// counter.
+    Riot,
     // --- Combat statics, block-time (Pass 3.4). Synthesized as
     //     keyword-born stack triggers in `engine`; honest L2-pass.
     /// CR 702.25a — Flanking. "Whenever a creature without flanking

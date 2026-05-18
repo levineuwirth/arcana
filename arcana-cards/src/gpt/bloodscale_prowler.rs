@@ -1,9 +1,15 @@
 //! Bloodscale Prowler — `{2}{R}` 3/1 Lizard Warrior with Bloodthirst 1.
+//! Guildpact common; enters with a +1/+1 counter if an opponent was dealt
+//! damage this turn (Bloodthirst 1).
 //!
-//! Bloodthirst is not expressible with the current demonstrated
-//! `KeywordAbility` variants. The keywords list is left empty; the
-//! verify pipeline will flag this for human routing.
+//! # Rules references
+//!
+//! * CR 702.54 — Bloodthirst. If an opponent was dealt damage this turn,
+//!   this creature enters with N +1/+1 counters on it. N=1 for this card.
+//!   ETB-scaling is handled by the Bloodthirst(1) keyword wiring in the
+//!   engine.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -25,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bloodthirst(1)],
         ..Default::default()
     };
 

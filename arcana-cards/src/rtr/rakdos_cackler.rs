@@ -1,8 +1,15 @@
-//! Rakdos Cackler — `{B/R}` 1/1 Devil with Unleash.
-//! Unleash is not in the demonstrated `KeywordAbility` API;
-//! flagged for the verify pipeline. Keywords list is empty as a best-effort.
-//! Colors: B, W (hybrid black-red).
+//! Rakdos Cackler — `{B/R}` 1/1 Creature — Devil with Unleash.
+//! Return to Ravnica uncommon; may enter with a +1/+1 counter but
+//! cannot block while it has a +1/+1 counter on it.
+//!
+//! # Rules references
+//!
+//! * CR 702.97 — Unleash. You may have this creature enter with a
+//!   +1/+1 counter on it. It can't block as long as it has a +1/+1
+//!   counter on it. Engine handles both the optional ETB counter and
+//!   the blocking restriction.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -22,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Unleash],
         ..Default::default()
     };
 

@@ -1,13 +1,16 @@
-//! Gorehorn Minotaurs — `{2}{R}{R}` 3/3 Minotaur Warrior with Bloodthirst 2.
-//! Bloodthirst is not representable with the demonstrated KeywordAbility
-//! variants; keywords left empty for verify pipeline.
+//! Gorehorn Minotaurs — `{2}{R}{R}` 3/3 Creature — Minotaur Warrior
+//! with Bloodthirst 2.
+//!
+//! Magic 2012 (2011). If an opponent was dealt damage this turn when this
+//! creature enters, it gets two additional +1/+1 counters, making it 5/5.
 //!
 //! # Rules references
 //!
-//! * CR 702.54 — Bloodthirst N. If an opponent was dealt damage this turn,
-//!   this creature enters with N +1/+1 counters. Not expressible with the
-//!   demonstrated API.
+//! * CR 702.54 — Bloodthirst. If any player dealt damage to an opponent
+//!   this turn before this creature entered, it enters with N +1/+1 counters
+//!   (N=2 here). Engine wiring handles the ETB conditional counter placement.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bloodthirst(2)],
         ..Default::default()
     };
 

@@ -1,9 +1,17 @@
-//! Glowering Rogon — `{5}{G}` 4/4 Beast with Amplify 1.
+//! Glowering Rogon — `{5}{G}` 4/4 Creature — Beast with Amplify 1.
 //!
-//! Amplify is not expressible with the current `KeywordAbility` variants;
-//! the verify pipeline will flag this gap. The card is registered with an
-//! empty keyword list as a best-effort compilable file.
+//! Legions (2003). As it enters, its controller may reveal any number of
+//! Beast cards from their hand; it enters with a +1/+1 counter for each
+//! revealed card (Amplify 1).
+//!
+//! # Rules references
+//!
+//! * CR 702.37 — Amplify. As this creature enters the battlefield, reveal
+//!   any number of cards of the creature's subtype(s) from your hand and put
+//!   N +1/+1 counters on it for each card revealed (N=1 here). Engine wiring
+//!   handles the ETB reveal-and-counter mechanic.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -23,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Amplify(1)],
         ..Default::default()
     };
 

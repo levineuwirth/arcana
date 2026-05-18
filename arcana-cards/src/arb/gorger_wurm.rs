@@ -1,14 +1,15 @@
-//! Gorger Wurm — `{3}{R}{G}` 5/5 Wurm with Devour 1.
+//! Gorger Wurm — `{3}{R}{G}` 5/5 Creature — Wurm with Devour 1.
+//! Conflux common; enters with one +1/+1 counter for each creature
+//! sacrificed to it as it entered.
 //!
 //! # Rules references
 //!
-//! * CR 702.82 — Devour. As this creature enters, you may sacrifice any number
-//!   of creatures. It enters with that many +1/+1 counters on it.
-//!
-//! Devour is not among the demonstrated `KeywordAbility` variants, so this
-//! card is registered without the keyword pending engine support. The verify
-//! pipeline will flag the gap.
+//! * CR 702.82 — Devour N. As this creature enters, you may sacrifice
+//!   any number of creatures. It enters with N times that many +1/+1
+//!   counters on it. Engine handles the ETB sacrifice and counter
+//!   placement.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(5)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Devour(1)],
         ..Default::default()
     };
 

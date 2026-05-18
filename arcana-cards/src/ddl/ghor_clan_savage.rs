@@ -1,9 +1,16 @@
-//! Ghor-Clan Savage — `{3}{G}{G}` 2/3 Centaur Berserker with Bloodthirst 3.
+//! Ghor-Clan Savage — `{3}{G}{G}` 2/3 Creature — Centaur Berserker
+//! with Bloodthirst 3.
 //!
-//! Bloodthirst is not expressible with the current `KeywordAbility` variants;
-//! the verify pipeline will flag this gap. The card is registered with an
-//! empty keyword list as a best-effort compilable file.
+//! Guildpact (2006). If an opponent was dealt damage this turn when this
+//! creature enters, it gets three additional +1/+1 counters, making it 5/6.
+//!
+//! # Rules references
+//!
+//! * CR 702.54 — Bloodthirst. If any player dealt damage to an opponent
+//!   this turn before this creature entered, it enters with N +1/+1 counters
+//!   (N=3 here). Engine wiring handles the ETB conditional counter placement.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -25,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bloodthirst(3)],
         ..Default::default()
     };
 

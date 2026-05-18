@@ -1,9 +1,15 @@
-//! Rampaging Rendhorn — `{4}{G}` 4/4 Beast with Riot.
+//! Rampaging Rendhorn — `{4}{G}` 4/4 Creature — Beast with Riot.
 //!
-//! Riot is not expressible with the current `KeywordAbility` variants;
-//! the verify pipeline will flag this gap. The card is registered with an
-//! empty keyword list as a best-effort compilable file.
+//! Ravnica Allegiance (2019). Riot gives a choice on entry: a +1/+1 counter
+//! or haste.
+//!
+//! # Rules references
+//!
+//! * CR 702.138 — Riot. As the creature enters the battlefield, its
+//!   controller chooses to put one +1/+1 counter on it or to give it haste
+//!   until end of turn. Engine wiring handles the ETB choice.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -23,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Riot],
         ..Default::default()
     };
 

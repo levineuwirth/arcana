@@ -809,6 +809,10 @@ pub struct PlayerState {
     /// Sticky flag for CR 704.5b — loses on next SBA check.
     pub has_drawn_from_empty_library: bool,
     pub poison_counters: u32,
+    /// Was this player dealt damage at all this turn? Drives
+    /// Bloodthirst (CR 702.54a). Set by `deal_damage`, cleared for
+    /// every player at the untap step.
+    pub damaged_this_turn: bool,
     pub commander_damage: HashMap<ObjectId, u32>,
     pub has_lost: bool,
     pub has_conceded: bool,
@@ -845,6 +849,7 @@ impl PlayerState {
             land_plays_per_turn: 1,
             has_drawn_from_empty_library: false,
             poison_counters: 0,
+            damaged_this_turn: false,
             commander_damage: HashMap::default(),
             has_lost: false,
             has_conceded: false,

@@ -618,7 +618,41 @@ impl GameState {
                 _ => {} // not an ETB replacement
             }
         }
+        // Pass 3.5 — keyword-driven enters-with-counters (Modular,
+        // Graft, Bloodthirst, Riot; the choice-driven Devour/Amplify/
+        // Unleash and the mana-spend Sunburst yield 0 under the
+        // documented Phase-1 policy). Folded here so the counters are
+        // present *as the permanent enters* and compose with other
+        // ETB-counter replacements.
+        let kw_counters = self.keyword_etb_counters(object_id);
+        if kw_counters > 0 {
+            out.additional_counters
+                .push((CounterKind::PlusOnePlusOne, kw_counters));
+        }
         out
+    }
+
+    /// Deterministic +1/+1 counter count a permanent enters with from
+    /// its Pass-3.5 keywords. Phase-1 policy: Modular/Graft = N,
+    /// Riot = 1 (takes the counter over haste), Bloodthirst = N iff
+    /// an opponent was dealt damage this turn, everything else 0.
+    fn keyword_etb_counters(&self, object_id: ObjectId) -> u32 {
+        use crate::effects::KeywordAbility as KA;
+        let Some(controller) =
+            self.objects.get(object_id).map(|o| o.controller)
+        else { return 0; };
+        let opponent_damaged = self.players.iter()
+            .any(|p| p.id != controller && p.damaged_this_turn);
+        let mut total = 0u32;
+        for k in self.effective_keywords(object_id) {
+            total += match k {
+                KA::Modular(n) | KA::Graft(n) => n as u32,
+                KA::Riot => 1,
+                KA::Bloodthirst(n) if opponent_damaged => n as u32,
+                _ => 0,
+            };
+        }
+        total
     }
 
     /// Run a would-die event through replacements. Returns `Some(id)`

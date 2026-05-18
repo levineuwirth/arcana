@@ -1,8 +1,18 @@
 //! Arcbound Prototype — `{1}{W}` 0/0 Artifact Creature — Assembly-Worker
 //! with Modular 2.
-//! Modular is not in the demonstrated `KeywordAbility` API;
-//! flagged for the verify pipeline. Keywords list is empty as a best-effort.
+//!
+//! Mirrodin (2003). Printed P/T is 0/0; Modular 2 supplies the entering
+//! +1/+1 counters. When it dies those counters may move to another artifact
+//! creature.
+//!
+//! # Rules references
+//!
+//! * CR 702.43 — Modular. The creature enters with N +1/+1 counters (N=2
+//!   here) and the death trigger redistributes them to a target artifact
+//!   creature. Engine wiring handles ETB counter placement and the triggered
+//!   ability at death.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -22,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(0)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Modular(2)],
         ..Default::default()
     };
 

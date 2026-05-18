@@ -363,6 +363,9 @@ impl GameState {
                 self.emit(GameEvent::DamageDealt {
                     source, target, amount, is_combat,
                 });
+                // CR 702.54a — Bloodthirst watches "an opponent was
+                // dealt damage this turn" (any damage, any source).
+                self.player_mut(p).damaged_this_turn = true;
                 if player_poison_not_life {
                     // CR 702.91c — Infect: poison counters, not life.
                     self.player_mut(p).poison_counters += amount;

@@ -14,3 +14,4 @@ pub mod tenement_crasher;
 pub mod rubbleback_rhino;
 pub mod rakdos_ragemutt;
 pub mod vassal_soul;
+pub mod spawn_of_rix_maadi;

@@ -1,13 +1,15 @@
-//! Thunder-Thrash Elder — `{2}{R}` 1/1 Lizard Warrior.
-//! Has Devour 3 (keyword not yet in engine API; best-effort stub).
+//! Thunder-Thrash Elder — `{2}{R}` 1/1 Creature — Lizard Warrior with Devour 3.
+//! Shards of Alara uncommon; enters with three times as many +1/+1
+//! counters as creatures sacrificed to it as it entered.
 //!
 //! # Rules references
 //!
-//! * Devour N — As this creature enters, you may sacrifice any number of
-//!   creatures. It enters with N times that many +1/+1 counters on it.
-//!   Not expressible with current KeywordAbility variants;
-//!   verify pipeline will flag for human routing.
+//! * CR 702.82 — Devour N. As this creature enters, you may sacrifice
+//!   any number of creatures. It enters with N times that many +1/+1
+//!   counters on it. Engine handles the ETB sacrifice and counter
+//!   placement.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Devour(3)],
         ..Default::default()
     };
 

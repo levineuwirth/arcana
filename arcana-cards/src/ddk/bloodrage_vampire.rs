@@ -1,13 +1,14 @@
-//! Bloodrage Vampire — `{2}{B}` 3/1 Vampire.
-//! Has Bloodthirst 1 (keyword not yet in engine API; best-effort stub).
+//! Bloodrage Vampire — `{2}{B}` 3/1 Vampire with Bloodthirst 1.
+//! Magic 2012 common; enters with a +1/+1 counter if an opponent was
+//! dealt damage this turn.
 //!
 //! # Rules references
 //!
-//! * Bloodthirst N — If an opponent was dealt damage this turn, this creature
-//!   enters with N +1/+1 counters on it.
-//!   Not expressible with current KeywordAbility variants;
-//!   verify pipeline will flag for human routing.
+//! * CR 702.54 — Bloodthirst N. If an opponent was dealt damage this
+//!   turn, this creature enters the battlefield with N +1/+1 counters
+//!   on it. Engine wiring handles the ETB counter placement.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -27,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Bloodthirst(1)],
         ..Default::default()
     };
 

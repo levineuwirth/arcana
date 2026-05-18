@@ -1,9 +1,14 @@
 //! Zhur-Taa Goblin — `{R}{G}` 2/2 Goblin Berserker with Riot.
+//! Ravnica Allegiance common; a Gruul Riot creature that enters with
+//! either a +1/+1 counter or haste, at the controller's choice.
 //!
-//! Riot is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will flag
-//! this for human routing.
+//! # Rules references
+//!
+//! * CR 702.133 — Riot. As this creature enters, choose one: put a +1/+1
+//!   counter on it, or it gains haste until end of turn. The choice and
+//!   its effects are handled by the Riot keyword wiring in the engine.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -17,17 +22,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(goblin);
     subtypes.0.insert(berserker);
 
-    let colors = ColorSet::red() | ColorSet::green();
-
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{R}{G}").expect("valid cost")),
-        colors,
+        colors: ColorSet::red() | ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Riot],
         ..Default::default()
     };
 
