@@ -681,6 +681,11 @@ pub enum ChoiceFollowUp {
     /// card (mark known to all players), then put `per` × count
     /// +1/+1 counters on `amplifier`. Empty pick = revealed nothing.
     AmplifyReveal { amplifier: ObjectId, per: u8 },
+    /// Pass 4.1e — Unleash (CR 702.96a). Pair with a
+    /// [`ChoiceKind::PickCards`] `{0,1}` over `[creature]`: a
+    /// non-empty pick puts one +1/+1 counter on `creature`. Empty =
+    /// declined (enters as a normal blocker).
+    UnleashCounter { creature: ObjectId },
 }
 
 // =============================================================================

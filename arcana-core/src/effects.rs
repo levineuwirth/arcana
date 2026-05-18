@@ -309,6 +309,10 @@ pub enum Effect {
     /// `amplifier`; the follow-up reveals the picks and puts `per` ×
     /// count +1/+1 counters on the amplifier.
     AmplifyReveal { amplifier: ObjectId, per: u8 },
+    /// Pass 4.1e — Unleash (CR 702.96a). Posts the optional "enter
+    /// with a +1/+1 counter?" choice for `creature` (modeled as a
+    /// `PickCards{0,1}` over `[creature]` — pick self = yes).
+    UnleashCounter { creature: ObjectId },
     /// CR 701.20a — Search `player`'s library for a matching card, put
     /// it into hand, then shuffle. `reveal` adds a public-info mark.
     /// Phase 1 picks the first matching id (deterministic); TODO
@@ -814,6 +818,9 @@ impl Effect {
             Effect::AmplifyReveal { amplifier, per } => {
                 push_amplify_choice(state, *amplifier, *per);
             }
+            Effect::UnleashCounter { creature } => {
+                push_unleash_choice(state, *creature);
+            }
             Effect::TutorToHand { player, filter, reveal } => {
                 push_search_choice(
                     state, *player, Zone::Library(*player), filter,
@@ -1129,9 +1136,12 @@ pub enum KeywordAbility {
     /// than as a true ETB replacement (no 0/0 Devour creature
     /// exists, so the brief SBA window is harmless).
     Devour(u8),
-    /// CR 702.96a — Unleash. May enter with a +1/+1 counter (then
-    /// can't block). Phase-1 declines the counter (enters as a
-    /// normal blocker).
+    /// CR 702.96a — Unleash. "You may have this enter with a +1/+1
+    /// counter on it. It can't block as long as it has a +1/+1
+    /// counter on it." Fully wired (Pass 4.1e): ETB synthesized
+    /// trigger → [`Effect::UnleashCounter`] posts a real
+    /// `PickCards{0,1}` (pick self = yes); the can't-block static is
+    /// enforced in [`crate::combat::GameState::blocker_eligible`].
     Unleash,
     /// CR 702.136a — Riot. Enters with your choice of a +1/+1
     /// counter or haste. Phase-1 deterministically takes the +1/+1
@@ -2081,6 +2091,27 @@ fn push_amplify_choice(state: &mut GameState, amplifier: ObjectId, per: u8) {
         ctx,
         crate::actions::ChoiceKind::PickCards {
             candidates, min: 0, max,
+        },
+    );
+}
+
+/// Push the optional Unleash choice (CR 702.96a): the creature's
+/// controller may have it enter with a +1/+1 counter. Modeled as
+/// `PickCards{0,1}` over `[creature]` — picking self = "yes".
+fn push_unleash_choice(state: &mut GameState, creature: ObjectId) {
+    let Some(controller) =
+        state.objects.get(creature).map(|o| o.controller) else { return; };
+    let ctx = match state.currently_resolving {
+        Some(e) => crate::actions::ChoiceContext::ResolvingStack(e),
+        None => crate::actions::ChoiceContext::Other,
+    };
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::UnleashCounter { creature });
+    state.push_pending_choice(
+        controller,
+        ctx,
+        crate::actions::ChoiceKind::PickCards {
+            candidates: vec![creature], min: 0, max: 1,
         },
     );
 }

@@ -1550,6 +1550,13 @@ fn apply_choice_follow_up(
                     *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
             }
         }
+        ChoiceFollowUp::UnleashCounter { creature } => {
+            if !chosen.is_empty() {
+                state.place_counters(
+                    crate::replacement::CounterTarget::Object(creature),
+                    crate::types::CounterKind::PlusOnePlusOne, 1);
+            }
+        }
         ChoiceFollowUp::AmplifyReveal { amplifier, per } => {
             let revealed = chosen.len() as u32;
             for id in chosen {
@@ -2384,6 +2391,9 @@ fn collect_pending_triggers(
                 if kws.iter().any(|k| matches!(k, KA::Amplify(_))) {
                     synth(AMPLIFY_TRIGGER_ID);
                 }
+                if kws.iter().any(|k| matches!(k, KA::Unleash)) {
+                    synth(UNLEASH_TRIGGER_ID);
+                }
             }
         }
         // Fading/Vanishing upkeep tick — active player's permanents.
@@ -3070,6 +3080,7 @@ pub(crate) fn is_combat_static_trigger(tid: crate::types::TriggerId) -> bool {
 pub(crate) fn is_misc_trigger(tid: crate::types::TriggerId) -> bool {
     tid == EVOLVE_TRIGGER_ID || tid == FADEVANISH_TRIGGER_ID
         || tid == DEVOUR_TRIGGER_ID || tid == AMPLIFY_TRIGGER_ID
+        || tid == UNLEASH_TRIGGER_ID
 }
 
 /// Resolution effects for a synthesized Undying / Persist / Afterlife
@@ -3327,6 +3338,11 @@ fn misc_trigger_resolve(
         let Some(per) = per else { return Vec::new(); };
         return vec![Effect::AmplifyReveal { amplifier: source, per }];
     }
+    if trigger_id == UNLEASH_TRIGGER_ID {
+        // CR 702.96a — "you may have this enter with a +1/+1 counter".
+        if state.objects.get(source).is_none() { return Vec::new(); }
+        return vec![Effect::UnleashCounter { creature: source }];
+    }
     // FADEVANISH: pick the counter kind from the source's keyword.
     let kind = state.effective_keywords(source).into_iter()
         .find_map(|k| match k {
@@ -3574,6 +3590,9 @@ pub(crate) const FADEVANISH_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 121
 pub(crate) const DEVOUR_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 122;
 // Pass 4.1d — Amplify posts a real reveal choice at ETB.
 pub(crate) const AMPLIFY_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 123;
+// Pass 4.1e — Unleash posts a real "enter with a +1/+1 counter?"
+// choice at ETB (the can't-block static lives in blocker_eligible).
+pub(crate) const UNLEASH_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 124;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -6176,6 +6195,71 @@ mod tests {
             state.objects.get(amplifier).unwrap()
                 .count_counters(crate::types::CounterKind::PlusOnePlusOne),
             0, "declining reveals nothing");
+    }
+
+    // --- Pass 4.1e: Unleash ETB may-counter + can't-block static ----------
+
+    fn drive_to_unleash_choice(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        unleash_card: crate::types::CardId,
+    ) -> (ObjectId, u64) {
+        let creature = deploy(state, registry, unleash_card);
+        run_sba_and_triggers(state, registry);
+        assert_eq!(state.stack_size(), 1, "Unleash synthesizes an ETB trigger");
+        resolve_top_of_stack(state, registry);
+        let pc = state.pending_choice.clone()
+            .expect("Unleash posts an enter-with-counter choice");
+        match pc.kind {
+            crate::actions::ChoiceKind::PickCards { ref candidates, min, max } => {
+                assert_eq!((candidates.as_slice(), min, max),
+                    (&[creature][..], 0, 1));
+            }
+            ref other => panic!("expected PickCards, got {other:?}"),
+        }
+        (creature, pc.id)
+    }
+
+    #[test]
+    fn unleash_yes_adds_counter_and_cannot_block() {
+        use crate::effects::KeywordAbility::Unleash;
+        let mut registry = crate::registry::CardRegistry::new();
+        let un = register_kw_pt(&mut registry, vec![Unleash], 2, 2);
+        let vanilla = register_kw_pt(&mut registry, vec![], 2, 2);
+        let mut state = GameState::new(2, 0);
+        let attacker = deploy(&mut state, &registry, vanilla);
+
+        let (creature, id) = drive_to_unleash_choice(&mut state, &registry, un);
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![creature] });
+
+        assert_eq!(
+            state.objects.get(creature).unwrap()
+                .count_counters(crate::types::CounterKind::PlusOnePlusOne),
+            1, "chose to enter with the +1/+1 counter");
+        assert!(!state.blocker_eligible(creature, attacker),
+            "an unleashed creature with a +1/+1 counter can't block");
+    }
+
+    #[test]
+    fn unleash_decline_no_counter_can_block() {
+        use crate::effects::KeywordAbility::Unleash;
+        let mut registry = crate::registry::CardRegistry::new();
+        let un = register_kw_pt(&mut registry, vec![Unleash], 2, 2);
+        let vanilla = register_kw_pt(&mut registry, vec![], 2, 2);
+        let mut state = GameState::new(2, 0);
+        let attacker = deploy(&mut state, &registry, vanilla);
+
+        let (creature, id) = drive_to_unleash_choice(&mut state, &registry, un);
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![] });
+
+        assert_eq!(
+            state.objects.get(creature).unwrap()
+                .count_counters(crate::types::CounterKind::PlusOnePlusOne),
+            0);
+        assert!(state.blocker_eligible(creature, attacker),
+            "declined ⇒ no counter ⇒ blocks normally");
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

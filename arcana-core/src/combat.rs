@@ -521,6 +521,13 @@ impl GameState {
         use crate::effects::KeywordAbility as K;
         use crate::types::Color;
 
+        // CR 702.96a — Unleash: a creature with a +1/+1 counter on it
+        // can't block (Pass 4.1e). Self-restriction on the blocker.
+        if self.has_keyword(blocker, &K::Unleash)
+            && self.objects.get(blocker).is_some_and(|o|
+                o.count_counters(crate::types::CounterKind::PlusOnePlusOne) > 0)
+        { return false; }
+
         // CR 702.9a — Flying: blockable only by flying and/or reach.
         if self.has_keyword(attacker, &K::Flying)
             && !self.has_keyword(blocker, &K::Flying)
