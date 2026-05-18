@@ -944,6 +944,50 @@ pub enum KeywordAbility {
     Haste, Hexproof, Indestructible, Lifelink, Menace,
     Reach, Trample, Vigilance, Ward(crate::mana::ManaCost), Flash,
     Defender,
+    /// CR 702.18 — Shroud. "This permanent or player can't be the
+    /// target of spells or abilities." Static marker, parallel to
+    /// [`KeywordAbility::Hexproof`]; targeting enforcement is DEBT
+    /// pending the same hook used by Hexproof in [`crate::targets`].
+    Shroud,
+    /// CR 702.14 — Landwalk. "This creature can't be blocked as long
+    /// as defending player controls a [land subtype]." The payload is
+    /// the interned land-subtype name ("Forest", "Island", …),
+    /// interned at card registration exactly like
+    /// [`ProtectionQuality::CreatureType`]. Enforced in
+    /// [`crate::combat::GameState::block_constraints`] via subtype
+    /// membership on the defending player's lands.
+    Landwalk(SmallString),
+    // --- Static per-pairing evasion (CR 509.1b). Fully enforced in
+    //     `combat::GameState::blocker_eligible`; honest L2-pass. ---
+    /// CR 702.36b — Fear. Blockable only by artifact and/or black
+    /// creatures.
+    Fear,
+    /// CR 702.13b — Intimidate. Blockable only by artifact creatures
+    /// and/or creatures that share a color with it.
+    Intimidate,
+    /// CR 702.28b/c — Shadow. A creature with shadow can block (and be
+    /// blocked by) only creatures with shadow; one without can't block
+    /// or be blocked by a creature with shadow.
+    Shadow,
+    /// CR 702.31b — Horsemanship. Blockable only by creatures with
+    /// horsemanship.
+    Horsemanship,
+    /// CR 702.72b — Skulk. Can't be blocked by creatures with greater
+    /// power.
+    Skulk,
+    // --- Pre-wired deferred markers (Pass 2). Recognized so source
+    //     compiles and the catalog records the keyword, but rules
+    //     behavior is NOT implemented. `semantic::stub_reason` reports
+    //     any vanilla/french-vanilla card carrying one as an L3 stub
+    //     so it is quarantined (never landed) until a future pass
+    //     implements real semantics. Several are parametrized in real
+    //     MTG (Soulshift N, Devour N, …); kept unit here — a future
+    //     pass refactors to carry the payload when wiring behavior. ---
+    Banding, Rampage, Bushido, Exalted, Soulshift, Unleash,
+    Bloodthirst, Modular, Flanking, BattleCry, Undying, Persist,
+    Afterlife, Mentor, Riot, Devour, Sunburst, Dethrone, Scavenge,
+    Fading, Vanishing, Renown, Evolve, Graft, Provoke, Amplify,
+    Enlist, Changeling, Infect, Wither, Toxic,
     /// CR 702.16 — Protection from a quality. DEBT: can't be dealt
     /// damage by, equipped/enchanted by, blocked by, or targeted by
     /// sources that match the quality.

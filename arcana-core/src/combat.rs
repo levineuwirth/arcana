@@ -467,6 +467,80 @@ impl GameState {
         combat.phase = CombatPhase::PostDeclareAttackers;
     }
 
+    /// CR 509.1b — is `blocker` a legal blocker for `attacker` on the
+    /// per-pairing evasion axis (Flying/Reach, Protection, Fear,
+    /// Intimidate, Shadow, Horsemanship, Skulk)? Aggregate count
+    /// restrictions (Menace, Landwalk-unblockable) live on
+    /// [`Self::block_constraints`], not here. Single source of truth:
+    /// both the legal-action enumerator and the apply-side blocker
+    /// filter call this, so the two never drift.
+    pub fn blocker_eligible(&self, blocker: ObjectId, attacker: ObjectId)
+        -> bool
+    {
+        use crate::effects::KeywordAbility as K;
+        use crate::types::Color;
+
+        // CR 702.9a — Flying: blockable only by flying and/or reach.
+        if self.has_keyword(attacker, &K::Flying)
+            && !self.has_keyword(blocker, &K::Flying)
+            && !self.has_keyword(blocker, &K::Reach)
+        { return false; }
+
+        let atk = self.compute_characteristics(attacker);
+        let blk = self.compute_characteristics(blocker);
+
+        // CR 702.16b — Protection, both directions.
+        if let Some(bc) = &blk {
+            if self.is_protected_from(attacker, bc) { return false; }
+        }
+        if let Some(ac) = &atk {
+            if self.is_protected_from(blocker, ac) { return false; }
+        }
+
+        // CR 702.36b — Fear: only artifact and/or black creatures.
+        if self.has_keyword(attacker, &K::Fear)
+            && !blk.as_ref().is_some_and(|c|
+                c.types.is_artifact() || c.colors.contains(Color::Black))
+        { return false; }
+
+        // CR 702.13b — Intimidate: only artifact creatures and/or
+        // creatures that share a color with it.
+        if self.has_keyword(attacker, &K::Intimidate) {
+            let ok = match (&atk, &blk) {
+                (Some(a), Some(b)) => b.types.is_artifact()
+                    || Color::all().iter()
+                        .any(|&c| a.colors.contains(c) && b.colors.contains(c)),
+                _ => false,
+            };
+            if !ok { return false; }
+        }
+
+        // CR 702.28b/c — Shadow: shadow and non-shadow creatures can't
+        // block each other (mutual segregation).
+        if self.has_keyword(attacker, &K::Shadow)
+            != self.has_keyword(blocker, &K::Shadow)
+        { return false; }
+
+        // CR 702.31b — Horsemanship: only horsemanship can block.
+        if self.has_keyword(attacker, &K::Horsemanship)
+            && !self.has_keyword(blocker, &K::Horsemanship)
+        { return false; }
+
+        // CR 702.72b — Skulk: no blocker of greater power. Unknown
+        // (`*`) powers don't restrict.
+        if self.has_keyword(attacker, &K::Skulk) {
+            let ap = atk.as_ref()
+                .and_then(|c| c.power.as_ref().and_then(|p| p.resolve(None)));
+            let bp = blk.as_ref()
+                .and_then(|c| c.power.as_ref().and_then(|p| p.resolve(None)));
+            if let (Some(ap), Some(bp)) = (ap, bp) {
+                if bp > ap { return false; }
+            }
+        }
+
+        true
+    }
+
     /// CR 509/702 — combat block-count constraints for `attacker`.
     /// Factors count restrictions (Menace, can't-be-blocked, etc.)
     /// away from per-blocker eligibility (Flying/Reach/Protection),
@@ -484,6 +558,41 @@ impl GameState {
         // more creatures. Expressed as min=2.
         if self.has_keyword(attacker, &KeywordAbility::Menace) {
             c.min_blockers = c.min_blockers.max(2);
+        }
+        // CR 702.14b — Landwalk. If the defending player controls a
+        // land with the named subtype, this attacker can't be blocked.
+        // Expressed as max=0; the existing violator path drops any
+        // declared blockers and the enumerator emits only the empty
+        // block. Layer-aware on both ends: the attacker's keywords and
+        // each candidate land's subtypes go through the layer system.
+        let landwalk_types: Vec<crate::types::SmallString> = self
+            .effective_keywords(attacker)
+            .into_iter()
+            .filter_map(|k| match k {
+                KeywordAbility::Landwalk(ss) => Some(ss),
+                _ => None,
+            })
+            .collect();
+        if !landwalk_types.is_empty() {
+            if let Some(dp) = self.combat.as_ref()
+                .and_then(|cb| cb.attackers.iter()
+                    .find(|a| a.object_id == attacker)
+                    .map(|a| a.defending_player))
+            {
+                let land_ids: Vec<ObjectId> = self.objects
+                    .objects_controlled_by(dp)
+                    .filter(|o| o.zone.is_battlefield() && o.is_land())
+                    .map(|o| o.id)
+                    .collect();
+                let walked = land_ids.iter().any(|&lid| {
+                    self.compute_characteristics(lid)
+                        .is_some_and(|ch| landwalk_types.iter()
+                            .any(|t| ch.subtypes.contains(*t)))
+                });
+                if walked {
+                    c.max_blockers = Some(0);
+                }
+            }
         }
         // Future constraint-keyword hooks slot here:
         //   - "Can't be blocked except by three or more" → raise min.
@@ -528,11 +637,10 @@ impl GameState {
             if !combat.is_attacker(d.blocking) { continue; }
             // A creature can only block once; skip duplicates.
             if valid.iter().any(|v| v.blocker == d.blocker) { continue; }
-            // CR 702.9a — Flying.
-            if self.has_keyword(d.blocking, &KeywordAbility::Flying)
-                && !self.has_keyword(d.blocker, &KeywordAbility::Flying)
-                && !self.has_keyword(d.blocker, &KeywordAbility::Reach)
-            { continue; }
+            // CR 509.1b — per-pairing evasion (Flying/Reach,
+            // Protection, Fear, Intimidate, Shadow, Horsemanship,
+            // Skulk). Shared with the legal-action enumerator.
+            if !self.blocker_eligible(d.blocker, d.blocking) { continue; }
             valid.push(d.clone());
         }
 
@@ -1511,6 +1619,204 @@ mod tests {
             blocker: blk, blocking: atk,
         }]);
         // Menace: single blocker dropped.
+        assert!(s.combat.as_ref().unwrap().blockers.is_empty());
+    }
+
+    // --- CR 702.14 Landwalk ------------------------------------------------
+
+    // SmallString is a u32 handle; tests use a literal id for the
+    // "Forest" subtype on both the keyword payload and the land's
+    // subtype set, so equality is exact without an interner.
+    const FOREST: crate::types::SmallString = 7;
+    const MOUNTAIN: crate::types::SmallString = 9;
+
+    fn put_land(s: &mut GameState, owner: PlayerId, subtype: crate::types::SmallString)
+        -> ObjectId
+    {
+        let id = s.allocate_object_id();
+        let mut subtypes = crate::types::SubtypeSet::new();
+        subtypes.insert(subtype);
+        let chars = Characteristics {
+            types: TypeLine::LAND.into(),
+            subtypes,
+            ..Default::default()
+        };
+        let mut obj = GameObject::new(id, owner, Zone::Battlefield, 1, chars);
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    fn forestwalker_attacking_p1(s: &mut GameState) -> ObjectId {
+        let atk = put_creature(s, 0, 3, 3);
+        s.objects.get_mut(atk).unwrap().characteristics.keywords
+            .push(KeywordAbility::Landwalk(FOREST));
+        ready(atk, s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        atk
+    }
+
+    #[test]
+    fn landwalk_unblockable_when_defender_controls_matching_land() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = forestwalker_attacking_p1(&mut s);
+        put_land(&mut s, 1, FOREST); // defender controls a Forest
+
+        assert_eq!(s.block_constraints(atk).max_blockers, Some(0));
+
+        let blk = put_creature(&mut s, 1, 2, 2);
+        ready(blk, &mut s);
+        s.apply_declared_blockers(vec![BlockerDeclaration {
+            blocker: blk, blocking: atk,
+        }]);
+        // Landwalk: the declared blocker is dropped.
+        assert!(s.combat.as_ref().unwrap().blockers.is_empty());
+        assert!(!s.combat.as_ref().unwrap().attacker(atk).unwrap().is_blocked);
+    }
+
+    #[test]
+    fn landwalk_blockable_when_defender_has_no_matching_land() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = forestwalker_attacking_p1(&mut s);
+        put_land(&mut s, 1, MOUNTAIN); // wrong land type
+        put_land(&mut s, 0, FOREST);   // a Forest, but the attacker controls it
+
+        assert_eq!(s.block_constraints(atk).max_blockers, None);
+
+        let blk = put_creature(&mut s, 1, 2, 2);
+        ready(blk, &mut s);
+        s.apply_declared_blockers(vec![BlockerDeclaration {
+            blocker: blk, blocking: atk,
+        }]);
+        // No matching land on the defender — the block stands.
+        assert_eq!(s.combat.as_ref().unwrap().blockers.len(), 1);
+    }
+
+    #[test]
+    fn landwalk_irrelevant_to_attacker_without_the_keyword() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 3, 3);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        put_land(&mut s, 1, FOREST);
+        // No landwalk keyword → defender's Forest is irrelevant.
+        assert_eq!(s.block_constraints(atk).max_blockers, None);
+    }
+
+    // --- Pass 2 static evasion (blocker_eligible) --------------------------
+
+    fn elig(s: &GameState, blk: ObjectId, atk: ObjectId) -> bool {
+        s.blocker_eligible(blk, atk)
+    }
+    fn kw(s: &mut GameState, id: ObjectId, k: KeywordAbility) {
+        s.objects.get_mut(id).unwrap().characteristics.keywords.push(k);
+    }
+
+    #[test]
+    fn fear_only_artifact_or_black_creatures_block() {
+        let mut s = GameState::new(2, 0);
+        let atk = put_creature(&mut s, 0, 2, 2);
+        kw(&mut s, atk, KeywordAbility::Fear);
+        let green = put_creature(&mut s, 1, 2, 2); // default green
+        let black = put_creature(&mut s, 1, 2, 2);
+        s.objects.get_mut(black).unwrap().characteristics.colors = ColorSet::black();
+        let artifact = put_creature(&mut s, 1, 2, 2);
+        let a = s.objects.get_mut(artifact).unwrap();
+        a.characteristics.colors = ColorSet::colorless();
+        a.characteristics.types = (TypeLine::ARTIFACT | TypeLine::CREATURE).into();
+
+        assert!(!elig(&s, green, atk));
+        assert!(elig(&s, black, atk));
+        assert!(elig(&s, artifact, atk));
+    }
+
+    #[test]
+    fn intimidate_only_artifact_or_shared_color() {
+        let mut s = GameState::new(2, 0);
+        let atk = put_creature(&mut s, 0, 2, 2); // green
+        kw(&mut s, atk, KeywordAbility::Intimidate);
+        let green = put_creature(&mut s, 1, 2, 2); // shares green
+        let red = put_creature(&mut s, 1, 2, 2);
+        s.objects.get_mut(red).unwrap().characteristics.colors = ColorSet::red();
+        let artifact = put_creature(&mut s, 1, 2, 2);
+        let a = s.objects.get_mut(artifact).unwrap();
+        a.characteristics.colors = ColorSet::colorless();
+        a.characteristics.types = (TypeLine::ARTIFACT | TypeLine::CREATURE).into();
+
+        assert!(elig(&s, green, atk));
+        assert!(!elig(&s, red, atk));
+        assert!(elig(&s, artifact, atk));
+    }
+
+    #[test]
+    fn shadow_segregates_both_directions() {
+        let mut s = GameState::new(2, 0);
+        let shadow_atk = put_creature(&mut s, 0, 2, 2);
+        kw(&mut s, shadow_atk, KeywordAbility::Shadow);
+        let normal_blk = put_creature(&mut s, 1, 2, 2);
+        let shadow_blk = put_creature(&mut s, 1, 2, 2);
+        kw(&mut s, shadow_blk, KeywordAbility::Shadow);
+
+        assert!(!elig(&s, normal_blk, shadow_atk)); // non-shadow can't block shadow
+        assert!(elig(&s, shadow_blk, shadow_atk));   // shadow blocks shadow
+        // And a shadow creature can't block a normal attacker.
+        let normal_atk = put_creature(&mut s, 0, 2, 2);
+        assert!(!elig(&s, shadow_blk, normal_atk));
+    }
+
+    #[test]
+    fn horsemanship_only_horsemanship_blocks() {
+        let mut s = GameState::new(2, 0);
+        let atk = put_creature(&mut s, 0, 2, 2);
+        kw(&mut s, atk, KeywordAbility::Horsemanship);
+        let normal = put_creature(&mut s, 1, 2, 2);
+        let horse = put_creature(&mut s, 1, 2, 2);
+        kw(&mut s, horse, KeywordAbility::Horsemanship);
+
+        assert!(!elig(&s, normal, atk));
+        assert!(elig(&s, horse, atk));
+    }
+
+    #[test]
+    fn skulk_blocks_only_no_greater_power() {
+        let mut s = GameState::new(2, 0);
+        let atk = put_creature(&mut s, 0, 2, 2);
+        kw(&mut s, atk, KeywordAbility::Skulk);
+        let bigger = put_creature(&mut s, 1, 3, 3);
+        let equal = put_creature(&mut s, 1, 2, 2);
+        let smaller = put_creature(&mut s, 1, 1, 1);
+
+        assert!(!elig(&s, bigger, atk));
+        assert!(elig(&s, equal, atk));
+        assert!(elig(&s, smaller, atk));
+    }
+
+    #[test]
+    fn fear_enforced_end_to_end_through_apply() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 2, 2);
+        kw(&mut s, atk, KeywordAbility::Fear);
+        ready(atk, &mut s);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        let green = put_creature(&mut s, 1, 2, 2);
+        ready(green, &mut s);
+        s.apply_declared_blockers(vec![BlockerDeclaration {
+            blocker: green, blocking: atk,
+        }]);
+        // Non-artifact non-black blocker rejected by the shared filter.
         assert!(s.combat.as_ref().unwrap().blockers.is_empty());
     }
 

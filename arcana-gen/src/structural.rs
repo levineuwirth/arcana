@@ -61,6 +61,10 @@ pub struct Expected {
     /// present. Non-mappable Scryfall keywords are dropped here
     /// rather than risk a false negative — see module docs.
     pub keywords: Vec<&'static str>,
+    /// Land-subtype names (`"Forest"`, …) the card must carry as
+    /// `KeywordAbility::Landwalk(<interned subtype>)`. Asserted with a
+    /// guarded match that resolves the interned name back to a string.
+    pub landwalk: Vec<&'static str>,
 }
 
 impl Expected {
@@ -105,6 +109,11 @@ impl Expected {
                 .keywords
                 .iter()
                 .filter_map(|k| evergreen_variant(k))
+                .collect(),
+            landwalk: row
+                .keywords
+                .iter()
+                .filter_map(|k| landwalk_subtype(k))
                 .collect(),
         }
     }
@@ -153,6 +162,29 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         "trample" => "Trample",
         "vigilance" => "Vigilance",
         "flash" => "Flash",
+        "shroud" => "Shroud",
+        // Pass 2 — static per-pairing evasion, fully enforced.
+        "fear" => "Fear",
+        "intimidate" => "Intimidate",
+        "shadow" => "Shadow",
+        "horsemanship" => "Horsemanship",
+        "skulk" => "Skulk",
+        _ => return None,
+    })
+}
+
+/// Map a Scryfall landwalk keyword to the basic land-subtype name it
+/// references. `KeywordAbility::Landwalk` carries the interned subtype
+/// (`"Forest"`…), so L2 asserts that exact type. The generic
+/// `"Landwalk"` umbrella Scryfall also emits is intentionally dropped
+/// (returns `None`) — the specific `"<type>walk"` entry certifies it.
+fn landwalk_subtype(scryfall_kw: &str) -> Option<&'static str> {
+    Some(match scryfall_kw.to_lowercase().as_str() {
+        "plainswalk" => "Plains",
+        "islandwalk" => "Island",
+        "swampwalk" => "Swamp",
+        "mountainwalk" => "Mountain",
+        "forestwalk" => "Forest",
         _ => return None,
     })
 }
@@ -234,6 +266,18 @@ pub fn render_harness(exp: &Expected) -> String {
             "        if !def.base_characteristics.keywords.iter()\n\
              \x20           .any(|k| matches!(k, KeywordAbility::{kw})) {{\n\
              \x20           bad.push(\"keyword: missing KeywordAbility::{kw}\".into());\n\
+             \x20       }}\n",
+        ));
+    }
+
+    // landwalk — parametrised: assert a Landwalk whose interned
+    // subtype resolves back to the expected basic land-type name.
+    for lt in &exp.landwalk {
+        a.push_str(&format!(
+            "        if !def.base_characteristics.keywords.iter()\n\
+             \x20           .any(|k| matches!(k, KeywordAbility::Landwalk(s)\n\
+             \x20               if reg.interner().resolve(*s) == Some({lt:?}))) {{\n\
+             \x20           bad.push(\"keyword: missing KeywordAbility::Landwalk({lt})\".into());\n\
              \x20       }}\n",
         ));
     }

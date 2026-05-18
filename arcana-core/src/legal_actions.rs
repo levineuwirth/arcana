@@ -601,28 +601,10 @@ fn enumerate_blocker_declarations(state: &GameState, defender: PlayerId) -> Vec<
 /// job is strictly "is this *individual* creature a legal blocker
 /// for this attacker."
 fn can_block_attacker(state: &GameState, blocker: ObjectId, attacker: ObjectId) -> bool {
-    use crate::effects::KeywordAbility;
-    // CR 702.9a — Flying: a creature with flying can be blocked only
-    // by creatures with flying and/or reach.
-    if state.has_keyword(attacker, &KeywordAbility::Flying)
-        && !state.has_keyword(blocker, &KeywordAbility::Flying)
-        && !state.has_keyword(blocker, &KeywordAbility::Reach)
-    {
-        return false;
-    }
-    // CR 702.16b — Protection: attacker can't be blocked by a creature
-    // matching its Protection quality, and vice versa.
-    if let Some(blk_chars) = state.compute_characteristics(blocker) {
-        if state.is_protected_from(attacker, &blk_chars) {
-            return false;
-        }
-    }
-    if let Some(atk_chars) = state.compute_characteristics(attacker) {
-        if state.is_protected_from(blocker, &atk_chars) {
-            return false;
-        }
-    }
-    true
+    // Single source of truth for per-pairing evasion (Flying/Reach,
+    // Protection, Fear, Intimidate, Shadow, Horsemanship, Skulk) —
+    // shared with the apply-side blocker filter so the two can't drift.
+    state.blocker_eligible(blocker, attacker)
 }
 
 fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {

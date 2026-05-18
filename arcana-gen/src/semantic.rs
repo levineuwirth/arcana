@@ -32,13 +32,66 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
     )
 }
 
-/// `Some(reason)` if `source` is a stub for a shape that must
-/// implement an effect; `None` if the card is fine or exempt.
+/// Pre-wired (Pass 2) `KeywordAbility` variants that compile and
+/// certify structurally but whose rules behavior is NOT implemented.
+/// A card carrying one is honest catalog *data* but a non-functional
+/// *card*, so it must be quarantined as an L3 stub (never landed)
+/// until a future pass implements real semantics. Names match the
+/// enum variant idents exactly as they appear in source. The truly
+/// static evasion keywords made real this pass (Fear, Intimidate,
+/// Shadow, Horsemanship, Skulk) are deliberately absent — they pass
+/// honestly.
+const DEFERRED_KEYWORDS: &[&str] = &[
+    "Banding", "Rampage", "Bushido", "Exalted", "Soulshift", "Unleash",
+    "Bloodthirst", "Modular", "Flanking", "BattleCry", "Undying",
+    "Persist", "Afterlife", "Mentor", "Riot", "Devour", "Sunburst",
+    "Dethrone", "Scavenge", "Fading", "Vanishing", "Renown", "Evolve",
+    "Graft", "Provoke", "Amplify", "Enlist", "Changeling", "Infect",
+    "Wither", "Toxic",
+];
+
+/// Does `src` reference `KeywordAbility::<variant>` (the next char
+/// after the ident is not an identifier char, so `Band` can't match
+/// `Banding`)?
+fn mentions_variant(src: &str, variant: &str) -> bool {
+    let needle = format!("KeywordAbility::{variant}");
+    let bytes = src.as_bytes();
+    let mut from = 0;
+    while let Some(rel) = src[from..].find(&needle) {
+        let end = from + rel + needle.len();
+        let boundary = bytes
+            .get(end)
+            .is_none_or(|&c| !(c as char).is_alphanumeric() && c != b'_');
+        if boundary {
+            return true;
+        }
+        from = end;
+    }
+    false
+}
+
+/// `Some(reason)` if `source` is a stub; `None` if the card is fine
+/// or exempt.
 pub fn stub_reason(shape: Option<&str>, source: &str) -> Option<String> {
+    let clean = strip_comments(source);
+
+    // Pass 2 honesty guard: a pre-wired deferred-keyword marker means
+    // the card's rules are unimplemented regardless of shape. Without
+    // this, an inert marker on a vanilla/french-vanilla card would
+    // silently certify as `passed` and be landed as if functional.
+    if let Some(kw) = DEFERRED_KEYWORDS.iter().find(|kw| mentions_variant(&clean, kw)) {
+        return Some(format!(
+            "layer-3 stub: KeywordAbility::{kw} is a pre-wired marker \
+             — the keyword's rules are not implemented yet (Pass 2 \
+             deferral); card data is correct but the card does not \
+             function"
+        ));
+    }
+
     if !shape_requires_effect(shape) {
         return None;
     }
-    if strip_comments(source).contains("Effect::") {
+    if clean.contains("Effect::") {
         return None;
     }
     Some(format!(
@@ -119,5 +172,30 @@ mod tests {
             stub_reason(Some("FrenchVanillaCreature"), "keywords only").is_none()
         );
         assert!(stub_reason(None, "").is_none());
+    }
+
+    #[test]
+    fn deferred_keyword_marker_is_quarantined_on_french_vanilla() {
+        let src = "keywords: vec![KeywordAbility::Undying],";
+        let r = stub_reason(Some("FrenchVanillaCreature"), src);
+        assert!(r.is_some());
+        assert!(r.unwrap().contains("Undying"));
+    }
+
+    #[test]
+    fn real_evasion_keyword_is_not_quarantined() {
+        // Fear/Intimidate/Shadow/Horsemanship/Skulk are implemented —
+        // a french-vanilla card carrying only those passes the gate.
+        let src = "keywords: vec![KeywordAbility::Fear, KeywordAbility::Shadow],";
+        assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+    }
+
+    #[test]
+    fn variant_boundary_no_false_prefix_match() {
+        // A hypothetical longer ident must not trip a shorter deferred
+        // name (e.g. `Riot` vs `Riotous`).
+        let src = "KeywordAbility::Riotous";
+        assert!(!mentions_variant(src, "Riot"));
+        assert!(mentions_variant("KeywordAbility::Riot,", "Riot"));
     }
 }
