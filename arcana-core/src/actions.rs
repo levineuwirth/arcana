@@ -671,6 +671,11 @@ pub enum ChoiceFollowUp {
     /// until end of turn. Empty pick = the player declined the
     /// optional "may".
     EnlistTap { enlister: ObjectId },
+    /// Pass 4.1c — Devour (CR 702.82a). Pair with a
+    /// [`ChoiceKind::PickCards`] response: sacrifice each picked
+    /// creature, then put `per` × (number sacrificed) +1/+1 counters
+    /// on `devourer`. Empty pick = sacrificed nothing (legal).
+    DevourSacrifice { devourer: ObjectId, per: u8 },
 }
 
 // =============================================================================

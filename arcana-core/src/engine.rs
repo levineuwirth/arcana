@@ -1550,6 +1550,23 @@ fn apply_choice_follow_up(
                     *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
             }
         }
+        ChoiceFollowUp::DevourSacrifice { devourer, per } => {
+            let eaten = chosen.len() as u32;
+            for id in chosen {
+                let owner = state.objects.get(*id)
+                    .map(|o| o.owner).unwrap_or(0);
+                state.emit(GameEvent::Sacrifice {
+                    player: owner, object_id: *id });
+                state.move_object_to_zone(
+                    *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
+            }
+            let total = per as u32 * eaten;
+            if total > 0 {
+                state.place_counters(
+                    crate::replacement::CounterTarget::Object(devourer),
+                    crate::types::CounterKind::PlusOnePlusOne, total);
+            }
+        }
         ChoiceFollowUp::EnlistTap { enlister } => {
             // CR 702.151a — at most one creature; empty = declined.
             if let Some(&tapped) = chosen.first() {
@@ -2330,6 +2347,24 @@ fn collect_pending_triggers(
                 }
             }
         }
+        // Pass 4.1c — Devour: the entering creature itself, if it has
+        // Devour(n), may sacrifice creatures for n counters each.
+        if let crate::events::GameEvent::EntersBattlefield { object_id, .. } = event {
+            use crate::effects::KeywordAbility as KA;
+            let is_devourer = state.objects.get(*object_id)
+                .is_some_and(|o| o.is_creature() && o.zone.is_battlefield())
+                && state.effective_keywords(*object_id).iter()
+                    .any(|k| matches!(k, KA::Devour(_)));
+            if is_devourer {
+                let c = state.objects.get(*object_id)
+                    .map(|o| o.controller).unwrap_or(0);
+                pending.push(crate::triggers::PendingTrigger {
+                    source: *object_id, trigger_id: DEVOUR_TRIGGER_ID,
+                    controller: c, trigger_event: event.clone(),
+                    targets: crate::targets::TargetSelection::new(),
+                });
+            }
+        }
         // Fading/Vanishing upkeep tick — active player's permanents.
         if let crate::events::GameEvent::StepBegins {
             step: crate::turn::Step::Upkeep
@@ -3013,6 +3048,7 @@ pub(crate) fn is_combat_static_trigger(tid: crate::types::TriggerId) -> bool {
 /// Fading/Vanishing upkeep tick)?
 pub(crate) fn is_misc_trigger(tid: crate::types::TriggerId) -> bool {
     tid == EVOLVE_TRIGGER_ID || tid == FADEVANISH_TRIGGER_ID
+        || tid == DEVOUR_TRIGGER_ID
 }
 
 /// Resolution effects for a synthesized Undying / Persist / Afterlife
@@ -3250,6 +3286,17 @@ fn misc_trigger_resolve(
         if state.objects.get(source).is_none() { return Vec::new(); }
         return vec![Effect::AddCounters {
             target: source, kind: CounterKind::PlusOnePlusOne, count: 1 }];
+    }
+    if trigger_id == DEVOUR_TRIGGER_ID {
+        // CR 702.82a — "you may sacrifice any number of creatures;
+        // enters with N +1/+1 counters for each". The effect's
+        // executor posts the sacrifice choice. (Phase-1: applied
+        // just after entry, not as a true ETB replacement — no 0/0
+        // Devour creature exists, so the SBA window is harmless.)
+        let per = state.effective_keywords(source).into_iter()
+            .find_map(|k| match k { KA::Devour(n) => Some(n), _ => None });
+        let Some(per) = per else { return Vec::new(); };
+        return vec![Effect::DevourSacrifice { devourer: source, per }];
     }
     // FADEVANISH: pick the counter kind from the source's keyword.
     let kind = state.effective_keywords(source).into_iter()
@@ -3494,6 +3541,8 @@ pub(crate) const BUSHIDO_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 112;
 // the source's keyword).
 pub(crate) const EVOLVE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 120;
 pub(crate) const FADEVANISH_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 121;
+// Pass 4.1c — Devour now posts a real sacrifice choice at ETB.
+pub(crate) const DEVOUR_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 122;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -5930,6 +5979,78 @@ mod tests {
         let pc = drive_to_soulshift_choice(&mut state, &registry, creature);
         assert!(pc.is_none(),
             "no Spirit with mana value ≤ 3 ⇒ the trigger resolves to nothing");
+    }
+
+    // --- Pass 4.1c: Devour ETB sacrifice choice ---------------------------
+
+    fn drive_to_devour_choice(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        devourer_card: crate::types::CardId,
+    ) -> (ObjectId, u64, Vec<ObjectId>) {
+        let devourer = deploy(state, registry, devourer_card);
+        run_sba_and_triggers(state, registry);
+        assert_eq!(state.stack_size(), 1, "Devour synthesizes an ETB trigger");
+        resolve_top_of_stack(state, registry);
+        let pc = state.pending_choice.clone()
+            .expect("Devour resolution posts a sacrifice choice");
+        let cands = match pc.kind {
+            crate::actions::ChoiceKind::PickCards { candidates, min, .. } => {
+                assert_eq!(min, 0, "Devour sacrifices are optional"); candidates
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        };
+        (devourer, pc.id, cands)
+    }
+
+    #[test]
+    fn devour_sacrifices_picks_and_counters_the_devourer() {
+        use crate::effects::KeywordAbility::Devour;
+        let mut registry = crate::registry::CardRegistry::new();
+        let dv = register_kw_pt(&mut registry, vec![Devour(2)], 3, 3);
+        let fodder = register_kw_pt(&mut registry, vec![], 1, 1);
+        let mut state = GameState::new(2, 0);
+        let f1 = deploy(&mut state, &registry, fodder);
+        let f2 = deploy(&mut state, &registry, fodder);
+        let f3 = deploy(&mut state, &registry, fodder);
+
+        let (devourer, id, cands) =
+            drive_to_devour_choice(&mut state, &registry, dv);
+        assert_eq!(cands.len(), 3, "the three fodder creatures are eligible");
+
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![f1, f2] });
+
+        assert!(!state.objects.get(f1).is_some_and(|o| o.zone.is_battlefield()));
+        assert!(!state.objects.get(f2).is_some_and(|o| o.zone.is_battlefield()));
+        assert!(state.objects.get(f3).unwrap().zone.is_battlefield(),
+            "the unpicked fodder survives");
+        assert_eq!(
+            state.objects.get(devourer).unwrap()
+                .count_counters(crate::types::CounterKind::PlusOnePlusOne),
+            4, "Devour 2 × 2 sacrificed = 4 counters");
+    }
+
+    #[test]
+    fn devour_decline_eats_nothing() {
+        use crate::effects::KeywordAbility::Devour;
+        let mut registry = crate::registry::CardRegistry::new();
+        let dv = register_kw_pt(&mut registry, vec![Devour(2)], 3, 3);
+        let fodder = register_kw_pt(&mut registry, vec![], 1, 1);
+        let mut state = GameState::new(2, 0);
+        let f1 = deploy(&mut state, &registry, fodder);
+
+        let (devourer, id, _) =
+            drive_to_devour_choice(&mut state, &registry, dv);
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![] });
+
+        assert!(state.objects.get(f1).unwrap().zone.is_battlefield(),
+            "declining devours nothing");
+        assert_eq!(
+            state.objects.get(devourer).unwrap()
+                .count_counters(crate::types::CounterKind::PlusOnePlusOne),
+            0);
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

@@ -299,6 +299,11 @@ pub enum Effect {
     /// are precomputed (Spirit subtype + mana value ≤ N) by the
     /// resolver, which has the interner; no-op if empty.
     SoulshiftReturn { player: PlayerId, candidates: Vec<ObjectId> },
+    /// Pass 4.1c — Devour (CR 702.82a). Posts the optional "sacrifice
+    /// any number of creatures you control" choice for `devourer`;
+    /// the follow-up sacrifices the picks and puts `per` × count
+    /// +1/+1 counters on the devourer.
+    DevourSacrifice { devourer: ObjectId, per: u8 },
     /// CR 701.20a — Search `player`'s library for a matching card, put
     /// it into hand, then shuffle. `reveal` adds a public-info mark.
     /// Phase 1 picks the first matching id (deterministic); TODO
@@ -798,6 +803,9 @@ impl Effect {
             Effect::SoulshiftReturn { player, candidates } => {
                 push_soulshift_choice(state, *player, candidates);
             }
+            Effect::DevourSacrifice { devourer, per } => {
+                push_devour_choice(state, *devourer, *per);
+            }
             Effect::TutorToHand { player, filter, reveal } => {
                 push_search_choice(
                     state, *player, Zone::Library(*player), filter,
@@ -1099,8 +1107,14 @@ pub enum KeywordAbility {
     /// CR 702.37a — Amplify N. As it enters, you may reveal sharing-
     /// type cards for N counters each. Phase-1 reveals 0.
     Amplify(u8),
-    /// CR 702.81a — Devour N. As it enters, you may sacrifice
-    /// creatures for N counters each. Phase-1 sacrifices 0.
+    /// CR 702.82a — Devour N. "As this enters, you may sacrifice any
+    /// number of creatures. It enters with N +1/+1 counters for each
+    /// creature sacrificed." Fully wired (Pass 4.1c): ETB synthesized
+    /// trigger → [`Effect::DevourSacrifice`] posts a real
+    /// `PickCards{0,all}`; the follow-up sacrifices the picks and
+    /// adds N×count counters. DEBT: applied just after entry rather
+    /// than as a true ETB replacement (no 0/0 Devour creature
+    /// exists, so the brief SBA window is harmless).
     Devour(u8),
     /// CR 702.96a — Unleash. May enter with a +1/+1 counter (then
     /// can't block). Phase-1 declines the counter (enters as a
@@ -1991,6 +2005,38 @@ fn push_soulshift_choice(
         ctx,
         crate::actions::ChoiceKind::PickCards {
             candidates: candidates.to_vec(), min: 0, max: 1,
+        },
+    );
+}
+
+/// Push the optional Devour choice (CR 702.82a): the devourer's
+/// controller may sacrifice any number of their other creatures;
+/// the follow-up adds `per` counters to the devourer per sacrifice.
+/// `PickCards{min:0, max:all}`. No prompt if there's nothing to eat.
+fn push_devour_choice(state: &mut GameState, devourer: ObjectId, per: u8) {
+    let Some(controller) =
+        state.objects.get(devourer).map(|o| o.controller) else { return; };
+    let candidates: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.controller == controller
+            && o.id != devourer
+            && o.is_creature()
+            && o.zone.is_battlefield())
+        .map(|o| o.id)
+        .collect();
+    if candidates.is_empty() { return; }
+    let max = candidates.len() as u32;
+    let ctx = match state.currently_resolving {
+        Some(e) => crate::actions::ChoiceContext::ResolvingStack(e),
+        None => crate::actions::ChoiceContext::Other,
+    };
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::DevourSacrifice {
+            devourer, per });
+    state.push_pending_choice(
+        controller,
+        ctx,
+        crate::actions::ChoiceKind::PickCards {
+            candidates, min: 0, max,
         },
     );
 }
