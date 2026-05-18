@@ -22,6 +22,10 @@ Deliberately conservative:
   non-integer P/T are not checked). Read the diff before applying.
 * **Idempotent.** An existing destination is skipped unless
   `--force`; re-runs are safe.
+* **Scoped re-lands.** `--only 408,1091,...` restricts landing to
+  those manifest indices, so a single pass can `--force --apply`
+  against the full run dir without re-landing every other passed
+  card (the blast radius that necessitated minimal staging dirs).
 * **Does not touch `register_seed`.** That list in `lib.rs` is a
   curated seed corpus, not the catalog. Landed cards are catalog
   modules; wiring them into a registry is a separate, intentional
@@ -143,7 +147,25 @@ def main() -> int:
                     help="actually write (default: dry-run)")
     ap.add_argument("--force", action="store_true",
                     help="overwrite an existing destination card file")
+    ap.add_argument("--only", type=str, default=None,
+                    help="comma/space-separated manifest indices to land "
+                         "(restricts to these; everything else is ignored). "
+                         "Lets you safely --force against a full run dir "
+                         "without re-landing unrelated passed cards.")
     args = ap.parse_args()
+
+    only: set[int] | None = None
+    if args.only is not None:
+        try:
+            only = {int(tok) for tok in re.split(r"[,\s]+", args.only.strip())
+                    if tok}
+        except ValueError:
+            print(f"error: --only must be integers, got {args.only!r}",
+                  file=sys.stderr)
+            return 2
+        if not only:
+            print("error: --only given but no indices parsed", file=sys.stderr)
+            return 2
 
     dump_dir: Path = args.dir
     report = args.report or dump_dir / "verify-report.jsonl"
@@ -157,8 +179,19 @@ def main() -> int:
 
     rows = load_rows(report, manifest)
     passed = [r for r in rows if r.get("outcome") == "passed"]
-    print(f"{len(rows)} report rows, {len(passed)} passed verify "
-          f"({'APPLY' if args.apply else 'dry-run'})\n")
+    if only is not None:
+        selected = [r for r in passed if r["idx"] in only]
+        missing = only - {r["idx"] for r in selected}
+        if missing:
+            print(f"warn: --only indices not passed/in report: "
+                  f"{sorted(missing)}", file=sys.stderr)
+        passed = selected
+        print(f"{len(rows)} report rows; --only restricts to "
+              f"{len(passed)} of {len(only)} requested idx "
+              f"({'APPLY' if args.apply else 'dry-run'})\n")
+    else:
+        print(f"{len(rows)} report rows, {len(passed)} passed verify "
+              f"({'APPLY' if args.apply else 'dry-run'})\n")
 
     if not passed:
         print("nothing to land.")
