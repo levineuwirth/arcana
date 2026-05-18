@@ -1,12 +1,15 @@
-//! Thalakos Sentry — `{1}{U}` 1/2 Thalakos Soldier.
-//! Has Shadow (keyword not yet in engine API; best-effort stub).
+//! Thalakos Sentry — `{1}{U}` 1/2 Thalakos Soldier with Shadow.
 //!
 //! # Rules references
 //!
-//! * Shadow — This creature can block or be blocked by only creatures with
-//!   shadow. Not expressible with current KeywordAbility variants;
-//!   verify pipeline will flag for human routing.
+//! * CR 702.27 — Shadow. This creature can block or be blocked only by
+//!   creatures with shadow. Engine wiring lives in the combat blocker
+//!   filter.
+//!
+//! Shadow is a fully-implemented keyword in the engine; listing it in
+//! `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Shadow],
         ..Default::default()
     };
 

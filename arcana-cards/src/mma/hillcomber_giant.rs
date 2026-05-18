@@ -1,12 +1,16 @@
 //! Hillcomber Giant — `{2}{W}{W}` 3/3 Giant Scout with Mountainwalk.
-//! A white giant scout whose Mountainwalk (a Landwalk variant) is not
-//! yet representable in the engine's demonstrated API; the keyword list
-//! is left empty as a best-effort stub for the verify pipeline.
 //!
 //! # Rules references
 //!
-//! * CR 702.14 — Landwalk / Mountainwalk. (Not yet wired; verify pipeline will flag.)
+//! * CR 702.14 — Landwalk. Mountainwalk: this creature can't be blocked
+//!   as long as the defending player controls a Mountain. Engine wiring
+//!   maps Mountainwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Mountain".
+//!
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Mountainwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -16,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hillcomber Giant");
     let giant = reg.interner_mut().intern("Giant");
     let scout = reg.interner_mut().intern("Scout");
+    let mountain = reg.interner_mut().intern("Mountain");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(giant);
     subtypes.0.insert(scout);
@@ -28,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(mountain)],
         ..Default::default()
     };
 

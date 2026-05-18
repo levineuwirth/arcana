@@ -1,12 +1,15 @@
 //! Highborn Ghoul — `{B}{B}` 2/1 Zombie with Intimidate.
-//! A black zombie whose Intimidate keyword is not yet representable
-//! in the engine's demonstrated API; the keyword list is left empty
-//! as a best-effort stub for the verify pipeline.
 //!
 //! # Rules references
 //!
-//! * CR 702.13 — Intimidate. (Not yet wired; verify pipeline will flag.)
+//! * CR 702.13 — Intimidate. This creature can't be blocked except by
+//!   artifact creatures and/or creatures that share a color with it.
+//!   Engine wiring lives in the combat blocker filter.
+//!
+//! Intimidate is a fully-implemented keyword in the engine; listing it
+//! in `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -26,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Intimidate],
         ..Default::default()
     };
 

@@ -1,14 +1,15 @@
 //! Bladetusk Boar — `{3}{R}` 3/2 Boar with Intimidate.
-//! A red aggressive creature that is difficult to block due to intimidate,
-//! forcing opponents to use artifact creatures or red creatures to block it.
 //!
 //! # Rules references
 //!
 //! * CR 702.13 — Intimidate. This creature can't be blocked except by
 //!   artifact creatures and/or creatures that share a color with it.
-//!   NOTE: `KeywordAbility::Intimidate` is not present in the demonstrated
-//!   API; the verify pipeline should route this card for manual wiring.
+//!   Engine wiring lives in the combat blocker filter.
+//!
+//! Intimidate is a fully-implemented keyword in the engine; listing it
+//! in `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Intimidate],
         ..Default::default()
     };
 

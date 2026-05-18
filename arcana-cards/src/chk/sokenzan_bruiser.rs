@@ -1,12 +1,16 @@
 //! Sokenzan Bruiser — `{4}{R}` 3/3 Ogre Warrior with Mountainwalk.
-//! Has mountainwalk (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
 //!
 //! # Rules references
 //!
-//! * CR 702.14 — Landwalk. Mountainwalk is a variant; this creature
-//!   can't be blocked while the defending player controls a Mountain.
+//! * CR 702.14 — Landwalk. Mountainwalk: this creature can't be blocked
+//!   as long as the defending player controls a Mountain. Engine wiring
+//!   maps Mountainwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Mountain".
+//!
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Mountainwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -16,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sokenzan Bruiser");
     let ogre = reg.interner_mut().intern("Ogre");
     let warrior = reg.interner_mut().intern("Warrior");
+    let mountain = reg.interner_mut().intern("Mountain");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(ogre);
     subtypes.0.insert(warrior);
@@ -28,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(mountain)],
         ..Default::default()
     };
 

@@ -1,17 +1,15 @@
 //! Soltari Foot Soldier — `{W}` 1/1 Soltari Soldier with Shadow.
-//! A Tempest-block common; Shadow restricts blocking to only other
-//! Shadow creatures, making this an evasive one-drop in white.
 //!
 //! # Rules references
 //!
-//! * CR 702.27 — Shadow. A creature with shadow can block or be
-//!   blocked only by creatures that also have shadow.
+//! * CR 702.27 — Shadow. This creature can block or be blocked only by
+//!   creatures with shadow. Engine wiring lives in the combat blocker
+//!   filter.
 //!
-//! NOTE: `KeywordAbility::Shadow` is not present in the currently
-//! demonstrated API surface. The keyword list is left empty as a
-//! best-effort stub; the verify pipeline will flag this gap for a
-//! human to wire the Shadow variant when it is added to the engine.
+//! Shadow is a fully-implemented keyword in the engine; listing it in
+//! `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -33,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Shadow],
         ..Default::default()
     };
 

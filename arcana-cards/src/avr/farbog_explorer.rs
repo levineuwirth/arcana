@@ -2,13 +2,15 @@
 //!
 //! # Rules references
 //!
-//! * CR 702.14 — Swampwalk. This creature can't be blocked as long as
-//!   defending player controls a Swamp.
+//! * CR 702.14 — Landwalk. Swampwalk: this creature can't be blocked
+//!   as long as the defending player controls a Swamp. Engine wiring
+//!   maps Swampwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Swamp".
 //!
-//! Landwalk variants are not among the demonstrated `KeywordAbility` variants,
-//! so this card is registered without the keyword pending engine support. The
-//! verify pipeline will flag the gap.
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Swampwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -18,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Farbog Explorer");
     let human = reg.interner_mut().intern("Human");
     let scout = reg.interner_mut().intern("Scout");
+    let swamp = reg.interner_mut().intern("Swamp");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(scout);
@@ -30,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(swamp)],
         ..Default::default()
     };
 

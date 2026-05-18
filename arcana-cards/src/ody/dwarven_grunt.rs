@@ -1,17 +1,16 @@
 //! Dwarven Grunt — `{R}` 1/1 Dwarf with Mountainwalk.
-//! A small red Dwarf that cannot be blocked while the defending
-//! player controls a Mountain.
 //!
 //! # Rules references
 //!
-//! * CR 702.14 — Landwalk (Mountainwalk). The creature is unblockable
-//!   while the defending player controls a land of the named type.
+//! * CR 702.14 — Landwalk. Mountainwalk: this creature can't be blocked
+//!   as long as the defending player controls a Mountain. Engine wiring
+//!   maps Mountainwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Mountain".
 //!
-//! NOTE: Mountainwalk is a Landwalk variant. The current API's
-//! `KeywordAbility` enum does not expose a Landwalk/Mountainwalk
-//! variant in the demonstrated examples. The keyword is omitted here;
-//! the verify pipeline should route this for manual wiring.
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Mountainwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -20,6 +19,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dwarven Grunt");
     let dwarf = reg.interner_mut().intern("Dwarf");
+    let mountain = reg.interner_mut().intern("Mountain");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dwarf);
 
@@ -31,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(mountain)],
         ..Default::default()
     };
 

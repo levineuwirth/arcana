@@ -1,12 +1,15 @@
 //! Prickly Boggart — `{B}` 1/1 Goblin Rogue with Fear.
-//! A black goblin rogue whose Fear keyword is not yet representable
-//! in the engine's demonstrated API; the keyword list is left empty
-//! as a best-effort stub for the verify pipeline.
 //!
 //! # Rules references
 //!
-//! * CR 702.35 — Fear. (Not yet wired; verify pipeline will flag.)
+//! * CR 702.35 — Fear. This creature can't be blocked except by
+//!   artifact creatures and/or black creatures. Engine wiring lives
+//!   in the combat blocker filter.
+//!
+//! Fear is a fully-implemented keyword in the engine; listing it in
+//! `keywords` is sufficient.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Fear],
         ..Default::default()
     };
 

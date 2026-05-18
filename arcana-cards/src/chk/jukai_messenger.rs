@@ -1,12 +1,16 @@
 //! Jukai Messenger — `{G}` 1/1 Human Monk with Forestwalk.
-//! Forestwalk (landwalk variant) is not representable with the demonstrated
-//! KeywordAbility variants; keywords left empty for verify pipeline.
 //!
 //! # Rules references
 //!
-//! * CR 702.14 — Forestwalk. Can't be blocked as long as defending player
-//!   controls a Forest. Not expressible with the demonstrated API.
+//! * CR 702.14 — Landwalk. Forestwalk: this creature can't be blocked
+//!   as long as the defending player controls a Forest. Engine wiring
+//!   maps Forestwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Forest".
+//!
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Forestwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -16,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Jukai Messenger");
     let human = reg.interner_mut().intern("Human");
     let monk = reg.interner_mut().intern("Monk");
+    let forest = reg.interner_mut().intern("Forest");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(monk);
@@ -28,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(forest)],
         ..Default::default()
     };
 

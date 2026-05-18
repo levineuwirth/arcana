@@ -1,9 +1,16 @@
 //! Heartwood Treefolk — `{2}{G}{G}` 3/4 Treefolk with Forestwalk.
 //!
-//! Forestwalk (a form of Landwalk) is not expressible with the current
-//! demonstrated `KeywordAbility` variants. The keywords list is left
-//! empty; the verify pipeline will flag this for human routing.
+//! # Rules references
+//!
+//! * CR 702.14 — Landwalk. Forestwalk: this creature can't be blocked
+//!   as long as the defending player controls a Forest. Engine wiring
+//!   maps Forestwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Forest".
+//!
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Forestwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -12,6 +19,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Heartwood Treefolk");
     let treefolk = reg.interner_mut().intern("Treefolk");
+    let forest = reg.interner_mut().intern("Forest");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treefolk);
 
@@ -23,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(forest)],
         ..Default::default()
     };
 

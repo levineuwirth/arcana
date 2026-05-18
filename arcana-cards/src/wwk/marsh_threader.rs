@@ -1,17 +1,16 @@
 //! Marsh Threader — `{1}{W}` 2/1 Kor Scout with Swampwalk.
-//! A white evasion creature that cannot be blocked while the defending
-//! player controls a Swamp.
 //!
 //! # Rules references
 //!
-//! * CR 702.14 — Landwalk (Swampwalk). The creature is unblockable
-//!   while the defending player controls a land of the named type.
+//! * CR 702.14 — Landwalk. Swampwalk: this creature can't be blocked
+//!   as long as the defending player controls a Swamp. Engine wiring
+//!   maps Swampwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Swamp".
 //!
-//! NOTE: Swampwalk is a Landwalk variant. The current API's
-//! `KeywordAbility` enum does not expose a Landwalk/Swampwalk variant
-//! in the demonstrated examples. The keyword is omitted here; the
-//! verify pipeline should route this for manual wiring.
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Swampwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -21,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Marsh Threader");
     let kor = reg.interner_mut().intern("Kor");
     let scout = reg.interner_mut().intern("Scout");
+    let swamp = reg.interner_mut().intern("Swamp");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(kor);
     subtypes.0.insert(scout);
@@ -33,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(swamp)],
         ..Default::default()
     };
 

@@ -2,12 +2,15 @@
 //!
 //! # Rules references
 //!
-//! * CR 702.14 — Landwalk (Forestwalk). This creature can't be blocked
-//!   as long as defending player controls a Forest.
+//! * CR 702.14 — Landwalk. Forestwalk: this creature can't be blocked
+//!   as long as the defending player controls a Forest. Engine wiring
+//!   maps Forestwalk to `KeywordAbility::Landwalk` keyed on the
+//!   interned subtype "Forest".
 //!
-//! Forestwalk/Landwalk is not in the demonstrated KeywordAbility API;
-//! this file is a best-effort stub. The verify pipeline will flag the gap.
+//! The generic Scryfall `Landwalk` umbrella keyword is ignored; only
+//! the specific `Forestwalk` entry is emitted.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -16,6 +19,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Somberwald Dryad");
     let dryad = reg.interner_mut().intern("Dryad");
+    let forest = reg.interner_mut().intern("Forest");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dryad);
 
@@ -27,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Landwalk(forest)],
         ..Default::default()
     };
 
