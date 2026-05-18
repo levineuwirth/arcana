@@ -294,6 +294,11 @@ pub enum Effect {
     /// choice for `enlister`; the follow-up taps it and adds its
     /// power to `enlister` until end of turn. No-op if no candidate.
     EnlistTap { enlister: ObjectId },
+    /// Pass 4.1b — Soulshift (CR 702.49a). Posts the optional "return
+    /// a Spirit from your graveyard to hand" choice. `candidates`
+    /// are precomputed (Spirit subtype + mana value ≤ N) by the
+    /// resolver, which has the interner; no-op if empty.
+    SoulshiftReturn { player: PlayerId, candidates: Vec<ObjectId> },
     /// CR 701.20a — Search `player`'s library for a matching card, put
     /// it into hand, then shuffle. `reveal` adds a public-info mark.
     /// Phase 1 picks the first matching id (deterministic); TODO
@@ -790,6 +795,9 @@ impl Effect {
             Effect::EnlistTap { enlister } => {
                 push_enlist_choice(state, *enlister);
             }
+            Effect::SoulshiftReturn { player, candidates } => {
+                push_soulshift_choice(state, *player, candidates);
+            }
             Effect::TutorToHand { player, filter, reveal } => {
                 push_search_choice(
                     state, *player, Zone::Library(*player), filter,
@@ -1051,11 +1059,14 @@ pub enum KeywordAbility {
     Fading(u8),
     /// CR 702.61a — Vanishing N. As Fading but with time counters.
     Vanishing(u8),
-    /// CR 702.49a — Soulshift N. Optional dies-trigger returning a
-    /// Spirit. Phase-1 policy: decline (a legal "may"), so the
-    /// keyword is recognized and the card functions; the return is
-    /// deferred to agent choices. (Mirrors Enlist/Provoke.)
-    Soulshift,
+    /// CR 702.49a — Soulshift N. "When this dies, you may return
+    /// target Spirit card with mana value N or less from your
+    /// graveyard to your hand." Fully wired (Pass 4.1b): synthesized
+    /// death trigger (N encoded in the sentinel band) →
+    /// [`Effect::SoulshiftReturn`] posts a real `PickCards{0,1}` over
+    /// the owner's graveyard Spirits with mana value ≤ N; the pick
+    /// returns to hand.
+    Soulshift(u8),
     /// CR 702.41a — Scavenge. A graveyard activated ability. Phase-1
     /// never activates it (no agent), so the card functions; the
     /// ability is deferred. (Mirrors Cycling-style optional value.)
@@ -1951,6 +1962,35 @@ fn push_enlist_choice(state: &mut GameState, enlister: ObjectId) {
         ctx,
         crate::actions::ChoiceKind::PickCards {
             candidates, min: 0, max: 1,
+        },
+    );
+}
+
+/// Push the optional Soulshift choice (CR 702.49a). `candidates`
+/// were already filtered (Spirit, mana value ≤ N, owner's graveyard)
+/// by the resolver. `PickCards{min:0,max:1}`; the pick returns to
+/// the player's hand. No prompt if there are no candidates.
+fn push_soulshift_choice(
+    state: &mut GameState,
+    player: PlayerId,
+    candidates: &[ObjectId],
+) {
+    if candidates.is_empty() { return; }
+    let ctx = match state.currently_resolving {
+        Some(e) => crate::actions::ChoiceContext::ResolvingStack(e),
+        None => crate::actions::ChoiceContext::Other,
+    };
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::MoveToZone {
+            destination: Zone::Hand(player),
+            reveal: false,
+            shuffle_library_owner: None,
+        });
+    state.push_pending_choice(
+        player,
+        ctx,
+        crate::actions::ChoiceKind::PickCards {
+            candidates: candidates.to_vec(), min: 0, max: 1,
         },
     );
 }

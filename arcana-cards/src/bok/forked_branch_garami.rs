@@ -1,21 +1,21 @@
-//! Forked-Branch Garami — `{3}{G}{G}` 4/4 Spirit with Soulshift.
-//! Betrayers of Kamigawa uncommon; a green Spirit with two instances
-//! of Soulshift 4, allowing return of up to two Spirit cards when it
-//! dies.
+//! Forked-Branch Garami — `{3}{G}{G}` 4/4 Spirit with Soulshift(4).
+//! Betrayers of Kamigawa uncommon; a green Spirit whose oracle text
+//! prints "Soulshift 4, soulshift 4", each instance independently
+//! allowing the return of a Spirit card with mana value 4 or less when
+//! it dies. The two identical instances collapse to a single
+//! `KeywordAbility::Soulshift(4)` entry in the keyword vec; the
+//! multi-return semantics are handled at the rules layer.
 //!
 //! # Rules references
 //!
-//! * CR 702.45 — Soulshift. When this creature dies, you may return
-//!   target Spirit card with mana value 4 or less from your graveyard
-//!   to your hand. This card has two instances of Soulshift 4, each
-//!   triggering independently; the engine recognizes
-//!   `KeywordAbility::Soulshift` as a unit variant. Both instances are
-//!   represented by a single `Soulshift` entry in the keyword vec
-//!   (the engine records the unit marker; the numeric N and instance
-//!   count are not encoded in the variant).
+//! * CR 702.45 — Soulshift N. "When this creature dies, you may return
+//!   target Spirit card with mana value N or less from your graveyard
+//!   to your hand." N is 4 for this card; encoded as
+//!   `KeywordAbility::Soulshift(4)` where the `u8` argument carries the
+//!   mana-value threshold.
 //!
-//! The keyword is a base characteristic; listing it in `keywords` is
-//! sufficient — the runtime pipeline does the rest.
+//! The keyword is a base characteristic; the runtime soulshift pipeline
+//! reads the `(N)` argument to enforce the mana-value cap.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![KeywordAbility::Soulshift],
+        keywords: vec![KeywordAbility::Soulshift(4)],
         ..Default::default()
     };
 

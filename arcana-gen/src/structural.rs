@@ -203,7 +203,8 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         // parametrised; N is in rules text, dropped like Toxic.
         // Banding stays deferred — not asserted, cards quarantined.)
         "evolve" => "Evolve",
-        "soulshift" => "Soulshift",
+        // `soulshift` is parametrised `Soulshift(u8)` (N in rules
+        // text) → dropped like Toxic/Renown, asserted by neither.
         "scavenge" => "Scavenge",
         "changeling" => "Changeling",
         // Pass 3.8 — Banding recognized (choice-control; Phase-1

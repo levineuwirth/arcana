@@ -2153,6 +2153,12 @@ fn collect_pending_triggers(
                 }) {
                     synth(AFTERLIFE_TRIGGER_ID_BASE - n.clamp(1, AFTERLIFE_MAX));
                 }
+                if let Some(n) = kws.iter().find_map(|k| match k {
+                    KA::Soulshift(n) => Some(*n as u32),
+                    _ => None,
+                }) {
+                    synth(SOULSHIFT_TRIGGER_ID_BASE - n.clamp(1, SOULSHIFT_MAX));
+                }
             }
         }
 
@@ -2904,7 +2910,7 @@ fn resolution_effects(
             // ZoneChange event.
             if is_keyword_death_trigger(*trigger_id) {
                 return keyword_death_trigger_resolve(
-                    state, *trigger_id, trigger_event);
+                    state, registry, *trigger_id, trigger_event);
             }
             // Pass 3.3 — attack/combat-damage keyword triggers.
             if is_attack_trigger(*trigger_id) {
@@ -2980,6 +2986,8 @@ pub(crate) fn is_keyword_death_trigger(
         || tid == PERSIST_TRIGGER_ID
         || (AFTERLIFE_TRIGGER_ID_BASE - AFTERLIFE_MAX..AFTERLIFE_TRIGGER_ID_BASE)
             .contains(&tid)
+        || (SOULSHIFT_TRIGGER_ID_BASE - SOULSHIFT_MAX..SOULSHIFT_TRIGGER_ID_BASE)
+            .contains(&tid)
 }
 
 /// Is `tid` one of the Pass 3.3 attack/combat-damage sentinels?
@@ -3020,6 +3028,7 @@ pub(crate) fn is_misc_trigger(tid: crate::types::TriggerId) -> bool {
 /// functionally inert; revisit when token subtypes are wired.
 fn keyword_death_trigger_resolve(
     state: &GameState,
+    registry: &CardRegistry,
     trigger_id: crate::types::TriggerId,
     trigger_event: &crate::events::GameEvent,
 ) -> Vec<crate::effects::Effect> {
@@ -3046,6 +3055,27 @@ fn keyword_death_trigger_resolve(
             kind: crate::types::CounterKind::MinusOneMinusOne,
             count: 1,
         }];
+    }
+    // Soulshift N (CR 702.49a): optionally return one of the owner's
+    // graveyard Spirits with mana value ≤ N to hand. Candidates are
+    // filtered here (the interner is reachable via `registry`) and
+    // carried into the choice-posting effect.
+    if (SOULSHIFT_TRIGGER_ID_BASE - SOULSHIFT_MAX..SOULSHIFT_TRIGGER_ID_BASE)
+        .contains(&trigger_id)
+    {
+        let n = SOULSHIFT_TRIGGER_ID_BASE - trigger_id;
+        let owner = obj.owner;
+        let interner = registry.interner();
+        let candidates: Vec<ObjectId> = state.objects.iter()
+            .filter(|o| matches!(o.zone, Zone::Graveyard(p) if p == owner))
+            .filter(|o| o.characteristics.mana_cost.as_ref()
+                .map(|c| c.mana_value()).unwrap_or(0) <= n)
+            .filter(|o| o.characteristics.subtypes.iter()
+                .any(|s| interner.resolve(s) == Some("Spirit")))
+            .map(|o| o.id)
+            .collect();
+        if candidates.is_empty() { return Vec::new(); }
+        return vec![Effect::SoulshiftReturn { player: owner, candidates }];
     }
     // Afterlife N: N decoded from the sentinel band.
     let n = AFTERLIFE_TRIGGER_ID_BASE - trigger_id;
@@ -3429,6 +3459,11 @@ pub(crate) const UNDYING_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 1;
 pub(crate) const PERSIST_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 2;
 pub(crate) const AFTERLIFE_MAX: u32 = 64;
 pub(crate) const AFTERLIFE_TRIGGER_ID_BASE: crate::types::TriggerId = u32::MAX - 16;
+// Pass 4.1b — Soulshift N death trigger. N encoded in the band like
+// Afterlife: id = BASE - N. Band [BASE-MAX, BASE) is well clear of
+// the attack sentinels (~MAX-100) and the Afterlife band (~MAX-16).
+pub(crate) const SOULSHIFT_MAX: u32 = 64;
+pub(crate) const SOULSHIFT_TRIGGER_ID_BASE: crate::types::TriggerId = u32::MAX - 200;
 
 // Pass 3.3 — attack / combat-damage keyword triggers, synthesized on
 // `AttacksDeclared` (Exalted/BattleCry/Mentor/Dethrone) or
@@ -5285,6 +5320,42 @@ mod tests {
         registry.register(crate::registry::CardDefinition::new(name, chars))
     }
 
+    /// Register a Spirit creature with mana value `mv`, return its id.
+    fn register_spirit(
+        registry: &mut crate::registry::CardRegistry,
+        mv: u32,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern(&unique_card_name());
+        let cost = format!("{{{mv}}}");
+        let mut subtypes = crate::types::SubtypeSet::default();
+        subtypes.insert_name(registry.interner_mut(), "Spirit");
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse(&cost).unwrap()),
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            subtypes,
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        registry.register(crate::registry::CardDefinition::new(name, chars))
+    }
+
+    /// Put `card` directly into player 0's graveyard, return its id.
+    fn in_graveyard(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        card: crate::types::CardId,
+    ) -> ObjectId {
+        let id = state.allocate_object_id();
+        let def = registry.get(card).unwrap();
+        state.objects.insert(GameObject::new(
+            id, 0, Zone::Graveyard(0), card,
+            def.base_characteristics.clone()));
+        id
+    }
+
     /// Deploy `card`, clear summoning sickness, return the id.
     fn deploy_ready(
         state: &mut GameState,
@@ -5776,6 +5847,89 @@ mod tests {
         assert!(!state.objects.get(buddy).unwrap().is_tapped());
         assert_eq!(state.computed_power(enlister), Some(2),
             "declining the may leaves the enlister unchanged");
+    }
+
+    // --- Pass 4.1b: Soulshift optional graveyard return -------------------
+
+    /// Kill a Soulshift creature, settle to the synthesized death
+    /// trigger, resolve it. Returns the pending choice (or None if no
+    /// Spirit candidate ⇒ no prompt).
+    fn drive_to_soulshift_choice(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        creature: ObjectId,
+    ) -> Option<crate::actions::PendingChoice> {
+        state.move_object_to_zone(
+            creature, Zone::Graveyard(0), MoveCause::StateBasedAction).unwrap();
+        run_sba_and_triggers(state, registry);
+        assert_eq!(state.stack_size(), 1, "Soulshift synthesizes a death trigger");
+        resolve_top_of_stack(state, registry);
+        state.pending_choice.clone()
+    }
+
+    #[test]
+    fn soulshift_returns_chosen_spirit_to_hand() {
+        use crate::effects::KeywordAbility::Soulshift;
+        let mut registry = crate::registry::CardRegistry::new();
+        let ss = register_kw_pt(&mut registry, vec![Soulshift(3)], 2, 2);
+        let spirit_card = register_spirit(&mut registry, 2);
+        let mut state = GameState::new(2, 0);
+        let creature = deploy_ready(&mut state, &registry, ss);
+        let spirit = in_graveyard(&mut state, &registry, spirit_card);
+
+        let pc = drive_to_soulshift_choice(&mut state, &registry, creature)
+            .expect("a MV-2 Spirit in the graveyard ⇒ a prompt");
+        let cands = match pc.kind {
+            crate::actions::ChoiceKind::PickCards { candidates, min, max } => {
+                assert_eq!((min, max), (0, 1)); candidates
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        };
+        assert!(cands.contains(&spirit), "the MV-2 Spirit is a candidate");
+
+        apply_resolution_choice(&mut state, &registry, pc.id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![spirit] });
+        // The move re-ids the card (CR 400.7) — check by card_id/zone.
+        assert!(state.objects.iter().any(|o|
+            o.card_id == spirit_card && o.zone == Zone::Hand(0)),
+            "the chosen Spirit returns to its owner's hand");
+        assert!(!state.objects.iter().any(|o|
+            o.card_id == spirit_card && matches!(o.zone, Zone::Graveyard(_))),
+            "and is no longer in the graveyard");
+    }
+
+    #[test]
+    fn soulshift_decline_leaves_spirit_in_graveyard() {
+        use crate::effects::KeywordAbility::Soulshift;
+        let mut registry = crate::registry::CardRegistry::new();
+        let ss = register_kw_pt(&mut registry, vec![Soulshift(3)], 2, 2);
+        let spirit_card = register_spirit(&mut registry, 2);
+        let mut state = GameState::new(2, 0);
+        let creature = deploy_ready(&mut state, &registry, ss);
+        let spirit = in_graveyard(&mut state, &registry, spirit_card);
+
+        let pc = drive_to_soulshift_choice(&mut state, &registry, creature)
+            .expect("prompt expected");
+        apply_resolution_choice(&mut state, &registry, pc.id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![] });
+        assert_eq!(state.objects.get(spirit).unwrap().zone, Zone::Graveyard(0),
+            "declining the may leaves the Spirit in the graveyard");
+    }
+
+    #[test]
+    fn soulshift_no_eligible_spirit_no_prompt() {
+        use crate::effects::KeywordAbility::Soulshift;
+        let mut registry = crate::registry::CardRegistry::new();
+        let ss = register_kw_pt(&mut registry, vec![Soulshift(3)], 2, 2);
+        // A Spirit too expensive for Soulshift 3 (MV 5).
+        let big = register_spirit(&mut registry, 5);
+        let mut state = GameState::new(2, 0);
+        let creature = deploy_ready(&mut state, &registry, ss);
+        in_graveyard(&mut state, &registry, big);
+
+        let pc = drive_to_soulshift_choice(&mut state, &registry, creature);
+        assert!(pc.is_none(),
+            "no Spirit with mana value ≤ 3 ⇒ the trigger resolves to nothing");
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

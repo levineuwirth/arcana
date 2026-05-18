@@ -1,17 +1,18 @@
-//! Promised Kannushi — `{G}` 1/1 Human Druid with Soulshift.
-//! Betrayers of Kamigawa common; a cheap green Human Druid that
-//! returns a large Spirit from the graveyard when it dies (Soulshift 7).
+//! Promised Kannushi — `{G}` 1/1 Human Druid with Soulshift(7).
+//! Saviors of Kamigawa common; an efficient one-drop that returns a
+//! Spirit card with mana value 7 or less from the graveyard when it
+//! dies.
 //!
 //! # Rules references
 //!
-//! * CR 702.45 — Soulshift. When this creature dies, you may return
-//!   target Spirit card with mana value 7 or less from your graveyard
-//!   to your hand. The numeric threshold (7) is part of the card text;
-//!   the engine recognizes `KeywordAbility::Soulshift` as a unit
-//!   variant.
+//! * CR 702.45 — Soulshift N. "When this creature dies, you may return
+//!   target Spirit card with mana value N or less from your graveyard
+//!   to your hand." N is 7 for this card; encoded as
+//!   `KeywordAbility::Soulshift(7)` where the `u8` argument carries the
+//!   mana-value threshold.
 //!
-//! The keyword is a base characteristic; listing it in `keywords` is
-//! sufficient — the runtime pipeline does the rest.
+//! The keyword is a base characteristic; the runtime soulshift pipeline
+//! reads the `(N)` argument to enforce the mana-value cap.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -35,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![KeywordAbility::Soulshift],
+        keywords: vec![KeywordAbility::Soulshift(7)],
         ..Default::default()
     };
 
