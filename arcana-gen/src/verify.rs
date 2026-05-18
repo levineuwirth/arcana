@@ -137,6 +137,129 @@ pub fn precheck(config: &VerifyConfig) -> VerifyReport {
     check(KNOWN_GOOD_CANDIDATE, config)
 }
 
+/// Number of batch scratch slots (`candidate_0..N-1`). Single
+/// source of truth lives in `arcana-cards/build.rs`; re-exposed
+/// here so the batched driver can size chunks without a direct
+/// dep path. The batch chunk size must be `<= n_scratch_slots()`.
+pub fn n_scratch_slots() -> usize {
+    arcana_cards::generated::_scratch::N_SCRATCH_SLOTS
+}
+
+/// Slot slug for batch index `i` (`candidate_0`, `candidate_1`, …).
+pub fn batch_slot_slug(i: usize) -> String {
+    format!("candidate_{i}")
+}
+
+/// Per-chunk result of [`check_batch`].
+#[derive(Debug, Clone)]
+pub struct BatchReport {
+    /// One result per input source, in order. `FailedElsewhere` /
+    /// `InfrastructureError` are batch-wide: if the chunk hit one,
+    /// every entry carries it (the chunk's per-slot signal is
+    /// invalid).
+    pub per_slot: Vec<VerifyResult>,
+    pub duration: Duration,
+}
+
+/// Layer-1 verify a whole chunk in ONE `cargo check`. Writes
+/// `sources[i]` to `candidate_{i}.rs` and the known-good stub to
+/// every higher slot (so a previous chunk's broken code can't
+/// poison this compile), then runs a single `cargo check` and
+/// attributes each error to its slot by file path.
+///
+/// This is the throughput lever for large runs: cargo's
+/// per-invocation cost (process spawn, freshness check, crate
+/// metadata) is paid once per chunk instead of once per card.
+/// `sources.len()` must be `<= n_scratch_slots()`.
+pub fn check_batch(sources: &[String]) -> BatchReport {
+    let start = Instant::now();
+    let n = n_scratch_slots();
+    assert!(
+        sources.len() <= n,
+        "chunk of {} exceeds {n} scratch slots",
+        sources.len()
+    );
+
+    // Write the chunk; reset all remaining slots to known-good so
+    // stale candidates from a prior chunk don't add phantom errors.
+    for i in 0..n {
+        let path = scratch_path_for(&batch_slot_slug(i));
+        let body = sources.get(i).map(|s| s.as_str()).unwrap_or(KNOWN_GOOD_CANDIDATE);
+        if let Err(e) = std::fs::write(&path, body) {
+            let err = VerifyResult::InfrastructureError(format!(
+                "writing batch slot {}: {e}",
+                path.display()
+            ));
+            return BatchReport {
+                per_slot: vec![err; sources.len()],
+                duration: start.elapsed(),
+            };
+        }
+    }
+
+    let output = match Command::new("cargo")
+        .args(["check", "-p", "arcana-cards", "--message-format=json"])
+        .current_dir(workspace_root())
+        .output()
+    {
+        Ok(o) => o,
+        Err(e) => {
+            let err =
+                VerifyResult::InfrastructureError(format!("spawning cargo: {e}"));
+            return BatchReport {
+                per_slot: vec![err; sources.len()],
+                duration: start.elapsed(),
+            };
+        }
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let errors: Vec<CompileError> = parse_diagnostics(&stdout)
+        .into_iter()
+        .filter(|d| d.level == "error")
+        .collect();
+
+    // Bucket errors by slot. An error whose file isn't any
+    // `candidate*` slot means arcana-cards itself is broken —
+    // batch-wide FailedElsewhere (per-slot signal is meaningless).
+    let elsewhere: Vec<CompileError> = errors
+        .iter()
+        .filter(|e| !e.file.contains("generated/_scratch/candidate"))
+        .cloned()
+        .collect();
+    if !elsewhere.is_empty() && output.status.code() != Some(0) {
+        return BatchReport {
+            per_slot: vec![
+                VerifyResult::FailedElsewhere(elsewhere);
+                sources.len()
+            ],
+            duration: start.elapsed(),
+        };
+    }
+
+    let per_slot = (0..sources.len())
+        .map(|i| {
+            let suffix = format!("generated/_scratch/candidate_{i}.rs");
+            let mine: Vec<CompileError> = errors
+                .iter()
+                .filter(|e| e.file.ends_with(&suffix))
+                .cloned()
+                .collect();
+            if mine.is_empty() {
+                VerifyResult::Passed
+            } else {
+                VerifyResult::FailedInCandidate(mine)
+            }
+        })
+        .collect();
+
+    // `stderr` retained only for debugging a parser disagreement;
+    // not surfaced per-slot.
+    let _ = stderr;
+    BatchReport { per_slot, duration: start.elapsed() }
+}
+
 /// Run layer-1 verification on `candidate_source`. See module docs
 /// for outcome-shape detail.
 pub fn check(candidate_source: &str, config: &VerifyConfig) -> VerifyReport {
@@ -329,6 +452,36 @@ pub fn restore_known_good(config: &VerifyConfig) -> std::io::Result<()> {
 /// callers can spawn `cargo test` with the right `current_dir`.
 pub fn workspace_root_path() -> PathBuf {
     workspace_root()
+}
+
+/// The known-good (Grizzly Bears) source. Batched callers reset
+/// unused slots to this so a prior chunk's code can't add phantom
+/// diagnostics, and it has a real `register` (unlike the `_noop`
+/// bootstrap stub) so any later workspace build stays healthy.
+pub fn known_good_source() -> &'static str {
+    KNOWN_GOOD_CANDIDATE
+}
+
+/// Write `source` into batch slot `i` (`candidate_{i}.rs`). Used by
+/// the batched layer-2 path to stage a chunk before one
+/// `cargo test`.
+pub fn write_batch_slot(i: usize, source: &str) -> std::io::Result<()> {
+    std::fs::write(scratch_path_for(&batch_slot_slug(i)), source)
+}
+
+/// Restore the single slot and every batch slot to the known-good
+/// stub. Batched callers must call this on exit (RAII) so an
+/// aborted run never leaves a broken slot — which would break every
+/// later cargo invocation in the workspace.
+pub fn restore_all_slots() -> std::io::Result<()> {
+    std::fs::write(scratch_path_for("candidate"), KNOWN_GOOD_CANDIDATE)?;
+    for i in 0..n_scratch_slots() {
+        std::fs::write(
+            scratch_path_for(&batch_slot_slug(i)),
+            KNOWN_GOOD_CANDIDATE,
+        )?;
+    }
+    Ok(())
 }
 
 pub(crate) fn scratch_path_for(slug: &str) -> PathBuf {

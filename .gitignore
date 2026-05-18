@@ -37,3 +37,4 @@ arcana-py/python/arcana/*.pyd
 # arcana-cards/build.rs writes a stub on fresh clones so the crate
 # still compiles before verify has ever run.
 arcana-cards/src/generated/_scratch/candidate.rs
+arcana-cards/src/generated/_scratch/candidate_*.rs
