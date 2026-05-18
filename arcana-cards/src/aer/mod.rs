@@ -6,3 +6,8 @@
 
 pub mod walking_ballista;
 pub mod servo_exhibition;
+pub mod prizefighter_construct;
+pub mod lathnu_sailback;
+pub mod ghirapur_osprey;
+pub mod foundry_assembler;
+pub mod alley_strangler;

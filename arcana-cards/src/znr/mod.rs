@@ -4,3 +4,8 @@
 //! and a land back face, each played via its own path.
 
 pub mod tangled_florahedron;
+pub mod highborn_vampire;
+pub mod cliffhaven_sell_sword;
+pub mod murasa_brute;
+pub mod tajuru_snarecaster;
+pub mod tajuru_blightblade;

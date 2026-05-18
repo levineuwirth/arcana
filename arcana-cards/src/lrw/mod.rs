@@ -2,3 +2,5 @@
 
 pub mod elvish_visionary;
 pub mod axegrinder_giant;
+pub mod woodland_changeling;
+pub mod moonglove_winnower;

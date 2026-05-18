@@ -186,6 +186,202 @@ pub mod gpt;
 
 pub mod a25;
 
+pub mod iko;
+
+pub mod dom;
+
+pub mod tsr;
+
+pub mod jou;
+
+pub mod wwk;
+
+pub mod rtr;
+
+pub mod ema;
+
+pub mod dka;
+
+pub mod s5ed;
+
+pub mod ogw;
+
+pub mod con;
+
+pub mod j25;
+
+pub mod mbs;
+
+pub mod ody;
+
+pub mod fut;
+
+pub mod chk;
+
+pub mod csp;
+
+pub mod me1;
+
+pub mod me2;
+
+pub mod bfz;
+
+pub mod td2;
+
+pub mod avr;
+
+pub mod hml;
+
+pub mod ddp;
+
+pub mod plst;
+
+pub mod drk;
+
+pub mod ddr;
+
+pub mod khm;
+
+pub mod dmc;
+
+pub mod usg;
+
+pub mod evg;
+
+pub mod s4ed;
+
+pub mod s2xm;
+
+pub mod pcy;
+
+pub mod uds;
+
+pub mod tmt;
+
+pub mod clb;
+
+pub mod wth;
+
+pub mod dmu;
+
+pub mod dis;
+
+pub mod tmp;
+
+pub mod hbg;
+
+pub mod ddn;
+
+pub mod afr;
+
+pub mod s5dn;
+
+pub mod mm2;
+
+pub mod tdm;
+
+pub mod blb;
+
+pub mod gn2;
+
+pub mod sok;
+
+pub mod clu;
+
+pub mod scg;
+
+pub mod lci;
+
+pub mod bro;
+
+pub mod hop;
+
+pub mod all;
+
+pub mod ima;
+
+pub mod emn;
+
+pub mod rvr;
+
+pub mod dmr;
+
+pub mod one;
+
+pub mod eoe;
+
+pub mod nem;
+
+pub mod cmr;
+
+pub mod dst;
+
+pub mod sos;
+
+pub mod ddq;
+
+pub mod ddg;
+
+pub mod inr;
+
+pub mod ddi;
+
+pub mod ddh;
+
+pub mod c13;
+
+pub mod lgn;
+
+pub mod s40k;
+
+pub mod c20;
+
+pub mod jud;
+
+pub mod uma;
+
+pub mod ddo;
+
+pub mod plc;
+
+pub mod mh1;
+
+pub mod ddk;
+
+pub mod gvl;
+
+pub mod neo;
+
+pub mod pca;
+
+pub mod mma;
+
+pub mod arn;
+
+pub mod snc;
+
+pub mod dds;
+
+pub mod ddl;
+
+pub mod mor;
+
+pub mod unk;
+
+pub mod ddt;
+
+pub mod prm;
+
+pub mod e01;
+
+pub mod fin;
+
+pub mod dvd;
+
+pub mod gnt;
+
+pub mod otj;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

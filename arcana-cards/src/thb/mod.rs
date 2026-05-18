@@ -2,3 +2,6 @@
 pub mod nyxborn_courser;
 pub mod nyxborn_brute;
 pub mod nyxborn_marauder;
+pub mod nyxborn_colossus;
+pub mod nyxborn_seaguard;
+pub mod moss_viper;

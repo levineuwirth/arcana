@@ -6,3 +6,7 @@ pub mod ahn_crop_crasher;
 pub mod colossapede;
 pub mod those_who_serve;
 pub mod hyena_pack;
+pub mod ancient_crab;
+pub mod dune_beetle;
+pub mod nimble_blade_khenra;
+pub mod cursed_minotaur;

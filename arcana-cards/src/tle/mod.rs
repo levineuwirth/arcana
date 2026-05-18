@@ -1,3 +1,19 @@
 //! TLE — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod warship_scout;
 pub mod capital_guard;
+pub mod kyoshi_warrior_guard;
+pub mod deer_dog;
+pub mod aardvark_sloth;
+pub mod turtle_seals;
+pub mod dragon_moose;
+pub mod flying_dolphin_fish;
+pub mod the_terror_of_serpent_s_pass;
+pub mod hippo_cows;
+pub mod zhao_the_seething_flame;
+pub mod elephant_rat;
+pub mod fire_nation_soldier;
+pub mod komodo_rhino;
+pub mod gilacorn;
+pub mod frog_squirrels;
+pub mod sokka_wolf_cove_s_protector;
+pub mod tundra_wall;

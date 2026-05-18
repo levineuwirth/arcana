@@ -4,3 +4,7 @@
 
 pub mod bonecrusher_giant;
 pub mod knight_of_the_keep;
+pub mod oko_s_accomplices;
+pub mod youthful_knight;
+pub mod sporecap_spider;
+pub mod prized_griffin;

@@ -4,3 +4,8 @@
 //! CR 704.5q illegal-attachment-SBA pipeline.
 
 pub mod bonesplitter;
+pub mod alpha_myr;
+pub mod omega_myr;
+pub mod fangren_hunter;
+pub mod goblin_striker;
+pub mod dross_prowler;

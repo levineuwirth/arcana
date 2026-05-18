@@ -3,3 +3,7 @@ pub mod amphin_cutthroat;
 pub mod goblin_piker;
 pub mod bonebreaker_giant;
 pub mod armored_warhorse;
+pub mod warpath_ghoul;
+pub mod sacred_wolf;
+pub mod garruk_s_companion;
+pub mod wall_of_torches;

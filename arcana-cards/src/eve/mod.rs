@@ -5,3 +5,4 @@
 //! without secondary-ability noise.
 
 pub mod slippery_bogle;
+pub mod smoldering_butcher;

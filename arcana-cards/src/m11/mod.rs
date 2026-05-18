@@ -4,3 +4,7 @@
 
 pub mod preordain;
 pub mod typhoid_rats;
+pub mod nether_horror;
+pub mod azure_drake;
+pub mod bog_raiders;
+pub mod yavimaya_wurm;
