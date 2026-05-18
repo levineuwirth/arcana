@@ -1,5 +1,18 @@
 # Keyword rules passes (Pass 3.x)
 
+> **STATUS: Passes 3.1–3.7 COMPLETE** (commits 3d32a0a, bae9519,
+> da33990, 128fb2b, d66c8f0, 072dbb8, fec53ba). 31 deferred markers
+> resolved → catalog 1010 → **1023**, every landed card attested
+> clean by `verify_catalog.py` against committed bytes. The only
+> remaining `DEFERRED_KEYWORDS` are **Banding** (full CR 702.22
+> combat banding — worst ROI) and **Warp** (cast-time alternative
+> cost); their cards stay honestly quarantined until dedicated
+> passes. Keywords whose choice/mana parts can't yet be honestly
+> resolved (Enlist, Provoke, Soulshift, Scavenge, Devour, Amplify,
+> Unleash, Sunburst, Cycling-activation, Changeling-all-types,
+> Afterlife-Spirit-subtype) use documented deterministic Phase-1
+> policies — DEBT noted at each site.
+
 Passes 0–2 are landed: prompt/contract fixes, landwalk (real),
 evasion keywords (Fear/Intimidate/Shadow/Horsemanship/Skulk real) +
 the 31 deferred markers + the L3-stub honesty guard. The markers
