@@ -189,6 +189,17 @@ pub struct GameObject {
     /// battlefield creature is an ordinary object with no adventure
     /// residue.
     pub adventure_exile_pending: bool,
+    /// CR 702.43a — set of colors of mana spent to cast the spell that
+    /// became this permanent. Written by
+    /// [`crate::state::GameState::finalize_resolved_spell`] from the
+    /// resolving [`crate::stack::StackEntry::colors_spent`] just before
+    /// the ETB hook runs, so Sunburst's enters-with-counters branch
+    /// reads the right count. Empty (colorless) for permanents that
+    /// entered without being cast (tokens, blink, reanimation) — which
+    /// is the correct Sunburst result there: no mana was spent.
+    /// Cleared by [`Self::reset_on_zone_change`]: a fresh re-id'd
+    /// object spent no mana until a cast says otherwise.
+    pub colors_paid: ColorSet,
 }
 
 impl GameObject {
@@ -220,6 +231,7 @@ impl GameObject {
             visible_face: 0,
             default_face_characteristics: None,
             is_token: false,
+            colors_paid: ColorSet::new(),
         }
     }
 
@@ -396,6 +408,11 @@ impl GameObject {
         // keeps the post-exile object from carrying stale adventure
         // residue into the battlefield.
         self.adventure_exile_pending = false;
+        // CR 702.43a — "mana spent" is per-cast. A permanent that
+        // changes zones and comes back was not cast across that move,
+        // so the spent-colors record must not survive the re-id. The
+        // cast path re-stamps this in `finalize_resolved_spell`.
+        self.colors_paid = ColorSet::new();
     }
 }
 

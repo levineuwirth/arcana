@@ -548,6 +548,27 @@ fn apply_cast_spell(
         matches!(c, crate::actions::AdditionalCostPayment::Kicker));
     if elected_kicker && !has_kicker(state, object_id) { return; }
 
+    // CR 702.43a — record the set of colors of mana actually spent
+    // *before* the pool is drained. Each assignment names a pool unit;
+    // its color (skipping Colorless) joins the set. Convoke and Delve
+    // proxies pay generic and contribute no color (Phase-1
+    // simplification: CR 702.51e lets a convoked creature pay a pip of
+    // its own color, but the solver models convoke as generic-only, so
+    // no color is attributable here). Threaded onto the resulting
+    // permanent so Sunburst reads it as the permanent enters.
+    let colors_spent = {
+        let pool = &state.player(controller).mana_pool.pool;
+        let mut set = crate::types::ColorSet::new();
+        for a in &mana_payment.assignments {
+            if let Some(unit) = pool.get(a.pool_index) {
+                if let Some(c) = unit.color.as_color() {
+                    set = set.with(c);
+                }
+            }
+        }
+        set
+    };
+
     // 1c. Spend the mana payment. `mana_payment` is already sized
     //     against the delve-reduced and convoke-reduced cost —
     //     legal_actions solves mana against the post-reduction cost,
@@ -696,6 +717,7 @@ fn apply_cast_spell(
         entry.kicked = elected_kicker;
         entry.pre_adventure_characteristics = pre_adventure_chars;
         entry.pre_split_characteristics = pre_split_chars;
+        entry.colors_spent = colors_spent;
     }
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
@@ -5304,6 +5326,67 @@ mod tests {
             crate::registry::CardDefinition::new(name, chars))
     }
 
+    /// Register a Sunburst creature with an explicit mana cost so a
+    /// test can pay it with a chosen mix of colors.
+    fn register_sunburst_creature(
+        registry: &mut crate::registry::CardRegistry,
+        cost: &str,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern(&unique_card_name());
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse(cost).unwrap()),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![crate::effects::KeywordAbility::Sunburst],
+            ..Default::default()
+        };
+        registry.register(
+            crate::registry::CardDefinition::new(name, chars))
+    }
+
+    /// Cast `card` from player 0's hand paying `cost` (each pool unit
+    /// in order assigned to the matching cost component), resolve it,
+    /// and return the post-resolution state plus the resulting
+    /// battlefield object id.
+    fn cast_and_resolve(
+        mut state: GameState,
+        registry: &CardRegistry,
+        card: crate::types::CardId,
+        cost: &str,
+    ) -> (GameState, ObjectId) {
+        let src = put_in_hand(&mut state, registry, 0, card);
+        give_mana(&mut state, 0, cost);
+        let n = state.player(0).mana_pool.pool.len();
+        state.priority.give_to(0);
+        state.turn.phase = crate::turn::Phase::PreCombatMain;
+        state.turn.step = crate::turn::Step::Main;
+        let cast = Action::CastSpell {
+            object_id: src,
+            targets: crate::targets::TargetSelection::new(),
+            modes: Vec::new(),
+            mana_payment: crate::actions::ManaPaymentPlan {
+                assignments: (0..n).map(|i| crate::actions::ManaAssignment {
+                    pool_index: i, cost_index: i,
+                }).collect(),
+                ..Default::default()
+            },
+            additional_costs: Vec::new(),
+            x_value: None,
+            cast_modifier: crate::actions::CastModifier::None,
+            cost_reductions: crate::actions::CostReductions::default(),
+        };
+        let (mut state, _) = step(state, cast, registry);
+        assert!(!state.stack_is_empty(), "cast must put the spell on the stack");
+        resolve_top_of_stack(&mut state, registry);
+        let id = state.objects.objects_in_zone(Zone::Battlefield)
+            .find(|o| o.is_creature())
+            .map(|o| o.id)
+            .expect("Sunburst creature must resolve onto the battlefield");
+        (state, id)
+    }
+
     /// Drop a registered card onto the battlefield; return its
     /// battlefield id.
     fn deploy(
@@ -5834,10 +5917,47 @@ mod tests {
     #[test]
     fn declined_or_uncomputable_etb_keywords_yield_zero() {
         use crate::effects::KeywordAbility::*;
+        // Devour/Amplify/Unleash place their counters through the
+        // resolver-prompt path (Pass 4.1), not the deterministic
+        // keyword-ETB branch — so 0 here. Sunburst via the no-cast
+        // `deploy` path is also 0, but for a *correct* reason (no mana
+        // was spent); it has its own cast-path tests below.
         assert_eq!(etb_plus_counters(vec![Devour(3)]), 0);
         assert_eq!(etb_plus_counters(vec![Amplify(2)]), 0);
-        assert_eq!(etb_plus_counters(vec![Sunburst]), 0);
         assert_eq!(etb_plus_counters(vec![Unleash]), 0);
+    }
+
+    #[test]
+    fn sunburst_deployed_without_casting_enters_with_zero() {
+        // CR 702.43a — a Sunburst permanent put onto the battlefield
+        // without being cast spent no mana, so zero counters.
+        use crate::effects::KeywordAbility::Sunburst;
+        assert_eq!(etb_plus_counters(vec![Sunburst]), 0);
+    }
+
+    fn sunburst_counters_for_cost(cost: &str) -> u32 {
+        use crate::types::CounterKind;
+        let mut registry = CardRegistry::new();
+        let card = register_sunburst_creature(&mut registry, cost);
+        let state = GameState::new(2, 0);
+        let (state, id) = cast_and_resolve(state, &registry, card, cost);
+        state.objects.get(id).unwrap()
+            .count_counters(CounterKind::PlusOnePlusOne)
+    }
+
+    #[test]
+    fn sunburst_one_counter_per_distinct_color_spent() {
+        // CR 702.43a — count of *distinct* colors of mana spent.
+        assert_eq!(sunburst_counters_for_cost("{G}"), 1, "mono-color");
+        assert_eq!(sunburst_counters_for_cost("{W}{U}"), 2, "two colors");
+        assert_eq!(sunburst_counters_for_cost("{W}{U}{B}{R}{G}"), 5,
+            "all five colors");
+    }
+
+    #[test]
+    fn sunburst_duplicate_color_counts_once() {
+        // {R}{R} spends two red mana — one *color* → one counter.
+        assert_eq!(sunburst_counters_for_cost("{R}{R}"), 1);
     }
 
     #[test]

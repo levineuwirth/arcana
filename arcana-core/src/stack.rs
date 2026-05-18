@@ -185,6 +185,16 @@ pub struct StackEntry {
     /// reason as [`Self::pre_adventure_characteristics`].
     #[serde(skip)]
     pub pre_split_characteristics: Option<Characteristics>,
+    /// CR 702.43a — set of colors of mana actually spent to cast this
+    /// spell. Populated by [`crate::engine::apply_cast_spell`] from the
+    /// `ManaPaymentPlan` (the colors of the drained pool units) before
+    /// the pool is spent; empty for ability entries and for any cast
+    /// whose payment was purely generic/colorless. Threaded onto the
+    /// resulting permanent's [`crate::objects::GameObject::colors_paid`]
+    /// by [`Self::finalize_resolved_spell`] so Sunburst can read the
+    /// color count as the permanent enters.
+    #[serde(default)]
+    pub colors_spent: crate::types::ColorSet,
 }
 
 impl StackEntry {
@@ -222,6 +232,8 @@ impl StackEntry {
             // Caller (apply_cast_spell) populates only for Adventure casts.
             pre_adventure_characteristics: None,
             pre_split_characteristics: None,
+            // Caller (apply_cast_spell) stamps from the spent pool units.
+            colors_spent: crate::types::ColorSet::new(),
         }
     }
 
@@ -257,6 +269,7 @@ impl StackEntry {
             kicked: false,
             pre_adventure_characteristics: None,
             pre_split_characteristics: None,
+            colors_spent: crate::types::ColorSet::new(),
         }
     }
 
@@ -291,6 +304,7 @@ impl StackEntry {
             kicked: false,
             pre_adventure_characteristics: None,
             pre_split_characteristics: None,
+            colors_spent: crate::types::ColorSet::new(),
         }
     }
 
@@ -633,7 +647,7 @@ impl GameState {
     /// that 0/0 creatures with "enters with X +1/+1 counters" don't
     /// die to SBA between entering and getting their counters.
     pub fn finalize_resolved_spell(&mut self, entry: StackEntry) {
-        let StackEntry { id, controller, x_value, .. } = entry;
+        let StackEntry { id, controller, x_value, colors_spent, .. } = entry;
         let chars = entry.characteristics().cloned().unwrap_or_else(||
             panic!("finalize_resolved_spell: entry {id} is not a spell"));
         let owner = self.objects.get(id)
@@ -674,6 +688,10 @@ impl GameState {
         if destination == Zone::Battlefield {
             if let Some(obj) = self.objects.get_mut(new_id) {
                 obj.controller = controller;
+                // CR 702.43a — carry the cast's spent-color set onto
+                // the permanent before the ETB hook so Sunburst's
+                // enters-with-counters branch reads the right count.
+                obj.colors_paid = colors_spent;
             }
         }
 

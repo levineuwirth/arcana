@@ -618,12 +618,13 @@ impl GameState {
                 _ => {} // not an ETB replacement
             }
         }
-        // Pass 3.5 — keyword-driven enters-with-counters (Modular,
-        // Graft, Bloodthirst, Riot; the choice-driven Devour/Amplify/
-        // Unleash and the mana-spend Sunburst yield 0 under the
-        // documented Phase-1 policy). Folded here so the counters are
-        // present *as the permanent enters* and compose with other
-        // ETB-counter replacements.
+        // Pass 3.5 / 4.3 — keyword-driven enters-with-counters
+        // (Modular, Graft, Bloodthirst, Riot, and Sunburst — the last
+        // reads the cast's spent-color count via `colors_paid`; the
+        // choice-driven Devour/Amplify/Unleash place their counters
+        // through the resolver-prompt path instead). Folded here so the
+        // counters are present *as the permanent enters* and compose
+        // with other ETB-counter replacements.
         let kw_counters = self.keyword_etb_counters(object_id);
         if kw_counters > 0 {
             out.additional_counters
@@ -649,12 +650,16 @@ impl GameState {
     /// Deterministic +1/+1 counter count a permanent enters with from
     /// its Pass-3.5 keywords. Phase-1 policy: Modular/Graft = N,
     /// Riot = 1 (takes the counter over haste), Bloodthirst = N iff
-    /// an opponent was dealt damage this turn, everything else 0.
+    /// an opponent was dealt damage this turn, Sunburst = number of
+    /// colors of mana spent to cast it (CR 702.43a — read from the
+    /// permanent's `colors_paid`, stamped by `finalize_resolved_spell`;
+    /// zero for permanents that entered without being cast), everything
+    /// else 0.
     fn keyword_etb_counters(&self, object_id: ObjectId) -> u32 {
         use crate::effects::KeywordAbility as KA;
-        let Some(controller) =
-            self.objects.get(object_id).map(|o| o.controller)
-        else { return 0; };
+        let Some(obj) = self.objects.get(object_id) else { return 0; };
+        let controller = obj.controller;
+        let colors_paid = obj.colors_paid.len();
         let opponent_damaged = self.players.iter()
             .any(|p| p.id != controller && p.damaged_this_turn);
         let mut total = 0u32;
@@ -663,6 +668,7 @@ impl GameState {
                 KA::Modular(n) | KA::Graft(n) => n as u32,
                 KA::Riot => 1,
                 KA::Bloodthirst(n) if opponent_damaged => n as u32,
+                KA::Sunburst => colors_paid,
                 _ => 0,
             };
         }

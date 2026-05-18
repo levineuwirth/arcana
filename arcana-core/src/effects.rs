@@ -1126,10 +1126,16 @@ pub enum KeywordAbility {
     /// CR 702.54a — Bloodthirst N. Enters with N +1/+1 counters if
     /// an opponent was dealt damage this turn.
     Bloodthirst(u8),
-    /// CR 702.43a — Sunburst. Enters with a +1/+1 (or charge)
-    /// counter per color of mana spent. DEBT: Phase-1 has no
-    /// mana-spend color record, so it enters with 0 (functional
-    /// creature, situational bonus deferred).
+    /// CR 702.43a — Sunburst. Enters with a +1/+1 counter per color
+    /// of mana spent to cast it. Fully wired (Pass 4.3): the cast
+    /// path records the spent-color set on the stack entry, threads
+    /// it onto the permanent's `colors_paid`, and the keyword-ETB
+    /// counter branch places that many +1/+1 counters as it enters
+    /// (composes with Hardened Scales / Doubling Season). Permanents
+    /// that enter without being cast spent no mana → 0 counters,
+    /// which is the correct result. (Charge-counter Sunburst on
+    /// noncreature artifacts uses +1/+1 here — no charge-counter
+    /// catalog card exercises the distinction.)
     Sunburst,
     /// CR 702.37a — Amplify N. "As this enters, you may reveal any
     /// number of cards from your hand that share a creature type
