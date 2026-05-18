@@ -409,7 +409,11 @@ REFERENCE — Servo Exhibition ({{1}}{{W}} sorcery, 'Create two 1/1 colorless Se
 {FS_SERVO_EXHIBITION}
 ```
 
-ENGINE EFFECT CATALOG — these `Effect` variants are part of the engine API and are ALL permitted in addition to the ones in the references above. Construct them exactly as written. `p` means a `PlayerId` (use `entry.controller` for 'you'; for 'target player'/'target opponent' read it from the target like Lightning Bolt's `TargetChoice::Player` arm). `id` means an `ObjectId` read from `entry.targets.targets.first()` (single-target shape — see Murder/Lightning Bolt). Imports: `Effect`, `TokenDefinition`, `DiscardChoice` from `arcana_core::effects`; `Duration` from `arcana_core::layers`; `CounterKind` from `arcana_core::types`; `Zone` from `arcana_core::zones`; `ObjectFilter` from `arcana_core::targets`.
+ENGINE EFFECT CATALOG — these `Effect` variants are part of the engine API and are ALL permitted in addition to the ones in the references above. Construct each EXACTLY as written: use only the field names shown, never add a field (no `optional`, no `count` on `CreateToken`, no `creature_a` on `Fight`) and never rename one. For 'do this N times' / 'create N tokens', repeat the whole `Effect` value N times in the `vec!` — there is no count field. `p` means a `PlayerId` (use `entry.controller` for 'you'; for 'target player'/'target opponent' read it from the target like Lightning Bolt's `TargetChoice::Player` arm). `id` means an `ObjectId` read from `entry.targets.targets.first()` (single-target shape — see Murder/Lightning Bolt).
+
+Imports (use these EXACT paths): `Effect`, `TokenDefinition`, `DiscardChoice`, `KeywordAbility` from `arcana_core::effects`; `Duration` from `arcana_core::layers`; `CounterKind` from `arcana_core::types`; `Zone` from `arcana_core::zones`; `ObjectFilter`, `TargetRequirement`, `TargetFilter`, `TargetCount` from `arcana_core::targets`. (`KeywordAbility` is NOT in `arcana_core::types`.)
+
+TYPE-LINE RULE: `TypeLine::CREATURE` / `LAND` / `ARTIFACT` / `INSTANT` / `SORCERY` etc. are bitflag CONSTS, not `TypeLine` values. Anywhere a `TypeLine` is needed (an `ObjectFilter`'s `with_types`, a `TokenDefinition.types`) write `TypeLine::LAND.into()` for one type, or `TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)` to combine — exactly as the Servo Exhibition reference does. Never pass a bare `TypeLine::LAND`.
 
 Card flow (no target — player is `entry.controller` or a target player):
 - `Effect::DrawCards {{ player: p, count: u32 }}`
@@ -444,7 +448,12 @@ Tokens:
 Search the library (shuffle is automatic):
 - `Effect::TutorToHand {{ player: p, filter: ObjectFilter::creature(), reveal: true }}`
 - `Effect::TutorToBattlefield {{ player: p, filter: ObjectFilter::creature(), tapped: false }}`
-- `ObjectFilter` builders: `ObjectFilter::creature()`, `ObjectFilter::permanent()`, `ObjectFilter::new().with_types(TypeLine::LAND)` (chain `.with_colors(...)`, `.with_types_any(...)`, `.without_types(...)`).
+- `ObjectFilter` builders: `ObjectFilter::creature()`, `ObjectFilter::permanent()`, `ObjectFilter::new().with_types(TypeLine::LAND.into())` (chain `.with_colors(ColorSet::...)`, `.with_types_any(TypeLine::X.into())`, `.without_types(TypeLine::X.into())`).
+
+TARGET SPEC — `target_requirements` on `SpellAbilityDef` (the references show `TargetRequirement::any_target()` and a creature target). Helper constructors: `TargetRequirement::target_creature()`, `TargetRequirement::target_player()`, `TargetRequirement::any_target()`. For anything else use the struct literal with EXACTLY these three fields:
+- `TargetRequirement {{ filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::LAND.into())), count: TargetCount::Exactly(1), controller: None }}`  (target land / artifact / enchantment — set the type in the inner `ObjectFilter`)
+- `TargetFilter` variants: `TargetFilter::Creature`, `TargetFilter::Player`, `TargetFilter::AnyTarget`, `TargetFilter::Permanent(ObjectFilter)`, `TargetFilter::Spell(ObjectFilter)` (counter-spells — filter the spell by type), `TargetFilter::Card {{ zone: Zone::Graveyard(0), filter: ObjectFilter::creature() }}` (target a card in a graveyard, e.g. Raise Dead/Reanimate).
+- `TargetCount`: `TargetCount::Exactly(1)`, `TargetCount::UpTo(n)`, `TargetCount::Any`. `controller` is `Option<...>` — use `None` and constrain inside the `ObjectFilter` instead.
 
 Stack:
 - `Effect::Counter {{ target: id }}`  (counter target spell — `id` is the spell's stack-object id; see Counterspell)
