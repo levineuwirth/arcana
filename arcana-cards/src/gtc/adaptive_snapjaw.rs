@@ -1,13 +1,18 @@
 //! Adaptive Snapjaw — `{4}{G}` 6/2 Lizard Beast with Evolve.
-//! Has evolve (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
+//! Gatecrash common; a Simic evolve creature that grows when larger
+//! creatures enter under your control.
 //!
 //! # Rules references
 //!
-//! * CR 702.99 — Evolve. Whenever a creature enters the battlefield under
-//!   your control, if that creature has greater power or toughness than
-//!   this creature, put a +1/+1 counter on this creature.
+//! * CR 702.100 — Evolve. Whenever a creature you control enters, if
+//!   that creature has greater power or toughness than this creature,
+//!   put a +1/+1 counter on this creature. Engine wiring handles the
+//!   triggered comparison and counter placement.
+//!
+//! The keyword is a base characteristic; listing it in `keywords` is
+//! sufficient — the runtime pipeline does the rest.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Evolve],
         ..Default::default()
     };
 

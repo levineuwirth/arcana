@@ -1015,8 +1015,36 @@ pub enum KeywordAbility {
     //     implements real semantics. Several are parametrized in real
     //     MTG (Soulshift N, Devour N, …); kept unit here — a future
     //     pass refactors to carry the payload when wiring behavior. ---
-    Banding, Soulshift, Scavenge,
-    Fading, Vanishing, Evolve,
+    /// CR 702.22 — Banding. Full attacking/blocking band damage
+    /// assignment is the worst ROI in the keyword set and is left
+    /// deferred (the lone remaining `semantic::DEFERRED_KEYWORDS`
+    /// entry); cards carrying it stay honestly quarantined until a
+    /// dedicated pass.
+    Banding,
+    // --- Long tail (Pass 3.6). Synthesized keyword triggers /
+    //     enters-with-counters; honest L2-pass. ---
+    /// CR 702.100a — Evolve. "Whenever a creature you control enters,
+    /// if it has greater power or toughness than this creature, put a
+    /// +1/+1 counter on this creature."
+    Evolve,
+    /// CR 702.62a — Fading N. Enters with N fade counters; at your
+    /// upkeep remove one, and if you can't, sacrifice it.
+    Fading(u8),
+    /// CR 702.61a — Vanishing N. As Fading but with time counters.
+    Vanishing(u8),
+    /// CR 702.49a — Soulshift N. Optional dies-trigger returning a
+    /// Spirit. Phase-1 policy: decline (a legal "may"), so the
+    /// keyword is recognized and the card functions; the return is
+    /// deferred to agent choices. (Mirrors Enlist/Provoke.)
+    Soulshift,
+    /// CR 702.41a — Scavenge. A graveyard activated ability. Phase-1
+    /// never activates it (no agent), so the card functions; the
+    /// ability is deferred. (Mirrors Cycling-style optional value.)
+    Scavenge,
+    /// CR 702.73a — Changeling. "This is every creature type." DEBT:
+    /// the all-types CDA is recognized but inert — no tribal-matters
+    /// card exists in the catalog (same posture as Afterlife's
+    /// missing Spirit subtype).
     Changeling,
     // --- Enters-with-counters / ETB scaling (Pass 3.5). Folded into
     //     `collect_etb_replacements` so counters are present *as the

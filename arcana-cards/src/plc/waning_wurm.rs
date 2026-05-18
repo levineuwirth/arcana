@@ -1,13 +1,16 @@
 //! Waning Wurm — `{3}{B}` 7/6 Zombie Wurm with Vanishing 2.
-//! Vanishing is not expressible with the current demonstrated KeywordAbility
-//! API; the verify pipeline should flag this for manual wiring.
+//! Planar Chaos uncommon; a large black wurm that enters with two
+//! time counters and is sacrificed when the last is removed at the
+//! beginning of upkeep.
 //!
 //! # Rules references
 //!
-//! * CR 702.63 — Vanishing. This permanent enters with time counters on it.
-//!   At the beginning of your upkeep, remove a time counter from it. When the
-//!   last is removed, sacrifice it.
+//! * CR 702.63 — Vanishing N. This permanent enters with N time
+//!   counters. At the beginning of its controller's upkeep, remove
+//!   a time counter from it. When the last time counter is removed,
+//!   sacrifice it. N=2 as given in the oracle text.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(7)),
         toughness: Some(PtValue::Fixed(6)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Vanishing(2)],
         ..Default::default()
     };
 

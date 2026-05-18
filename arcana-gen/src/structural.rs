@@ -198,6 +198,14 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         "sunburst" => "Sunburst",
         "unleash" => "Unleash",
         "riot" => "Riot",
+        // Pass 3.6 — long tail, fully implemented or recognized with
+        // a documented Phase-1 policy. (Fading/Vanishing are
+        // parametrised; N is in rules text, dropped like Toxic.
+        // Banding stays deferred — not asserted, cards quarantined.)
+        "evolve" => "Evolve",
+        "soulshift" => "Soulshift",
+        "scavenge" => "Scavenge",
+        "changeling" => "Changeling",
         _ => return None,
     })
 }

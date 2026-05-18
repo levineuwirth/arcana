@@ -629,6 +629,20 @@ impl GameState {
             out.additional_counters
                 .push((CounterKind::PlusOnePlusOne, kw_counters));
         }
+        // Pass 3.6 — Fading N / Vanishing N enter with N fade / time
+        // counters (the upkeep tick + sacrifice is a synthesized
+        // trigger in `engine`).
+        for k in self.effective_keywords(object_id) {
+            match k {
+                crate::effects::KeywordAbility::Fading(n) if n > 0 =>
+                    out.additional_counters
+                        .push((CounterKind::Fade, n as u32)),
+                crate::effects::KeywordAbility::Vanishing(n) if n > 0 =>
+                    out.additional_counters
+                        .push((CounterKind::Time, n as u32)),
+                _ => {}
+            }
+        }
         out
     }
 

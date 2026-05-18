@@ -2273,6 +2273,60 @@ fn collect_pending_triggers(
             }
         }
 
+        // 3f. Pass 3.6 long tail. Evolve: a creature its controller
+        //     controls entered with greater power OR toughness.
+        if let crate::events::GameEvent::EntersBattlefield { object_id, .. } = event {
+            use crate::effects::KeywordAbility as KA;
+            if let Some(entrant) = state.objects.get(*object_id) {
+                if entrant.is_creature() && entrant.zone.is_battlefield() {
+                    let ctrl = entrant.controller;
+                    let ep = state.computed_power(*object_id).unwrap_or(0);
+                    let et = state.computed_toughness(*object_id).unwrap_or(0);
+                    let evolvers: Vec<ObjectId> = state.objects
+                        .objects_in_zone(Zone::Battlefield)
+                        .filter(|o| o.controller == ctrl && o.id != *object_id)
+                        .map(|o| o.id)
+                        .filter(|id| state.effective_keywords(*id)
+                            .iter().any(|k| matches!(k, KA::Evolve)))
+                        .filter(|id| {
+                            ep > state.computed_power(*id).unwrap_or(i32::MAX)
+                            || et > state.computed_toughness(*id).unwrap_or(i32::MAX)
+                        })
+                        .collect();
+                    for src in evolvers {
+                        let c = state.objects.get(src)
+                            .map(|o| o.controller).unwrap_or(0);
+                        pending.push(crate::triggers::PendingTrigger {
+                            source: src, trigger_id: EVOLVE_TRIGGER_ID,
+                            controller: c, trigger_event: event.clone(),
+                            targets: crate::targets::TargetSelection::new(),
+                        });
+                    }
+                }
+            }
+        }
+        // Fading/Vanishing upkeep tick — active player's permanents.
+        if let crate::events::GameEvent::StepBegins {
+            step: crate::turn::Step::Upkeep
+        } = event {
+            use crate::effects::KeywordAbility as KA;
+            let ap = state.active_player();
+            let ids: Vec<ObjectId> = state.objects
+                .objects_in_zone(Zone::Battlefield)
+                .filter(|o| o.controller == ap)
+                .map(|o| o.id)
+                .filter(|id| state.effective_keywords(*id).iter()
+                    .any(|k| matches!(k, KA::Fading(_) | KA::Vanishing(_))))
+                .collect();
+            for src in ids {
+                pending.push(crate::triggers::PendingTrigger {
+                    source: src, trigger_id: FADEVANISH_TRIGGER_ID,
+                    controller: ap, trigger_event: event.clone(),
+                    targets: crate::targets::TargetSelection::new(),
+                });
+            }
+        }
+
         // 4. Auto-applied keyword triggers that bypass the stack in
         //    Phase 1. These are known, bounded behaviors we don't yet
         //    route through the full TriggeredAbilityDef system.
@@ -2843,6 +2897,11 @@ fn resolution_effects(
                 return combat_static_trigger_resolve(
                     state, entry.source, *trigger_id, trigger_event);
             }
+            // Pass 3.6 — Evolve / Fading-Vanishing upkeep.
+            if is_misc_trigger(*trigger_id) {
+                return misc_trigger_resolve(
+                    state, entry.source, *trigger_id);
+            }
             let source = entry.source;
             let Some(obj) = state.objects.get(source)
                 .or_else(|| state.lki.get(&source))
@@ -2920,6 +2979,12 @@ pub(crate) fn is_combat_static_trigger(tid: crate::types::TriggerId) -> bool {
         x if x == FLANKING_TRIGGER_ID
             || x == RAMPAGE_TRIGGER_ID
             || x == BUSHIDO_TRIGGER_ID)
+}
+
+/// Is `tid` one of the Pass 3.6 long-tail sentinels (Evolve, or the
+/// Fading/Vanishing upkeep tick)?
+pub(crate) fn is_misc_trigger(tid: crate::types::TriggerId) -> bool {
+    tid == EVOLVE_TRIGGER_ID || tid == FADEVANISH_TRIGGER_ID
 }
 
 /// Resolution effects for a synthesized Undying / Persist / Afterlife
@@ -3109,6 +3174,48 @@ fn combat_static_trigger_resolve(
         }];
     }
     Vec::new()
+}
+
+/// Resolution for the Pass 3.6 long-tail sentinels. Evolve places a
+/// +1/+1 counter (the greater-P/T gate was applied at synthesis).
+/// The Fading/Vanishing upkeep tick removes one fade/time counter;
+/// when that empties the permanent (or there were none), it's
+/// sacrificed — modeled as DestroyPermanent (Phase-1: the
+/// indestructible/regen edge is ignored; no such card in the
+/// catalog).
+fn misc_trigger_resolve(
+    state: &GameState,
+    source: ObjectId,
+    trigger_id: crate::types::TriggerId,
+) -> Vec<crate::effects::Effect> {
+    use crate::effects::{Effect, KeywordAbility as KA};
+    use crate::types::CounterKind;
+
+    if trigger_id == EVOLVE_TRIGGER_ID {
+        if state.objects.get(source).is_none() { return Vec::new(); }
+        return vec![Effect::AddCounters {
+            target: source, kind: CounterKind::PlusOnePlusOne, count: 1 }];
+    }
+    // FADEVANISH: pick the counter kind from the source's keyword.
+    let kind = state.effective_keywords(source).into_iter()
+        .find_map(|k| match k {
+            KA::Fading(_) => Some(CounterKind::Fade),
+            KA::Vanishing(_) => Some(CounterKind::Time),
+            _ => None,
+        });
+    let Some(kind) = kind else { return Vec::new(); };
+    let Some(obj) = state.objects.get(source) else { return Vec::new(); };
+    let have = obj.count_counters(kind);
+    if have == 0 {
+        return vec![Effect::DestroyPermanent { target: source }];
+    }
+    let mut out = vec![Effect::RemoveCounters {
+        target: source, kind, count: 1 }];
+    if have == 1 {
+        // That was the last — sacrifice it now.
+        out.push(Effect::DestroyPermanent { target: source });
+    }
+    out
 }
 
 // =============================================================================
@@ -3316,6 +3423,14 @@ pub(crate) const RENOWN_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 104;
 pub(crate) const FLANKING_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 110;
 pub(crate) const RAMPAGE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 111;
 pub(crate) const BUSHIDO_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 112;
+
+// Pass 3.6 — long-tail synthesized triggers. Evolve fires on a
+// creature-you-control `EntersBattlefield`; the Fading/Vanishing
+// upkeep tick fires on `StepBegins{Upkeep}` for the active player's
+// permanents (one sentinel; the resolver picks Fade vs Time from
+// the source's keyword).
+pub(crate) const EVOLVE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 120;
+pub(crate) const FADEVANISH_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 121;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -5489,6 +5604,82 @@ mod tests {
             s2.objects.get(b).unwrap()
                 .count_counters(CounterKind::PlusOnePlusOne),
             2);
+    }
+
+    // --- Pass 3.6: Evolve / Fading / Vanishing ----------------------------
+
+    #[test]
+    fn evolve_counters_when_bigger_creature_enters() {
+        use crate::effects::KeywordAbility::Evolve;
+        use crate::types::CounterKind::PlusOnePlusOne;
+        let mut registry = crate::registry::CardRegistry::new();
+        let ev = register_kw_pt(&mut registry, vec![Evolve], 2, 2);
+        let big = register_kw_pt(&mut registry, vec![], 3, 3);
+        let small = register_kw_pt(&mut registry, vec![], 1, 1);
+        let mut state = GameState::new(2, 0);
+        let evolver = deploy(&mut state, &registry, ev);
+
+        // Smaller creature — no evolve.
+        deploy(&mut state, &registry, small);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 0, "1/1 doesn't exceed 2/2");
+
+        // Bigger creature — evolve fires.
+        deploy(&mut state, &registry, big);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+        assert_eq!(
+            state.objects.get(evolver).unwrap()
+                .count_counters(PlusOnePlusOne),
+            1);
+    }
+
+    #[test]
+    fn fading_enters_with_counters_then_ticks_to_sacrifice() {
+        use crate::effects::KeywordAbility::Fading;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![Fading(2)]);
+        let mut state = GameState::new(2, 0);
+        let id = deploy(&mut state, &registry, card);
+        assert_eq!(
+            state.objects.get(id).unwrap().count_counters(CounterKind::Fade),
+            2, "enters with N fade counters");
+
+        let tick = |st: &mut GameState, reg: &crate::registry::CardRegistry| {
+            st.emit(GameEvent::StepBegins { step: crate::turn::Step::Upkeep });
+            run_sba_and_triggers(st, reg);
+            while st.stack_size() > 0 { resolve_top_of_stack(st, reg); }
+        };
+        tick(&mut state, &registry); // 2 -> 1
+        assert_eq!(
+            state.objects.get(id).unwrap().count_counters(CounterKind::Fade),
+            1);
+        assert!(state.objects.get(id).is_some());
+        tick(&mut state, &registry); // 1 -> 0, sacrificed
+        let alive = state.objects.get(id)
+            .is_some_and(|o| o.zone.is_battlefield());
+        assert!(!alive, "Fading creature sacrificed when counters run out");
+    }
+
+    #[test]
+    fn vanishing_one_sacrifices_after_a_single_upkeep() {
+        use crate::effects::KeywordAbility::Vanishing;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![Vanishing(1)]);
+        let mut state = GameState::new(2, 0);
+        let id = deploy(&mut state, &registry, card);
+        assert_eq!(
+            state.objects.get(id).unwrap().count_counters(CounterKind::Time),
+            1);
+        state.emit(GameEvent::StepBegins { step: crate::turn::Step::Upkeep });
+        run_sba_and_triggers(&mut state, &registry);
+        while state.stack_size() > 0 { resolve_top_of_stack(&mut state, &registry); }
+        assert!(
+            !state.objects.get(id).is_some_and(|o| o.zone.is_battlefield()),
+            "Vanishing 1 gone after one upkeep");
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

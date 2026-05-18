@@ -45,14 +45,14 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
 /// (Undying, Persist, Afterlife) and the Pass-3.3 attack /
 /// combat-damage set (Exalted, BattleCry, Mentor, Dethrone, Renown,
 /// Enlist) and the Pass-3.4 block-time combat statics (Flanking,
-/// Rampage, Bushido, Provoke) and the Pass-3.5 ETB-scaling set
-/// (Modular, Graft, Bloodthirst, Sunburst, Amplify, Devour, Unleash,
-/// Riot — choice/mana parts use a documented deterministic Phase-1
-/// policy, still honestly functional).
+/// Rampage, Bushido, Provoke), the Pass-3.5 ETB-scaling set and the
+/// Pass-3.6 long tail (Evolve/Fading/Vanishing real; Soulshift/
+/// Scavenge/Changeling recognized with a documented Phase-1 policy).
+/// Banding (full CR 702.22 combat banding) is the lone remaining
+/// deferral — worst ROI; cards carrying it stay honestly
+/// quarantined until a dedicated pass.
 const DEFERRED_KEYWORDS: &[&str] = &[
-    "Banding", "Soulshift",
-    "Scavenge", "Fading", "Vanishing", "Evolve",
-    "Changeling",
+    "Banding",
 ];
 
 /// Does `src` reference `KeywordAbility::<variant>` (the next char

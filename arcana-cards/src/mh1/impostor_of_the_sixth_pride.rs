@@ -1,12 +1,15 @@
 //! Impostor of the Sixth Pride — `{1}{W}` 3/1 Shapeshifter with Changeling.
-//! Changeling is not representable with the demonstrated KeywordAbility
-//! variants; keywords left empty for verify pipeline.
+//! Modern Horizons common; a white Shapeshifter that is every
+//! creature type simultaneously due to the Changeling ability.
 //!
 //! # Rules references
 //!
-//! * CR 702.73 — Changeling. This card is every creature type at all times.
-//!   Not expressible with the demonstrated API.
+//! * CR 702.72 — Changeling. This object is every creature type at
+//!   all times. The engine handles the "is every creature type"
+//!   property from the keyword; the subtype list in the catalog
+//!   reflects only the printed type line (Shapeshifter).
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -26,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Changeling],
         ..Default::default()
     };
 

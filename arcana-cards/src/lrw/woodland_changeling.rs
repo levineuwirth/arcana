@@ -1,10 +1,15 @@
 //! Woodland Changeling — `{1}{G}` 2/2 Shapeshifter with Changeling.
+//! Lorwyn common; a green Shapeshifter that is every creature type
+//! simultaneously due to the Changeling ability.
 //!
-//! Changeling means this card is every creature type. The Changeling
-//! keyword is not present in the demonstrated `KeywordAbility` API;
-//! the keywords list is left empty as a best-effort file. The verify
-//! pipeline will flag the missing Changeling support for human review.
+//! # Rules references
+//!
+//! * CR 702.72 — Changeling. This object is every creature type at
+//!   all times. The engine handles the "is every creature type"
+//!   property from the keyword; the subtype list in the catalog
+//!   reflects only the printed type line (Shapeshifter).
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -24,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Changeling],
         ..Default::default()
     };
 

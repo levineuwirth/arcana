@@ -1,17 +1,19 @@
-//! Universal Automaton — `{1}` 1/1 Artifact Creature — Shapeshifter with
-//! Changeling. Changeling is not expressible with the current demonstrated
-//! KeywordAbility API; the verify pipeline should flag this for manual wiring.
-//! Type line is Artifact Creature; only ARTIFACT | CREATURE is set. Multi-type
-//! line uses bitwise OR of TypeLine flags per the engine convention.
+//! Universal Automaton — `{1}` 1/1 Artifact Creature — Shapeshifter with Changeling.
+//! Modern Horizons common; a colorless artifact creature that is
+//! every creature type simultaneously due to the Changeling ability.
 //!
 //! # Rules references
 //!
-//! * CR 702.73 — Changeling. This card is every creature type.
+//! * CR 702.72 — Changeling. This object is every creature type at
+//!   all times. The engine handles the "is every creature type"
+//!   property from the keyword; the subtype list in the catalog
+//!   reflects only the printed type line (Shapeshifter).
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::types::{CardId, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Universal Automaton");
@@ -22,11 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}").expect("valid cost")),
+        colors: ColorSet::colorless(),
         types: (TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Changeling],
         ..Default::default()
     };
 

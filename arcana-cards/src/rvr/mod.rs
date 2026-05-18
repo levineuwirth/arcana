@@ -6,3 +6,4 @@ pub mod skyknight_legionnaire;
 pub mod ministrant_of_obligation;
 pub mod rampaging_rendhorn;
 pub mod merfolk_of_the_depths;
+pub mod slitherhead;
