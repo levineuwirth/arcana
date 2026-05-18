@@ -191,23 +191,15 @@ impl CardDefinition {
             matches!(kw, KeywordAbility::Cycling(_)));
         if !already_has {
             self.base_characteristics.keywords.push(
-                KeywordAbility::Cycling(cost.clone()));
+                KeywordAbility::Cycling(cost));
         }
-        self.activated_abilities.push(ActivatedAbilityDef {
-            text: format!("Cycling {cost}: Discard this card: Draw a card."),
-            cost: ActivationCost {
-                mana_cost: cost,
-                discard_self: true,
-                ..ActivationCost::default()
-            },
-            target_requirements: Vec::new(),
-            is_mana_ability: false,
-            is_loyalty_ability: false,
-            activation_zone: ActivationZone::Hand,
-            is_instant_speed: true,
-            face_gate: None,
-            effect: cycling_draw_one,
-        });
+        // The activated ability itself is synthesized from the keyword
+        // by [`CardRegistry::register`] (single source of truth — see
+        // `synthesize_keyword_abilities`), mirroring how
+        // [`Self::with_madness`] only stamps the keyword. Catalog cards
+        // that set `KeywordAbility::Cycling(cost)` directly in their
+        // characteristics get the ability the same way without calling
+        // this builder.
         self
     }
 
@@ -350,10 +342,59 @@ impl CardDefinition {
     }
 }
 
+/// Append the activated abilities implied by a card's keywords, once,
+/// at registration. Idempotent: skips a keyword whose canonical
+/// ability is already present (fn-pointer identity on the effect), so
+/// a card that also hand-rolled the ability isn't double-listed.
+fn synthesize_keyword_abilities(def: &mut CardDefinition) {
+    use crate::effects::KeywordAbility as KA;
+    let has_effect = |def: &CardDefinition, f: ActivatedEffectFn| {
+        def.activated_abilities.iter()
+            .any(|a| a.effect as usize == f as usize)
+    };
+    // Collect first — we mutate `def.activated_abilities` below and
+    // can't hold a borrow of `def.base_characteristics.keywords`.
+    let cycling: Option<crate::mana::ManaCost> =
+        def.base_characteristics.keywords.iter().find_map(|kw| match kw {
+            KA::Cycling(c) => Some(c.clone()),
+            _ => None,
+        });
+    if let Some(cost) = cycling {
+        if !has_effect(def, cycling_draw_one) {
+            def.activated_abilities.push(cycling_ability(cost));
+        }
+    }
+}
+
+/// Build the canonical Cycling activated ability (CR 702.29a):
+/// "[cost], Discard this card: Draw a card." Activatable only from
+/// hand, at instant speed. Synthesized from the
+/// [`crate::effects::KeywordAbility::Cycling`] keyword by
+/// [`CardRegistry::register`]; the only per-printing variation is the
+/// cycling cost.
+pub(crate) fn cycling_ability(cost: crate::mana::ManaCost)
+    -> ActivatedAbilityDef
+{
+    ActivatedAbilityDef {
+        text: format!("Cycling {cost}: Discard this card: Draw a card."),
+        cost: ActivationCost {
+            mana_cost: cost,
+            discard_self: true,
+            ..ActivationCost::default()
+        },
+        target_requirements: Vec::new(),
+        is_mana_ability: false,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Hand,
+        is_instant_speed: true,
+        face_gate: None,
+        effect: cycling_draw_one,
+    }
+}
+
 /// Canonical cycling effect: the activator draws a card (CR 702.29a).
 /// Shared across every cycling card — the only variation between
-/// printings is the cycling cost, handled by
-/// [`CardDefinition::with_cycling`].
+/// printings is the cycling cost, handled by [`cycling_ability`].
 fn cycling_draw_one(
     _state: &GameState,
     ctx: &ActivationContext,
@@ -836,6 +877,11 @@ impl CardRegistry {
                 definition.combined_characteristics = Some(combined);
             }
         }
+        // Synthesize keyword-derived activated abilities (Cycling,
+        // Scavenge) from the card's keywords so a catalog card only
+        // has to declare the keyword — the canonical ability is the
+        // engine's, not hand-rolled per card.
+        synthesize_keyword_abilities(&mut definition);
         self.definitions.insert(id, definition);
         id
     }

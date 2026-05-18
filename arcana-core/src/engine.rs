@@ -8695,6 +8695,91 @@ mod tests {
         assert!(!s.stack_is_empty());
     }
 
+    // --- Pass 4.4a: Cycling (synthesized from the keyword) ----------------
+
+    /// Register a creature whose only special is `Cycling cost`,
+    /// declared the way catalog cards do — the bare keyword in
+    /// `base_characteristics.keywords`, no `with_cycling` builder.
+    fn register_cycling_creature(
+        registry: &mut CardRegistry,
+        cost: &str,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern(&unique_card_name());
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{4}{G}").unwrap()),
+            colors: ColorSet::green(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(4)),
+            toughness: Some(PtValue::Fixed(4)),
+            keywords: vec![crate::effects::KeywordAbility::Cycling(
+                crate::mana::ManaCost::parse(cost).unwrap())],
+            ..Default::default()
+        };
+        registry.register(crate::registry::CardDefinition::new(name, chars))
+    }
+
+    #[test]
+    fn cycling_ability_synthesized_from_bare_keyword() {
+        // A card that only declares KeywordAbility::Cycling (no
+        // with_cycling) must still get the canonical activated ability
+        // at registration: hand zone, instant speed, discard-self cost.
+        let mut registry = CardRegistry::new();
+        let card = register_cycling_creature(&mut registry, "{2}");
+        let def = registry.get(card).unwrap();
+        let cyc = def.activated_abilities.iter()
+            .find(|a| a.cost.discard_self)
+            .expect("cycling ability must be synthesized");
+        assert!(cyc.is_instant_speed);
+        assert!(!cyc.is_mana_ability);
+        assert_eq!(cyc.cost.mana_cost,
+            crate::mana::ManaCost::parse("{2}").unwrap());
+        assert!(matches!(cyc.activation_zone,
+            crate::registry::ActivationZone::Hand));
+        // Idempotent: registering doesn't double the ability.
+        assert_eq!(def.activated_abilities.iter()
+            .filter(|a| a.cost.discard_self).count(), 1);
+    }
+
+    #[test]
+    fn cycling_from_hand_pays_cost_discards_and_draws() {
+        let mut registry = CardRegistry::new();
+        let card = register_cycling_creature(&mut registry, "{2}");
+        // Distinct card id for the library so a card-id scan can tell
+        // the discarded source apart from the drawn card.
+        let filler = register_kw_creature(&mut registry, vec![]);
+        let mut s = GameState::new(2, 0);
+        let _src = put_in_hand(&mut s, &registry, 0, card);
+        let lib = s.allocate_object_id();
+        let lib_chars = registry.get(filler).unwrap()
+            .base_characteristics.clone();
+        s.objects.insert(crate::objects::GameObject::new(
+            lib, 0, Zone::Library(0), filler, lib_chars));
+        s.put_on_top_of_library(lib, 0);
+        give_mana(&mut s, 0, "{2}");
+        s.priority.give_to(0);
+        s.turn.phase = crate::turn::Phase::PreCombatMain;
+        s.turn.step = crate::turn::Step::Main;
+
+        let actions = crate::legal_actions::legal_actions(&s, &registry);
+        let cycle = actions.iter().find(|a| matches!(a,
+            Action::ActivateAbility { .. }))
+            .expect("cycling action must be offered from hand")
+            .clone();
+        let (mut s, _) = step(s, cycle, &registry);
+        // Cost paid: the cycling card is in the graveyard (CR 400.7
+        // re-ids it on the zone change, so scan by card id).
+        assert!(s.objects.objects_in_zone(Zone::Graveyard(0))
+            .any(|o| o.card_id == card), "cycled card discarded as cost");
+        assert!(!s.stack_is_empty(), "cycling ability on the stack");
+        resolve_top_of_stack(&mut s, &registry);
+        // Drew the library card (re-id'd on the zone change); library
+        // now empty.
+        assert!(s.objects.objects_in_zone(Zone::Hand(0))
+            .any(|o| o.card_id == filler), "drew the library card");
+        assert_eq!(s.objects.objects_in_zone(Zone::Library(0)).count(), 0);
+    }
+
     #[test]
     fn legal_actions_enumerates_delve_subsets_multiple_counts() {
         // Delve spell {2}{U}, graveyard has 3 distinct cards, mana
