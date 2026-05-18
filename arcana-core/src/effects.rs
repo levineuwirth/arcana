@@ -289,6 +289,11 @@ pub enum Effect {
              destination: Zone, reveal: bool },
     Reanimate { player: PlayerId, filter: ObjectFilter, from_zone: Zone },
     Sacrifice { player: PlayerId, filter: ObjectFilter, count: u32 },
+    /// Pass 4.1 — Enlist (CR 702.151a). Posts the optional "tap a
+    /// nonattacking creature you control without summoning sickness"
+    /// choice for `enlister`; the follow-up taps it and adds its
+    /// power to `enlister` until end of turn. No-op if no candidate.
+    EnlistTap { enlister: ObjectId },
     /// CR 701.20a — Search `player`'s library for a matching card, put
     /// it into hand, then shuffle. `reveal` adds a public-info mark.
     /// Phase 1 picks the first matching id (deterministic); TODO
@@ -782,6 +787,9 @@ impl Effect {
             Effect::Sacrifice { player, filter, count } => {
                 push_sacrifice_choice(state, *player, filter, *count);
             }
+            Effect::EnlistTap { enlister } => {
+                push_enlist_choice(state, *enlister);
+            }
             Effect::TutorToHand { player, filter, reveal } => {
                 push_search_choice(
                     state, *player, Zone::Library(*player), filter,
@@ -1133,11 +1141,13 @@ pub enum KeywordAbility {
     /// on it and it becomes renowned." Latches on
     /// [`crate::types::PermanentStatus::renowned`].
     Renown(u32),
-    /// CR 702.151a — Enlist. An *optional* "as it attacks" tap-a-
-    /// creature boost. Phase-1 policy: the engine always declines
-    /// (declining is a legal choice for a "may"), so the keyword is
-    /// recognized and the card functions, but no boost is applied.
-    /// DEBT: wire the tap/boost when agent combat choices land.
+    /// CR 702.151a — Enlist. "As this attacks, you may tap a
+    /// nonattacking creature you control without summoning sickness;
+    /// add its power to this creature's power until end of turn."
+    /// Fully wired (Pass 4.1): synthesized on AttacksDeclared →
+    /// [`Effect::EnlistTap`] posts a real `PickCards{0,1}` choice;
+    /// the [`crate::actions::ChoiceFollowUp::EnlistTap`] follow-up
+    /// taps the pick and pumps the enlister.
     Enlist,
     // --- Death-triggered, returning / token (Pass 3.2). Synthesized
     //     as keyword-born stack triggers in `engine`; honest L2-pass.
@@ -1904,6 +1914,43 @@ fn push_sacrifice_choice(
         crate::actions::ChoiceContext::ResolvingStack(stack_entry),
         crate::actions::ChoiceKind::PickCards {
             candidates, min: required, max: required,
+        },
+    );
+}
+
+/// Push the optional Enlist choice (CR 702.151a): the enlister's
+/// controller may tap one nonattacking, non-summoning-sick, untapped
+/// creature they control (not the enlister). `PickCards{min:0,max:1}`
+/// — an empty pick declines. No-op (no prompt) if no candidate.
+fn push_enlist_choice(state: &mut GameState, enlister: ObjectId) {
+    let Some(controller) =
+        state.objects.get(enlister).map(|o| o.controller) else { return; };
+    let attacking: crate::collections::HashSet<ObjectId> = state.combat
+        .as_ref()
+        .map(|c| c.attackers.iter().map(|a| a.object_id).collect())
+        .unwrap_or_default();
+    let candidates: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.controller == controller
+            && o.id != enlister
+            && o.is_creature()
+            && o.zone.is_battlefield()
+            && !o.is_tapped()
+            && !o.status.summoning_sick
+            && !attacking.contains(&o.id))
+        .map(|o| o.id)
+        .collect();
+    if candidates.is_empty() { return; }
+    let ctx = match state.currently_resolving {
+        Some(e) => crate::actions::ChoiceContext::ResolvingStack(e),
+        None => crate::actions::ChoiceContext::Other,
+    };
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::EnlistTap { enlister });
+    state.push_pending_choice(
+        controller,
+        ctx,
+        crate::actions::ChoiceKind::PickCards {
+            candidates, min: 0, max: 1,
         },
     );
 }

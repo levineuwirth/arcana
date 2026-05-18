@@ -1550,6 +1550,22 @@ fn apply_choice_follow_up(
                     *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
             }
         }
+        ChoiceFollowUp::EnlistTap { enlister } => {
+            // CR 702.151a — at most one creature; empty = declined.
+            if let Some(&tapped) = chosen.first() {
+                let power = state.computed_power(tapped).unwrap_or(0);
+                if let Some(o) = state.objects.get_mut(tapped) {
+                    o.tap();
+                }
+                if power != 0 {
+                    state.add_continuous_effect(
+                        crate::layers::ContinuousEffect::pump(
+                            /*source=*/ enlister, enlister,
+                            power, 0,
+                            crate::layers::Duration::EndOfTurn));
+                }
+            }
+        }
         ChoiceFollowUp::Discard { player } => {
             for id in chosen {
                 // Madness-aware discard. The pre-move id is what
@@ -2184,6 +2200,9 @@ fn collect_pending_triggers(
                 }
                 if kws.contains(&KA::Mentor) {
                     synth(a, MENTOR_TRIGGER_ID, &mut pending);
+                }
+                if kws.contains(&KA::Enlist) {
+                    synth(a, ENLIST_TRIGGER_ID, &mut pending);
                 }
                 // Dethrone (CR 702.104a): attacks the player with the
                 // most life (ties count). Planeswalker/Battle attacks
@@ -2970,7 +2989,8 @@ pub(crate) fn is_attack_trigger(tid: crate::types::TriggerId) -> bool {
             || x == BATTLE_CRY_TRIGGER_ID
             || x == MENTOR_TRIGGER_ID
             || x == DETHRONE_TRIGGER_ID
-            || x == RENOWN_TRIGGER_ID)
+            || x == RENOWN_TRIGGER_ID
+            || x == ENLIST_TRIGGER_ID)
 }
 
 /// Is `tid` one of the Pass 3.4 block-time combat-static sentinels?
@@ -3122,6 +3142,11 @@ fn attack_trigger_resolve(
         // synthesis; just place the counter on the attacker.
         return vec![Effect::AddCounters {
             target: source, kind: PlusOnePlusOne, count: 1 }];
+    }
+    if trigger_id == ENLIST_TRIGGER_ID {
+        // CR 702.151a — post the optional "tap a creature, add its
+        // power" choice. The effect's executor raises the prompt.
+        return vec![Effect::EnlistTap { enlister: source }];
     }
     Vec::new()
 }
@@ -3415,6 +3440,9 @@ pub(crate) const BATTLE_CRY_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 101
 pub(crate) const MENTOR_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 102;
 pub(crate) const DETHRONE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 103;
 pub(crate) const RENOWN_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 104;
+// Pass 4.1 — Enlist now exercises its optional choice (was a
+// Phase-1 decline). Synthesized on AttacksDeclared like the rest.
+pub(crate) const ENLIST_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 105;
 
 // Pass 3.4 — block-time combat statics, synthesized on
 // `CreatureBlocks` (Flanking, Bushido-as-blocker) or `CreatureBlocked`
@@ -5680,6 +5708,74 @@ mod tests {
         assert!(
             !state.objects.get(id).is_some_and(|o| o.zone.is_battlefield()),
             "Vanishing 1 gone after one upkeep");
+    }
+
+    // --- Pass 4.1: Enlist optional decision prompt ------------------------
+
+    /// Declare the Enlist attacker, settle to the synthesized trigger,
+    /// resolve it (which posts the choice), and return the pending
+    /// choice's id + candidate list.
+    fn drive_to_enlist_choice(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        enlister: ObjectId,
+    ) -> (u64, Vec<ObjectId>) {
+        declare_attackers(state, vec![enlister]);
+        run_sba_and_triggers(state, registry);
+        assert_eq!(state.stack_size(), 1, "Enlist should synthesize a trigger");
+        resolve_top_of_stack(state, registry);
+        let pc = state.pending_choice.clone()
+            .expect("Enlist resolution should post a PickCards choice");
+        let cands = match pc.kind {
+            crate::actions::ChoiceKind::PickCards { candidates, min, max } => {
+                assert_eq!((min, max), (0, 1), "Enlist is a may-tap-one");
+                candidates
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        };
+        (pc.id, cands)
+    }
+
+    #[test]
+    fn enlist_taps_chosen_creature_and_adds_its_power() {
+        use crate::effects::KeywordAbility::Enlist;
+        let mut registry = crate::registry::CardRegistry::new();
+        let en = register_kw_pt(&mut registry, vec![Enlist], 2, 2);
+        let helper = register_kw_pt(&mut registry, vec![], 3, 3);
+        let mut state = GameState::new(2, 0);
+        let enlister = deploy_ready(&mut state, &registry, en);
+        let buddy = deploy_ready(&mut state, &registry, helper);
+
+        let (id, cands) = drive_to_enlist_choice(&mut state, &registry, enlister);
+        assert_eq!(cands, vec![buddy], "the nonattacking 3/3 is the candidate");
+
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![buddy] });
+
+        assert!(state.objects.get(buddy).unwrap().is_tapped(),
+            "the enlisted creature is tapped");
+        assert_eq!(state.computed_power(enlister), Some(5),
+            "2/2 + buddy's power 3 = 5/2 until EOT");
+        assert_eq!(state.computed_toughness(enlister), Some(2));
+    }
+
+    #[test]
+    fn enlist_decline_taps_nothing() {
+        use crate::effects::KeywordAbility::Enlist;
+        let mut registry = crate::registry::CardRegistry::new();
+        let en = register_kw_pt(&mut registry, vec![Enlist], 2, 2);
+        let helper = register_kw_pt(&mut registry, vec![], 3, 3);
+        let mut state = GameState::new(2, 0);
+        let enlister = deploy_ready(&mut state, &registry, en);
+        let buddy = deploy_ready(&mut state, &registry, helper);
+
+        let (id, _) = drive_to_enlist_choice(&mut state, &registry, enlister);
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![] });
+
+        assert!(!state.objects.get(buddy).unwrap().is_tapped());
+        assert_eq!(state.computed_power(enlister), Some(2),
+            "declining the may leaves the enlister unchanged");
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

@@ -665,6 +665,12 @@ pub enum ChoiceFollowUp {
         source: ObjectId,
         duration: crate::layers::Duration,
     },
+    /// Pass 4.1 — Enlist (CR 702.151a). Pair with a
+    /// [`ChoiceKind::PickCards`] `{min:0, max:1}` response: if a
+    /// creature was picked, tap it and add its power to `enlister`
+    /// until end of turn. Empty pick = the player declined the
+    /// optional "may".
+    EnlistTap { enlister: ObjectId },
 }
 
 // =============================================================================
