@@ -1,12 +1,15 @@
-//! Servant of Nefarox — `{2}{B}` 3/1 Human Cleric with Exalted.
-//! Exalted is not expressible with the current demonstrated KeywordAbility API;
-//! the verify pipeline should flag this for manual wiring.
+//! Servant of Nefarox — `{2}{B}` 3/1 Creature — Human Cleric with Exalted.
+//! Magic 2013 common; a black exalted creature that rewards attacking alone
+//! with a fragile but punchy body.
 //!
 //! # Rules references
 //!
 //! * CR 702.90 — Exalted. Whenever a creature you control attacks alone, that
-//!   creature gets +1/+1 until end of turn.
+//!   creature gets +1/+1 until end of turn. The runtime exalted pipeline
+//!   handles the trigger and pump; listing the keyword in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Exalted],
         ..Default::default()
     };
 

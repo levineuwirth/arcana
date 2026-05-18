@@ -1,12 +1,15 @@
-//! Outrider of Jhess — `{3}{U}` 2/2 Human Knight with Exalted.
-//! A blue knight whose Exalted keyword is not yet representable
-//! in the engine's demonstrated API; the keyword list is left empty
-//! as a best-effort stub for the verify pipeline.
+//! Outrider of Jhess — `{3}{U}` 2/2 Creature — Human Knight with Exalted.
+//! Shards of Alara common; a blue exalted creature that rewards attacking
+//! with a single creature each combat.
 //!
 //! # Rules references
 //!
-//! * CR 702.90 — Exalted. (Not yet wired; verify pipeline will flag.)
+//! * CR 702.90 — Exalted. Whenever a creature you control attacks alone, that
+//!   creature gets +1/+1 until end of turn. The runtime exalted pipeline
+//!   handles the trigger and pump; listing the keyword in `keywords` is all
+//!   that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Exalted],
         ..Default::default()
     };
 

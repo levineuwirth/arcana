@@ -2140,6 +2140,93 @@ fn collect_pending_triggers(
             }
         }
 
+        // 3d. Synthesized attack-keyword triggers (Pass 3.3). Gates
+        //     that depend on the attack declaration / life totals are
+        //     evaluated here against fresh combat state; the resolver
+        //     reads the rest from the carried event + live objects
+        //     (attackers are still on the battlefield at this point).
+        if let crate::events::GameEvent::AttacksDeclared { attackers } = event {
+            use crate::effects::KeywordAbility as KA;
+            let synth = |src: ObjectId, tid: crate::types::TriggerId,
+                          pend: &mut Vec<crate::triggers::PendingTrigger>| {
+                let ctrl = state.objects.get(src)
+                    .map(|o| o.controller).unwrap_or(0);
+                pend.push(crate::triggers::PendingTrigger {
+                    source: src,
+                    trigger_id: tid,
+                    controller: ctrl,
+                    trigger_event: event.clone(),
+                    targets: crate::targets::TargetSelection::new(),
+                });
+            };
+            // Exalted (CR 702.83a): a creature attacking alone. One
+            // trigger per permanent its controller has with exalted.
+            if attackers.len() == 1 {
+                let lone = attackers[0].attacker;
+                if let Some(ctrl) =
+                    state.objects.get(lone).map(|o| o.controller)
+                {
+                    let exalted: Vec<ObjectId> = state.objects
+                        .objects_in_zone(Zone::Battlefield)
+                        .filter(|o| o.controller == ctrl)
+                        .map(|o| o.id)
+                        .filter(|id| state.effective_keywords(*id)
+                            .contains(&KA::Exalted))
+                        .collect();
+                    for src in exalted { synth(src, EXALTED_TRIGGER_ID, &mut pending); }
+                }
+            }
+            for decl in attackers {
+                let a = decl.attacker;
+                let kws = state.effective_keywords(a);
+                if kws.contains(&KA::BattleCry) {
+                    synth(a, BATTLE_CRY_TRIGGER_ID, &mut pending);
+                }
+                if kws.contains(&KA::Mentor) {
+                    synth(a, MENTOR_TRIGGER_ID, &mut pending);
+                }
+                // Dethrone (CR 702.104a): attacks the player with the
+                // most life (ties count). Planeswalker/Battle attacks
+                // don't qualify.
+                if kws.contains(&KA::Dethrone) {
+                    if let crate::combat::DefendingEntity::Player(p) =
+                        decl.defending
+                    {
+                        let max_life = state.players.iter()
+                            .map(|pl| pl.life).max().unwrap_or(i32::MIN);
+                        if state.players.get(p as usize)
+                            .is_some_and(|pl| pl.life == max_life)
+                        {
+                            synth(a, DETHRONE_TRIGGER_ID, &mut pending);
+                        }
+                    }
+                }
+            }
+        }
+        // Renown (CR 702.111a): combat damage to a player, once, while
+        // not yet renowned.
+        if let crate::events::GameEvent::DamageDealt {
+            source, target: crate::events::DamageTarget::Player(_),
+            is_combat: true, ..
+        } = event {
+            use crate::effects::KeywordAbility as KA;
+            let renown = state.objects.get(*source)
+                .is_some_and(|o| !o.status.renowned)
+                && state.effective_keywords(*source).iter()
+                    .any(|k| matches!(k, KA::Renown(_)));
+            if renown {
+                let ctrl = state.objects.get(*source)
+                    .map(|o| o.controller).unwrap_or(0);
+                pending.push(crate::triggers::PendingTrigger {
+                    source: *source,
+                    trigger_id: RENOWN_TRIGGER_ID,
+                    controller: ctrl,
+                    trigger_event: event.clone(),
+                    targets: crate::targets::TargetSelection::new(),
+                });
+            }
+        }
+
         // 4. Auto-applied keyword triggers that bypass the stack in
         //    Phase 1. These are known, bounded behaviors we don't yet
         //    route through the full TriggeredAbilityDef system.
@@ -2695,6 +2782,11 @@ fn resolution_effects(
                 return keyword_death_trigger_resolve(
                     state, *trigger_id, trigger_event);
             }
+            // Pass 3.3 — attack/combat-damage keyword triggers.
+            if is_attack_trigger(*trigger_id) {
+                return attack_trigger_resolve(
+                    state, entry.source, *trigger_id, trigger_event);
+            }
             let source = entry.source;
             let Some(obj) = state.objects.get(source)
                 .or_else(|| state.lki.get(&source))
@@ -2756,6 +2848,16 @@ pub(crate) fn is_keyword_death_trigger(
             .contains(&tid)
 }
 
+/// Is `tid` one of the Pass 3.3 attack/combat-damage sentinels?
+pub(crate) fn is_attack_trigger(tid: crate::types::TriggerId) -> bool {
+    matches!(tid,
+        x if x == EXALTED_TRIGGER_ID
+            || x == BATTLE_CRY_TRIGGER_ID
+            || x == MENTOR_TRIGGER_ID
+            || x == DETHRONE_TRIGGER_ID
+            || x == RENOWN_TRIGGER_ID)
+}
+
 /// Resolution effects for a synthesized Undying / Persist / Afterlife
 /// trigger. The "had no counter" gate was already applied at
 /// synthesis, so this unconditionally returns the effect. The dying
@@ -2814,6 +2916,85 @@ fn keyword_death_trigger_resolve(
         controller: owner,
         token: token.clone(),
     }).collect()
+}
+
+/// Resolution effects for a synthesized Pass 3.3 attack /
+/// combat-damage keyword trigger. `source` is the keyword permanent;
+/// the carried event supplies the attacker set / damage context. The
+/// per-keyword gate was applied at synthesis where it depends on the
+/// declaration; conditions readable from live state are re-checked
+/// here.
+fn attack_trigger_resolve(
+    state: &GameState,
+    source: ObjectId,
+    trigger_id: crate::types::TriggerId,
+    trigger_event: &crate::events::GameEvent,
+) -> Vec<crate::effects::Effect> {
+    use crate::effects::{Effect, KeywordAbility as KA};
+    use crate::types::CounterKind::PlusOnePlusOne;
+    let eot = crate::layers::Duration::EndOfTurn;
+
+    if trigger_id == RENOWN_TRIGGER_ID {
+        // N from the source's effective keywords (layers-aware).
+        let n = state.effective_keywords(source).into_iter()
+            .find_map(|k| match k { KA::Renown(n) => Some(n), _ => None });
+        let Some(n) = n else { return Vec::new(); };
+        if state.objects.get(source).is_none_or(|o| o.status.renowned) {
+            return Vec::new();
+        }
+        return vec![
+            Effect::AddCounters { target: source, kind: PlusOnePlusOne, count: n },
+            Effect::BecomeRenowned { target: source },
+        ];
+    }
+
+    let crate::events::GameEvent::AttacksDeclared { attackers } =
+        trigger_event else { return Vec::new(); };
+
+    if trigger_id == EXALTED_TRIGGER_ID {
+        // Only if a creature still attacks alone (CR 702.83e).
+        if attackers.len() != 1 { return Vec::new(); }
+        return vec![Effect::Pump {
+            target: attackers[0].attacker,
+            power: 1, toughness: 1, duration: eot, keywords: vec![],
+        }];
+    }
+    if trigger_id == BATTLE_CRY_TRIGGER_ID {
+        return attackers.iter()
+            .map(|d| d.attacker)
+            .filter(|&a| a != source)
+            .map(|a| Effect::Pump {
+                target: a, power: 1, toughness: 0,
+                duration: eot, keywords: vec![],
+            })
+            .collect();
+    }
+    if trigger_id == MENTOR_TRIGGER_ID {
+        let src_pow = match state.computed_power(source) {
+            Some(p) => p,
+            None => return Vec::new(),
+        };
+        // Target an attacking creature with lesser power; Phase-1
+        // policy picks deterministically (lowest power, then id).
+        let pick = attackers.iter()
+            .map(|d| d.attacker)
+            .filter(|&a| a != source)
+            .filter_map(|a| state.computed_power(a).map(|p| (p, a)))
+            .filter(|&(p, _)| p < src_pow)
+            .min();
+        return match pick {
+            Some((_, a)) => vec![Effect::AddCounters {
+                target: a, kind: PlusOnePlusOne, count: 1 }],
+            None => Vec::new(),
+        };
+    }
+    if trigger_id == DETHRONE_TRIGGER_ID {
+        // Gate (attacked the most-life player) was applied at
+        // synthesis; just place the counter on the attacker.
+        return vec![Effect::AddCounters {
+            target: source, kind: PlusOnePlusOne, count: 1 }];
+    }
+    Vec::new()
 }
 
 // =============================================================================
@@ -3002,6 +3183,17 @@ pub(crate) const UNDYING_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 1;
 pub(crate) const PERSIST_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 2;
 pub(crate) const AFTERLIFE_MAX: u32 = 64;
 pub(crate) const AFTERLIFE_TRIGGER_ID_BASE: crate::types::TriggerId = u32::MAX - 16;
+
+// Pass 3.3 — attack / combat-damage keyword triggers, synthesized on
+// `AttacksDeclared` (Exalted/BattleCry/Mentor/Dethrone) or
+// `DamageDealt` (Renown). Well clear of the Afterlife band
+// ([MAX-80, MAX-17]). Enlist is intentionally NOT here — its Phase-1
+// policy is "always decline", so it needs no trigger.
+pub(crate) const EXALTED_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 100;
+pub(crate) const BATTLE_CRY_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 101;
+pub(crate) const MENTOR_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 102;
+pub(crate) const DETHRONE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 103;
+pub(crate) const RENOWN_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 104;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -4661,12 +4853,20 @@ mod tests {
 
     // --- Pass 3.2: Undying / Persist / Afterlife --------------------------
 
+    /// Unique card name per call — the registry rejects duplicate
+    /// names, and several tests register more than one synthetic card.
+    fn unique_card_name() -> String {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static N: AtomicU32 = AtomicU32::new(0);
+        format!("KW Creature {}", N.fetch_add(1, Ordering::Relaxed))
+    }
+
     /// Register a 2/2 creature carrying exactly `kws`.
     fn register_kw_creature(
         registry: &mut crate::registry::CardRegistry,
         kws: Vec<crate::effects::KeywordAbility>,
     ) -> crate::types::CardId {
-        let name = registry.interner_mut().intern("KW Creature");
+        let name = registry.interner_mut().intern(&unique_card_name());
         let chars = Characteristics {
             name,
             mana_cost: Some(crate::mana::ManaCost::parse("{1}{B}").unwrap()),
@@ -4797,6 +4997,178 @@ mod tests {
         }
         // The original card stays dead in the graveyard.
         assert_eq!(state.zone_count(Zone::Graveyard(0)), 1);
+    }
+
+    // --- Pass 3.3: attack / combat-damage keyword triggers ----------------
+
+    fn register_kw_pt(
+        registry: &mut crate::registry::CardRegistry,
+        kws: Vec<crate::effects::KeywordAbility>,
+        p: i32, t: i32,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern(&unique_card_name());
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}{B}").unwrap()),
+            colors: ColorSet::black(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(p)),
+            toughness: Some(PtValue::Fixed(t)),
+            keywords: kws,
+            ..Default::default()
+        };
+        registry.register(crate::registry::CardDefinition::new(name, chars))
+    }
+
+    /// Deploy `card`, clear summoning sickness, return the id.
+    fn deploy_ready(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        card: crate::types::CardId,
+    ) -> ObjectId {
+        let id = deploy(state, registry, card);
+        state.objects.get_mut(id).unwrap().status.summoning_sick = false;
+        id
+    }
+
+    fn declare_attackers(state: &mut GameState, atk: Vec<ObjectId>) {
+        use crate::combat::{AttackerDeclaration, DefendingEntity};
+        state.begin_combat();
+        state.enter_declare_attackers();
+        state.apply_declared_attackers(
+            atk.into_iter().map(|a| AttackerDeclaration {
+                attacker: a, defending: DefendingEntity::Player(1),
+            }).collect());
+    }
+
+    #[test]
+    fn exalted_pumps_lone_attacker() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![KeywordAbility::Exalted]);
+        let mut state = GameState::new(2, 0);
+        let a = deploy_ready(&mut state, &registry, card);
+
+        declare_attackers(&mut state, vec![a]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1, "exalted should fire (attacks alone)");
+        resolve_top_of_stack(&mut state, &registry);
+
+        assert_eq!(state.computed_power(a), Some(3), "2/2 +1/+1 = 3/3");
+        assert_eq!(state.computed_toughness(a), Some(3));
+    }
+
+    #[test]
+    fn exalted_silent_when_not_alone() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let ex = register_kw_creature(&mut registry, vec![KeywordAbility::Exalted]);
+        let pl = register_kw_creature(&mut registry, vec![]);
+        let mut state = GameState::new(2, 0);
+        let a = deploy_ready(&mut state, &registry, ex);
+        let b = deploy_ready(&mut state, &registry, pl);
+
+        declare_attackers(&mut state, vec![a, b]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 0, "two attackers — exalted silent");
+    }
+
+    #[test]
+    fn battle_cry_pumps_each_other_attacker() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let bc = register_kw_creature(&mut registry, vec![KeywordAbility::BattleCry]);
+        let pl = register_kw_creature(&mut registry, vec![]);
+        let mut state = GameState::new(2, 0);
+        let a = deploy_ready(&mut state, &registry, bc);
+        let b = deploy_ready(&mut state, &registry, pl);
+
+        declare_attackers(&mut state, vec![a, b]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+
+        assert_eq!(state.computed_power(b), Some(3), "+1/+0 to the other attacker");
+        assert_eq!(state.computed_toughness(b), Some(2));
+        assert_eq!(state.computed_power(a), Some(2), "battle-cry source unchanged");
+    }
+
+    #[test]
+    fn dethrone_counters_attacker_into_most_life_player() {
+        use crate::effects::KeywordAbility;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![KeywordAbility::Dethrone]);
+        let mut state = GameState::new(2, 0);
+        // Both start at 20 — defender (p1) is tied for most life.
+        let a = deploy_ready(&mut state, &registry, card);
+
+        declare_attackers(&mut state, vec![a]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+
+        assert_eq!(
+            state.objects.get(a).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            1);
+    }
+
+    #[test]
+    fn mentor_counters_lesser_power_attacker() {
+        use crate::effects::KeywordAbility;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let m = register_kw_pt(&mut registry, vec![KeywordAbility::Mentor], 3, 3);
+        let w = register_kw_pt(&mut registry, vec![], 1, 1);
+        let mut state = GameState::new(2, 0);
+        let mentor = deploy_ready(&mut state, &registry, m);
+        let weenie = deploy_ready(&mut state, &registry, w);
+
+        declare_attackers(&mut state, vec![mentor, weenie]);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+
+        assert_eq!(
+            state.objects.get(weenie).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            1, "lesser-power attacker gets the counter");
+        assert_eq!(
+            state.objects.get(mentor).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            0);
+    }
+
+    #[test]
+    fn renown_latches_once_on_combat_damage() {
+        use crate::effects::KeywordAbility;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(
+            &mut registry, vec![KeywordAbility::Renown(2)]);
+        let mut state = GameState::new(2, 0);
+        let a = deploy_ready(&mut state, &registry, card);
+
+        state.deal_damage(a, crate::events::DamageTarget::Player(1), 2, true);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1, "renown fires on combat damage");
+        resolve_top_of_stack(&mut state, &registry);
+
+        assert!(state.objects.get(a).unwrap().status.renowned);
+        assert_eq!(
+            state.objects.get(a).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            2, "Renown 2 → two counters");
+
+        // A second combat hit does not re-trigger (already renowned).
+        state.deal_damage(a, crate::events::DamageTarget::Player(1), 2, true);
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 0);
+        assert_eq!(
+            state.objects.get(a).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            2);
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

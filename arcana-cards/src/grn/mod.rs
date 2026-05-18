@@ -8,3 +8,4 @@ pub mod hired_poisoner;
 pub mod wary_okapi;
 pub mod wall_of_mist;
 pub mod hitchclaw_recluse;
+pub mod hammer_dropper;

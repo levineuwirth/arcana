@@ -2,3 +2,4 @@
 pub mod grizzled_leotau;
 pub mod sewn_eye_drake;
 pub mod gorger_wurm;
+pub mod sigiled_behemoth;

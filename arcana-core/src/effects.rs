@@ -147,6 +147,9 @@ pub enum Effect {
     // --- counters ----------------------------------------------------------
     AddCounters { target: ObjectId, kind: CounterKind, count: u32 },
     RemoveCounters { target: ObjectId, kind: CounterKind, count: u32 },
+    /// CR 702.111a — latch a permanent as renowned (Pass 3.3 Renown).
+    /// No-op if `target` isn't a live object.
+    BecomeRenowned { target: ObjectId },
     /// CR 701.25 — Proliferate. Phase 1 policy: apply to every
     /// eligible permanent and player (greedy maximum). Each chosen
     /// permanent gains one counter of each kind already on it; each
@@ -590,6 +593,11 @@ impl Effect {
                     crate::replacement::CounterTarget::Object(*target),
                     *kind, *count);
             }
+            Effect::BecomeRenowned { target } => {
+                if let Some(o) = state.objects.get_mut(*target) {
+                    o.status.renowned = true;
+                }
+            }
             Effect::RemoveCounters { target, kind, count } => {
                 let Some(obj) = state.objects.get_mut(*target) else { return; };
                 let removed = obj.remove_counters(*kind, *count);
@@ -1007,11 +1015,40 @@ pub enum KeywordAbility {
     //     implements real semantics. Several are parametrized in real
     //     MTG (Soulshift N, Devour N, …); kept unit here — a future
     //     pass refactors to carry the payload when wiring behavior. ---
-    Banding, Rampage, Bushido, Exalted, Soulshift, Unleash,
-    Bloodthirst, Modular, Flanking, BattleCry,
-    Mentor, Riot, Devour, Sunburst, Dethrone, Scavenge,
-    Fading, Vanishing, Renown, Evolve, Graft, Provoke, Amplify,
-    Enlist, Changeling,
+    Banding, Rampage, Bushido, Soulshift, Unleash,
+    Bloodthirst, Modular, Flanking,
+    Riot, Devour, Sunburst, Scavenge,
+    Fading, Vanishing, Evolve, Graft, Provoke, Amplify,
+    Changeling,
+    // --- Attack / combat-damage triggered (Pass 3.3). Synthesized as
+    //     keyword-born stack triggers in `engine`; honest L2-pass.
+    /// CR 702.83a — Exalted. "Whenever a creature you control attacks
+    /// alone, that creature gets +1/+1 until end of turn." One
+    /// trigger per permanent you control with exalted.
+    Exalted,
+    /// CR 702.92a — Battle cry. "Whenever this creature attacks, each
+    /// other attacking creature gets +1/+0 until end of turn."
+    BattleCry,
+    /// CR 702.139a — Mentor. "Whenever this creature attacks, put a
+    /// +1/+1 counter on target attacking creature with lesser power."
+    /// Phase-1 picks the target deterministically (lowest power, then
+    /// lowest id).
+    Mentor,
+    /// CR 702.104a — Dethrone. "Whenever this creature attacks the
+    /// player with the most life or tied for most life, put a +1/+1
+    /// counter on it."
+    Dethrone,
+    /// CR 702.111a — Renown N. "Whenever this creature deals combat
+    /// damage to a player, if it isn't renowned, put N +1/+1 counters
+    /// on it and it becomes renowned." Latches on
+    /// [`crate::types::PermanentStatus::renowned`].
+    Renown(u32),
+    /// CR 702.151a — Enlist. An *optional* "as it attacks" tap-a-
+    /// creature boost. Phase-1 policy: the engine always declines
+    /// (declining is a legal choice for a "may"), so the keyword is
+    /// recognized and the card functions, but no boost is applied.
+    /// DEBT: wire the tap/boost when agent combat choices land.
+    Enlist,
     // --- Death-triggered, returning / token (Pass 3.2). Synthesized
     //     as keyword-born stack triggers in `engine`; honest L2-pass.
     /// CR 702.92e — Undying. "When this dies, if it had no +1/+1

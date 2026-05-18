@@ -4,3 +4,4 @@ pub mod boros_swiftblade;
 pub mod skyhunter_skirmisher;
 pub mod simic_initiate;
 pub mod hearthfire_hobgoblin;
+pub mod ethercaste_knight;

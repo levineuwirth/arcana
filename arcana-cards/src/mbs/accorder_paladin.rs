@@ -1,12 +1,17 @@
 //! Accorder Paladin — `{1}{W}` 3/1 Human Knight with Battle Cry.
-//! Has Battle Cry (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
+//! Mirrodin Besieged uncommon; a two-drop aggressive creature that
+//! pumps the rest of the attacking team via Battle Cry.
 //!
 //! # Rules references
 //!
 //! * CR 702.91 — Battle Cry. Whenever this creature attacks, each
-//!   other attacking creature gets +1/+0 until end of turn.
+//!   other attacking creature gets +1/+0 until end of turn. Engine
+//!   wiring lives in the combat attack trigger pipeline.
+//!
+//! Battle Cry is a fully-implemented keyword; listing it in `keywords`
+//! is sufficient — the runtime pipeline handles the trigger.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::BattleCry],
         ..Default::default()
     };
 

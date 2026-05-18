@@ -179,6 +179,14 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         // the Scryfall keyword list, so dropped like Toxic/Ward.)
         "undying" => "Undying",
         "persist" => "Persist",
+        // Pass 3.3 — attack/combat-damage triggered, fully enforced.
+        // (`Renown` is parametrised `Renown(u32)`; N is in rules
+        // text, so dropped like Toxic/Afterlife.)
+        "exalted" => "Exalted",
+        "battle cry" => "BattleCry",
+        "mentor" => "Mentor",
+        "dethrone" => "Dethrone",
+        "enlist" => "Enlist",
         _ => return None,
     })
 }

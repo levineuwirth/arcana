@@ -1,6 +1,6 @@
-//! Akrasan Squire — `{W}` 1/1 Creature — Human Soldier with Exalted.
-//! Shards of Alara common; the one-drop exalted creature that rewards
-//! attacking with a single creature.
+//! Ethercaste Knight — `{W}{U}` 1/3 Artifact Creature — Human Knight with Exalted.
+//! Common from Alara Reborn (2009); a white-blue artifact creature that rewards
+//! attacking alone with the Exalted trigger.
 //!
 //! # Rules references
 //!
@@ -16,21 +16,21 @@ use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
-    let name = reg.interner_mut().intern("Akrasan Squire");
+    let name = reg.interner_mut().intern("Ethercaste Knight");
     let human = reg.interner_mut().intern("Human");
-    let soldier = reg.interner_mut().intern("Soldier");
+    let knight = reg.interner_mut().intern("Knight");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
-    subtypes.0.insert(soldier);
+    subtypes.0.insert(knight);
 
     let chars = Characteristics {
         name,
-        mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),
-        colors: ColorSet::white(),
-        types: TypeLine::CREATURE.into(),
+        mana_cost: Some(ManaCost::parse("{W}{U}").expect("valid cost")),
+        colors: ColorSet::white() | ColorSet::blue(),
+        types: (TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
-        toughness: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(3)),
         keywords: vec![KeywordAbility::Exalted],
         ..Default::default()
     };

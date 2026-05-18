@@ -1,6 +1,6 @@
-//! Akrasan Squire — `{W}` 1/1 Creature — Human Soldier with Exalted.
-//! Shards of Alara common; the one-drop exalted creature that rewards
-//! attacking with a single creature.
+//! Sigiled Behemoth — `{4}{G}{W}` 5/4 Creature — Beast with Exalted.
+//! Shards of Alara uncommon; a large green-white exalted finisher that
+//! rewards committing a single attacker.
 //!
 //! # Rules references
 //!
@@ -16,21 +16,19 @@ use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
-    let name = reg.interner_mut().intern("Akrasan Squire");
-    let human = reg.interner_mut().intern("Human");
-    let soldier = reg.interner_mut().intern("Soldier");
+    let name = reg.interner_mut().intern("Sigiled Behemoth");
+    let beast = reg.interner_mut().intern("Beast");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(human);
-    subtypes.0.insert(soldier);
+    subtypes.0.insert(beast);
 
     let chars = Characteristics {
         name,
-        mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),
-        colors: ColorSet::white(),
+        mana_cost: Some(ManaCost::parse("{4}{G}{W}").expect("valid cost")),
+        colors: ColorSet::green() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        power: Some(PtValue::Fixed(1)),
-        toughness: Some(PtValue::Fixed(1)),
+        power: Some(PtValue::Fixed(5)),
+        toughness: Some(PtValue::Fixed(4)),
         keywords: vec![KeywordAbility::Exalted],
         ..Default::default()
     };

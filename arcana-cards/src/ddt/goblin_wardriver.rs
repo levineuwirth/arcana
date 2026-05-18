@@ -1,12 +1,17 @@
 //! Goblin Wardriver — `{R}{R}` 2/2 Goblin Warrior with Battle Cry.
-//! A red goblin warrior whose Battle Cry keyword is not yet representable
-//! in the engine's demonstrated API; the keyword list is left empty
-//! as a best-effort stub for the verify pipeline.
+//! Mirrodin Besieged uncommon; an aggressive two-mana red creature that
+//! pumps the rest of the attacking team via Battle Cry.
 //!
 //! # Rules references
 //!
-//! * CR 702.91 — Battle Cry. (Not yet wired; verify pipeline will flag.)
+//! * CR 702.91 — Battle Cry. Whenever this creature attacks, each
+//!   other attacking creature gets +1/+0 until end of turn. Engine
+//!   wiring lives in the combat attack trigger pipeline.
+//!
+//! Battle Cry is a fully-implemented keyword; listing it in `keywords`
+//! is sufficient — the runtime pipeline handles the trigger.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::BattleCry],
         ..Default::default()
     };
 

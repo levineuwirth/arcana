@@ -1,13 +1,19 @@
-//! Knight of the Pilgrim's Road — `{2}{W}` 3/2 Human Knight with Renown.
-//! Has renown 1 (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
+//! Knight of the Pilgrim's Road — `{2}{W}` 3/2 Human Knight with Renown 1.
+//! Magic Origins common; a three-mana white creature that grows
+//! permanently after dealing combat damage to a player via Renown.
 //!
 //! # Rules references
 //!
-//! * CR 702.111 — Renown. When this creature deals combat damage to a
+//! * CR 702.112 — Renown. When this creature deals combat damage to a
 //!   player, if it isn't renowned, put a +1/+1 counter on it and it
-//!   becomes renowned.
+//!   becomes renowned. The N parameter (here 1) is the number of
+//!   +1/+1 counters placed.
+//!
+//! Renown is a fully-implemented parametrized keyword; listing
+//! `KeywordAbility::Renown(1)` in `keywords` is sufficient — the
+//! runtime pipeline handles the trigger.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Renown(1)],
         ..Default::default()
     };
 

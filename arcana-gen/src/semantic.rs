@@ -41,14 +41,17 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
 /// made real in earlier passes are deliberately absent — they pass
 /// honestly: the Pass-2 evasion set (Fear, Intimidate, Shadow,
 /// Horsemanship, Skulk), the Pass-3.1 damage-as-counters set
-/// (Wither, Infect, Toxic) and the Pass-3.2 death-triggered set
-/// (Undying, Persist, Afterlife).
+/// (Wither, Infect, Toxic), the Pass-3.2 death-triggered set
+/// (Undying, Persist, Afterlife) and the Pass-3.3 attack /
+/// combat-damage set (Exalted, BattleCry, Mentor, Dethrone, Renown,
+/// Enlist — the last is a Phase-1-declined optional ability, still
+/// honestly functional).
 const DEFERRED_KEYWORDS: &[&str] = &[
-    "Banding", "Rampage", "Bushido", "Exalted", "Soulshift", "Unleash",
-    "Bloodthirst", "Modular", "Flanking", "BattleCry",
-    "Mentor", "Riot", "Devour", "Sunburst",
-    "Dethrone", "Scavenge", "Fading", "Vanishing", "Renown", "Evolve",
-    "Graft", "Provoke", "Amplify", "Enlist", "Changeling",
+    "Banding", "Rampage", "Bushido", "Soulshift", "Unleash",
+    "Bloodthirst", "Modular", "Flanking",
+    "Riot", "Devour", "Sunburst",
+    "Scavenge", "Fading", "Vanishing", "Evolve",
+    "Graft", "Provoke", "Amplify", "Changeling",
 ];
 
 /// Does `src` reference `KeywordAbility::<variant>` (the next char

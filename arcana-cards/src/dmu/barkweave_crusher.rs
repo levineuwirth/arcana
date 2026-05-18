@@ -1,9 +1,16 @@
-//! Barkweave Crusher — `{3}{G}` 2/5 Elemental Warrior with Enlist.
+//! Barkweave Crusher — `{3}{G}` 2/5 Creature — Elemental Warrior with Enlist.
+//! A green enlist creature that can tap a non-attacking ally to temporarily
+//! add its power to the Crusher's for the turn.
 //!
-//! Enlist is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will
-//! flag this for human routing.
+//! # Rules references
+//!
+//! * CR 702.154 — Enlist. As this creature attacks, you may tap a nonattacking
+//!   creature you control without summoning sickness. When you do, add its
+//!   power to this creature's until end of turn. The runtime enlist pipeline
+//!   handles the tap and the power boost; listing the keyword in `keywords`
+//!   is all that is required here.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -25,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(5)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Enlist],
         ..Default::default()
     };
 
