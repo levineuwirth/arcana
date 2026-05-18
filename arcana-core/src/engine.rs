@@ -1550,6 +1550,16 @@ fn apply_choice_follow_up(
                     *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
             }
         }
+        ChoiceFollowUp::Provoke { provoker } => {
+            if let Some(&target) = chosen.first() {
+                if let Some(o) = state.objects.get_mut(target) {
+                    o.untap();
+                }
+                if let Some(c) = state.combat.as_mut() {
+                    c.must_block.push((target, provoker));
+                }
+            }
+        }
         ChoiceFollowUp::UnleashCounter { creature } => {
             if !chosen.is_empty() {
                 state.place_counters(
@@ -2247,6 +2257,9 @@ fn collect_pending_triggers(
                 }
                 if kws.contains(&KA::Enlist) {
                     synth(a, ENLIST_TRIGGER_ID, &mut pending);
+                }
+                if kws.contains(&KA::Provoke) {
+                    synth(a, PROVOKE_TRIGGER_ID, &mut pending);
                 }
                 // Dethrone (CR 702.104a): attacks the player with the
                 // most life (ties count). Planeswalker/Battle attacks
@@ -3064,7 +3077,8 @@ pub(crate) fn is_attack_trigger(tid: crate::types::TriggerId) -> bool {
             || x == MENTOR_TRIGGER_ID
             || x == DETHRONE_TRIGGER_ID
             || x == RENOWN_TRIGGER_ID
-            || x == ENLIST_TRIGGER_ID)
+            || x == ENLIST_TRIGGER_ID
+            || x == PROVOKE_TRIGGER_ID)
 }
 
 /// Is `tid` one of the Pass 3.4 block-time combat-static sentinels?
@@ -3245,6 +3259,11 @@ fn attack_trigger_resolve(
         // CR 702.151a — post the optional "tap a creature, add its
         // power" choice. The effect's executor raises the prompt.
         return vec![Effect::EnlistTap { enlister: source }];
+    }
+    if trigger_id == PROVOKE_TRIGGER_ID {
+        // CR 702.39a — post the optional "target a creature defending
+        // player controls; untap it and it must block this if able".
+        return vec![Effect::ProvokeChoice { provoker: source }];
     }
     Vec::new()
 }
@@ -3570,6 +3589,8 @@ pub(crate) const RENOWN_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 104;
 // Pass 4.1 — Enlist now exercises its optional choice (was a
 // Phase-1 decline). Synthesized on AttacksDeclared like the rest.
 pub(crate) const ENLIST_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 105;
+// Pass 4.2c — Provoke: attack-time target choice → untap + must-block.
+pub(crate) const PROVOKE_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 106;
 
 // Pass 3.4 — block-time combat statics, synthesized on
 // `CreatureBlocks` (Flanking, Bushido-as-blocker) or `CreatureBlocked`
@@ -6263,6 +6284,78 @@ mod tests {
             0);
         assert!(state.blocker_eligible(creature, attacker),
             "declined ⇒ no counter ⇒ blocks normally");
+    }
+
+    // --- Pass 4.2c: Provoke target choice + must-block requirement --------
+
+    fn drive_to_provoke_choice(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        provoker: ObjectId,
+    ) -> (u64, Vec<ObjectId>) {
+        declare_attackers(state, vec![provoker]);
+        run_sba_and_triggers(state, registry);
+        assert_eq!(state.stack_size(), 1, "Provoke synthesizes an attack trigger");
+        resolve_top_of_stack(state, registry);
+        let pc = state.pending_choice.clone()
+            .expect("Provoke posts a target choice");
+        let cands = match pc.kind {
+            crate::actions::ChoiceKind::PickCards { candidates, min, max } => {
+                assert_eq!((min, max), (0, 1)); candidates
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        };
+        (pc.id, cands)
+    }
+
+    #[test]
+    fn provoke_untaps_target_and_forces_it_to_block() {
+        use crate::effects::KeywordAbility::Provoke;
+        let mut registry = crate::registry::CardRegistry::new();
+        let pv = register_kw_pt(&mut registry, vec![Provoke], 3, 3);
+        let def = register_kw_pt(&mut registry, vec![], 2, 2);
+        let mut state = GameState::new(2, 0);
+        let provoker = deploy_ready(&mut state, &registry, pv);
+        let target = deploy_owned(&mut state, &registry, def, 1);
+        state.objects.get_mut(target).unwrap().tap(); // tapped defender
+
+        let (id, cands) = drive_to_provoke_choice(&mut state, &registry, provoker);
+        assert_eq!(cands, vec![target], "the defender's creature is targetable");
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![target] });
+
+        assert!(!state.objects.get(target).unwrap().is_tapped(),
+            "Provoke untaps the target");
+
+        // Defender declares NO blocks — Provoke forces the block.
+        state.enter_declare_blockers();
+        state.apply_declared_blockers(vec![]);
+        let info = state.combat.as_ref().unwrap()
+            .attacker(provoker).unwrap().clone();
+        assert!(info.is_blocked && info.blocked_by.contains(&target),
+            "the provoked creature is forced to block the provoker");
+    }
+
+    #[test]
+    fn provoke_decline_no_forced_block() {
+        use crate::effects::KeywordAbility::Provoke;
+        let mut registry = crate::registry::CardRegistry::new();
+        let pv = register_kw_pt(&mut registry, vec![Provoke], 3, 3);
+        let def = register_kw_pt(&mut registry, vec![], 2, 2);
+        let mut state = GameState::new(2, 0);
+        let provoker = deploy_ready(&mut state, &registry, pv);
+        deploy_owned(&mut state, &registry, def, 1);
+
+        let (id, _) = drive_to_provoke_choice(&mut state, &registry, provoker);
+        apply_resolution_choice(&mut state, &registry, id,
+            crate::actions::ChoiceResponse::PickCards { picked: vec![] });
+
+        state.enter_declare_blockers();
+        state.apply_declared_blockers(vec![]);
+        let info = state.combat.as_ref().unwrap()
+            .attacker(provoker).unwrap().clone();
+        assert!(!info.is_blocked,
+            "declining provoke leaves the attacker unblocked");
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

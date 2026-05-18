@@ -686,6 +686,11 @@ pub enum ChoiceFollowUp {
     /// non-empty pick puts one +1/+1 counter on `creature`. Empty =
     /// declined (enters as a normal blocker).
     UnleashCounter { creature: ObjectId },
+    /// Pass 4.2c — Provoke (CR 702.39a). Pair with a
+    /// [`ChoiceKind::PickCards`] `{0,1}` response: untap the picked
+    /// creature and record a `combat.must_block` requirement that it
+    /// blocks `provoker` this combat if able. Empty pick = declined.
+    Provoke { provoker: ObjectId },
 }
 
 // =============================================================================

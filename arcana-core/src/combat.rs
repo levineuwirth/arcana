@@ -87,6 +87,12 @@ pub struct CombatState {
     /// defers the actual damage deal until the active player responds
     /// with [`Action::AssignCombatDamage`].
     pub pending_damage_assignment: Option<PendingDamagePass>,
+    /// CR 702.39a — Provoke. `(blocker, attacker)` pairs: `blocker`
+    /// must block `attacker` this combat if able. Recorded when
+    /// Provoke resolves; enforced in `apply_declared_blockers` by
+    /// auto-injecting the forced block. Per-combat (reset by
+    /// `CombatState::new`).
+    pub must_block: Vec<(ObjectId, ObjectId)>,
 }
 
 /// Which damage sub-step is awaiting CR 510.1c assignment.
@@ -106,6 +112,7 @@ impl CombatState {
             has_first_strike: false,
             first_strike_done: false,
             pending_damage_assignment: None,
+            must_block: Vec::new(),
         }
     }
 
@@ -690,6 +697,27 @@ impl GameState {
             // Skulk). Shared with the legal-action enumerator.
             if !self.blocker_eligible(d.blocker, d.blocking) { continue; }
             valid.push(d.clone());
+        }
+
+        // CR 702.39a — Provoke: a creature under a must-block
+        // requirement blocks the named attacker this combat *if
+        // able*. Phase-1 enforces by auto-injecting the forced block
+        // (apply_declared_blockers filters rather than rejects, so we
+        // add rather than reject-and-reprompt). "Able" = the same
+        // gate as a player-declared block; a creature already
+        // blocking something keeps that choice (not double-forced).
+        let forced: Vec<(ObjectId, ObjectId)> = self.combat.as_ref()
+            .map(|c| c.must_block.clone()).unwrap_or_default();
+        for (b, a) in forced {
+            let already = valid.iter().any(|v| v.blocker == b);
+            if already { continue; }
+            let able = self.objects.get(b).is_some_and(|o|
+                o.is_creature() && o.zone.is_battlefield() && !o.is_tapped())
+                && self.combat.as_ref().is_some_and(|c| c.is_attacker(a))
+                && self.blocker_eligible(b, a);
+            if able {
+                valid.push(BlockerDeclaration { blocker: b, blocking: a });
+            }
         }
 
         // Aggregate block-count enforcement (CR 702.110 Menace and

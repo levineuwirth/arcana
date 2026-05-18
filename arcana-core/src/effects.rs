@@ -313,6 +313,11 @@ pub enum Effect {
     /// with a +1/+1 counter?" choice for `creature` (modeled as a
     /// `PickCards{0,1}` over `[creature]` — pick self = yes).
     UnleashCounter { creature: ObjectId },
+    /// Pass 4.2c — Provoke (CR 702.39a). Posts the optional "target a
+    /// creature defending player controls" choice for `provoker`;
+    /// the follow-up untaps the pick and records a must-block
+    /// requirement (it blocks `provoker` this combat if able).
+    ProvokeChoice { provoker: ObjectId },
     /// CR 701.20a — Search `player`'s library for a matching card, put
     /// it into hand, then shuffle. `reveal` adds a public-info mark.
     /// Phase 1 picks the first matching id (deterministic); TODO
@@ -821,6 +826,9 @@ impl Effect {
             Effect::UnleashCounter { creature } => {
                 push_unleash_choice(state, *creature);
             }
+            Effect::ProvokeChoice { provoker } => {
+                push_provoke_choice(state, *provoker);
+            }
             Effect::TutorToHand { player, filter, reveal } => {
                 push_search_choice(
                     state, *player, Zone::Library(*player), filter,
@@ -1164,11 +1172,15 @@ pub enum KeywordAbility {
     /// CR 702.46a — Bushido N. "Whenever this creature blocks or
     /// becomes blocked, it gets +N/+N until end of turn."
     Bushido(u8),
-    /// CR 702.39a — Provoke. An *optional* "as it attacks" force-a-
-    /// block. Phase-1 policy: the engine always declines (a legal
-    /// choice for a "may"), so the keyword is recognized and the
-    /// card functions, but no untap/forced-block happens. DEBT: wire
-    /// when agent combat choices land. (Mirrors Enlist's policy.)
+    /// CR 702.39a — Provoke. "Whenever this attacks, you may have it
+    /// provoke target creature defending player controls. If you do,
+    /// untap that creature and it blocks this creature this combat
+    /// if able." Fully wired (Pass 4.2c): synthesized on
+    /// AttacksDeclared → [`Effect::ProvokeChoice`] posts a real
+    /// `PickCards{0,1}` over the defender's creatures; the follow-up
+    /// untaps the pick and records `combat.must_block`, which
+    /// `apply_declared_blockers` enforces by auto-injecting the
+    /// forced block when the creature is able.
     Provoke,
     // --- Attack / combat-damage triggered (Pass 3.3). Synthesized as
     //     keyword-born stack triggers in `engine`; honest L2-pass.
@@ -2116,6 +2128,38 @@ fn push_unleash_choice(state: &mut GameState, creature: ObjectId) {
         ctx,
         crate::actions::ChoiceKind::PickCards {
             candidates: vec![creature], min: 0, max: 1,
+        },
+    );
+}
+
+/// Push the optional Provoke choice (CR 702.39a): the provoker's
+/// controller may target a creature the defending player controls;
+/// the follow-up untaps it and records the must-block requirement.
+/// `PickCards{0,1}`. No prompt if the defender controls no creature.
+fn push_provoke_choice(state: &mut GameState, provoker: ObjectId) {
+    let Some(combat) = state.combat.as_ref() else { return; };
+    let Some(info) = combat.attacker(provoker) else { return; };
+    let defender = info.defending_player;
+    let controller = state.objects.get(provoker)
+        .map(|o| o.controller).unwrap_or_else(|| state.active_player());
+    let candidates: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.controller == defender
+            && o.is_creature()
+            && o.zone.is_battlefield())
+        .map(|o| o.id)
+        .collect();
+    if candidates.is_empty() { return; }
+    let ctx = match state.currently_resolving {
+        Some(e) => crate::actions::ChoiceContext::ResolvingStack(e),
+        None => crate::actions::ChoiceContext::Other,
+    };
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::Provoke { provoker });
+    state.push_pending_choice(
+        controller,
+        ctx,
+        crate::actions::ChoiceKind::PickCards {
+            candidates, min: 0, max: 1,
         },
     );
 }
