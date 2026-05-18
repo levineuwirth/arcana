@@ -48,11 +48,12 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
 /// Rampage, Bushido, Provoke), the Pass-3.5 ETB-scaling set and the
 /// Pass-3.6 long tail (Evolve/Fading/Vanishing real; Soulshift/
 /// Scavenge/Changeling recognized with a documented Phase-1 policy).
-/// Banding (full CR 702.22 combat banding) is the lone remaining
-/// deferral — worst ROI; cards carrying it stay honestly
-/// quarantined until a dedicated pass.
+/// The remaining deferrals are Banding (full CR 702.22 combat
+/// banding — worst ROI) and Warp (a cast-time alternative-cost
+/// mechanic); cards carrying either stay honestly quarantined until
+/// dedicated passes.
 const DEFERRED_KEYWORDS: &[&str] = &[
-    "Banding",
+    "Banding", "Warp",
 ];
 
 /// Does `src` reference `KeywordAbility::<variant>` (the next char
@@ -199,6 +200,19 @@ mod tests {
         assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
         let src = "keywords: vec![KeywordAbility::Afterlife(2)],";
         assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+        // Pass 3.6/3.7: long tail + Ward/Cycling are not quarantined.
+        let src = "keywords: vec![KeywordAbility::Evolve, KeywordAbility::Changeling],";
+        assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+        let src = "keywords: vec![KeywordAbility::Ward(c), KeywordAbility::Cycling(c)],";
+        assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+    }
+
+    #[test]
+    fn warp_marker_is_quarantined() {
+        let src = "keywords: vec![KeywordAbility::Warp],";
+        let r = stub_reason(Some("FrenchVanillaCreature"), src);
+        assert!(r.is_some());
+        assert!(r.unwrap().contains("Warp"));
     }
 
     #[test]

@@ -1017,10 +1017,15 @@ pub enum KeywordAbility {
     //     pass refactors to carry the payload when wiring behavior. ---
     /// CR 702.22 — Banding. Full attacking/blocking band damage
     /// assignment is the worst ROI in the keyword set and is left
-    /// deferred (the lone remaining `semantic::DEFERRED_KEYWORDS`
-    /// entry); cards carrying it stay honestly quarantined until a
-    /// dedicated pass.
+    /// deferred (a `semantic::DEFERRED_KEYWORDS` entry); cards
+    /// carrying it stay honestly quarantined until a dedicated pass.
     Banding,
+    /// CR 702.172 — Warp (an alternative-cost / exile-return cast
+    /// modifier). Deferred alongside Banding: it's a cast-time
+    /// mechanic, not a static/triggered marker, so a recognized
+    /// no-op would misrepresent the card. Recorded as a deferred
+    /// marker so its cards stay honestly quarantined.
+    Warp,
     // --- Long tail (Pass 3.6). Synthesized keyword triggers /
     //     enters-with-counters; honest L2-pass. ---
     /// CR 702.100a — Evolve. "Whenever a creature you control enters,

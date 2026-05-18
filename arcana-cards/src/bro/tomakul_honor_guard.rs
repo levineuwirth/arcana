@@ -1,9 +1,19 @@
-//! Tomakul Honor Guard — `{1}{G}` 3/1 Human Soldier with Ward {2}.
+//! Tomakul Honor Guard — `{1}{G}` 3/1 Human Soldier with Ward {2}
+//! (Dominaria United, common).
 //!
-//! Ward is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will
-//! flag this for human routing.
+//! # Rules text
+//!
+//! Ward {2} (Whenever this creature becomes the target of a spell or ability
+//! an opponent controls, counter it unless that player pays {2}.)
+//!
+//! # Rules references
+//!
+//! * CR 702.20 — Ward. Whenever this permanent becomes the target of a spell
+//!   or ability an opponent controls, counter that spell or ability unless its
+//!   controller pays the ward cost. The ward cost here is the mana cost {2},
+//!   which is expressible as `KeywordAbility::Ward(ManaCost::parse("{2}"))`.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -25,7 +35,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Ward(
+            ManaCost::parse("{2}").expect("valid cost"),
+        )],
         ..Default::default()
     };
 

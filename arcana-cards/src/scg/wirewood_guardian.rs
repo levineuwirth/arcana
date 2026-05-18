@@ -1,17 +1,26 @@
-//! Wirewood Guardian — `{5}{G}{G}` 6/6 Elf Mutant.
-//! Onslaught common (2002); a large green creature with Forestcycling,
-//! allowing it to be discarded to search for a Forest. The cycling
-//! keyword family (Forestcycling, Landcycling, Typecycling, Cycling)
-//! has no corresponding `KeywordAbility` variant in the demonstrated
-//! API; this file registers the base stats only. The verify pipeline
-//! should flag the missing cycling ability for manual implementation.
+//! Wirewood Guardian — `{5}{G}{G}` 6/6 Elf Mutant with Forestcycling {2}
+//! (Onslaught, common).
+//!
+//! # Rules text
+//!
+//! Forestcycling {2} ({2}, Discard this card: Search your library for a
+//! Forest card, reveal it, put it into your hand, then shuffle.)
+//!
+//! # Keyword mapping notes
+//!
+//! Scryfall parses this card as: Landcycling, Forestcycling, Typecycling,
+//! Cycling. Per engine conventions, all typecycling/landcycling variants
+//! collapse to the generic `Cycling` with their printed cost. Emitting a
+//! single `KeywordAbility::Cycling(ManaCost::parse("{2}"))`.
 //!
 //! # Rules references
 //!
-//! * CR 702.28 — Cycling / Forestcycling. Not expressible via the
-//!   current `KeywordAbility` enum; requires a separate activated
-//!   ability implementation.
+//! * CR 702.28 — Cycling. A player may pay the cycling cost and discard the
+//!   card to search their library for the appropriate land type. The
+//!   type-search variant is not separately modeled in the engine; the
+//!   `Cycling` keyword records the cost.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -33,7 +42,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(6)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Cycling(
+            ManaCost::parse("{2}").expect("valid cost"),
+        )],
         ..Default::default()
     };
 

@@ -1,12 +1,17 @@
-//! Ridge Rannet — `{5}{R}{R}` 6/4 Beast.
-//! Has Cycling {2} (not expressible with the current keyword API;
-//! the verify pipeline will flag this gap).
+//! Ridge Rannet — `{5}{R}{R}` 6/4 Beast with Cycling {2}
+//! (Onslaught, common).
+//!
+//! # Rules text
+//!
+//! Cycling {2} ({2}, Discard this card: Draw a card.)
 //!
 //! # Rules references
 //!
-//! * CR 702.28 — Cycling. This is an activated ability; the engine
-//!   does not yet expose it through `KeywordAbility`.
+//! * CR 702.28 — Cycling. A player may pay the cycling cost and discard the
+//!   card to draw a card. Engine records the cost via
+//!   `KeywordAbility::Cycling(ManaCost::parse("{2}"))`.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -26,7 +31,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Cycling(
+            ManaCost::parse("{2}").expect("valid cost"),
+        )],
         ..Default::default()
     };
 

@@ -1,9 +1,17 @@
-//! Barkhide Mauler — `{4}{G}` 4/4 Beast with Cycling.
+//! Barkhide Mauler — `{4}{G}` 4/4 Beast with Cycling {2}
+//! (Onslaught, common).
 //!
-//! Cycling is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will flag
-//! this for human routing.
+//! # Rules text
+//!
+//! Cycling {2} ({2}, Discard this card: Draw a card.)
+//!
+//! # Rules references
+//!
+//! * CR 702.28 — Cycling. A player may pay the cycling cost and discard the
+//!   card to draw a card. Engine records the cost via
+//!   `KeywordAbility::Cycling(ManaCost::parse("{2}"))`.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -23,7 +31,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Cycling(
+            ManaCost::parse("{2}").expect("valid cost"),
+        )],
         ..Default::default()
     };
 

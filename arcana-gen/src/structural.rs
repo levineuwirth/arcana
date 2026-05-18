@@ -206,6 +206,11 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         "soulshift" => "Soulshift",
         "scavenge" => "Scavenge",
         "changeling" => "Changeling",
+        // Pass 3.7 — Warp is a deferred marker: assert it so a card
+        // carrying it must emit `KeywordAbility::Warp` and the L3
+        // honesty guard quarantines it (Ward/Cycling are
+        // parametrised → dropped like Toxic, asserted by neither).
+        "warp" => "Warp",
         _ => return None,
     })
 }

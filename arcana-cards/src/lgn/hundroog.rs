@@ -1,12 +1,14 @@
-//! Hundroog — `{6}{G}` 4/7 Beast.
-//! Has Cycling {3} (keyword not yet in engine API; best-effort stub).
+//! Hundroog — `{6}{G}` 4/7 Beast with Cycling {3}.
+//! An overcosted green beast redeemed by Cycling {3}, which lets the player
+//! discard it to draw a card rather than cast it for full price.
 //!
 //! # Rules references
 //!
-//! * Cycling — {3}, Discard this card: Draw a card.
-//!   Not expressible with current KeywordAbility variants;
-//!   verify pipeline will flag for human routing.
+//! * CR 702.28 — Cycling. Pay the cycling cost, discard this card: draw a
+//!   card. Implemented as `KeywordAbility::Cycling(ManaCost)`. The
+//!   type-search variant is not separately modeled; generic Cycling is used.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -26,7 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(7)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Cycling(
+            ManaCost::parse("{3}").expect("valid cost"),
+        )],
         ..Default::default()
     };
 
