@@ -5,3 +5,4 @@ pub mod wildslayer_elves;
 pub mod wasp_lancer;
 pub mod zealous_guardian;
 pub mod scuzzback_scrapper;
+pub mod gravelgill_axeshark;

@@ -2087,6 +2087,59 @@ fn collect_pending_triggers(
             }
         }
 
+        // 3b. Synthesized keyword *death* triggers: Undying (CR
+        //     702.92e), Persist (CR 702.78e), Afterlife (CR 702.107a).
+        //     The `Dies` event carries the pre-move id; we read the
+        //     dying permanent's last-known snapshot (LKI, keyed by
+        //     that id) for keywords + counters, and pair it with the
+        //     same-sweep `ZoneChange` to learn the new graveyard id
+        //     the resolver acts on. The undying/persist "had no
+        //     counter" gate is decided here (LKI is gone by
+        //     resolution), so synthesizing the trigger *is* the
+        //     intervening-if.
+        if let crate::events::GameEvent::Dies { object_id } = event {
+            // Paired same-sweep ZoneChange (battlefield→graveyard);
+            // its `new_id` is the graveyard object the resolver acts
+            // on. Cloned whole so it travels on the stack entry.
+            let zc = events.iter().find(|e| matches!(e,
+                crate::events::GameEvent::ZoneChange {
+                    object_id: oid, new_id: _,
+                    to: Zone::Graveyard(_), .. }
+                if oid == object_id)).cloned();
+            if let (Some(snap), Some(zc)) =
+                (state.lki.get(object_id), zc)
+            {
+                use crate::effects::KeywordAbility as KA;
+                let kws = snap.characteristics.keywords.clone();
+                let owner = snap.owner;
+                let no_plus = snap.count_counters(
+                    crate::types::CounterKind::PlusOnePlusOne) == 0;
+                let no_minus = snap.count_counters(
+                    crate::types::CounterKind::MinusOneMinusOne) == 0;
+                let mut synth = |tid: crate::types::TriggerId| {
+                    pending.push(crate::triggers::PendingTrigger {
+                        source: *object_id,
+                        trigger_id: tid,
+                        controller: owner,
+                        trigger_event: zc.clone(),
+                        targets: crate::targets::TargetSelection::new(),
+                    });
+                };
+                if kws.contains(&KA::Undying) && no_plus {
+                    synth(UNDYING_TRIGGER_ID);
+                }
+                if kws.contains(&KA::Persist) && no_minus {
+                    synth(PERSIST_TRIGGER_ID);
+                }
+                if let Some(n) = kws.iter().find_map(|k| match k {
+                    KA::Afterlife(n) => Some(*n),
+                    _ => None,
+                }) {
+                    synth(AFTERLIFE_TRIGGER_ID_BASE - n.clamp(1, AFTERLIFE_MAX));
+                }
+            }
+        }
+
         // 4. Auto-applied keyword triggers that bypass the stack in
         //    Phase 1. These are known, bounded behaviors we don't yet
         //    route through the full TriggeredAbilityDef system.
@@ -2634,6 +2687,14 @@ fn resolution_effects(
             if *trigger_id == WARD_TRIGGER_ID {
                 return ward_trigger_resolve(state, entry.source, trigger_event);
             }
+            // Pass 3.2 — keyword-born death triggers carry one of the
+            // Undying/Persist/Afterlife sentinels (the gate was
+            // decided at synthesis); resolve from the snapshotted
+            // ZoneChange event.
+            if is_keyword_death_trigger(*trigger_id) {
+                return keyword_death_trigger_resolve(
+                    state, *trigger_id, trigger_event);
+            }
             let source = entry.source;
             let Some(obj) = state.objects.get(source)
                 .or_else(|| state.lki.get(&source))
@@ -2682,6 +2743,77 @@ fn ward_trigger_resolve(
         cost,
         counter_target: *target_entry,
     }]
+}
+
+/// Is `tid` one of the Pass 3.2 keyword-born death sentinels
+/// (Undying, Persist, or an Afterlife-N in its encoded band)?
+pub(crate) fn is_keyword_death_trigger(
+    tid: crate::types::TriggerId,
+) -> bool {
+    tid == UNDYING_TRIGGER_ID
+        || tid == PERSIST_TRIGGER_ID
+        || (AFTERLIFE_TRIGGER_ID_BASE - AFTERLIFE_MAX..AFTERLIFE_TRIGGER_ID_BASE)
+            .contains(&tid)
+}
+
+/// Resolution effects for a synthesized Undying / Persist / Afterlife
+/// trigger. The "had no counter" gate was already applied at
+/// synthesis, so this unconditionally returns the effect. The dying
+/// card's new graveyard id (and its owner) come from the snapshotted
+/// `ZoneChange` the trigger carries — LKI is long gone by now.
+///
+/// DEBT: Afterlife tokens are 1/1 white-and-black flying creatures
+/// but carry no `Spirit` subtype — the string interner lives on the
+/// `CardRegistry` and isn't reachable from trigger resolution. No
+/// Spirit-matters card exists in the current catalog, so this is
+/// functionally inert; revisit when token subtypes are wired.
+fn keyword_death_trigger_resolve(
+    state: &GameState,
+    trigger_id: crate::types::TriggerId,
+    trigger_event: &crate::events::GameEvent,
+) -> Vec<crate::effects::Effect> {
+    use crate::effects::Effect;
+    let crate::events::GameEvent::ZoneChange { new_id, to, .. } =
+        trigger_event else { return Vec::new(); };
+    if !matches!(to, Zone::Graveyard(_)) { return Vec::new(); }
+    // The card must still be the same object sitting in the graveyard;
+    // if something already moved it, the trigger does nothing.
+    let Some(obj) = state.objects.get(*new_id) else { return Vec::new(); };
+    if !matches!(obj.zone, Zone::Graveyard(_)) {
+        return Vec::new();
+    }
+    if trigger_id == UNDYING_TRIGGER_ID {
+        return vec![Effect::ReturnFromGraveyardWithCounters {
+            target: *new_id,
+            kind: crate::types::CounterKind::PlusOnePlusOne,
+            count: 1,
+        }];
+    }
+    if trigger_id == PERSIST_TRIGGER_ID {
+        return vec![Effect::ReturnFromGraveyardWithCounters {
+            target: *new_id,
+            kind: crate::types::CounterKind::MinusOneMinusOne,
+            count: 1,
+        }];
+    }
+    // Afterlife N: N decoded from the sentinel band.
+    let n = AFTERLIFE_TRIGGER_ID_BASE - trigger_id;
+    let owner = obj.owner;
+    let token = crate::effects::TokenDefinition {
+        name: 0,
+        colors: crate::types::ColorSet::white()
+            | crate::types::ColorSet::black(),
+        types: crate::types::TypeLine::CREATURE.into(),
+        subtypes: crate::types::SubtypeSet::new(),
+        power: Some(crate::types::PtValue::Fixed(1)),
+        toughness: Some(crate::types::PtValue::Fixed(1)),
+        keywords: vec![crate::effects::KeywordAbility::Flying],
+        abilities: vec![],
+    };
+    (0..n).map(|_| Effect::CreateToken {
+        controller: owner,
+        token: token.clone(),
+    }).collect()
 }
 
 // =============================================================================
@@ -2856,6 +2988,20 @@ const MAX_SETTLE_ITERATIONS: u32 = 64;
 /// to the built-in Ward handler. `u32::MAX` chosen so real card
 /// trigger ids (assigned from 1 upward per card) never collide.
 pub(crate) const WARD_TRIGGER_ID: crate::types::TriggerId = u32::MAX;
+
+// Pass 3.2 — keyword-born *death* triggers, synthesized on `Dies`
+// like Ward is on `BecomesTarget`. The undying/persist intervening-if
+// ("had no +1/+1 counter") is evaluated at synthesis using the dying
+// object's last-known counters, so a real stack entry can carry the
+// already-decided effect to resolution (LKI is dropped after the
+// collecting sweep). Afterlife N is encoded as
+// `AFTERLIFE_TRIGGER_ID_BASE - N` (N clamped to [1, AFTERLIFE_MAX]);
+// the resolver decodes N back out. All sit just below
+// `WARD_TRIGGER_ID`, far above any per-card id (assigned from 1 up).
+pub(crate) const UNDYING_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 1;
+pub(crate) const PERSIST_TRIGGER_ID: crate::types::TriggerId = u32::MAX - 2;
+pub(crate) const AFTERLIFE_MAX: u32 = 64;
+pub(crate) const AFTERLIFE_TRIGGER_ID_BASE: crate::types::TriggerId = u32::MAX - 16;
 
 fn next_undecided_mulligan_player(state: &GameState) -> Option<PlayerId> {
     let active = state.active_player();
@@ -4511,6 +4657,146 @@ mod tests {
         let entry = state.top_of_stack().unwrap();
         assert!(entry.is_triggered());
         assert_eq!(entry.source, battlefield_id);
+    }
+
+    // --- Pass 3.2: Undying / Persist / Afterlife --------------------------
+
+    /// Register a 2/2 creature carrying exactly `kws`.
+    fn register_kw_creature(
+        registry: &mut crate::registry::CardRegistry,
+        kws: Vec<crate::effects::KeywordAbility>,
+    ) -> crate::types::CardId {
+        let name = registry.interner_mut().intern("KW Creature");
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}{B}").unwrap()),
+            colors: ColorSet::black(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            keywords: kws,
+            ..Default::default()
+        };
+        registry.register(
+            crate::registry::CardDefinition::new(name, chars))
+    }
+
+    /// Drop a registered card onto the battlefield; return its
+    /// battlefield id.
+    fn deploy(
+        state: &mut GameState,
+        registry: &crate::registry::CardRegistry,
+        card: crate::types::CardId,
+    ) -> ObjectId {
+        let id = state.allocate_object_id();
+        let def = registry.get(card).unwrap();
+        state.objects.insert(GameObject::new(
+            id, 0, Zone::Hand(0), card, def.base_characteristics.clone()));
+        state.move_object_to_zone(
+            id, Zone::Battlefield, MoveCause::SpellResolution).unwrap()
+    }
+
+    fn battlefield_creatures(state: &GameState) -> Vec<ObjectId> {
+        state.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.is_creature())
+            .map(|o| o.id)
+            .collect()
+    }
+
+    #[test]
+    fn undying_returns_with_plus_counter_when_no_counter() {
+        use crate::effects::KeywordAbility;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![KeywordAbility::Undying]);
+        let mut state = GameState::new(2, 0);
+        let bf = deploy(&mut state, &registry, card);
+
+        state.move_object_to_zone(
+            bf, Zone::Graveyard(0), MoveCause::StateBasedAction).unwrap();
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1, "undying should synthesize a trigger");
+        resolve_top_of_stack(&mut state, &registry);
+
+        let creatures = battlefield_creatures(&state);
+        assert_eq!(creatures.len(), 1, "undying creature should be back");
+        assert_eq!(
+            state.objects.get(creatures[0]).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            1, "returns with a +1/+1 counter");
+        assert_eq!(state.zone_count(Zone::Graveyard(0)), 0);
+    }
+
+    #[test]
+    fn undying_does_not_return_when_it_had_a_plus_counter() {
+        use crate::effects::KeywordAbility;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![KeywordAbility::Undying]);
+        let mut state = GameState::new(2, 0);
+        let bf = deploy(&mut state, &registry, card);
+        state.objects.get_mut(bf).unwrap()
+            .add_counters(CounterKind::PlusOnePlusOne, 1);
+
+        state.move_object_to_zone(
+            bf, Zone::Graveyard(0), MoveCause::StateBasedAction).unwrap();
+        run_sba_and_triggers(&mut state, &registry);
+
+        assert_eq!(state.stack_size(), 0, "gate fails — no trigger");
+        assert!(battlefield_creatures(&state).is_empty());
+        assert_eq!(state.zone_count(Zone::Graveyard(0)), 1);
+    }
+
+    #[test]
+    fn persist_returns_with_minus_counter() {
+        use crate::effects::KeywordAbility;
+        use crate::types::CounterKind;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(&mut registry, vec![KeywordAbility::Persist]);
+        let mut state = GameState::new(2, 0);
+        let bf = deploy(&mut state, &registry, card);
+
+        state.move_object_to_zone(
+            bf, Zone::Graveyard(0), MoveCause::StateBasedAction).unwrap();
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+
+        let creatures = battlefield_creatures(&state);
+        assert_eq!(creatures.len(), 1);
+        assert_eq!(
+            state.objects.get(creatures[0]).unwrap()
+                .count_counters(CounterKind::MinusOneMinusOne),
+            1, "returns with a -1/-1 counter");
+    }
+
+    #[test]
+    fn afterlife_creates_n_flying_tokens_under_owner() {
+        use crate::effects::KeywordAbility;
+        let mut registry = crate::registry::CardRegistry::new();
+        let card = register_kw_creature(
+            &mut registry, vec![KeywordAbility::Afterlife(2)]);
+        let mut state = GameState::new(2, 0);
+        let bf = deploy(&mut state, &registry, card);
+
+        state.move_object_to_zone(
+            bf, Zone::Graveyard(0), MoveCause::StateBasedAction).unwrap();
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+
+        let tokens: Vec<_> = state.objects
+            .objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.is_token && o.is_creature())
+            .collect();
+        assert_eq!(tokens.len(), 2, "Afterlife 2 → two tokens");
+        for t in &tokens {
+            assert_eq!(t.controller, 0);
+            assert!(t.characteristics.keywords
+                .contains(&KeywordAbility::Flying));
+        }
+        // The original card stays dead in the graveyard.
+        assert_eq!(state.zone_count(Zone::Graveyard(0)), 1);
     }
 
     // --- Targeted triggered abilities (CR 603.3d) -------------------------

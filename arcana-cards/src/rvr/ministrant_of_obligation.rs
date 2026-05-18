@@ -1,13 +1,17 @@
 //! Ministrant of Obligation — `{2}{W}` 2/1 Human Cleric with Afterlife 2.
-//! Afterlife is not representable with the demonstrated KeywordAbility
-//! variants; keywords left empty for verify pipeline.
+//! When Ministrant of Obligation dies, create two 1/1 white and black
+//! Spirit creature tokens with flying. (CR 702.151 — Afterlife.)
 //!
 //! # Rules references
 //!
-//! * CR 702.135 — Afterlife N. When this creature dies, create N 1/1 white
-//!   and black Spirit creature tokens with flying. Not expressible with the
-//!   demonstrated API.
+//! * CR 702.151 — Afterlife N. When this permanent dies, create N 1/1
+//!   white and black Spirit creature tokens with flying.
+//!
+//! Afterlife is a fully implemented parametrized keyword; listing
+//! `KeywordAbility::Afterlife(2)` in `keywords` is sufficient — the
+//! runtime pipeline handles token creation on death.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Afterlife(2)],
         ..Default::default()
     };
 

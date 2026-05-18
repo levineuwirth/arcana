@@ -1,7 +1,11 @@
-//! Putrid Goblin — `{1}{B}` 2/2 Zombie Goblin with Persist.
-//! When Putrid Goblin dies, if it had no -1/-1 counters on it, return
+//! Safehold Elite — `{1}{G/W}` 2/2 Elf Scout with Persist.
+//! When Safehold Elite dies, if it had no -1/-1 counters on it, return
 //! it to the battlefield under its owner's control with a -1/-1 counter.
 //! (CR 702.79 — Persist.)
+//!
+//! The mana cost uses a hybrid symbol `{G/W}`; the card's actual colors
+//! are green and white, so `ColorSet::green() | ColorSet::white()` is
+//! used per the engine conventions.
 //!
 //! # Rules references
 //!
@@ -20,17 +24,17 @@ use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
-    let name = reg.interner_mut().intern("Putrid Goblin");
-    let zombie = reg.interner_mut().intern("Zombie");
-    let goblin = reg.interner_mut().intern("Goblin");
+    let name = reg.interner_mut().intern("Safehold Elite");
+    let elf = reg.interner_mut().intern("Elf");
+    let scout = reg.interner_mut().intern("Scout");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(zombie);
-    subtypes.0.insert(goblin);
+    subtypes.0.insert(elf);
+    subtypes.0.insert(scout);
 
     let chars = Characteristics {
         name,
-        mana_cost: Some(ManaCost::parse("{1}{B}").expect("valid cost")),
-        colors: ColorSet::black(),
+        mana_cost: Some(ManaCost::parse("{1}{G/W}").expect("valid cost")),
+        colors: ColorSet::green() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(2)),

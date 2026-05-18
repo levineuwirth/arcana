@@ -1,9 +1,17 @@
 //! Debtors' Transport — `{5}{B}` 5/3 Thrull with Afterlife 2.
+//! When Debtors' Transport dies, create two 1/1 white and black Spirit
+//! creature tokens with flying. (CR 702.151 — Afterlife.)
 //!
-//! Afterlife is not expressible with the current demonstrated `KeywordAbility`
-//! variants. The keywords list is left empty; the verify pipeline will
-//! flag this for human routing.
+//! # Rules references
+//!
+//! * CR 702.151 — Afterlife N. When this permanent dies, create N 1/1
+//!   white and black Spirit creature tokens with flying.
+//!
+//! Afterlife is a fully implemented parametrized keyword; listing
+//! `KeywordAbility::Afterlife(2)` in `keywords` is sufficient — the
+//! runtime pipeline handles token creation on death.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -23,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Afterlife(2)],
         ..Default::default()
     };
 

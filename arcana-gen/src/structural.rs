@@ -174,6 +174,11 @@ fn evergreen_variant(scryfall_kw: &str) -> Option<&'static str> {
         // Scryfall keyword list, so it's dropped — not asserted.)
         "wither" => "Wither",
         "infect" => "Infect",
+        // Pass 3.2 — death-triggered, fully enforced. (`Afterlife` is
+        // parametrised `Afterlife(u32)`; its N is in rules text, not
+        // the Scryfall keyword list, so dropped like Toxic/Ward.)
+        "undying" => "Undying",
+        "persist" => "Persist",
         _ => return None,
     })
 }

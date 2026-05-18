@@ -40,12 +40,13 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
 /// enum variant idents exactly as they appear in source. Keywords
 /// made real in earlier passes are deliberately absent — they pass
 /// honestly: the Pass-2 evasion set (Fear, Intimidate, Shadow,
-/// Horsemanship, Skulk) and the Pass-3.1 damage-as-counters set
-/// (Wither, Infect, Toxic).
+/// Horsemanship, Skulk), the Pass-3.1 damage-as-counters set
+/// (Wither, Infect, Toxic) and the Pass-3.2 death-triggered set
+/// (Undying, Persist, Afterlife).
 const DEFERRED_KEYWORDS: &[&str] = &[
     "Banding", "Rampage", "Bushido", "Exalted", "Soulshift", "Unleash",
-    "Bloodthirst", "Modular", "Flanking", "BattleCry", "Undying",
-    "Persist", "Afterlife", "Mentor", "Riot", "Devour", "Sunburst",
+    "Bloodthirst", "Modular", "Flanking", "BattleCry",
+    "Mentor", "Riot", "Devour", "Sunburst",
     "Dethrone", "Scavenge", "Fading", "Vanishing", "Renown", "Evolve",
     "Graft", "Provoke", "Amplify", "Enlist", "Changeling",
 ];
@@ -176,17 +177,23 @@ mod tests {
 
     #[test]
     fn deferred_keyword_marker_is_quarantined_on_french_vanilla() {
-        let src = "keywords: vec![KeywordAbility::Undying],";
+        let src = "keywords: vec![KeywordAbility::Banding],";
         let r = stub_reason(Some("FrenchVanillaCreature"), src);
         assert!(r.is_some());
-        assert!(r.unwrap().contains("Undying"));
+        assert!(r.unwrap().contains("Banding"));
     }
 
     #[test]
-    fn real_evasion_keyword_is_not_quarantined() {
-        // Fear/Intimidate/Shadow/Horsemanship/Skulk are implemented —
-        // a french-vanilla card carrying only those passes the gate.
+    fn real_keyword_is_not_quarantined() {
+        // Implemented keywords pass the gate on a french-vanilla card:
+        // Pass-2 evasion, Pass-3.1 damage-as-counters, Pass-3.2 death.
         let src = "keywords: vec![KeywordAbility::Fear, KeywordAbility::Shadow],";
+        assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+        let src = "keywords: vec![KeywordAbility::Wither, KeywordAbility::Infect],";
+        assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+        let src = "keywords: vec![KeywordAbility::Undying, KeywordAbility::Persist],";
+        assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+        let src = "keywords: vec![KeywordAbility::Afterlife(2)],";
         assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
     }
 

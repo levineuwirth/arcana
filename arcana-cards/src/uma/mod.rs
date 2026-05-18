@@ -2,3 +2,4 @@
 pub mod gurmag_angler;
 pub mod mahamoti_djinn;
 pub mod slippery_bogle;
+pub mod safehold_elite;

@@ -1,13 +1,19 @@
 //! Nearheath Stalker — `{4}{R}` 4/1 Vampire Rogue with Undying.
-//! Undying is not representable with the demonstrated KeywordAbility variants;
-//! keywords left empty for verify pipeline.
+//! When Nearheath Stalker dies, if it had no +1/+1 counters on it,
+//! return it to the battlefield under its owner's control with a +1/+1
+//! counter. (CR 702.92 — Undying.)
 //!
 //! # Rules references
 //!
-//! * CR 702.93 — Undying. When this creature dies, if it had no +1/+1
-//!   counters on it, return it with a +1/+1 counter. Not expressible with
-//!   the demonstrated API.
+//! * CR 702.92 — Undying. When this permanent dies, if it had no +1/+1
+//!   counters on it, return it to the battlefield under its owner's
+//!   control with a +1/+1 counter on it.
+//!
+//! Undying is a fully implemented unit-variant keyword; listing
+//! `KeywordAbility::Undying` in `keywords` is sufficient — the runtime
+//! pipeline handles the return-from-graveyard trigger.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Undying],
         ..Default::default()
     };
 

@@ -99,6 +99,17 @@ pub enum Effect {
     /// Reanimate a specific card from a graveyard (spec card, not
     /// by filter). No-op if `target` isn't currently in a graveyard.
     ReturnFromGraveyardToBattlefield { target: ObjectId },
+    /// Like [`Effect::ReturnFromGraveyardToBattlefield`] but places
+    /// `count` counters of `kind` on the permanent *as it re-enters*
+    /// (the object is re-id'd by the zone move, so the counters must
+    /// be applied to the fresh battlefield id, not `target`). Used by
+    /// the Undying / Persist keyword triggers (Pass 3.2). `count == 0`
+    /// degrades to a plain return.
+    ReturnFromGraveyardWithCounters {
+        target: ObjectId,
+        kind: CounterKind,
+        count: u32,
+    },
     /// Regrowth-style: return a specific graveyard card to its
     /// owner's hand. No-op if `target` isn't in a graveyard.
     ReturnFromGraveyardToHand { target: ObjectId },
@@ -452,6 +463,19 @@ impl Effect {
                 if !matches!(obj.zone, Zone::Graveyard(_)) { return; }
                 state.move_object_to_zone(
                     *target, Zone::Battlefield, MoveCause::SpellResolution);
+            }
+            Effect::ReturnFromGraveyardWithCounters { target, kind, count } => {
+                let Some(obj) = state.objects.get(*target) else { return; };
+                if !matches!(obj.zone, Zone::Graveyard(_)) { return; }
+                if let Some(new_id) = state.move_object_to_zone(
+                    *target, Zone::Battlefield, MoveCause::SpellResolution)
+                {
+                    if *count > 0 {
+                        state.place_counters(
+                            crate::replacement::CounterTarget::Object(new_id),
+                            *kind, *count);
+                    }
+                }
             }
             Effect::ReturnFromGraveyardToHand { target } => {
                 let Some(obj) = state.objects.get(*target) else { return; };
@@ -984,10 +1008,22 @@ pub enum KeywordAbility {
     //     MTG (Soulshift N, Devour N, …); kept unit here — a future
     //     pass refactors to carry the payload when wiring behavior. ---
     Banding, Rampage, Bushido, Exalted, Soulshift, Unleash,
-    Bloodthirst, Modular, Flanking, BattleCry, Undying, Persist,
-    Afterlife, Mentor, Riot, Devour, Sunburst, Dethrone, Scavenge,
+    Bloodthirst, Modular, Flanking, BattleCry,
+    Mentor, Riot, Devour, Sunburst, Dethrone, Scavenge,
     Fading, Vanishing, Renown, Evolve, Graft, Provoke, Amplify,
     Enlist, Changeling,
+    // --- Death-triggered, returning / token (Pass 3.2). Synthesized
+    //     as keyword-born stack triggers in `engine`; honest L2-pass.
+    /// CR 702.92e — Undying. "When this dies, if it had no +1/+1
+    /// counters on it, return it to the battlefield under its
+    /// owner's control with a +1/+1 counter on it."
+    Undying,
+    /// CR 702.78e — Persist. As Undying but the gate/return counter
+    /// is a −1/−1 counter.
+    Persist,
+    /// CR 702.107a — Afterlife N. "When this dies, create N 1/1
+    /// white and black Spirit creature tokens with flying."
+    Afterlife(u32),
     // --- Damage-as-counters / poison (Pass 3.1). Fully enforced in
     //     `combat::GameState::deal_damage`; honest L2-pass. ---
     /// CR 702.90b — Wither. Damage this deals to a creature is dealt

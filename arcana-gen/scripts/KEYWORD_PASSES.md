@@ -26,6 +26,17 @@ Per-pass loop (the same one Passes 1–2 used):
    `verify_dir` → `land_cards.py` → `verify_catalog.py` attest.
 6. Commit the pass.
 
+Gotchas (learned the hard way):
+- **Rebuild `verify_dir` after any `semantic.rs`/`structural.rs`
+  change** (`cargo build -p arcana-gen --bin verify_dir`). The
+  prebuilt binary embeds the old L2/L3 rules; a stale one will
+  L3-quarantine cards the pass just made real.
+- **Land from a minimal staging dir, not the full run dir.**
+  `land_cards.py --force --apply` re-lands *every* passed row; on a
+  run dir full of stale sources that's 100+ unintended catalog
+  edits. Stage only the pass's regenerated `.rs` + `manifest.jsonl`
+  + `verify-report.jsonl` into a tmp dir and land that.
+
 Infra already present (per damage/counter pipeline map):
 `CounterKind::{PlusOnePlusOne,MinusOneMinusOne,Poison}`,
 `PlayerState::poison_counters`, `GameObject::add_counters`,
