@@ -1,13 +1,17 @@
 //! Kjeldoran Warrior — `{W}` 1/1 Human Warrior with Banding.
-//!
-//! Banding is not present in the demonstrated `KeywordAbility`
-//! variants, so keywords is left empty. The verify pipeline will
-//! flag this gap.
+//! Ice Age common; a cheap white creature representing the disciplined
+//! Kjeldoran military tradition through the banding keyword.
 //!
 //! # Rules references
 //!
-//! * CR 702.22 — Banding (not yet in engine API).
+//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
+//!   with the controller of creatures with banding in the band assigning combat
+//!   damage for any creature blocked by or blocking the band.
+//!
+//! Banding is the sole keyword; listing it in `keywords` is sufficient —
+//! the runtime pipelines do the rest.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Banding],
         ..Default::default()
     };
 

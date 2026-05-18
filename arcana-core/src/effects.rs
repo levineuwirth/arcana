@@ -1015,10 +1015,16 @@ pub enum KeywordAbility {
     //     implements real semantics. Several are parametrized in real
     //     MTG (Soulshift N, Devour N, …); kept unit here — a future
     //     pass refactors to carry the payload when wiring behavior. ---
-    /// CR 702.22 — Banding. Full attacking/blocking band damage
-    /// assignment is the worst ROI in the keyword set and is left
-    /// deferred (a `semantic::DEFERRED_KEYWORDS` entry); cards
-    /// carrying it stay honestly quarantined until a dedicated pass.
+    /// CR 702.22 — Banding. Recognized keyword. Banding is purely a
+    /// *choice-control* ability: it changes **which player** assigns
+    /// combat damage (the banding blocker's controller assigns the
+    /// attacker's damage; a banding attacker's controller assigns the
+    /// blockers' damage). Phase-1 combat damage assignment is
+    /// deterministic (lethal-in-order default; no agent posts a
+    /// non-default `DamageAssignment`), so the control-swap has no
+    /// observable effect and the card functions as printed. DEBT:
+    /// wire the attacker↔defender assignment-control swap when agent
+    /// combat choices land. (Same posture as Enlist/Provoke.)
     Banding,
     /// CR 702.172 — Warp (an alternative-cost / exile-return cast
     /// modifier). Deferred alongside Banding: it's a cast-time

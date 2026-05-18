@@ -48,12 +48,12 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
 /// Rampage, Bushido, Provoke), the Pass-3.5 ETB-scaling set and the
 /// Pass-3.6 long tail (Evolve/Fading/Vanishing real; Soulshift/
 /// Scavenge/Changeling recognized with a documented Phase-1 policy).
-/// The remaining deferrals are Banding (full CR 702.22 combat
-/// banding — worst ROI) and Warp (a cast-time alternative-cost
-/// mechanic); cards carrying either stay honestly quarantined until
-/// dedicated passes.
+/// The lone remaining deferral is Warp (a cast-time
+/// alternative-cost mechanic — a recognized no-op would
+/// misrepresent the card); its cards stay honestly quarantined
+/// until a dedicated pass.
 const DEFERRED_KEYWORDS: &[&str] = &[
-    "Banding", "Warp",
+    "Warp",
 ];
 
 /// Does `src` reference `KeywordAbility::<variant>` (the next char
@@ -182,10 +182,11 @@ mod tests {
 
     #[test]
     fn deferred_keyword_marker_is_quarantined_on_french_vanilla() {
-        let src = "keywords: vec![KeywordAbility::Banding],";
+        // Warp is the lone remaining deferral.
+        let src = "keywords: vec![KeywordAbility::Warp],";
         let r = stub_reason(Some("FrenchVanillaCreature"), src);
         assert!(r.is_some());
-        assert!(r.unwrap().contains("Banding"));
+        assert!(r.unwrap().contains("Warp"));
     }
 
     #[test]
@@ -205,10 +206,13 @@ mod tests {
         assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
         let src = "keywords: vec![KeywordAbility::Ward(c), KeywordAbility::Cycling(c)],";
         assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
+        // Pass 3.8: Banding recognized (choice-control, Phase-1 inert).
+        let src = "keywords: vec![KeywordAbility::Banding],";
+        assert!(stub_reason(Some("FrenchVanillaCreature"), src).is_none());
     }
 
     #[test]
-    fn warp_marker_is_quarantined() {
+    fn warp_is_the_lone_remaining_quarantine() {
         let src = "keywords: vec![KeywordAbility::Warp],";
         let r = stub_reason(Some("FrenchVanillaCreature"), src);
         assert!(r.is_some());

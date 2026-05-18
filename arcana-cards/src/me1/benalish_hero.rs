@@ -11,12 +11,11 @@
 //!   controller, among any of the creatures it's being blocked by or is
 //!   blocking.
 //!
-//! # Engine note
-//!
-//! `KeywordAbility::Banding` is not present in the demonstrated API set.
-//! This card is emitted as a best-effort vanilla creature (no keywords
-//! field entry) so the verify pipeline can flag the missing variant.
+//! Banding is a base characteristic on this card; the runtime combat
+//! pipeline handles the mechanic once `KeywordAbility::Banding` is
+//! present in `keywords`.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Banding],
         ..Default::default()
     };
 

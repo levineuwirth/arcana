@@ -1,12 +1,20 @@
 //! Timber Wolves — `{G}` 1/1 Wolf with Banding.
-//! Banding is not expressible with the current demonstrated KeywordAbility API;
-//! the verify pipeline should flag this for manual wiring.
+//! Alpha uncommon (1993); the iconic mono-green banding creature and
+//! an early demonstration that Banding is not exclusively a white keyword.
 //!
 //! # Rules references
 //!
-//! * CR 702.22 — Banding. Any creatures with banding, and up to one without,
-//!   can attack in a band. Bands are blocked as a group.
+//! * CR 702.21 — Banding. Any creatures with banding, and up to one
+//!   without, can attack in a band. Bands are blocked as a group. If
+//!   any creatures with banding you control are blocking or being
+//!   blocked by a creature, you divide that creature's combat damage,
+//!   not its controller, among any of the creatures it's being blocked
+//!   by or is blocking.
+//!
+//! Banding is a base characteristic on this card; listing it in
+//! `keywords` is sufficient — the runtime pipeline handles the rest.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -26,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Banding],
         ..Default::default()
     };
 

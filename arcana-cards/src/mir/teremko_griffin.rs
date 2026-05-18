@@ -1,12 +1,22 @@
-//! Teremko Griffin — `{3}{W}` 2/2 Griffin with Flying.
-//!
-//! This card also has Banding, which is not expressible with the current
-//! demonstrated `KeywordAbility` variants. Flying is encoded; Banding is
-//! omitted. The verify pipeline will flag the gap for human routing.
+//! Teremko Griffin — `{3}{W}` 2/2 Griffin with Flying and Banding.
+//! Mirage common (1996); a flying creature from the Teremko region
+//! that combines aerial mobility with the coordinated banding mechanic.
 //!
 //! # Rules references
 //!
-//! * CR 702.9 — Flying. Can only be blocked by creatures with Flying or Reach.
+//! * CR 702.9 — Flying. Can only be blocked by creatures with Flying
+//!   or Reach. Engine wiring lives in [`arcana_core::combat`]'s
+//!   blocker filter.
+//! * CR 702.21 — Banding. Any creatures with banding, and up to one
+//!   without, can attack in a band. Bands are blocked as a group. If
+//!   any creatures with banding you control are blocking or being
+//!   blocked by a creature, you divide that creature's combat damage,
+//!   not its controller, among any of the creatures it's being blocked
+//!   by or is blocking.
+//!
+//! Both keywords are base characteristics on this card; the runtime
+//! pipelines handle Flying (blocker filter) and Banding (combat damage
+//! assignment) once the variants appear in `keywords`.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -28,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![KeywordAbility::Flying],
+        keywords: vec![KeywordAbility::Flying, KeywordAbility::Banding],
         ..Default::default()
     };
 

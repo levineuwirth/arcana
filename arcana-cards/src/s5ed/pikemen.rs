@@ -1,6 +1,21 @@
 //! Pikemen — `{1}{W}` 1/1 Human Soldier with First Strike and Banding.
-//! Banding is not in the demonstrated `KeywordAbility` API;
-//! flagged for the verify pipeline. First Strike is encoded; Banding omitted.
+//! Legends common (1994); a cheap white soldier pairing first-strike
+//! deterrence with banding's cooperative combat-damage-assignment control.
+//!
+//! # Rules references
+//!
+//! * CR 702.7 — First Strike. Deals combat damage in the first combat
+//!   damage step; opposing creatures without first/double strike deal
+//!   damage in the second step.
+//! * CR 702.21 — Banding. Any creatures with banding, and up to one
+//!   without, can attack in a band. Bands are blocked as a group. If
+//!   any creatures with banding you control are blocking or being
+//!   blocked by a creature, you divide that creature's combat damage,
+//!   not its controller, among any of the creatures it's being blocked
+//!   by or is blocking.
+//!
+//! Both keywords are base characteristics on this card; listing them
+//! in `keywords` is sufficient — the runtime pipeline handles the rest.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -24,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![KeywordAbility::FirstStrike],
+        keywords: vec![KeywordAbility::FirstStrike, KeywordAbility::Banding],
         ..Default::default()
     };
 

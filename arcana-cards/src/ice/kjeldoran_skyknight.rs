@@ -1,19 +1,18 @@
-//! Kjeldoran Skyknight — `{2}{W}` 1/1 Human Knight with Flying,
-//! First Strike, and Banding.
+//! Kjeldoran Skyknight — `{2}{W}` 1/1 Human Knight with Flying, First strike,
+//! and Banding. Ice Age common; a classic Kjeldoran white weenie combining
+//! evasion with the banding combat mechanic.
 //!
 //! # Rules references
 //!
-//! * CR 702.9  — Flying. Can only be blocked by creatures with Flying
-//!   or Reach.
-//! * CR 702.7  — First Strike. Deals combat damage before creatures
-//!   without first strike.
-//! * CR 702.22 — Banding. Allows creatures to attack or block as a
-//!   band; the controlling player assigns the banded creature's combat
-//!   damage.
+//! * CR 702.9 — Flying. Can only be blocked by creatures with Flying or Reach.
+//! * CR 702.7 — First strike. Deals combat damage before creatures without
+//!   first strike or double strike.
+//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
+//!   with the controller of creatures with banding in the band assigning combat
+//!   damage for any creature blocked by or blocking the band.
 //!
-//! NOTE: `Banding` is not present in the demonstrated `KeywordAbility`
-//! variant list. Flying and FirstStrike are encoded; Banding is omitted
-//! from the keywords vec. The verify pipeline will flag the gap.
+//! All three keywords are base characteristics; listing them in `keywords` is
+//! sufficient — the runtime pipelines do the rest.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -37,7 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![KeywordAbility::Flying, KeywordAbility::FirstStrike],
+        keywords: vec![
+            KeywordAbility::Flying,
+            KeywordAbility::FirstStrike,
+            KeywordAbility::Banding,
+        ],
         ..Default::default()
     };
 

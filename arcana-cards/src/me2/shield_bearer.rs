@@ -1,9 +1,21 @@
 //! Shield Bearer — `{1}{W}` 0/3 Human Soldier with Banding.
-//! Banding (any creatures with banding, and up to one without, can attack
-//! in a band; banding creatures share combat damage assignment).
-//! Banding is not in the demonstrated KeywordAbility set; the verify
-//! pipeline will flag the gap.
+//! Portal Second Age common (1998); a defensive banding creature
+//! whose high toughness relative to power reflects a shield-wall role.
+//!
+//! # Rules references
+//!
+//! * CR 702.21 — Banding. Any creatures with banding, and up to one
+//!   without, can attack in a band. Bands are blocked as a group. If
+//!   any creatures with banding you control are blocking or being
+//!   blocked by a creature, you divide that creature's combat damage,
+//!   not its controller, among any of the creatures it's being blocked
+//!   by or is blocking.
+//!
+//! Banding is a base characteristic on this card; the runtime combat
+//! pipeline handles the mechanic once `KeywordAbility::Banding` is
+//! present in `keywords`.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -25,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Banding],
         ..Default::default()
     };
 

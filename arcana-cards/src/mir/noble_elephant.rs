@@ -1,14 +1,17 @@
 //! Noble Elephant — `{3}{W}` 2/2 Elephant with Trample and Banding.
-//!
-//! Trample is expressible via the demonstrated API. Banding is not
-//! present in the demonstrated `KeywordAbility` variants, so it is
-//! omitted; the verify pipeline will flag this gap.
+//! Mirage common; a straightforward white trample-banding creature in the
+//! same vein as War Elephant, emphasising the noble-beast flavour.
 //!
 //! # Rules references
 //!
 //! * CR 702.19 — Trample. Excess combat damage may be assigned to the
-//!   defending player (or planeswalker).
-//! * CR 702.22 — Banding (not yet in engine API).
+//!   defending player or planeswalker even when the creature is blocked.
+//! * CR 702.22 — Banding. Creatures with banding can attack or block as a band,
+//!   with the controller of creatures with banding in the band assigning combat
+//!   damage for any creature blocked by or blocking the band.
+//!
+//! Both keywords are base characteristics; listing them in `keywords` is
+//! sufficient — the runtime pipelines do the rest.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -30,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![KeywordAbility::Trample],
+        keywords: vec![KeywordAbility::Banding, KeywordAbility::Trample],
         ..Default::default()
     };
 
