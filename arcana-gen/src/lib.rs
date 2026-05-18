@@ -10,4 +10,6 @@ pub mod prompt;
 pub mod verify;
 pub mod llm;
 pub mod bakeoff;
+pub mod structural;
+pub mod semantic;
 pub mod analyze;

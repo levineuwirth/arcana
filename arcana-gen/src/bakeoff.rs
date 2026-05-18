@@ -48,7 +48,7 @@ use anyhow::{anyhow, Context, Result};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::classifier::{classify, Tier};
 use crate::llm::LlmClient;
@@ -84,6 +84,12 @@ pub struct BakeoffConfig {
     /// Expected to all route to Unsupported; a surprise passes-
     /// through means the classifier's T4 gate over- or under-catches.
     pub t4_control_sample: usize,
+    /// Restrict sampling to Standard-legal cards. Default `true`
+    /// (the bake-off measures current-format generation). Set
+    /// `false` (`--all-sets`) to sample the whole oracle pool —
+    /// needed for large runs of a structurally-safe class (vanilla
+    /// / french-vanilla creatures) where Standard alone is too thin.
+    pub restrict_standard: bool,
     /// Preflight: a small handful of known-easy cards each model
     /// is asked to generate before the full sweep begins. Catches
     /// "endpoint unreachable" or "model hangs" before hours of
@@ -101,6 +107,7 @@ impl Default for BakeoffConfig {
             model_seed: 0,
             output_path: default_output_path(),
             t4_control_sample: 10,
+            restrict_standard: true,
             preflight_card_names: vec![
                 "Grizzly Bears".to_string(),
                 "Lightning Bolt".to_string(),
@@ -607,12 +614,18 @@ fn run_card_for_model(
 // Sampling
 // =============================================================================
 
-fn sample_cards(pool: &ScryfallPool, config: &BakeoffConfig) -> Vec<(Card, Tier)> {
+pub fn sample_cards(pool: &ScryfallPool, config: &BakeoffConfig) -> Vec<(Card, Tier)> {
     let mut rng = ChaCha8Rng::seed_from_u64(config.card_seed);
 
-    // Bucket Standard-legal cards by classifier tier.
+    // Bucket cards by classifier tier. Standard-legal only by
+    // default; whole pool when `restrict_standard` is false.
     let mut by_tier: HashMap<Tier, Vec<&Card>> = HashMap::new();
-    for card in pool.standard_legal() {
+    let pool_iter: Box<dyn Iterator<Item = &Card>> = if config.restrict_standard {
+        Box::new(pool.standard_legal())
+    } else {
+        Box::new(pool.iter())
+    };
+    for card in pool_iter {
         let tier = classify(card).tier;
         by_tier.entry(tier).or_default().push(card);
     }
@@ -857,6 +870,163 @@ pub fn ensure_parent_dir(path: &Path) -> Result<()> {
 }
 
 // =============================================================================
+// Prompt dump (subagent / out-of-process generation backend)
+// =============================================================================
+
+/// One manifest row written by [`dump_prompts`]. Carries everything
+/// the out-of-process generation step (a Claude Code subagent, a
+/// human, a different harness) needs to produce a candidate, plus
+/// the Scryfall-derived structural fields the layer-2 checker diffs
+/// the generated `CardDefinition` against.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DumpRow {
+    /// Stable 0-based index; also the prompt-file name prefix.
+    pub idx: usize,
+    /// Filesystem-safe handle derived from the card name.
+    pub slug: String,
+    pub tier: u8,
+    /// `true` when `render_prompt` produced a prompt. `false` rows
+    /// carry `unsupported_reason` and have no `prompt_file`.
+    pub supported: bool,
+    pub shape: Option<String>,
+    pub unsupported_reason: Option<String>,
+    pub name: String,
+    pub oracle_id: String,
+    pub set: String,
+    pub mana_cost: Option<String>,
+    pub cmc: f32,
+    pub type_line: String,
+    pub power: Option<String>,
+    pub toughness: Option<String>,
+    pub colors: Vec<String>,
+    pub keywords: Vec<String>,
+    /// Path (relative to the dump dir) of the prompt file, or `None`
+    /// for unsupported rows.
+    pub prompt_file: Option<String>,
+}
+
+/// Render the deterministic prefix of the pipeline (sample →
+/// classify → render_prompt) and write it to disk instead of
+/// calling a model. Produces, under `out_dir`:
+///
+/// * `manifest.jsonl` — one [`DumpRow`] per sampled card.
+/// * `prompts/<idx>_<slug>.txt` — the system + user prompt for each
+///   supported card, with a delimiter the reader can split on.
+///
+/// This is the seam for the subagent backend: a generator reads a
+/// prompt file, writes `<idx>_<slug>.rs` next to it, and the
+/// `verify_dir` driver picks the candidates up. No network, no LLM
+/// clients constructed. Returns `(supported, unsupported)` counts.
+pub fn dump_prompts(
+    pool: &ScryfallPool,
+    config: &BakeoffConfig,
+    out_dir: &Path,
+) -> Result<(usize, usize)> {
+    let prompts_dir = out_dir.join("prompts");
+    std::fs::create_dir_all(&prompts_dir)
+        .with_context(|| format!("creating {}", prompts_dir.display()))?;
+
+    let sampled = sample_cards(pool, config);
+    eprintln!(
+        "dump: sampled {} cards (card_seed={}, size_per_tier={}, t4_control={})",
+        sampled.len(),
+        config.card_seed,
+        config.sample_size_per_tier,
+        config.t4_control_sample,
+    );
+
+    let manifest_path = out_dir.join("manifest.jsonl");
+    let mut manifest = File::create(&manifest_path)
+        .with_context(|| format!("creating {}", manifest_path.display()))?;
+
+    let mut supported = 0usize;
+    let mut unsupported = 0usize;
+    for (idx, (card, tier)) in sampled.iter().enumerate() {
+        let slug = slugify(&card.name);
+        let mut row = DumpRow {
+            idx,
+            slug: slug.clone(),
+            tier: tier.as_number(),
+            supported: false,
+            shape: None,
+            unsupported_reason: None,
+            name: card.name.clone(),
+            oracle_id: card.oracle_id.clone(),
+            set: card.set.clone(),
+            mana_cost: card.mana_cost.clone(),
+            cmc: card.cmc,
+            type_line: card.type_line.clone(),
+            power: card.power.clone(),
+            toughness: card.toughness.clone(),
+            colors: card.colors.clone(),
+            keywords: card.keywords.clone(),
+            prompt_file: None,
+        };
+        match render_prompt(card, *tier) {
+            Ok(prompt) => {
+                let fname = format!("{idx:03}_{slug}.txt");
+                let body = format!(
+                    "# Arcana card-gen prompt — {name} (T{tier}, {shape})\n\
+                     #\n\
+                     # Write ONLY the Rust source for this card to a sibling file\n\
+                     # named {idx:03}_{slug}.rs. No markdown fences, no prose.\n\
+                     #\n\
+                     ===== SYSTEM =====\n{system}\n\
+                     ===== USER =====\n{user}\n",
+                    name = card.name,
+                    tier = tier.as_number(),
+                    shape = prompt_shape_name(prompt.shape),
+                    system = prompt.system,
+                    user = prompt.user,
+                );
+                std::fs::write(prompts_dir.join(&fname), body)
+                    .with_context(|| format!("writing prompt {fname}"))?;
+                row.supported = true;
+                row.shape = Some(prompt_shape_name(prompt.shape).to_string());
+                row.prompt_file = Some(format!("prompts/{fname}"));
+                supported += 1;
+            }
+            Err(u) => {
+                row.unsupported_reason = Some(u.to_string());
+                unsupported += 1;
+            }
+        }
+        let line = serde_json::to_string(&row).context("serializing DumpRow")?;
+        writeln!(manifest, "{line}").context("writing manifest row")?;
+    }
+    manifest.flush().context("flushing manifest")?;
+    eprintln!(
+        "dump: wrote {supported} prompt(s) + {unsupported} unsupported row(s) to {}",
+        out_dir.display()
+    );
+    Ok((supported, unsupported))
+}
+
+/// Filesystem- and module-safe slug: lowercase, non-alphanumeric
+/// runs collapsed to a single `_`, leading/trailing `_` trimmed.
+/// `"Bonecrusher Giant // Stomp"` → `"bonecrusher_giant_stomp"`.
+pub fn slugify(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut prev_us = true; // trims leading separators
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch.to_ascii_lowercase());
+            prev_us = false;
+        } else if !prev_us {
+            out.push('_');
+            prev_us = true;
+        }
+    }
+    while out.ends_with('_') {
+        out.pop();
+    }
+    if out.is_empty() {
+        out.push_str("card");
+    }
+    out
+}
+
+// =============================================================================
 // tests
 // =============================================================================
 
@@ -916,6 +1086,7 @@ mod tests {
             model_seed: 42,
             output_path: output,
             t4_control_sample: 5,
+            restrict_standard: true,
             preflight_card_names: vec![], // skip preflight in tests
         }
     }

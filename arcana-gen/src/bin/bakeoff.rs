@@ -60,6 +60,7 @@ fn real_main() -> Result<()> {
         model_seed: args.model_seed,
         output_path: args.output.clone().unwrap_or_else(default_output_path),
         t4_control_sample: args.t4_control,
+        restrict_standard: !args.all_sets,
         preflight_card_names: vec![
             "Grizzly Bears".to_string(),
             "Lightning Bolt".to_string(),
@@ -68,6 +69,21 @@ fn real_main() -> Result<()> {
     };
     if args.no_preflight {
         config.preflight_card_names.clear();
+    }
+
+    // Subagent backend: render the sample's prompts to disk and
+    // exit. No model clients, no network. The generation step
+    // happens out-of-process; `verify_dir` ingests the candidates.
+    if let Some(dir) = &args.dump_prompts {
+        let pool = ScryfallPool::load_default()
+            .context("loading Scryfall oracle-cards pool (cache or download)")?;
+        eprintln!("bakeoff: loaded {} cards from pool", pool.len());
+        let (sup, unsup) = bakeoff::dump_prompts(&pool, &config, dir)?;
+        println!(
+            "dumped {sup} prompt(s), {unsup} unsupported → {}",
+            dir.display()
+        );
+        return Ok(());
     }
 
     // Print header: seeds + sample size + model list. Anyone reading
@@ -224,6 +240,11 @@ struct Args {
     no_preflight: bool,
     ollama_endpoint: String,
     output: Option<PathBuf>,
+    /// When set, render the sample's prompts to this dir and exit
+    /// without constructing any model clients (subagent backend).
+    dump_prompts: Option<PathBuf>,
+    /// Sample the whole oracle pool instead of Standard-legal only.
+    all_sets: bool,
 }
 
 fn parse_args(raw: Vec<String>) -> Result<Args> {
@@ -250,6 +271,8 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     let mut no_preflight = false;
     let mut ollama_endpoint: String = "http://localhost:11434".to_string();
     let mut output: Option<PathBuf> = None;
+    let mut dump_prompts: Option<PathBuf> = None;
+    let mut all_sets = false;
 
     let mut it = raw.into_iter();
     while let Some(arg) = it.next() {
@@ -374,6 +397,15 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                     it.next().ok_or_else(|| anyhow!("--output needs a value"))?,
                 ));
             }
+            "--dump-prompts" => {
+                dump_prompts = Some(PathBuf::from(
+                    it.next()
+                        .ok_or_else(|| anyhow!("--dump-prompts needs a value"))?,
+                ));
+            }
+            "--all-sets" => {
+                all_sets = true;
+            }
             "-h" | "--help" => {
                 print_usage();
                 std::process::exit(0);
@@ -382,9 +414,14 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         }
     }
 
-    if models.is_empty() && anthropic_models.is_empty() && openai_models.is_empty() {
+    if dump_prompts.is_none()
+        && models.is_empty()
+        && anthropic_models.is_empty()
+        && openai_models.is_empty()
+    {
         return Err(anyhow!(
-            "at least one --model, --anthropic-model, or --openai-model is required"
+            "at least one --model, --anthropic-model, or --openai-model is required \
+             (or pass --dump-prompts to render prompts without a model)"
         ));
     }
     if !openai_models.is_empty() && openai_endpoint.is_none() {
@@ -415,6 +452,8 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
         no_preflight,
         ollama_endpoint,
         output,
+        dump_prompts,
+        all_sets,
     })
 }
 
@@ -532,6 +571,18 @@ Sweep:
   --t4-control <n>               T4 sanity-anchor sample size; default 10
   --no-preflight                 Skip the 3-card pre-sweep smoke test
   --output <path>                Default target/bakeoff-runs/<timestamp>.jsonl
+
+Subagent backend:
+  --dump-prompts <dir>           Render the sampled prompts to <dir>
+                                 (manifest.jsonl + prompts/) and exit
+                                 without constructing any model client.
+                                 No --model is required in this mode.
+                                 Use with the verify_dir bin to ingest
+                                 candidates generated out-of-process.
+  --all-sets                     Sample the whole oracle pool instead of
+                                 Standard-legal only. Needed for large runs
+                                 of a structurally-safe class (vanilla /
+                                 french-vanilla) where Standard is too thin.
 
 Outputs a compact summary to stdout and detailed per-(card, model)
 JSONL to the output path. JSONL rows are flushed per-line for

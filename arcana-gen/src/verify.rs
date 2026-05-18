@@ -307,6 +307,30 @@ struct CargoSpan {
 // path helpers
 // =============================================================================
 
+/// The scratch file path for `config`'s slot. Layer-2 callers write
+/// `<candidate source> + <structural harness>` here and run
+/// `cargo test`; see [`crate::structural`].
+pub fn scratch_path(config: &VerifyConfig) -> PathBuf {
+    scratch_path_for(&config.scratch_slug)
+}
+
+/// Restore the scratch slot to the known-good (Grizzly Bears)
+/// source. Callers that write candidates into the slot must call
+/// this when done so an aborted run doesn't leave the workspace
+/// with a broken — or `_noop`-bootstrap — scratch file. Grizzly
+/// Bears (not the build.rs `_noop` stub) is the restore target
+/// because it exposes `register`, keeping any later workspace build
+/// that references the slot healthy.
+pub fn restore_known_good(config: &VerifyConfig) -> std::io::Result<()> {
+    std::fs::write(scratch_path_for(&config.scratch_slug), KNOWN_GOOD_CANDIDATE)
+}
+
+/// Workspace root (parent of `arcana-gen`). Exposed so layer-2
+/// callers can spawn `cargo test` with the right `current_dir`.
+pub fn workspace_root_path() -> PathBuf {
+    workspace_root()
+}
+
 pub(crate) fn scratch_path_for(slug: &str) -> PathBuf {
     let mut p = workspace_root();
     p.push("arcana-cards");

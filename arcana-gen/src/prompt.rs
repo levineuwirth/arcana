@@ -256,6 +256,7 @@ ENGINE CONVENTIONS (match the reference examples exactly)
 - Colors: `ColorSet::white()`, `blue()`, `black()`, `red()`, `green()` for monocolored. Colorless or multi-color shapes follow the examples.
 - Types: `TypeLine::CREATURE`, `INSTANT`, `SORCERY`, `ARTIFACT`, `ENCHANTMENT`, `LAND`. Place in `Characteristics.types` via `.into()`.
 - Power / toughness: `PtValue::Fixed(n)` wrapped in `Some(...)`. Omit on non-creatures (leave as default via `..Default::default()`).
+- Supertypes: `Characteristics.supertypes` is a `SupertypeSet`, a bitflag wrapper — NOT a set. For a Legendary card use `supertypes: SupertypeSet(SupertypeSet::LEGENDARY)`; for a Basic land `SupertypeSet(SupertypeSet::BASIC)`. Otherwise leave it to `..Default::default()`. Never call `.insert()` / `.0.insert()` on it (that idiom is for `SubtypeSet` only).
 - Keywords: `KeywordAbility::Flying`, `Vigilance`, `Reach`, `Trample`, `Haste`, `Lifelink`, `Deathtouch`, `FirstStrike`, `DoubleStrike`, `Menace`, `Defender`, `Hexproof`, `Shroud`, `Indestructible`. Place in `Characteristics.keywords` as a `Vec<KeywordAbility>`.
 - Spell abilities: `.with_spell_ability(SpellAbilityDef { text, target_requirements, modal: None, effect: resolve })` where `resolve` is a free fn `fn(_: &GameState, entry: &StackEntry, _: &CardRegistry) -> Vec<Effect>`.
 - Triggered abilities: `.with_triggered_ability(TriggeredAbilityDef { id, trigger_condition, intervening_if, effect, trigger_zones, frequency, target_requirements })`. `id` is a per-card `u32` starting at 1. `effect` is a free fn `fn(_: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect>`.
@@ -282,6 +283,8 @@ const FS_ELVISH_VISIONARY: &str =
     include_str!("../../arcana-cards/src/lrw/elvish_visionary.rs");
 const FS_YOUNG_PYROMANCER: &str =
     include_str!("../../arcana-cards/src/m14/young_pyromancer.rs");
+const FS_PREORDAIN: &str =
+    include_str!("../../arcana-cards/src/m11/preordain.rs");
 
 // =============================================================================
 // shared target-card spec block
@@ -381,10 +384,15 @@ REFERENCE — Counterspell ({{U}}{{U}} instant, 'counter target spell'):
 {FS_COUNTERSPELL}
 ```
 
+REFERENCE — Preordain ({{U}} sorcery, 'Scry 2, then draw a card' — shows a no-target resolver returning a multi-effect `vec![Effect::A, Effect::B]`):
+```rust
+{FS_PREORDAIN}
+```
+
 === TARGET CARD ===
 {spec}
 
-Generate the Rust source. Output only the file contents.",
+The resolver must return the `Effect`s that implement the rules text. If the card's effect genuinely cannot be expressed with the `Effect` variants shown across these references, return `Vec::new()` AND add a `// GAP: <what is missing>` comment naming the missing variant — do not invent an `Effect` variant. Generate the Rust source. Output only the file contents.",
         spec = card_spec(card),
     )
 }
