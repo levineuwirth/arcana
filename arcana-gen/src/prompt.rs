@@ -445,6 +445,9 @@ Two-object / combat:
 Tokens:
 - `Effect::CreateToken {{ controller: p, token: TokenDefinition {{ .. }} }}`  (see Servo Exhibition for the full `TokenDefinition` shape; repeat the `Effect::CreateToken` for 'create N')
 
+Sacrifice:
+- `Effect::Sacrifice {{ player: p, filter: ObjectFilter::creature(), count: u32 }}`  ('that player sacrifices a creature' → player = the target player, filter selects what; chain the `ObjectFilter` refinements above for 'sacrifices an artifact', etc.)
+
 Search the library (shuffle is automatic):
 - `Effect::TutorToHand {{ player: p, filter: ObjectFilter::creature(), reveal: true }}`
 - `Effect::TutorToBattlefield {{ player: p, filter: ObjectFilter::creature(), tapped: false }}`
@@ -467,7 +470,7 @@ CARD SCRIPTING — when an amount or a board-wide set is computed at resolution 
 - `script::count_matching(state, &filter, entry.controller) -> u32`  — battlefield permanents matching an `ObjectFilter` ('number of creatures you control' = `ObjectFilter::creature().controlled_by(ControllerConstraint::You)`).
 - `script::ids_matching(state, &filter, entry.controller) -> Vec<ObjectId>`  — the matching ids, in stable order; feed straight into `Effect::ForEach {{ targets: <this>, effect: Box::new(..) }}` for 'destroy/return/damage EACH/ALL <filter>' (the filter, not just `creature()`, selects the subset — this is how filtered board wipes work).
 - `script::subtype_filter(reg, 'Goblin')`  — an `ObjectFilter` for creatures of a named subtype (resolved via the resolver's 3rd param — name it `reg`, not `_reg`); matches nothing if no such card exists. Use for tribal wipes: `script::ids_matching(state, &script::subtype_filter(reg, 'Zombie'), entry.controller)`.
-- `ObjectFilter` refinements (chain onto `creature()` / `permanent()` / `subtype_filter(..)`): `.controlled_by(ControllerConstraint::You|Opponent)`, `.with_colors(ColorSet::black())`, `.without_types(TypeLine::ARTIFACT.into())`, `.with_max_cmc(n)` / `.with_min_cmc(n)` / `.with_exact_cmc(n)`, `.with_min_power(n)` / `.with_max_power(n)` / `.with_max_toughness(n)`, `.tokens_only()` / `.nontoken()`. Covers 'each creature with mana value 3 or less', 'all black creatures', 'each token', etc.
+- `ObjectFilter` refinements (chain onto `creature()` / `permanent()` / `subtype_filter(..)`): `.controlled_by(ControllerConstraint::You|Opponent)`, `.with_colors(ColorSet::black())`, `.without_colors(ColorSet::black())` (nonblack), `.without_types(TypeLine::ARTIFACT.into())`, `.with_max_cmc(n)` / `.with_min_cmc(n)` / `.with_exact_cmc(n)`, `.with_min_power(n)` / `.with_max_power(n)` / `.with_max_toughness(n)`, `.tokens_only()` / `.nontoken()`, `.tapped_only()` / `.untapped_only()`. Covers 'each creature with mana value 3 or less', 'all nonblack creatures', 'destroy target tapped creature', 'each token', etc. These same builders compose inside `TargetFilter::Permanent(..)` for filtered single targets — use them so 'target nonblack/tapped/power-N creature' is the actual target requirement, not an unfiltered creature.
 - `script::power_of(state, id) -> i32` · `script::toughness_of(state, id) -> i32`  — a permanent's current P/T (0 if gone).
 - `script::hand_size(state, p) -> u32` · `script::graveyard_size(state, p) -> u32` · `script::library_size(state, p) -> u32` · `script::life(state, p) -> i32`.
 - `script::graveyard_matching(state, &filter, player, entry.controller) -> u32`.

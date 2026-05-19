@@ -253,6 +253,26 @@ mod tests {
     }
 
     #[test]
+    fn color_exclusion_and_tap_filters() {
+        let mut s = GameState::new(2, 0);
+        // green creature (creature_chars uses ColorSet::green)
+        let g = put(&mut s, Zone::Battlefield, 0, creature_chars(2, 2));
+        let mut blk = creature_chars(2, 2);
+        blk.colors = crate::types::ColorSet::black();
+        put(&mut s, Zone::Battlefield, 0, blk);
+        // "noncolorless... nonblack creature" → only the green one
+        let nonblack = ObjectFilter::creature()
+            .without_colors(crate::types::ColorSet::black());
+        assert_eq!(count_matching(&s, &nonblack, 0), 1);
+        // tap the green one; "tapped creature" matches just it
+        s.objects.get_mut(g).unwrap().tap();
+        assert_eq!(
+            count_matching(&s, &ObjectFilter::creature().tapped_only(), 0), 1);
+        assert_eq!(
+            count_matching(&s, &ObjectFilter::creature().untapped_only(), 0), 1);
+    }
+
+    #[test]
     fn graveyard_matching_respects_filter() {
         let mut s = GameState::new(2, 0);
         put(&mut s, Zone::Graveyard(0), 0, creature_chars(2, 2));

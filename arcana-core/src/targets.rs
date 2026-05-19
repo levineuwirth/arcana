@@ -430,6 +430,13 @@ pub struct ObjectFilter {
     /// Every color in this set must be in the object's colors (AND).
     /// Use [`Self::exact_colors`] if you need strict equality instead.
     pub colors: Option<ColorSet>,
+    /// No color in this set may be in the object's colors. "nonblack
+    /// creature" = `not_colors: ColorSet::black()`. Colorless objects
+    /// (no color bits) pass any `not_colors`.
+    pub not_colors: Option<ColorSet>,
+    /// Tap-state constraint: `Some(true)` = only tapped permanents,
+    /// `Some(false)` = only untapped. `None` = either.
+    pub tapped: Option<bool>,
     /// Every subtype here must be on the object.
     pub subtypes: Option<Vec<SmallString>>,
     pub controller: Option<ControllerConstraint>,
@@ -537,6 +544,22 @@ impl ObjectFilter {
         self.subtypes.get_or_insert_with(Vec::new).push(sym);
         self
     }
+    /// Builder: exclude a color ("nonblack creature" =
+    /// `creature().without_colors(ColorSet::black())`).
+    pub fn without_colors(mut self, colors: ColorSet) -> Self {
+        self.not_colors = Some(colors);
+        self
+    }
+    /// Builder: only tapped permanents.
+    pub fn tapped_only(mut self) -> Self {
+        self.tapped = Some(true);
+        self
+    }
+    /// Builder: only untapped permanents.
+    pub fn untapped_only(mut self) -> Self {
+        self.tapped = Some(false);
+        self
+    }
 
     /// Does `obj` match this filter?
     ///
@@ -569,6 +592,18 @@ impl ObjectFilter {
         // --- colors: all colors in the filter must be in the object ---
         if let Some(required) = self.colors {
             if (obj.characteristics.colors.0 & required.0) != required.0 {
+                return false;
+            }
+        }
+        // --- color exclusion: none of these colors may be present ---
+        if let Some(excluded) = self.not_colors {
+            if obj.characteristics.colors.0 & excluded.0 != 0 {
+                return false;
+            }
+        }
+        // --- tap state ---
+        if let Some(want_tapped) = self.tapped {
+            if obj.is_tapped() != want_tapped {
                 return false;
             }
         }
