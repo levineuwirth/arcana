@@ -457,6 +457,7 @@ TARGET SPEC — `target_requirements` on `SpellAbilityDef` (the references show 
 
 Stack:
 - `Effect::Counter {{ target: id }}`  (counter target spell — `id` is the spell's stack-object id; see Counterspell)
+- `Effect::CounterUnlessPays {{ target: id, cost: ManaCost::parse(\"{{2}}\").expect(\"valid cost\") }}`  (soft counter — 'counter target spell unless its controller pays {{N}}'; Spell Pierce / Mana Leak / Miscast. The engine finds the spell's controller and prompts them; you supply only the spell id and the tax cost.)
 
 Composites (wrap the above):
 - `Effect::ForEach {{ targets: vec![/* ObjectIds */], effect: Box::new(Effect::DestroyPermanent {{ target: arcana_core::objects::NULL_OBJECT_ID }}) }}`  — 'destroy/affect EACH/ALL matching': enumerate the ids from `state` and apply the inner effect once per id. Use this for board wipes and 'deals N damage to each creature'.

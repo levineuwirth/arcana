@@ -266,6 +266,18 @@ pub enum Effect {
         cost: crate::mana::ManaCost,
         counter_target: ObjectId,
     },
+    /// Soft counter (Spell Pierce / Mana Leak / Miscast family):
+    /// "counter `target` spell unless its controller pays `cost`".
+    /// Resolves by pushing a [`crate::actions::ChoiceKind::PayOrDecline`]
+    /// to the *targeted spell's controller* (looked up from the
+    /// stack, so the generated resolver only supplies the spell id
+    /// and the tax cost); declining counters `target`. No-op if
+    /// `target` is no longer on the stack (it already resolved /
+    /// was countered) — CR 608.2b illegal-target tolerance.
+    CounterUnlessPays {
+        target: ObjectId,
+        cost: crate::mana::ManaCost,
+    },
 
     // --- mana / phases -----------------------------------------------------
     AddMana { player: PlayerId, mana: Vec<crate::mana::ManaUnit> },
@@ -756,6 +768,28 @@ impl Effect {
                         cost: cost.clone(),
                         on_decline: crate::actions::DeclineConsequence::CounterStackEntry(
                             *counter_target),
+                    },
+                );
+            }
+            Effect::CounterUnlessPays { target, cost } => {
+                // Look up the targeted spell's controller from the
+                // stack; if it's gone (resolved / already countered)
+                // this is a legal no-op.
+                let Some(spell_controller) = state.stack.iter()
+                    .find(|e| e.id == *target)
+                    .map(|e| e.controller)
+                else { return; };
+                let Some(resolving) = state.currently_resolving else {
+                    return;
+                };
+                state.push_pending_choice(
+                    spell_controller,
+                    crate::actions::ChoiceContext::ResolvingStack(resolving),
+                    crate::actions::ChoiceKind::PayOrDecline {
+                        cost: cost.clone(),
+                        on_decline:
+                            crate::actions::DeclineConsequence::CounterStackEntry(
+                                *target),
                     },
                 );
             }
@@ -3376,6 +3410,47 @@ mod tests {
         assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|e|
             matches!(e, GameEvent::SpellCountered { object_id } if *object_id == stack_id)));
+    }
+
+    #[test]
+    fn counter_unless_pays_prompts_the_spell_controller() {
+        use crate::actions::{ChoiceKind, DeclineConsequence};
+        let mut s = GameState::new(2, 0);
+        // Player 1 casts a spell; player 0's soft counter resolves.
+        let card = put_instant(&mut s, 1, Zone::Hand(1));
+        let spell = s.announce_spell_on_stack(
+            card, 1, TargetSelection::new(), vec![], None, vec![]);
+        s.currently_resolving = Some(spell); // any resolving ctx
+        Effect::CounterUnlessPays {
+            target: spell,
+            cost: crate::mana::ManaCost::parse("{2}").unwrap(),
+        }.execute(&mut s);
+
+        let pc = s.pending_choice.as_ref().expect("PayOrDecline pushed");
+        assert_eq!(pc.choosing_player, 1, "the spell's controller pays");
+        match &pc.kind {
+            ChoiceKind::PayOrDecline { cost, on_decline } => {
+                assert_eq!(*cost,
+                    crate::mana::ManaCost::parse("{2}").unwrap());
+                assert!(matches!(on_decline,
+                    DeclineConsequence::CounterStackEntry(t) if *t == spell));
+            }
+            other => panic!("expected PayOrDecline, got {other:?}"),
+        }
+        // The spell is still on the stack — countering happens only
+        // on a declined payment, handled by the choice dispatcher.
+        assert_eq!(s.stack_size(), 1);
+    }
+
+    #[test]
+    fn counter_unless_pays_noop_when_target_gone() {
+        let mut s = GameState::new(2, 0);
+        s.currently_resolving = Some(1);
+        Effect::CounterUnlessPays {
+            target: 4242, // never on the stack
+            cost: crate::mana::ManaCost::parse("{1}").unwrap(),
+        }.execute(&mut s);
+        assert!(s.pending_choice.is_none());
     }
 
     #[test]
