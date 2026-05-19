@@ -16,3 +16,6 @@ pub mod furious_resistance;
 pub mod psychic_strike;
 pub mod coerced_confession;
 pub mod wildwood_rebirth;
+pub mod massive_raid;
+pub mod enter_the_infinite;
+pub mod arrows_of_justice;

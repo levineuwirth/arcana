@@ -2,3 +2,4 @@
 pub mod giant_regrowth;
 pub mod traumatic_prank;
 pub mod pass_the_torch;
+pub mod brokers_safeguard;

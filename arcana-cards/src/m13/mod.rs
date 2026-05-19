@@ -8,3 +8,6 @@ pub mod warclamp_mastiff;
 pub mod essence_drain;
 pub mod serpent_s_gift;
 pub mod craterize;
+pub mod wit_s_end;
+pub mod rain_of_blades;
+pub mod ranger_s_path;

@@ -13,3 +13,5 @@ pub mod doom_blade;
 pub mod wrench_mind;
 pub mod ulcerate;
 pub mod butcher_s_glee;
+pub mod nature_s_claim;
+pub mod mark_of_mutiny;

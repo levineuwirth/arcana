@@ -10,3 +10,7 @@ pub mod tail_swipe;
 pub mod battle_rage_blessing;
 pub mod furious_bellow;
 pub mod flowstone_infusion;
+pub mod drag_to_the_bottom;
+pub mod cosmic_epiphany;
+pub mod captain_s_call;
+pub mod gaea_s_might;

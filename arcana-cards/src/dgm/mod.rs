@@ -11,3 +11,5 @@ pub mod punish_the_enemy;
 pub mod morgue_burst;
 pub mod obzedat_s_aid;
 pub mod mindstatic;
+pub mod crypt_incursion;
+pub mod warped_physique;

@@ -2,3 +2,4 @@
 pub mod fall_of_the_hammer;
 pub mod relic_crush;
 pub mod spell_crumple;
+pub mod whipflare;

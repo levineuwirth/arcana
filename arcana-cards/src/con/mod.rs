@@ -8,3 +8,4 @@ pub mod lapse_of_certainty;
 pub mod shard_convergence;
 pub mod view_from_above;
 pub mod voices_from_the_void;
+pub mod quenchable_fire;

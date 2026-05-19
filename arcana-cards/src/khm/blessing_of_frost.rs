@@ -1,0 +1,61 @@
+//! Blessing of Frost — `{3}{G}` snow sorcery. "Distribute X +1/+1 counters
+//! among any number of creatures you control, where X is the amount of {S}
+//! spent to cast this spell. Then draw a card for each creature you control
+//! with power 4 or greater."
+//!
+//! GAP: "Snow" supertype — TypeLine has no SNOW constant; TypeLine::SORCERY.into() used.
+//! GAP: "amount of {S} spent" — no API to query snow mana paid at cast time.
+//! GAP: "distribute X counters among any number" — no multi-target counter distribution Effect.
+//! Best-effort: emit the draw step (cards for creatures with power >=4).
+
+use arcana_core::effects::Effect;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Blessing of Frost");
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
+        colors: ColorSet::green(),
+        // GAP: Snow supertype not representable in TypeLine constants
+        types: TypeLine::SORCERY.into(),
+        ..Default::default()
+    };
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Distribute X +1/+1 counters among any number of creatures you control, where X is the amount of {S} spent to cast this spell. Then draw a card for each creature you control with power 4 or greater.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
+    )
+}
+
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: amount of {S} spent — no API to query snow mana paid
+    // GAP: distribute counters among multiple targets — no multi-target counter Effect
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_min_power(4),
+        entry.controller,
+    );
+    if n > 0 {
+        vec![Effect::DrawCards { player: entry.controller, count: n }]
+    } else {
+        Vec::new()
+    }
+}

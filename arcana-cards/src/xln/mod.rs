@@ -29,3 +29,6 @@ pub mod dual_shot;
 pub mod pounce;
 pub mod vraska_s_contempt;
 pub mod emergent_growth;
+pub mod siren_s_ruse;
+pub mod grim_captain_s_call;
+pub mod huatli_s_spurring;

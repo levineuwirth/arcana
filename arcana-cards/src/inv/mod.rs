@@ -7,3 +7,5 @@ pub mod barrin_s_unmaking;
 pub mod ordered_migration;
 pub mod plague_spores;
 pub mod backlash;
+pub mod simoon;
+pub mod tsabo_s_decree;

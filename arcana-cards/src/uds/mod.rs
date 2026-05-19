@@ -8,3 +8,5 @@ pub mod squirming_mass;
 pub mod elvish_lookout;
 pub mod scent_of_brine;
 pub mod encroach;
+pub mod wake_of_destruction;
+pub mod multani_s_decree;

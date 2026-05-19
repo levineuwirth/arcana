@@ -14,3 +14,7 @@ pub mod burn_the_accursed;
 pub mod revenge_of_the_drowned;
 pub mod defenestrate;
 pub mod thraben_exorcism;
+pub mod foul_play;
+pub mod flare_of_faith;
+pub mod olivia_s_midnight_ambush;
+pub mod devious_cover_up;

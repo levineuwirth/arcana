@@ -2,3 +2,5 @@
 pub mod aerial_responder;
 pub mod natural_connection;
 pub mod deathsprout;
+pub mod curious_herd;
+pub mod ever_after;

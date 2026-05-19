@@ -12,3 +12,4 @@ pub mod rip_clan_crasher;
 pub mod shadowfeed;
 pub mod sangrite_surge;
 pub mod violent_ultimatum;
+pub mod punish_ignorance;

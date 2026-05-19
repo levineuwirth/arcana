@@ -26,3 +26,7 @@ pub mod death_s_duet;
 pub mod coercion;
 pub mod aftershock;
 pub mod verdigris;
+pub mod needle_storm;
+pub mod repentance;
+pub mod tranquility;
+pub mod mogg_infestation;

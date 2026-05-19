@@ -11,3 +11,5 @@ pub mod divest;
 pub mod hinder;
 pub mod revoke_existence;
 pub mod dismantle;
+pub mod might_of_the_masses;
+pub mod open_the_vaults;

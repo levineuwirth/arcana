@@ -1,0 +1,55 @@
+//! Mana Sculpt — `{1}{U}{U}` instant, "Counter target spell. If you control a
+//! Wizard, add an amount of {C} equal to the amount of mana spent to cast that
+//! spell at the beginning of your next main phase."
+//!
+//! GAP: conditional mana addition at the beginning of a future phase based on
+//! countered spell's mana cost is not expressible. Partial: counter only.
+
+use arcana_core::effects::Effect;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Mana Sculpt");
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{1}{U}{U}").expect("valid cost")),
+        colors: ColorSet::blue(),
+        types: TypeLine::INSTANT.into(),
+        ..Default::default()
+    };
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. If you control a Wizard, add an amount of {C} equal to the amount of mana spent to cast that spell at the beginning of your next main phase.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
+    )
+}
+
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: conditional add mana equal to countered spell's mana cost at beginning of next main phase
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    vec![Effect::Counter { target: stack_id }]
+}

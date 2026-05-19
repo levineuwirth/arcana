@@ -1,0 +1,48 @@
+//! Change of Fortune — `{3}{R}` sorcery, "Discard your hand, then draw a card
+//! for each card you've discarded this turn."
+//!
+//! GAP: "draw a card for each card discarded this turn" requires tracking all
+//! discards this turn across the game state, not just this spell. Partial:
+//! discard hand (all cards) and draw equal to hand size at resolution.
+
+use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
+use arcana_core::types::{CardId, ColorSet, TypeLine};
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Change of Fortune");
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{3}{R}").expect("valid cost")),
+        colors: ColorSet::red(),
+        types: TypeLine::SORCERY.into(),
+        ..Default::default()
+    };
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Discard your hand, then draw a card for each card you've discarded this turn.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
+    )
+}
+
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: count all cards discarded this turn (only current hand size available)
+    let hand = script::hand_size(state, entry.controller);
+    vec![
+        Effect::Discard { player: entry.controller, count: hand, choice: DiscardChoice::ControllerChooses },
+        Effect::DrawCards { player: entry.controller, count: hand },
+    ]
+}

@@ -9,3 +9,5 @@ pub mod drive_to_work;
 pub mod my_deck_is_about_a_seven;
 pub mod pulse_of_the_hunter_maze;
 pub mod sheoldred_s_terror;
+pub mod rat_of_god;
+pub mod establishing_shot;

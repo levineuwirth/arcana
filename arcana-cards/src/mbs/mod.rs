@@ -18,3 +18,5 @@ pub mod pistus_strike;
 pub mod into_the_core;
 pub mod crush;
 pub mod quicksilver_geyser;
+pub mod virulent_wound;
+pub mod creeping_corrosion;

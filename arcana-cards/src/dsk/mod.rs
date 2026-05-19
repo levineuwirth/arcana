@@ -12,3 +12,8 @@ pub mod turn_inside_out;
 pub mod glimmerburst;
 pub mod emerge_from_the_cocoon;
 pub mod unwanted_remake;
+pub mod waltz_of_rage;
+pub mod midnight_mayhem;
+pub mod pyroclasm;
+pub mod peer_past_the_veil;
+pub mod withering_torment;

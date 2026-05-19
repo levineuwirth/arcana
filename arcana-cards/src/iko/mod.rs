@@ -24,3 +24,8 @@ pub mod clash_of_titans;
 pub mod sudden_spinnerets;
 pub mod fully_grown;
 pub mod spontaneous_flight;
+pub mod mythos_of_vadrok;
+pub mod ruinous_ultimatum;
+pub mod blitz_of_the_thunder_raptor;
+pub mod convolute;
+pub mod zenith_flare;

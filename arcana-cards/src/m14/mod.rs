@@ -18,3 +18,4 @@ pub mod wring_flesh;
 pub mod bramblecrush;
 pub mod vile_rebirth;
 pub mod hive_stirrings;
+pub mod howl_of_the_night_pack;

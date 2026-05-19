@@ -23,3 +23,6 @@ pub mod discombobulate;
 pub mod counsel_of_the_soratami;
 pub mod rain_of_tears;
 pub mod fists_of_the_anvil;
+pub mod shatterstorm;
+pub mod sudden_impact;
+pub mod threaten;

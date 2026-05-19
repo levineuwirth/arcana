@@ -14,3 +14,6 @@ pub mod scour_the_desert;
 pub mod echoing_return;
 pub mod late_to_dinner;
 pub mod recalibrate;
+pub mod flame_rift;
+pub mod suspend;
+pub mod upheaval;

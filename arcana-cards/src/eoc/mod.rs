@@ -3,3 +3,7 @@ pub mod thirst_for_knowledge;
 pub mod farseek;
 pub mod swan_song;
 pub mod skyshroud_claim;
+pub mod roiling_regrowth;
+pub mod windgrace_s_judgment;
+pub mod planetary_annihilation;
+pub mod fumigate;

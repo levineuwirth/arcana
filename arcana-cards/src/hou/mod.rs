@@ -19,3 +19,7 @@ pub mod tragic_lesson;
 pub mod open_fire;
 pub mod jace_s_defeat;
 pub mod hour_of_glory;
+pub mod bontu_s_last_reckoning;
+pub mod blur_of_blades;
+pub mod chandra_s_defeat;
+pub mod hour_of_devastation;

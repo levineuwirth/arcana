@@ -10,3 +10,5 @@ pub mod rhystic_scrying;
 pub mod withdraw;
 pub mod devastate;
 pub mod flay;
+pub mod despoil;
+pub mod calming_verse;

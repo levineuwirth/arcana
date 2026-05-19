@@ -2,3 +2,5 @@
 pub mod prismatic_wardrobe;
 pub mod double_take;
 pub mod double_deal;
+pub mod double_play;
+pub mod double_cross;

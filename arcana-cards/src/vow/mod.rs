@@ -16,3 +16,5 @@ pub mod grisly_ritual;
 pub mod rending_flame;
 pub mod pointed_discussion;
 pub mod massive_might;
+pub mod change_of_fortune;
+pub mod end_the_festivities;

@@ -4,3 +4,5 @@ pub mod strafe;
 pub mod daring_leap;
 pub mod urza_s_guilt;
 pub mod singe;
+pub mod ertai_s_trickery;
+pub mod march_of_souls;

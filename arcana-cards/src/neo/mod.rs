@@ -20,3 +20,6 @@ pub mod lucky_offering;
 pub mod explosive_entry;
 pub mod essence_capture;
 pub mod invoke_the_ancients;
+pub mod malicious_malfunction;
+pub mod planar_incision;
+pub mod ambitious_assault;

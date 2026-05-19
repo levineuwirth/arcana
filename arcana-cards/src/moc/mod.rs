@@ -5,3 +5,4 @@ pub mod excise_the_imperfect;
 pub mod go_for_the_throat;
 pub mod crack_open;
 pub mod spell_swindle;
+pub mod phyrexian_rebirth;

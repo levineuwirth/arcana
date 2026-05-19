@@ -21,3 +21,7 @@ pub mod provoke_the_trolls;
 pub mod king_harald_s_revenge;
 pub mod graven_lore;
 pub mod tibalt_s_trickery;
+pub mod elven_ambush;
+pub mod search_for_glory;
+pub mod roots_of_wisdom;
+pub mod blessing_of_frost;

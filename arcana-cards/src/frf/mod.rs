@@ -13,3 +13,4 @@ pub mod diplomacy_of_the_wastes;
 pub mod neutralizing_blast;
 pub mod enhanced_awareness;
 pub mod sudden_reclamation;
+pub mod harsh_sustenance;

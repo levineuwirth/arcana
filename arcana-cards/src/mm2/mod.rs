@@ -12,3 +12,7 @@ pub mod otherworldly_journey;
 pub mod grim_affliction;
 pub mod celestial_purge;
 pub mod spread_the_sickness;
+pub mod wildfire;
+pub mod sigil_blessing;
+pub mod vapor_snag;
+pub mod hurkyl_s_recall;

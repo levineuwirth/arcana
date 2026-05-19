@@ -16,3 +16,4 @@ pub mod lost_in_the_mist;
 pub mod urgent_exorcism;
 pub mod into_the_maw_of_hell;
 pub mod frightful_delusion;
+pub mod paraselene;

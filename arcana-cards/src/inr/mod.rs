@@ -8,3 +8,5 @@ pub mod maelstrom_pulse;
 pub mod uncaged_fury;
 pub mod strength_of_arms;
 pub mod duel_for_dominance;
+pub mod essence_flux;
+pub mod rise_from_the_tides;

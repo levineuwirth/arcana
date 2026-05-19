@@ -5,3 +5,6 @@ pub mod terminate;
 pub mod aberrant_return;
 pub mod hoarder_s_greed;
 pub mod kodama_s_reach;
+pub mod elemental_spectacle;
+pub mod incremental_blight;
+pub mod shatter_the_sky;

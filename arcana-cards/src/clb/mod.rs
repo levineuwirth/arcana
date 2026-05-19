@@ -9,3 +9,8 @@ pub mod astarion_s_thirst;
 pub mod bane_s_contingency;
 pub mod summon_undead;
 pub mod cast_down;
+pub mod traverse_the_outlands;
+pub mod breath_weapon;
+pub mod earth_tremor;
+pub mod syphon_mind;
+pub mod in_garruk_s_wake;

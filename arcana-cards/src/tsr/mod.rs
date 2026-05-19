@@ -12,3 +12,7 @@ pub mod rebuff_the_wicked;
 pub mod strength_in_numbers;
 pub mod foresee;
 pub mod sunlance;
+pub mod tendrils_of_corruption;
+pub mod mana_tithe;
+pub mod assassinate;
+pub mod careful_consideration;

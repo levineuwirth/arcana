@@ -20,3 +20,8 @@ pub mod revelation_of_power;
 pub mod refuse_to_yield;
 pub mod kill_shot;
 pub mod warm_welcome;
+pub mod structural_assault;
+pub mod incandescent_aria;
+pub mod a_case_the_joint;
+pub mod call_in_a_professional;
+pub mod depopulate;

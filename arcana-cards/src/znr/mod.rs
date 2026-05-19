@@ -19,3 +19,8 @@ pub mod deliberate;
 pub mod chilling_trap;
 pub mod resolute_strike;
 pub mod sizzling_barrage;
+pub mod concerted_defense;
+pub mod shadows_verdict;
+pub mod anticognition;
+pub mod adventure_awaits;
+pub mod strength_of_solidarity;

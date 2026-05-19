@@ -8,3 +8,6 @@ pub mod mind_spike;
 pub mod mephit_s_enthusiasm;
 pub mod unexpected_allies;
 pub mod a_druidic_ritual;
+pub mod undersimplify;
+pub mod patriar_s_humiliation;
+pub mod flames_of_moradin;

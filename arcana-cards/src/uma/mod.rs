@@ -16,3 +16,6 @@ pub mod shed_weakness;
 pub mod double_cleave;
 pub mod blast_of_genius;
 pub mod rune_snag;
+pub mod countersquall;
+pub mod appetite_for_brains;
+pub mod miming_slime;

@@ -8,3 +8,6 @@ pub mod mystic_genesis;
 pub mod advent_of_the_wurm;
 pub mod revive;
 pub mod molten_rain;
+pub mod traitorous_instinct;
+pub mod torrent_of_souls;
+pub mod night_terrors;

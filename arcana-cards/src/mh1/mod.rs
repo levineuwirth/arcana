@@ -9,3 +9,5 @@ pub mod pillage;
 pub mod pyrophobia;
 pub mod nature_s_chant;
 pub mod string_of_disappearances;
+pub mod defile;
+pub mod savage_swipe;

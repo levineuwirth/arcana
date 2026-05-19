@@ -3,3 +3,4 @@ pub mod cloudcrown_oak;
 pub mod guttural_response;
 pub mod beacon_of_destruction;
 pub mod reach_through_mists;
+pub mod firemind_s_foresight;

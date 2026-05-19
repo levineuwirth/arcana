@@ -27,3 +27,4 @@ pub mod liturgy_of_blood;
 pub mod rebuke;
 pub mod fumble;
 pub mod return_to_the_earth;
+pub mod last_one_standing;

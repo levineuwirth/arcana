@@ -5,3 +5,7 @@ pub mod choking_sands;
 pub mod rites_of_initiation;
 pub mod aether_mutation;
 pub mod breath_of_life;
+pub mod famine;
+pub mod burning_of_xinye;
+pub mod nature_s_ruin;
+pub mod cruel_bargain;

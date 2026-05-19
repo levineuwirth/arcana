@@ -23,3 +23,7 @@ pub mod corpse_churn;
 pub mod slip_out_the_back;
 pub mod turn_to_mist;
 pub mod fungal_rebirth;
+pub mod lightning_bolt;
+pub mod rootborn_defenses;
+pub mod firespout;
+pub mod cosmotronic_wave;

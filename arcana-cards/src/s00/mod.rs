@@ -5,3 +5,4 @@ pub mod ogre_warrior;
 pub mod durkwood_boars;
 pub mod moon_sprite;
 pub mod royal_falcon;
+pub mod hand_of_death;

@@ -17,3 +17,7 @@ pub mod shatter;
 pub mod divine_verdict;
 pub mod moment_of_triumph;
 pub mod impale;
+pub mod mutiny;
+pub mod release_to_the_wind;
+pub mod angrath_s_fury;
+pub mod arterial_flow;

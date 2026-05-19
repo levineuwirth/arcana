@@ -22,3 +22,4 @@ pub mod highspire_infusion;
 pub mod cruel_finality;
 pub mod renegade_s_getaway;
 pub mod secret_salvage;
+pub mod resourceful_return;

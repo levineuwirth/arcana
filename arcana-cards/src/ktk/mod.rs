@@ -24,3 +24,6 @@ pub mod despise;
 pub mod erase;
 pub mod waterwhirl;
 pub mod rakshasa_s_secret;
+pub mod arc_lightning;
+pub mod end_hostilities;
+pub mod bring_low;

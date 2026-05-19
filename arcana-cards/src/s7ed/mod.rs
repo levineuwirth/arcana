@@ -10,3 +10,6 @@ pub mod longbow_archer;
 pub mod bull_hippo;
 pub mod tolarian_winds;
 pub mod untamed_wilds;
+pub mod ostracize;
+pub mod purify;
+pub mod infernal_contract;

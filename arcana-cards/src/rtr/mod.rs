@@ -26,3 +26,6 @@ pub mod survey_the_wreckage;
 pub mod coursers_accord;
 pub mod annihilating_fire;
 pub mod fall_of_the_gavel;
+pub mod skull_rend;
+pub mod chorus_of_might;
+pub mod jarad_s_orders;

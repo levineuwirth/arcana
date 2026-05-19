@@ -3,3 +3,4 @@ pub mod stonework_puma;
 pub mod makindi_griffin;
 pub mod smother;
 pub mod corpsehatch;
+pub mod consume_the_meek;

@@ -5,3 +5,5 @@
 pub mod fire_ice;
 pub mod gaea_s_skyfolk;
 pub mod jaded_response;
+pub mod suffocating_blast;
+pub mod dead_ringers;

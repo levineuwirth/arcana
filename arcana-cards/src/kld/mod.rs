@@ -34,3 +34,6 @@ pub mod failed_inspection;
 pub mod built_to_last;
 pub mod built_to_smash;
 pub mod larger_than_life;
+pub mod fateful_showdown;
+pub mod creeping_mold;
+pub mod tezzeret_s_ambition;

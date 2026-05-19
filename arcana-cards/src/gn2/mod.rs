@@ -4,3 +4,4 @@ pub mod grazing_whiptail;
 pub mod spidery_grasp;
 pub mod brute_strength;
 pub mod take_vengeance;
+pub mod engulf_the_shore;

@@ -18,3 +18,8 @@ pub mod barge_in;
 pub mod joust;
 pub mod insatiable_appetite;
 pub mod reave_soul;
+pub mod festive_funeral;
+pub mod memory_theft;
+pub mod giant_opportunity;
+pub mod outflank;
+pub mod oko_s_hospitality;

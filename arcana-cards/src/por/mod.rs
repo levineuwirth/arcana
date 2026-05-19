@@ -14,3 +14,8 @@ pub mod desert_drake;
 pub mod keen_eyed_archers;
 pub mod vampiric_touch;
 pub mod vampiric_feast;
+pub mod burning_cloak;
+pub mod cruel_tutor;
+pub mod mind_knives;
+pub mod virtue_s_ruin;
+pub mod temporary_truce;

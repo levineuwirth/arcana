@@ -15,3 +15,7 @@ pub mod defy_death;
 pub mod snare_the_skies;
 pub mod cursebreak;
 pub mod eaten_by_spiders;
+pub mod mass_appeal;
+pub mod dangerous_wager;
+pub mod aggravate;
+pub mod rush_of_blood;

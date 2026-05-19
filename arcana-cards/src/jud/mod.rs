@@ -6,3 +6,4 @@ pub mod spelljack;
 pub mod swelter;
 pub mod funeral_pyre;
 pub mod venomous_vines;
+pub mod swirling_sandstorm;

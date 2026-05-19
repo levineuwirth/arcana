@@ -8,3 +8,5 @@ pub mod roiling_waters;
 pub mod allied_reinforcements;
 pub mod natural_state;
 pub mod immolating_glare;
+pub mod searing_light;
+pub mod tar_snare;

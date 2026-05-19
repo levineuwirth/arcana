@@ -6,3 +6,5 @@ pub mod cerebral_vortex;
 pub mod schismotivate;
 pub mod frazzle;
 pub mod caustic_rain;
+pub mod primeval_light;
+pub mod culling_sun;

@@ -9,3 +9,5 @@ pub mod ajani_s_sunstriker;
 pub mod courier_hawk;
 pub mod sky_spirit;
 pub mod grenzo_s_rebuttal;
+pub mod rousing_of_souls;
+pub mod ill_gotten_gains;

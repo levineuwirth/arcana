@@ -9,3 +9,6 @@ pub mod psychic_barrier;
 pub mod mindculling;
 pub mod glissa_s_scorn;
 pub mod leeching_bite;
+pub mod scrapyard_salvo;
+pub mod victorious_destruction;
+pub mod life_s_finale;

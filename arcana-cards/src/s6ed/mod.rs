@@ -16,3 +16,4 @@ pub mod vertigo;
 pub mod fit_of_rage;
 pub mod forget;
 pub mod elven_cache;
+pub mod perish;

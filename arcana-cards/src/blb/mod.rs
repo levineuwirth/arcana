@@ -19,3 +19,7 @@ pub mod shore_up;
 pub mod hazel_s_nocturne;
 pub mod overprotect;
 pub mod take_out_the_trash;
+pub mod dazzling_denial;
+pub mod cache_grab;
+pub mod rabid_bite;
+pub mod splash_portal;

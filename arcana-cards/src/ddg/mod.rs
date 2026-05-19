@@ -4,3 +4,4 @@ pub mod plover_knights;
 pub mod leonin_skyhunter;
 pub mod wilt_leaf_cavaliers;
 pub mod reciprocate;
+pub mod temporary_insanity;

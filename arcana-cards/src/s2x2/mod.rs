@@ -14,3 +14,8 @@ pub mod mana_drain;
 pub mod last_breath;
 pub mod sparkmage_s_gambit;
 pub mod mana_leak;
+pub mod ground_assault;
+pub mod imperial_seal;
+pub mod ambuscade;
+pub mod damnation;
+pub mod inquisition_of_kozilek;

@@ -19,3 +19,4 @@ pub mod bestow_greatness;
 pub mod haunt_the_network;
 pub mod rise_from_the_wreck;
 pub mod syphon_fuel;
+pub mod spectral_interference;

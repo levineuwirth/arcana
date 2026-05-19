@@ -14,3 +14,6 @@ pub mod dose_of_dawnglow;
 pub mod goatnap;
 pub mod spell_snare;
 pub mod feed_the_flames;
+pub mod spry_and_mighty;
+pub mod scarblade_s_malice;
+pub mod thirst_for_identity;

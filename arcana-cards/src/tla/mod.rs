@@ -15,3 +15,6 @@ pub mod abandon_attachments;
 pub mod cycle_of_renewal;
 pub mod razor_rings;
 pub mod waterbending_lesson;
+pub mod pillar_launch;
+pub mod rocky_rebuke;
+pub mod yip_yip;

@@ -22,3 +22,7 @@ pub mod ionize;
 pub mod command_the_storm;
 pub mod vicious_rumors;
 pub mod undercity_uprising;
+pub mod vivid_revival;
+pub mod necrotic_wound;
+pub mod join_shields;
+pub mod ritual_of_soot;

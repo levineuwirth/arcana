@@ -6,3 +6,4 @@ pub mod thalakos_sentry;
 pub mod reap;
 pub mod winter_s_grasp;
 pub mod serene_offering;
+pub mod apocalypse;

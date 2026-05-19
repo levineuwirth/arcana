@@ -13,3 +13,6 @@ pub mod harvest_gwyllion;
 pub mod soul_reap;
 pub mod drain_the_well;
 pub mod cauldron_haze;
+pub mod talara_s_bane;
+pub mod chaotic_backlash;
+pub mod inundate;

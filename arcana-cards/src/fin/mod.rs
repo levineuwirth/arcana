@@ -16,3 +16,8 @@ pub mod you_re_not_alone;
 pub mod deadly_embrace;
 pub mod blitzball_shot;
 pub mod evil_reawakened;
+pub mod moogles_valor;
+pub mod ultima;
+pub mod self_destruct;
+pub mod prishe_s_wanderings;
+pub mod slash_of_light;

@@ -13,3 +13,4 @@ pub mod ignite_disorder;
 pub mod burning_inquiry;
 pub mod disorient;
 pub mod might_of_oaks;
+pub mod tempest_of_light;

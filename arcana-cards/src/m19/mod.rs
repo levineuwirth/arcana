@@ -28,3 +28,5 @@ pub mod abnormal_endurance;
 pub mod strangling_spores;
 pub mod isolate;
 pub mod lich_s_caress;
+pub mod radiating_lightning;
+pub mod naturalize;

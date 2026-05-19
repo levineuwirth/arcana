@@ -11,3 +11,8 @@ pub mod monstrous_growth;
 pub mod merchant_scroll;
 pub mod searing_wind;
 pub mod twiddle;
+pub mod tremor;
+pub mod hibernation;
+pub mod sever_soul;
+pub mod balance_of_power;
+pub mod inferno;

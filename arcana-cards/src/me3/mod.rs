@@ -40,3 +40,6 @@ pub mod riding_the_dilu_horse;
 pub mod false_defeat;
 pub mod remove_soul;
 pub mod boomerang;
+pub mod guan_yu_s_1_000_li_march;
+pub mod forked_lightning;
+pub mod cleanse;

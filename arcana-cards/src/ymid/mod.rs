@@ -6,3 +6,6 @@ pub mod unexpected_conversion;
 pub mod ravenous_pursuit;
 pub mod brittle_blast;
 pub mod kindred_denial;
+pub mod divine_purge;
+pub mod conductive_current;
+pub mod begin_anew;

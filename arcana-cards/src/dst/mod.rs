@@ -10,3 +10,8 @@ pub mod echoing_ruin;
 pub mod unforge;
 pub mod pulse_of_the_tangle;
 pub mod oxidize;
+pub mod flamebreak;
+pub mod echoing_calm;
+pub mod hunger_of_the_nim;
+pub mod retract;
+pub mod soulscour;

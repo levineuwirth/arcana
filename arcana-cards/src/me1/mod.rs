@@ -8,3 +8,8 @@ pub mod mesa_pegasus;
 pub mod ice_storm;
 pub mod fissure;
 pub mod icatian_town;
+pub mod jokulhaups;
+pub mod storm_seeker;
+pub mod tivadar_s_crusade;
+pub mod telekinesis;
+pub mod word_of_undoing;

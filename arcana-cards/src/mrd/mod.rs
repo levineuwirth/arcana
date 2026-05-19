@@ -17,3 +17,4 @@ pub mod turn_to_dust;
 pub mod r#override;
 pub mod predator_s_strike;
 pub mod battlegrowth;
+pub mod irradiate;

@@ -7,3 +7,5 @@ pub mod wall_of_earth;
 pub mod aerathi_berserker;
 pub mod hornet_cobra;
 pub mod devouring_deep;
+pub mod remove_enchantments;
+pub mod jovial_evil;

@@ -4,3 +4,4 @@ pub mod immortal_obligation;
 pub mod unexplained_absence;
 pub mod mission_briefing;
 pub mod counterpoint;
+pub mod showstopping_surprise;

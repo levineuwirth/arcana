@@ -15,3 +15,6 @@ pub mod plea_for_guidance;
 pub mod pinnacle_of_rage;
 pub mod rise_to_the_challenge;
 pub mod mortal_s_resolve;
+pub mod fated_conflagration;
+pub mod fated_retribution;
+pub mod searing_blood;

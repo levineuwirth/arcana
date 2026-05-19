@@ -16,3 +16,8 @@ pub mod dreadmaw_s_ire;
 pub mod ray_of_ruin;
 pub mod ancestral_reminiscence;
 pub mod hurl_into_history;
+pub mod malicious_eclipse;
+pub mod rumbling_rockslide;
+pub mod tectonic_hazard;
+pub mod huatli_s_final_strike;
+pub mod calamitous_cave_in;

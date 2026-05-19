@@ -4,3 +4,5 @@ pub mod whirlpool_whelm;
 pub mod colossal_might;
 pub mod death_mutation;
 pub mod scattering_stroke;
+pub mod ruination;
+pub mod trade_secrets;

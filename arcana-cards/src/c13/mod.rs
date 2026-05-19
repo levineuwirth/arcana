@@ -2,3 +2,4 @@
 pub mod archangel;
 pub mod valley_rannet;
 pub mod spoils_of_victory;
+pub mod from_the_ashes;

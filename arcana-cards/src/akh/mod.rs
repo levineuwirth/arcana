@@ -15,3 +15,6 @@ pub mod impeccable_timing;
 pub mod time_to_reflect;
 pub mod final_reward;
 pub mod magma_spray;
+pub mod liliana_s_influence;
+pub mod lay_bare_the_heart;
+pub mod sacred_excavation;

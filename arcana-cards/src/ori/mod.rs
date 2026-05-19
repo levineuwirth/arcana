@@ -16,3 +16,4 @@ pub mod enshrouding_mist;
 pub mod wild_instincts;
 pub mod weave_fate;
 pub mod smash_to_smithereens;
+pub mod nightsnare;

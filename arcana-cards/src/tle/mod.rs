@@ -29,3 +29,5 @@ pub mod overwhelming_victory;
 pub mod unagi_s_spray;
 pub mod run_amok;
 pub mod explosive_shot;
+pub mod cracked_earth_technique;
+pub mod lost_in_the_spirit_world;

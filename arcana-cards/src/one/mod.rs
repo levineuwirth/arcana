@@ -18,3 +18,7 @@ pub mod drown_in_ichor;
 pub mod ruthless_predation;
 pub mod reject_imperfection;
 pub mod whisper_of_the_dross;
+pub mod vat_emergence;
+pub mod hazardous_blast;
+pub mod infectious_inquiry;
+pub mod free_from_flesh;

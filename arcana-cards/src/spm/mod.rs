@@ -8,3 +8,6 @@ pub mod risky_research;
 pub mod kapow;
 pub mod romantic_rendezvous;
 pub mod shock;
+pub mod wisecrack;
+pub mod villainous_wrath;
+pub mod behold_the_sinister_six;

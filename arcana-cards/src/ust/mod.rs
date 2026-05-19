@@ -11,3 +11,5 @@ pub mod just_desserts;
 pub mod finders_keepers;
 pub mod spell_suck;
 pub mod hammer_helper;
+pub mod selfie_preservation;
+pub mod subcontract;

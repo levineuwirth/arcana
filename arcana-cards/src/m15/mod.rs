@@ -18,3 +18,6 @@ pub mod blastfire_bolt;
 pub mod restock;
 pub mod pillar_of_light;
 pub mod void_snare;
+pub mod mass_calcify;
+pub mod seismic_strike;
+pub mod back_to_nature;

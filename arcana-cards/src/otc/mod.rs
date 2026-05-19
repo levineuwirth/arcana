@@ -5,3 +5,5 @@ pub mod plasm_capture;
 pub mod serum_visions;
 pub mod hour_of_promise;
 pub mod thrilling_discovery;
+pub mod windfall;
+pub mod heartless_conscription;

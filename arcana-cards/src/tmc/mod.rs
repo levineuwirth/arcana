@@ -7,3 +7,4 @@ pub mod leo_s_guidance;
 pub mod ticked_off;
 pub mod harmonize;
 pub mod donatello_s_science_lesson;
+pub mod wave_goodbye;

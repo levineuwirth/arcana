@@ -18,3 +18,7 @@ pub mod memory_drain;
 pub mod stern_dismissal;
 pub mod phalanx_tactics;
 pub mod infuriate;
+pub mod agonizing_remorse;
+pub mod final_death;
+pub mod underworld_fires;
+pub mod sea_god_s_scorn;

@@ -14,3 +14,7 @@ pub mod ride_down;
 pub mod displace;
 pub mod make_mischief;
 pub mod succumb_to_temptation;
+pub mod take_inventory;
+pub mod galvanic_bombardment;
+pub mod otherworldly_outburst;
+pub mod turn_aside;

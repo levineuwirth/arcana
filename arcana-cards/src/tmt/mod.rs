@@ -10,3 +10,7 @@ pub mod tainted_treats;
 pub mod lessons_from_life;
 pub mod tenderize;
 pub mod pain_101;
+pub mod make_your_move;
+pub mod manhole_missile;
+pub mod bot_bashing_time;
+pub mod return_to_the_sewers;
