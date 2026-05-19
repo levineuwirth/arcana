@@ -369,6 +369,50 @@ pub enum Effect {
     Conditional { condition: Condition, then: Box<Effect>,
                   otherwise: Option<Box<Effect>> },
     Sequence(Vec<Effect>),
+    /// CR 603.7 — schedule a one-shot delayed action on a *known*
+    /// object id (a target the resolver already has). Covers the
+    /// blink/flicker and dies-on-target rider family: "exile target
+    /// creature, return it at the beginning of the next end step",
+    /// "when that creature dies, …". Registers a [`DelayedTrigger`]
+    /// internally; `source` is the object the delayed action acts on.
+    /// (Does not cover "create a token, sacrifice it at end of turn"
+    /// — the token id isn't available to the resolver; that stays a
+    /// documented GAP.)
+    DelayedAction {
+        source: ObjectId,
+        controller: PlayerId,
+        when: DelayedWhen,
+        action: DelayedAction,
+    },
+}
+
+/// When a [`Effect::DelayedAction`] fires.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum DelayedWhen {
+    /// "At the beginning of the next end step" (CR 514).
+    NextEndStep,
+    /// "When that [object] dies."
+    ThisDies,
+}
+
+/// What a [`Effect::DelayedAction`] does to its `source` when it
+/// fires. The set is intentionally small and declarative so a
+/// generated resolver can emit it without fn pointers.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum DelayedAction {
+    /// Sacrifice the source. Phase-1: routed through
+    /// [`Effect::DestroyPermanent`] — token-faithful (the dominant
+    /// "create … sacrifice at end of turn" case) but differs from a
+    /// true sacrifice for an indestructible nontoken; documented
+    /// simplification consistent with the engine's Phase-1 posture.
+    Sacrifice,
+    /// Exile the source.
+    Exile,
+    /// Return the source to its owner's hand.
+    ReturnToHand,
+    // (Blink "return from exile to the battlefield" is intentionally
+    // absent — no exile→battlefield primitive exists; that stays a
+    // documented GAP rather than a wrong graveyard-return mapping.)
 }
 
 // =============================================================================
@@ -909,8 +953,47 @@ impl Effect {
                     if state.is_game_over() { break; }
                 }
             }
+            Effect::DelayedAction { source, controller, when, action } => {
+                use crate::triggers::{DelayedTrigger, TriggerCondition};
+                let condition = match when {
+                    DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
+                        step: crate::turn::Step::End,
+                        whose: crate::targets::ControllerConstraint::Any,
+                    },
+                    DelayedWhen::ThisDies => TriggerCondition::SelfDies,
+                };
+                let effect_fn: crate::triggers::EffectFn = match action {
+                    DelayedAction::Sacrifice => delayed_sacrifice,
+                    DelayedAction::Exile => delayed_exile,
+                    DelayedAction::ReturnToHand => delayed_return_hand,
+                };
+                state.register_delayed_trigger(DelayedTrigger::one_shot(
+                    *source, *controller, condition, effect_fn));
+            }
         }
     }
+}
+
+// Fixed delayed-action callbacks for [`Effect::DelayedAction`]. Each
+// acts on the firing trigger's `source` (set to the scheduled object
+// id). Bare fns so they fit [`crate::triggers::EffectFn`].
+fn delayed_sacrifice(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DestroyPermanent { target: pt.source }]
+}
+fn delayed_exile(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ExilePermanent { target: pt.source }]
+}
+fn delayed_return_hand(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ReturnToHand { target: pt.source }]
 }
 
 // =============================================================================
@@ -3440,6 +3523,45 @@ mod tests {
         // The spell is still on the stack — countering happens only
         // on a declined payment, handled by the choice dispatcher.
         assert_eq!(s.stack_size(), 1);
+    }
+
+    #[test]
+    fn delayed_action_registers_a_one_shot_trigger() {
+        use crate::triggers::TriggerCondition;
+        let mut s = GameState::new(2, 0);
+        Effect::DelayedAction {
+            source: 7, controller: 0,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::Exile,
+        }.execute(&mut s);
+        assert_eq!(s.delayed_triggers.len(), 1);
+        let t = &s.delayed_triggers[0];
+        assert_eq!(t.source, 7);
+        assert!(matches!(t.condition,
+            TriggerCondition::StepBegins { step: crate::turn::Step::End, .. }));
+        assert!(t.fire_once);
+        // The callback exiles the firing source.
+        let pt = crate::triggers::PendingTrigger {
+            source: 7, trigger_id: 0, controller: 0,
+            trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        let eff = (t.effect)(&s, &pt, &crate::registry::CardRegistry::new());
+        assert!(matches!(eff.as_slice(),
+            [Effect::ExilePermanent { target: 7 }]));
+    }
+
+    #[test]
+    fn delayed_action_dies_uses_selfdies_condition() {
+        use crate::triggers::TriggerCondition;
+        let mut s = GameState::new(2, 0);
+        Effect::DelayedAction {
+            source: 3, controller: 1,
+            when: DelayedWhen::ThisDies,
+            action: DelayedAction::ReturnToHand,
+        }.execute(&mut s);
+        assert!(matches!(s.delayed_triggers[0].condition,
+            TriggerCondition::SelfDies));
     }
 
     #[test]
