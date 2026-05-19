@@ -8,3 +8,5 @@ pub mod nether_horror;
 pub mod azure_drake;
 pub mod bog_raiders;
 pub mod yavimaya_wurm;
+pub mod stabbing_pain;
+pub mod hornet_sting;

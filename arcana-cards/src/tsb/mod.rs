@@ -3,3 +3,6 @@ pub mod jasmine_boreal;
 pub mod squire;
 pub mod moorish_cavalry;
 pub mod flying_men;
+pub mod stupor;
+pub mod avoid_fate;
+pub mod psionic_blast;

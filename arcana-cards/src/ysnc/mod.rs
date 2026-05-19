@@ -1,0 +1,4 @@
+//! YSNC — set module. Auto-created by land_cards.py; add a proper set summary when curating.
+pub mod giant_regrowth;
+pub mod traumatic_prank;
+pub mod pass_the_torch;

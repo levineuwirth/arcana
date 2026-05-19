@@ -2,3 +2,4 @@
 pub mod cerodon_yearling;
 pub mod bull_cerodon;
 pub mod suntouched_myr;
+pub mod fabricate;

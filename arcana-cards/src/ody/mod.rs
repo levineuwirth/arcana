@@ -3,3 +3,7 @@ pub mod woodland_druid;
 pub mod dwarven_grunt;
 pub mod leaf_dancer;
 pub mod halberdier;
+pub mod lava_blister;
+pub mod careful_study;
+pub mod aether_burst;
+pub mod words_of_wisdom;

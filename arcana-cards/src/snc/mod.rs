@@ -1,3 +1,22 @@
 //! SNC — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod a_midnight_assassin;
 pub mod fleetfoot_dancer;
+pub mod a_buy_your_silence;
+pub mod for_the_family;
+pub mod tainted_indulgence;
+pub mod buy_your_silence;
+pub mod exotic_pets;
+pub mod a_warm_welcome;
+pub mod antagonize;
+pub mod strangle;
+pub mod unleash_the_inferno;
+pub mod patch_up;
+pub mod hostile_takeover;
+pub mod daring_escape;
+pub mod demon_s_due;
+pub mod case_the_joint;
+pub mod a_deal_gone_bad;
+pub mod revelation_of_power;
+pub mod refuse_to_yield;
+pub mod kill_shot;
+pub mod warm_welcome;

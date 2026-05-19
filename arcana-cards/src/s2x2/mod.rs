@@ -1,2 +1,16 @@
 //! 2X2 — set module (Scryfall set code `2x2`, prefixed for a valid ident). Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod tower_gargoyle;
+pub mod titan_s_strength;
+pub mod eyeblight_s_ending;
+pub mod auger_spree;
+pub mod might_of_old_krosa;
+pub mod lava_coil;
+pub mod anger_of_the_gods;
+pub mod battlefield_promotion;
+pub mod prophetic_bolt;
+pub mod call_to_the_feast;
+pub mod fiery_justice;
+pub mod mana_drain;
+pub mod last_breath;
+pub mod sparkmage_s_gambit;
+pub mod mana_leak;

@@ -1,3 +1,5 @@
 //! HML — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod dwarven_trader;
 pub mod willow_faerie;
+pub mod aliban_s_tower;
+pub mod chain_stasis;

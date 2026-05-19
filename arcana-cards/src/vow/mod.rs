@@ -1,0 +1,18 @@
+//! VOW — set module. Auto-created by land_cards.py; add a proper set summary when curating.
+pub mod sanctify;
+pub mod lacerate_flesh;
+pub mod witch_s_web;
+pub mod bleed_dry;
+pub mod syphon_essence;
+pub mod wolf_strike;
+pub mod flame_blessed_bolt;
+pub mod retrieve;
+pub mod vampire_s_kiss;
+pub mod arm_the_cathars;
+pub mod demonic_bargain;
+pub mod piercing_light;
+pub mod thirst_for_discovery;
+pub mod grisly_ritual;
+pub mod rending_flame;
+pub mod pointed_discussion;
+pub mod massive_might;

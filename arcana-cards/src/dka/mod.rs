@@ -5,3 +5,8 @@ pub mod silverclaw_griffin;
 pub mod somberwald_dryad;
 pub mod highborn_ghoul;
 pub mod nearheath_stalker;
+pub mod counterlash;
+pub mod death_s_caress;
+pub mod undying_evil;
+pub mod scorch_the_fields;
+pub mod skillful_lunge;

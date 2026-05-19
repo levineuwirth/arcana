@@ -10,3 +10,8 @@ pub mod ancient_crab;
 pub mod dune_beetle;
 pub mod nimble_blade_khenra;
 pub mod cursed_minotaur;
+pub mod winds_of_rebuke;
+pub mod impeccable_timing;
+pub mod time_to_reflect;
+pub mod final_reward;
+pub mod magma_spray;

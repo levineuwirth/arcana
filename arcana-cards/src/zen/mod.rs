@@ -9,3 +9,5 @@ pub mod sky_ruin_drake;
 pub mod caravan_hurda;
 pub mod bog_tatters;
 pub mod cliff_threader;
+pub mod trapmaker_s_snare;
+pub mod mind_sludge;

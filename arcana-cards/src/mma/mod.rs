@@ -2,3 +2,6 @@
 pub mod arcbound_worker;
 pub mod arcbound_wanderer;
 pub mod hillcomber_giant;
+pub mod perilous_research;
+pub mod peppersmoke;
+pub mod feudkiller_s_verdict;

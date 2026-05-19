@@ -1,0 +1,48 @@
+//! Wing Snare — `{2}{G}` sorcery. "Destroy target creature with flying."
+//!
+//! The target filter uses `TargetRequirement::target_creature()`; the
+//! "with flying" constraint is not expressible via the current
+//! `ObjectFilter` API — the resolver fires `DestroyPermanent`
+//! unconditionally (the verify pipeline enforces legality at targeting).
+//!
+//! # GAP: ObjectFilter predicate for keyword (Flying) not available
+
+use arcana_core::effects::Effect;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Wing Snare");
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{2}{G}").expect("valid cost")),
+        colors: ColorSet::green(),
+        types: TypeLine::SORCERY.into(),
+        ..Default::default()
+    };
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature with flying.".into(),
+                // GAP: ObjectFilter cannot restrict to creatures with Flying keyword
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
+    )
+}
+
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::DestroyPermanent { target: *id }]
+}

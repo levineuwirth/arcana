@@ -6,3 +6,8 @@ pub mod shield_bearer;
 pub mod brimstone_dragon;
 pub mod icatian_phalanx;
 pub mod kjeldoran_skycaptain;
+pub mod icequake;
+pub mod thermokarst;
+pub mod broken_visage;
+pub mod errand_of_duty;
+pub mod shrink;

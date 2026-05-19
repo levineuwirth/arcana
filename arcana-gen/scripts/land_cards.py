@@ -82,6 +82,29 @@ def mod_ident(set_code: str) -> str:
         else f"s{set_code}"
 
 
+# Rust reserved + reserved-for-future keywords that can collide with a
+# Scryfall card slug (e.g. the card "Override" → mrd/override.rs). A
+# slug equal to one of these is emitted as a raw identifier in the
+# `pub mod` line (`pub mod r#override;`); the file on disk stays
+# `<slug>.rs` since Rust maps the raw ident's name to that path.
+RUST_KEYWORDS = {
+    "as", "break", "const", "continue", "crate", "dyn", "else", "enum",
+    "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop",
+    "match", "mod", "move", "mut", "pub", "ref", "return", "self", "Self",
+    "static", "struct", "super", "trait", "true", "type", "unsafe", "use",
+    "where", "while", "async", "await", "abstract", "become", "box", "do",
+    "final", "macro", "override", "priv", "typeof", "unsized", "virtual",
+    "yield", "try", "union", "gen",
+}
+
+
+def mod_slug(slug: str) -> str:
+    """`pub mod` identifier for a card slug — raw-escapes Rust
+    keywords so the catalog still compiles (the `.rs` filename is
+    unchanged; `pub mod r#override;` resolves to `override.rs`)."""
+    return f"r#{slug}" if slug in RUST_KEYWORDS else slug
+
+
 def ensure_set_module(set_code: str, apply: bool) -> list[str]:
     ident = mod_ident(set_code)
     """Ensure src/<set>/mod.rs exists and lib.rs declares the set.
@@ -123,7 +146,7 @@ def ensure_set_module(set_code: str, apply: bool) -> list[str]:
 
 def ensure_mod_line(set_code: str, slug: str, apply: bool) -> list[str]:
     mod_rs = CARDS_SRC / mod_ident(set_code) / "mod.rs"
-    decl = f"pub mod {slug};"
+    decl = f"pub mod {mod_slug(slug)};"
     text = mod_rs.read_text() if mod_rs.exists() else ""
     if re.search(rf"^{re.escape(decl)}\s*$", text, re.M):
         return []

@@ -1,0 +1,17 @@
+//! SOC — set module. Auto-created by land_cards.py; add a proper set summary when curating.
+pub mod path_to_exile;
+pub mod aether_gale;
+pub mod fracture;
+pub mod nature_s_lore;
+pub mod reality_shift;
+pub mod eureka_moment;
+pub mod three_visits;
+pub mod night_s_whisper;
+pub mod anguished_unmaking;
+pub mod rapid_hybridization;
+pub mod infernal_grasp;
+pub mod beast_within;
+pub mod resculpt;
+pub mod secret_rendezvous;
+pub mod cultivate;
+pub mod vanishing_verse;

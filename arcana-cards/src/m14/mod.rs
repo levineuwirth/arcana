@@ -14,3 +14,7 @@ pub mod kalonian_tusker;
 pub mod gladecover_scout;
 pub mod suntail_hawk;
 pub mod seacoast_drake;
+pub mod wring_flesh;
+pub mod bramblecrush;
+pub mod vile_rebirth;
+pub mod hive_stirrings;

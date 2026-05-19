@@ -8,3 +8,5 @@ pub mod elvish_archers;
 pub mod skyshroud_falcon;
 pub mod longbow_archer;
 pub mod bull_hippo;
+pub mod tolarian_winds;
+pub mod untamed_wilds;

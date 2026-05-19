@@ -5,3 +5,7 @@ pub mod loxodon_convert;
 pub mod hovermyr;
 pub mod glistener_elf;
 pub mod lost_leonin;
+pub mod psychic_barrier;
+pub mod mindculling;
+pub mod glissa_s_scorn;
+pub mod leeching_bite;

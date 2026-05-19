@@ -1,0 +1,54 @@
+//! Dreadmaw's Ire — `{R}` instant.
+//! "Until end of turn, target attacking creature gets +2/+2 and gains
+//! trample and 'Whenever this creature deals combat damage to a player,
+//! destroy target artifact that player controls.'"
+//!
+//! # GAP: attach an 'until end of turn' triggered ability to a permanent —
+//! GrantKeyword and Pump cannot attach custom triggered abilities.
+
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Dreadmaw's Ire");
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{R}").expect("valid cost")),
+        colors: ColorSet::red(),
+        types: TypeLine::INSTANT.into(),
+        ..Default::default()
+    };
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Until end of turn, target attacking creature gets +2/+2 and gains trample and \"Whenever this creature deals combat damage to a player, destroy target artifact that player controls.\"".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
+    )
+}
+
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: attach until-end-of-turn triggered ability to the creature
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::Pump {
+        target: *id,
+        power: 2,
+        toughness: 2,
+        duration: Duration::EndOfTurn,
+        keywords: vec![KeywordAbility::Trample],
+    }]
+}

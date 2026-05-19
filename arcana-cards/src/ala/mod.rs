@@ -9,3 +9,6 @@ pub mod outrider_of_jhess;
 pub mod yoked_plowbeast;
 pub mod goblin_mountaineer;
 pub mod rip_clan_crasher;
+pub mod shadowfeed;
+pub mod sangrite_surge;
+pub mod violent_ultimatum;

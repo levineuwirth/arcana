@@ -6,3 +6,8 @@ pub mod wall_of_stone;
 pub mod sabretooth_tiger;
 pub mod ardent_militia;
 pub mod diving_griffin;
+pub mod flash_counter;
+pub mod monstrous_growth;
+pub mod merchant_scroll;
+pub mod searing_wind;
+pub mod twiddle;

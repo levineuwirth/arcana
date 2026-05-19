@@ -7,3 +7,7 @@ pub mod warpath_ghoul;
 pub mod sacred_wolf;
 pub mod garruk_s_companion;
 pub mod wall_of_torches;
+pub mod sorin_s_vengeance;
+pub mod distress;
+pub mod taste_of_blood;
+pub mod slaughter_cry;

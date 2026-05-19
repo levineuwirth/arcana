@@ -2,3 +2,17 @@
 pub mod frost_ogre;
 pub mod gnarled_mass;
 pub mod forked_branch_garami;
+pub mod first_volley;
+pub mod quash;
+pub mod hero_s_demise;
+pub mod unchecked_growth;
+pub mod heed_the_mists;
+pub mod eradicate;
+pub mod three_tragedies;
+pub mod scour;
+pub mod terashi_s_verdict;
+pub mod flames_of_the_blood_hand;
+pub mod splinter;
+pub mod minamo_s_meddling;
+pub mod toils_of_night_and_day;
+pub mod sowing_salt;

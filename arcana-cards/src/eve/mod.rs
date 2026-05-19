@@ -10,3 +10,6 @@ pub mod hobgoblin_dragoon;
 pub mod nip_gwyllion;
 pub mod stalker_hag;
 pub mod harvest_gwyllion;
+pub mod soul_reap;
+pub mod drain_the_well;
+pub mod cauldron_haze;

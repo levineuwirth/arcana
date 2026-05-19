@@ -1,0 +1,22 @@
+//! WOE — set module. Auto-created by land_cards.py; add a proper set summary when curating.
+pub mod taken_by_nightmares;
+pub mod plunge_into_winter;
+pub mod disdainful_stroke;
+pub mod titanic_growth;
+pub mod leaping_ambush;
+pub mod royal_treatment;
+pub mod become_brutes;
+pub mod shatter_the_oath;
+pub mod break_the_spell;
+pub mod eriette_s_whisper;
+pub mod return_triumphant;
+pub mod rat_out;
+pub mod into_the_fae_court;
+pub mod kindled_heroism;
+pub mod spell_stutter;
+pub mod spider_food;
+pub mod freeze_in_place;
+pub mod succumb_to_the_cold;
+pub mod feed_the_cauldron;
+pub mod monstrous_rage;
+pub mod ego_drain;

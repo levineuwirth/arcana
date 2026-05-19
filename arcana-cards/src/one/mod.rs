@@ -1,3 +1,20 @@
 //! ONE — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod branchblight_stalker;
 pub mod swooping_lookout;
+pub mod awaken_the_sleeper;
+pub mod vivisurgeon_s_insight;
+pub mod compleat_devotion;
+pub mod serum_snare;
+pub mod carnivorous_canopy;
+pub mod minor_misstep;
+pub mod hexgold_slash;
+pub mod volt_charge;
+pub mod gleeful_demolition;
+pub mod offer_immortality;
+pub mod infectious_bite;
+pub mod aspirant_s_ascent;
+pub mod unnatural_restoration;
+pub mod drown_in_ichor;
+pub mod ruthless_predation;
+pub mod reject_imperfection;
+pub mod whisper_of_the_dross;

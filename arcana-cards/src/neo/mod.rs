@@ -1,3 +1,22 @@
 //! NEO — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod golden_tail_disciple;
 pub mod fang_of_shigeki;
+pub mod kami_s_flare;
+pub mod boon_of_boseiju;
+pub mod tamiyo_s_safekeeping;
+pub mod banishing_slash;
+pub mod kaito_s_pursuit;
+pub mod wanderer_s_intervention;
+pub mod okiba_salvage;
+pub mod lethal_exploit;
+pub mod imperial_oath;
+pub mod seismic_wave;
+pub mod invoke_justice;
+pub mod regent_s_authority;
+pub mod return_to_action;
+pub mod master_s_rebuke;
+pub mod fade_into_antiquity;
+pub mod lucky_offering;
+pub mod explosive_entry;
+pub mod essence_capture;
+pub mod invoke_the_ancients;

@@ -392,6 +392,146 @@ pub mod anb;
 
 pub mod inv;
 
+pub mod ltr;
+
+pub mod ecc;
+
+pub mod tmc;
+
+pub mod ecl;
+
+pub mod mkm;
+
+pub mod unf;
+
+pub mod vow;
+
+pub mod soc;
+
+pub mod woe;
+
+pub mod ydsk;
+
+pub mod dsk;
+
+pub mod mid;
+
+pub mod mkc;
+
+pub mod otc;
+
+pub mod und;
+
+pub mod pip;
+
+pub mod who;
+
+pub mod spm;
+
+pub mod ulg;
+
+pub mod mat;
+
+pub mod mh3;
+
+pub mod ylci;
+
+pub mod ymid;
+
+pub mod unh;
+
+pub mod tla;
+
+pub mod moc;
+
+pub mod nec;
+
+pub mod vma;
+
+pub mod eoc;
+
+pub mod c19;
+
+pub mod cmd;
+
+pub mod dsc;
+
+pub mod acr;
+
+pub mod cm2;
+
+pub mod arc;
+
+pub mod ugl;
+
+pub mod mb2;
+
+pub mod blc;
+
+pub mod ddm;
+
+pub mod ydmu;
+
+pub mod dde;
+
+pub mod cma;
+
+pub mod rex;
+
+pub mod mic;
+
+pub mod lcc;
+
+pub mod yneo;
+
+pub mod j21;
+
+pub mod c17;
+
+pub mod ddj;
+
+pub mod c21;
+
+pub mod ybro;
+
+pub mod ltc;
+
+pub mod c15;
+
+pub mod c14;
+
+pub mod c18;
+
+pub mod ysnc;
+
+pub mod c16;
+
+pub mod j22;
+
+pub mod yblb;
+
+pub mod yecl;
+
+pub mod ncc;
+
+pub mod jvc;
+
+pub mod spe;
+
+pub mod khc;
+
+pub mod voc;
+
+pub mod fic;
+
+pub mod afc;
+
+pub mod ddu;
+
+pub mod yotj;
+
+pub mod w16;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

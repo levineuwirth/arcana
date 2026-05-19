@@ -11,3 +11,8 @@ pub mod mountain_goat;
 pub mod warthog;
 pub mod talruum_minotaur;
 pub mod cat_warriors;
+pub mod fatal_blow;
+pub mod vertigo;
+pub mod fit_of_rage;
+pub mod forget;
+pub mod elven_cache;

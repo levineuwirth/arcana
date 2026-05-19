@@ -5,3 +5,8 @@ pub mod inner_chamber_guard;
 pub mod promised_kannushi;
 pub mod ronin_cavekeeper;
 pub mod nightsoil_kami;
+pub mod ideas_unbound;
+pub mod feral_lightning;
+pub mod footsteps_of_the_goryo;
+pub mod sunder_from_within;
+pub mod one_with_nothing;

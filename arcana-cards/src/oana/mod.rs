@@ -4,3 +4,5 @@ pub mod treetop_warden;
 pub mod shrine_keeper;
 pub mod raging_goblin;
 pub mod zephyr_gull;
+pub mod feral_roar;
+pub mod tactical_advantage;

@@ -5,3 +5,6 @@ pub mod spiked_baloth;
 pub mod servant_of_nefarox;
 pub mod guardian_lions;
 pub mod warclamp_mastiff;
+pub mod essence_drain;
+pub mod serpent_s_gift;
+pub mod craterize;

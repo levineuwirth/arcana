@@ -1,2 +1,18 @@
 //! LCI — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod colossadactyl;
+pub mod cosmium_blast;
+pub mod helping_hand;
+pub mod acrobatic_leap;
+pub mod malamet_battle_glyph;
+pub mod defossilize;
+pub mod walk_with_the_ancestors;
+pub mod zoyowa_s_justice;
+pub mod brackish_blunder;
+pub mod another_chance;
+pub mod get_lost;
+pub mod squirming_emergence;
+pub mod staggering_size;
+pub mod dreadmaw_s_ire;
+pub mod ray_of_ruin;
+pub mod ancestral_reminiscence;
+pub mod hurl_into_history;

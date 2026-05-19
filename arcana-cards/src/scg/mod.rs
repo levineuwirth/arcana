@@ -1,2 +1,3 @@
 //! SCG — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod wirewood_guardian;
+pub mod long_term_plans;

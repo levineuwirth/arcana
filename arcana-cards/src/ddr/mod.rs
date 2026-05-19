@@ -2,3 +2,5 @@
 pub mod renegade_demon;
 pub mod giant_scorpion;
 pub mod oakgnarl_warrior;
+pub mod demon_s_grasp;
+pub mod seek_the_horizon;

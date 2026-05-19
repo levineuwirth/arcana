@@ -4,3 +4,4 @@
 
 pub mod fire_ice;
 pub mod gaea_s_skyfolk;
+pub mod jaded_response;

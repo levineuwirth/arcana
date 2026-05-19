@@ -8,3 +8,8 @@ pub mod viashino_spearhunter;
 pub mod emerald_oryx;
 pub mod mist_leopard;
 pub mod kalonian_behemoth;
+pub mod polymorph;
+pub mod ignite_disorder;
+pub mod burning_inquiry;
+pub mod disorient;
+pub mod might_of_oaks;

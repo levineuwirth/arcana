@@ -12,3 +12,5 @@ pub mod djinn_of_the_lamp;
 pub mod raging_cougar;
 pub mod desert_drake;
 pub mod keen_eyed_archers;
+pub mod vampiric_touch;
+pub mod vampiric_feast;

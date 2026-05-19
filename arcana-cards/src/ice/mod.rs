@@ -8,3 +8,4 @@ pub mod moor_fiend;
 pub mod pale_bears;
 pub mod kjeldoran_phalanx;
 pub mod silver_erne;
+pub mod fanatical_fever;

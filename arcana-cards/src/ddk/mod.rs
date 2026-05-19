@@ -1,2 +1,4 @@
 //! DDK — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod bloodrage_vampire;
+pub mod decompose;
+pub mod unmake;

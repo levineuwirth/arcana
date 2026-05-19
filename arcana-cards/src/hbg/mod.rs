@@ -3,3 +3,8 @@ pub mod giant_fire_beetles;
 pub mod ranger_squadron;
 pub mod warriors_of_tiamat;
 pub mod soldiers_of_the_watch;
+pub mod a_eyes_of_the_beholder;
+pub mod mind_spike;
+pub mod mephit_s_enthusiasm;
+pub mod unexpected_allies;
+pub mod a_druidic_ritual;

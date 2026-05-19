@@ -5,3 +5,6 @@ pub mod stormfront_pegasus;
 pub mod standing_troops;
 pub mod stampeding_rhino;
 pub mod thundering_giant;
+pub mod certain_death;
+pub mod raise_dead;
+pub mod wing_snare;

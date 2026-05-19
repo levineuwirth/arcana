@@ -1,0 +1,54 @@
+//! Stolen Vitality — `{1}{R}` instant. "Target creature gets +3/+1 until end
+//! of turn. If it's your turn, that creature gains trample until end of turn.
+//! Otherwise, it gains first strike until end of turn."
+//!
+//! GAP: "if it's your turn" conditional not expressible with Conditional
+//! (requires turn-phase awareness). Partial: +3/+1 pump expressed; keywords
+//! omitted due to conditional.
+
+use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Stolen Vitality");
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{1}{R}").expect("valid cost")),
+        colors: ColorSet::red(),
+        types: TypeLine::INSTANT.into(),
+        ..Default::default()
+    };
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +3/+1 until end of turn. If it's your turn, that creature gains trample until end of turn. Otherwise, it gains first strike until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
+    )
+}
+
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "if your turn" conditional keyword grant not expressible
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::Pump {
+        target: *id,
+        power: 3,
+        toughness: 1,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
+}

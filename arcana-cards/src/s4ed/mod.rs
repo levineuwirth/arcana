@@ -3,3 +3,5 @@ pub mod gray_ogre;
 pub mod land_leeches;
 pub mod timber_wolves;
 pub mod wall_of_ice;
+pub mod tunnel;
+pub mod energy_tap;

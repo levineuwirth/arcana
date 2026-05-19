@@ -18,3 +18,8 @@ pub mod anaba_bodyguard;
 pub mod goblin_sky_raider;
 pub mod skyhunter_prowler;
 pub mod pincher_beetles;
+pub mod cryoclasm;
+pub mod discombobulate;
+pub mod counsel_of_the_soratami;
+pub mod rain_of_tears;
+pub mod fists_of_the_anvil;

@@ -1,2 +1,15 @@
 //! TDM — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod dragon_sniper;
+pub mod narset_s_rebuke;
+pub mod kin_tree_severance;
+pub mod defibrillating_current;
+pub mod lightfoot_technique;
+pub mod cruel_truths;
+pub mod knockout_maneuver;
+pub mod desperate_measures;
+pub mod bewildering_blizzard;
+pub mod alesha_s_legacy;
+pub mod auroral_procession;
+pub mod lie_in_wait;
+pub mod jeskai_revelation;
+pub mod snakeskin_veil;

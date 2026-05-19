@@ -5,3 +5,6 @@ pub mod thunder_spirit;
 pub mod carnivorous_plant;
 pub mod righteous_avengers;
 pub mod mesa_pegasus;
+pub mod ice_storm;
+pub mod fissure;
+pub mod icatian_town;

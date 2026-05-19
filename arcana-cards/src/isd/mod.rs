@@ -11,3 +11,8 @@ pub mod abbey_griffin;
 pub mod moon_heron;
 pub mod voiceless_spirit;
 pub mod markov_patrician;
+pub mod maw_of_the_mire;
+pub mod lost_in_the_mist;
+pub mod urgent_exorcism;
+pub mod into_the_maw_of_hell;
+pub mod frightful_delusion;

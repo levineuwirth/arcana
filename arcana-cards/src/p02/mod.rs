@@ -11,3 +11,5 @@ pub mod moaning_spirit;
 pub mod dakmor_bat;
 pub mod talas_air_ship;
 pub mod raiding_nightstalker;
+pub mod d_j_vu;
+pub mod kiss_of_death;
