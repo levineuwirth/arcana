@@ -140,6 +140,19 @@ pub fn library_size(state: &GameState, player: PlayerId) -> u32 {
     state.player(player).library_top_to_bottom.len() as u32
 }
 
+/// Every player id in turn order. For "each player draws/discards/
+/// loses life": map this into one inner [`crate::effects::Effect`]
+/// per player and wrap in `Effect::Sequence`.
+pub fn all_players(state: &GameState) -> Vec<PlayerId> {
+    (0..state.num_players()).collect()
+}
+
+/// Every player except `you` (the resolving controller). For "each
+/// opponent …".
+pub fn opponents(state: &GameState, you: PlayerId) -> Vec<PlayerId> {
+    (0..state.num_players()).filter(|&p| p != you).collect()
+}
+
 /// `player`'s life total (`0` for an invalid player).
 pub fn life(state: &GameState, player: PlayerId) -> i32 {
     if !valid(state, player) {
@@ -270,6 +283,14 @@ mod tests {
             count_matching(&s, &ObjectFilter::creature().tapped_only(), 0), 1);
         assert_eq!(
             count_matching(&s, &ObjectFilter::creature().untapped_only(), 0), 1);
+    }
+
+    #[test]
+    fn player_lists_for_each_player_effects() {
+        let s = GameState::new(3, 0);
+        assert_eq!(all_players(&s), vec![0, 1, 2]);
+        assert_eq!(opponents(&s, 1), vec![0, 2]);
+        assert_eq!(opponents(&s, 0), vec![1, 2]);
     }
 
     #[test]
