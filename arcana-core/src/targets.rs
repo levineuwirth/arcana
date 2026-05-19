@@ -485,6 +485,59 @@ impl ObjectFilter {
         self
     }
 
+    // --- interner-free numeric / boolean refinements (Tier 1.2) -----
+    // These let a generated resolver narrow a board-wide set without
+    // touching the string interner, e.g. "destroy each creature with
+    // mana value 3 or less", "each token", "each colorless creature".
+
+    /// Builder: mana value ≤ `n`.
+    pub fn with_max_cmc(mut self, n: u32) -> Self {
+        self.cmc_condition = Some(CmcCondition::Le(n));
+        self
+    }
+    /// Builder: mana value ≥ `n`.
+    pub fn with_min_cmc(mut self, n: u32) -> Self {
+        self.cmc_condition = Some(CmcCondition::Ge(n));
+        self
+    }
+    /// Builder: mana value exactly `n`.
+    pub fn with_exact_cmc(mut self, n: u32) -> Self {
+        self.cmc_condition = Some(CmcCondition::Eq(n));
+        self
+    }
+    /// Builder: power ≥ `n`.
+    pub fn with_min_power(mut self, n: i32) -> Self {
+        self.power_condition = Some(PtCondition::Ge(n));
+        self
+    }
+    /// Builder: power ≤ `n`.
+    pub fn with_max_power(mut self, n: i32) -> Self {
+        self.power_condition = Some(PtCondition::Le(n));
+        self
+    }
+    /// Builder: toughness ≤ `n`.
+    pub fn with_max_toughness(mut self, n: i32) -> Self {
+        self.toughness_condition = Some(PtCondition::Le(n));
+        self
+    }
+    /// Builder: only tokens.
+    pub fn tokens_only(mut self) -> Self {
+        self.is_token = Some(true);
+        self
+    }
+    /// Builder: only nontoken (card) permanents.
+    pub fn nontoken(mut self) -> Self {
+        self.is_token = Some(false);
+        self
+    }
+    /// Builder: require an already-interned subtype symbol. Prefer
+    /// [`crate::script::subtype_filter`] from a generated resolver —
+    /// it resolves the symbol totally without interner access.
+    pub fn with_subtype_sym(mut self, sym: SmallString) -> Self {
+        self.subtypes.get_or_insert_with(Vec::new).push(sym);
+        self
+    }
+
     /// Does `obj` match this filter?
     ///
     /// `source_controller` disambiguates [`ControllerConstraint::You`] and

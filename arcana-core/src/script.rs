@@ -23,10 +23,30 @@
 //! helpers and a reference card; nothing else.
 
 use crate::objects::ObjectId;
+use crate::registry::CardRegistry;
 use crate::state::GameState;
 use crate::targets::ObjectFilter;
 use crate::types::PlayerId;
 use crate::zones::Zone;
+
+/// An [`ObjectFilter`] for creatures of a given subtype name
+/// (`"Goblin"`, `"Zombie"`, …), resolving the interned symbol via
+/// `reg` so a generated resolver never touches the interner. If the
+/// subtype was never interned (no card of that type exists in the
+/// catalog) the returned filter **matches nothing** — total and
+/// safe. Chain the ordinary [`ObjectFilter`] builders for further
+/// refinement, e.g.
+/// `script::subtype_filter(reg, "Goblin").controlled_by(You)`.
+pub fn subtype_filter(reg: &CardRegistry, subtype: &str) -> ObjectFilter {
+    match reg.interner().lookup(subtype) {
+        Some(sym) => ObjectFilter::creature().with_subtype_sym(sym),
+        // Never interned ⇒ a filter that matches no object.
+        None => ObjectFilter {
+            custom: Some(|_, _| false),
+            ..ObjectFilter::default()
+        },
+    }
+}
 
 /// `true` iff `p` indexes a real player (guards the panicking
 /// [`GameState::player`]).
@@ -198,6 +218,38 @@ mod tests {
         assert_eq!(hand_size(&s, 99), 0);
         assert_eq!(life(&s, 99), 0);
         assert_eq!(library_size(&s, 99), 0);
+    }
+
+    #[test]
+    fn subtype_filter_resolves_or_matches_nothing() {
+        use crate::registry::CardRegistry;
+        let mut reg = CardRegistry::new();
+        let goblin = reg.interner_mut().intern("Goblin");
+        let mut s = GameState::new(2, 0);
+        let mut gob = creature_chars(1, 1);
+        gob.subtypes.0.insert(goblin);
+        put(&mut s, Zone::Battlefield, 0, gob);
+        put(&mut s, Zone::Battlefield, 0, creature_chars(2, 2)); // no subtype
+        let f = subtype_filter(&reg, "Goblin");
+        assert_eq!(count_matching(&s, &f, 0), 1);
+        // Never-interned subtype ⇒ matches nothing, no panic.
+        let none = subtype_filter(&reg, "Eldrazi");
+        assert_eq!(count_matching(&s, &none, 0), 0);
+    }
+
+    #[test]
+    fn numeric_builders_narrow_the_set() {
+        let mut s = GameState::new(2, 0);
+        let mut big = creature_chars(5, 5);
+        big.mana_cost = Some(crate::mana::ManaCost::parse("{4}{G}").unwrap());
+        put(&mut s, Zone::Battlefield, 0, big);
+        let mut small = creature_chars(1, 1);
+        small.mana_cost = Some(crate::mana::ManaCost::parse("{G}").unwrap());
+        put(&mut s, Zone::Battlefield, 0, small);
+        assert_eq!(
+            count_matching(&s, &ObjectFilter::creature().with_max_cmc(2), 0), 1);
+        assert_eq!(
+            count_matching(&s, &ObjectFilter::creature().with_min_power(3), 0), 1);
     }
 
     #[test]

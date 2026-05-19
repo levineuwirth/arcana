@@ -465,6 +465,8 @@ Composites (wrap the above):
 CARD SCRIPTING — when an amount or a board-wide set is computed at resolution ('equal to its power', 'for each creature you control', 'destroy all Goblins'), the resolver's FIRST parameter is the live `&GameState` (name it `state`, not `_state`) and you may call ONLY these total, panic-free helpers from `arcana_core::script` (add `use arcana_core::script;`). Each returns a plain value — bind it to a `let`, then put it in an ordinary literal-amount `Effect`:
 - `script::count_matching(state, &filter, entry.controller) -> u32`  — battlefield permanents matching an `ObjectFilter` ('number of creatures you control' = `ObjectFilter::creature().controlled_by(ControllerConstraint::You)`).
 - `script::ids_matching(state, &filter, entry.controller) -> Vec<ObjectId>`  — the matching ids, in stable order; feed straight into `Effect::ForEach {{ targets: <this>, effect: Box::new(..) }}` for 'destroy/return/damage EACH/ALL <filter>' (the filter, not just `creature()`, selects the subset — this is how filtered board wipes work).
+- `script::subtype_filter(reg, 'Goblin')`  — an `ObjectFilter` for creatures of a named subtype (resolved via the resolver's 3rd param — name it `reg`, not `_reg`); matches nothing if no such card exists. Use for tribal wipes: `script::ids_matching(state, &script::subtype_filter(reg, 'Zombie'), entry.controller)`.
+- `ObjectFilter` refinements (chain onto `creature()` / `permanent()` / `subtype_filter(..)`): `.controlled_by(ControllerConstraint::You|Opponent)`, `.with_colors(ColorSet::black())`, `.without_types(TypeLine::ARTIFACT.into())`, `.with_max_cmc(n)` / `.with_min_cmc(n)` / `.with_exact_cmc(n)`, `.with_min_power(n)` / `.with_max_power(n)` / `.with_max_toughness(n)`, `.tokens_only()` / `.nontoken()`. Covers 'each creature with mana value 3 or less', 'all black creatures', 'each token', etc.
 - `script::power_of(state, id) -> i32` · `script::toughness_of(state, id) -> i32`  — a permanent's current P/T (0 if gone).
 - `script::hand_size(state, p) -> u32` · `script::graveyard_size(state, p) -> u32` · `script::library_size(state, p) -> u32` · `script::life(state, p) -> i32`.
 - `script::graveyard_matching(state, &filter, player, entry.controller) -> u32`.
@@ -782,6 +784,7 @@ mod tests {
         assert!(p.user.contains("CARD SCRIPTING"));
         for h in ["script::count_matching", "script::ids_matching",
                   "script::power_of", "script::hand_size",
+                  "script::subtype_filter", ".with_max_cmc(",
                   "use arcana_core::script;"] {
             assert!(p.user.contains(h), "scripting block must list {h}");
         }
