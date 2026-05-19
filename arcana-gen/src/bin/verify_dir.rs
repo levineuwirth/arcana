@@ -30,7 +30,7 @@ use std::process::{Command, ExitCode};
 
 use anyhow::{anyhow, Context, Result};
 use arcana_gen::bakeoff::DumpRow;
-use arcana_gen::semantic::stub_reason;
+use arcana_gen::semantic::{dynamic_literal_reason, stub_reason};
 use arcana_gen::structural::{render_harness, Expected};
 use arcana_gen::verify::{
     check, check_batch, known_good_source, n_scratch_slots, restore_known_good,
@@ -284,7 +284,8 @@ fn outcomes_single<'a>(
         } else {
             let src = std::fs::read_to_string(&p)
                 .with_context(|| format!("reading {}", p.display()))?;
-            verify_one(&src, row, cfg, args.layer1_only)?
+            let oracle = oracle_text(&args.dir, row);
+            verify_one(&src, row, &oracle, cfg, args.layer1_only)?
         };
         out.push((*row, o));
     }
@@ -315,6 +316,10 @@ fn outcomes_batched<'a>(
         let src = std::fs::read_to_string(&p)
             .with_context(|| format!("reading {}", p.display()))?;
         if let Some(reason) = stub_reason(row.shape.as_deref(), &src) {
+            staged.push((*row, None, Some(Outcome::Layer3Failed { reason })));
+        } else if let Some(reason) = dynamic_literal_reason(
+            row.shape.as_deref(), &oracle_text(&args.dir, row), &src)
+        {
             staged.push((*row, None, Some(Outcome::Layer3Failed { reason })));
         } else {
             staged.push((*row, Some(src), None));
@@ -492,9 +497,29 @@ fn extract_slot_failure(stdout: &str, i: usize) -> String {
     "layer-2 failed (panic block not located in test output)".to_string()
 }
 
+/// Best-effort extraction of the card's authoritative oracle text
+/// from its dumped prompt (`<dir>/<prompt_file>`), used by the
+/// dynamic-literal semantic gate. Returns `""` when the prompt or
+/// the "Oracle text:" block is unavailable — an empty oracle never
+/// trips [`dynamic_literal_reason`], so a missing prompt degrades to
+/// "no extra gate", never a false quarantine.
+fn oracle_text(dir: &std::path::Path, row: &DumpRow) -> String {
+    let Some(pf) = row.prompt_file.as_deref() else { return String::new(); };
+    let Ok(txt) = std::fs::read_to_string(dir.join(pf)) else {
+        return String::new();
+    };
+    let Some(start) = txt.find("Oracle text:\n") else {
+        return String::new();
+    };
+    let body = &txt[start + "Oracle text:\n".len()..];
+    // The card_spec block ends at the first blank line.
+    body.split("\n\n").next().unwrap_or("").trim().to_string()
+}
+
 fn verify_one(
     source: &str,
     row: &DumpRow,
+    oracle: &str,
     cfg: &VerifyConfig,
     layer1_only: bool,
 ) -> Result<Outcome> {
@@ -535,6 +560,14 @@ fn verify_one(
     // rules text but constructs no `Effect::` is a stub. Run before
     // the expensive layer-2 cargo test so we don't compile a stub.
     if let Some(reason) = stub_reason(row.shape.as_deref(), source) {
+        return Ok(Outcome::Layer3Failed { reason });
+    }
+    // Layer 3b: oracle calls for a computed amount but the resolver
+    // hardcoded a literal (C2-audit WRONG class). Quarantine — a
+    // misrepresentation must not land.
+    if let Some(reason) =
+        dynamic_literal_reason(row.shape.as_deref(), oracle, source)
+    {
         return Ok(Outcome::Layer3Failed { reason });
     }
 

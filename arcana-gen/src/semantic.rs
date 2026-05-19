@@ -108,6 +108,64 @@ pub fn stub_reason(shape: Option<&str>, source: &str) -> Option<String> {
     ))
 }
 
+/// Oracle phrases that denote a *resolution-time computed magnitude*
+/// (an amount/count that scales with game state), as opposed to a
+/// filter or a fixed number. Deliberately tight to keep false
+/// positives low — bare "equal to" / bare "X" are excluded because
+/// they also appear in target filters ("creature with power equal
+/// to …") and reminder text.
+const DYNAMIC_CUES: &[&str] = &[
+    "for each",
+    "for every",
+    "equal to the number of",
+    "equal to its power",
+    "equal to its toughness",
+    "equal to that creature's power",
+    "equal to that creature's toughness",
+    "equal to the number",
+    "x is the number of",
+    "where x is",
+    "converge",       // # of colors of mana spent
+    "domain",         // # of basic land types you control
+    "number of cards in",
+];
+
+/// `Some(reason)` if the card's oracle text calls for a
+/// resolution-time computed amount but the resolver builds only
+/// literal amounts — i.e. it hardcoded a placeholder (`amount: 0`,
+/// `count: 1`) or `// GAP`-commented the scaling while still emitting
+/// a fixed-size effect. The C2 audit found this is the dominant
+/// *materially-wrong* (not merely partial) failure: the card looks
+/// functional and passes the stub gate, but does the wrong thing.
+///
+/// Heuristic, like [`stub_reason`]: a resolver that legitimately
+/// computes the amount uses the `script::` prelude or the cast's
+/// `x_value`; presence of either clears the card. The check only
+/// runs for effect-requiring shapes and assumes [`stub_reason`]
+/// already passed (so the source does build an `Effect`).
+pub fn dynamic_literal_reason(
+    shape: Option<&str>,
+    oracle: &str,
+    source: &str,
+) -> Option<String> {
+    if !shape_requires_effect(shape) {
+        return None;
+    }
+    let ol = oracle.to_lowercase();
+    let cue = DYNAMIC_CUES.iter().find(|c| ol.contains(**c))?;
+    let clean = strip_comments(source);
+    // The resolver computed the magnitude the sanctioned way.
+    if clean.contains("script::") || clean.contains("x_value") {
+        return None;
+    }
+    Some(format!(
+        "layer-3 dynamic-literal: oracle says \"{cue}\" (a computed \
+         amount) but the resolver uses no `script::` / `x_value` — it \
+         hardcoded a literal or GAP'd the scaling, which materially \
+         misrepresents the card (C2-audit WRONG class)"
+    ))
+}
+
 /// Strip `//`/`///`/`//!` line comments and `/* … */` block
 /// comments so a `// GAP: needs Effect::Foo` note (which the spell
 /// prompt explicitly asks for) doesn't read as a real effect.
@@ -154,6 +212,60 @@ mod tests {
             vec![Effect::DrawCards { player: e.controller, count: 1 }]
         }
     "#;
+
+    const DYN_LITERAL: &str = r#"
+        fn resolve(state: &GameState, e: &StackEntry, _: &CardRegistry) -> Vec<Effect> {
+            // GAP: number-of-Gates scaling
+            vec![Effect::DealDamage { source: e.source, target: dt, amount: 1 }]
+        }
+    "#;
+    const DYN_SCRIPTED: &str = r#"
+        fn resolve(state: &GameState, e: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+            let n = script::count_matching(state, &ObjectFilter::creature(), e.controller);
+            vec![Effect::DrawCards { player: e.controller, count: n }]
+        }
+    "#;
+
+    #[test]
+    fn dynamic_oracle_with_literal_resolver_is_flagged() {
+        // "deal X damage to each creature, where X is the number of Gates"
+        let r = dynamic_literal_reason(
+            Some("SingleEffectSpell"),
+            "deals X damage to each creature, where X is the number of Gates you control",
+            DYN_LITERAL);
+        assert!(r.is_some(), "literal-for-dynamic must be flagged");
+    }
+
+    #[test]
+    fn dynamic_oracle_with_script_resolver_passes() {
+        assert!(dynamic_literal_reason(
+            Some("SingleEffectSpell"),
+            "Draw a card for each creature you control.",
+            DYN_SCRIPTED).is_none());
+    }
+
+    #[test]
+    fn nondynamic_oracle_never_flagged() {
+        // "equal to" here is a filter, not a computed amount.
+        assert!(dynamic_literal_reason(
+            Some("SingleEffectSpell"),
+            "Destroy target creature with power equal to 2.",
+            DYN_LITERAL).is_none());
+        // Non-effect shapes are exempt.
+        assert!(dynamic_literal_reason(
+            Some("FrenchVanillaCreature"),
+            "Draw a card for each Forest you control.",
+            DYN_LITERAL).is_none());
+    }
+
+    #[test]
+    fn x_value_resolver_clears_dynamic() {
+        let src = r#"fn resolve(_:&GameState,e:&StackEntry,_:&CardRegistry)->Vec<Effect>{
+            vec![Effect::DealDamage{source:e.source,target:dt,amount:e.x_value.unwrap_or(0)}]}"#;
+        assert!(dynamic_literal_reason(
+            Some("SingleEffectSpell"),
+            "X is the number of cards in your hand.", src).is_none());
+    }
 
     #[test]
     fn stub_spell_is_flagged() {
