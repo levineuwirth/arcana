@@ -16,6 +16,7 @@ pub mod triggers;
 pub mod effects;
 pub mod keywords;
 pub mod targets;
+pub mod script;
 pub mod actions;
 pub mod format;
 pub mod legal_actions;

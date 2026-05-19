@@ -462,6 +462,23 @@ Composites (wrap the above):
 - `Effect::ForEach {{ targets: vec![/* ObjectIds */], effect: Box::new(Effect::DestroyPermanent {{ target: arcana_core::objects::NULL_OBJECT_ID }}) }}`  — 'destroy/affect EACH/ALL matching': enumerate the ids from `state` and apply the inner effect once per id. Use this for board wipes and 'deals N damage to each creature'.
 - `Effect::Conditional {{ condition, then: Box::new(..), otherwise: Some(Box::new(..)) }}`  ·  `Effect::Sequence(vec![..])`
 
+CARD SCRIPTING — when an amount or a board-wide set is computed at resolution ('equal to its power', 'for each creature you control', 'destroy all Goblins'), the resolver's FIRST parameter is the live `&GameState` (name it `state`, not `_state`) and you may call ONLY these total, panic-free helpers from `arcana_core::script` (add `use arcana_core::script;`). Each returns a plain value — bind it to a `let`, then put it in an ordinary literal-amount `Effect`:
+- `script::count_matching(state, &filter, entry.controller) -> u32`  — battlefield permanents matching an `ObjectFilter` ('number of creatures you control' = `ObjectFilter::creature().controlled_by(ControllerConstraint::You)`).
+- `script::ids_matching(state, &filter, entry.controller) -> Vec<ObjectId>`  — the matching ids, in stable order; feed straight into `Effect::ForEach {{ targets: <this>, effect: Box::new(..) }}` for 'destroy/return/damage EACH/ALL <filter>' (the filter, not just `creature()`, selects the subset — this is how filtered board wipes work).
+- `script::power_of(state, id) -> i32` · `script::toughness_of(state, id) -> i32`  — a permanent's current P/T (0 if gone).
+- `script::hand_size(state, p) -> u32` · `script::graveyard_size(state, p) -> u32` · `script::library_size(state, p) -> u32` · `script::life(state, p) -> i32`.
+- `script::graveyard_matching(state, &filter, player, entry.controller) -> u32`.
+No other `state` access is permitted (no field access, no other methods) — if the needed quantity is not one of the above, treat it as a GAP. Amount fields are `u32`; a possibly-negative `i32` (a power, a life total) becomes an amount via `.max(0) as u32`. `i32` Pump fields take `script::power_of(..)` directly. Worked resolver:
+```rust
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {{
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller);
+    vec![Effect::DrawCards {{ player: entry.controller, count: n }}]
+}}
+```
+
 === TARGET CARD ===
 {spec}
 
@@ -759,6 +776,14 @@ mod tests {
                   "Effect::ReturnFromGraveyardToBattlefield",
                   "Effect::ForEach", "Effect::Fight"] {
             assert!(p.user.contains(v), "catalog must list {v}");
+        }
+        // Tier-1 card-scripting prelude must be exposed for
+        // resolution-time computed amounts / filtered board sets.
+        assert!(p.user.contains("CARD SCRIPTING"));
+        for h in ["script::count_matching", "script::ids_matching",
+                  "script::power_of", "script::hand_size",
+                  "use arcana_core::script;"] {
+            assert!(p.user.contains(h), "scripting block must list {h}");
         }
     }
 
