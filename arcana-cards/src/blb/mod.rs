@@ -9,7 +9,6 @@ pub mod mabel_s_mettle;
 pub mod psychic_whorl;
 pub mod repel_calamity;
 pub mod diresight;
-pub mod rabid_gnaw;
 pub mod savor;
 pub mod high_stride;
 pub mod fell;

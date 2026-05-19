@@ -14,8 +14,6 @@ pub mod two_headed_zombie;
 pub mod daggerback_basilisk;
 pub mod hired_blade;
 pub mod fiery_finish;
-pub mod infernal_reckoning;
-pub mod nightmare_s_thirst;
 pub mod divination;
 pub mod recollect;
 pub mod declare_dominance;

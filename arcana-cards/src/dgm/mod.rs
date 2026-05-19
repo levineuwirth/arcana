@@ -2,9 +2,7 @@
 pub mod bane_alley_blackguard;
 pub mod armored_wolf_rider;
 pub mod steeple_roc;
-pub mod mutant_s_prey;
 pub mod phytoburst;
-pub mod drown_in_filth;
 pub mod fatal_fumes;
 pub mod render_silent;
 pub mod punish_the_enemy;

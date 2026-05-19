@@ -10,7 +10,6 @@ pub mod semester_s_end;
 pub mod demonic_tutor;
 pub mod courage_in_crisis;
 pub mod supernatural_stamina;
-pub mod fists_of_flame;
 pub mod star_of_extinction;
 pub mod ram_through;
 pub mod sulfurous_blast;

@@ -8,7 +8,6 @@ pub mod boulder_dash;
 pub mod thoughtweft_charge;
 pub mod sear;
 pub mod riverguard_s_reflexes;
-pub mod assert_perfection;
 pub mod reckless_ransacking;
 pub mod dose_of_dawnglow;
 pub mod goatnap;

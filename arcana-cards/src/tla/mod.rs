@@ -5,7 +5,6 @@ pub mod shared_roots;
 pub mod combustion_technique;
 pub mod lightning_strike;
 pub mod it_ll_quench_ya;
-pub mod gather_the_white_lotus;
 pub mod boomerang_basics;
 pub mod octopus_form;
 pub mod epic_downfall;

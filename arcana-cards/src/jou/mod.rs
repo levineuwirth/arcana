@@ -16,5 +16,4 @@ pub mod spiteful_blow;
 pub mod rise_of_eagles;
 pub mod deicide;
 pub mod starfall;
-pub mod spite_of_mogis;
 pub mod nightmarish_end;

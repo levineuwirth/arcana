@@ -8,7 +8,6 @@ pub mod earthshaking_si;
 pub mod colorful_feiyi_sparrow;
 pub mod drown_in_shapelessness;
 pub mod brilliant_plan;
-pub mod aggressive_instinct;
 pub mod dragon_s_presence;
 pub mod breath_of_fire;
 pub mod qilin_s_blessing;

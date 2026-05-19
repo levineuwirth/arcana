@@ -5,7 +5,6 @@ pub mod kin_tree_severance;
 pub mod defibrillating_current;
 pub mod lightfoot_technique;
 pub mod cruel_truths;
-pub mod knockout_maneuver;
 pub mod desperate_measures;
 pub mod bewildering_blizzard;
 pub mod alesha_s_legacy;

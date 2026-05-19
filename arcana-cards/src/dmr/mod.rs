@@ -8,7 +8,6 @@ pub mod absorb;
 pub mod vampiric_tutor;
 pub mod worldly_tutor;
 pub mod snap;
-pub mod gerrard_s_verdict;
 pub mod recoil;
 pub mod mystical_tutor;
 pub mod enlightened_tutor;

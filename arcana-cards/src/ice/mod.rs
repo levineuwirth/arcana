@@ -11,4 +11,3 @@ pub mod silver_erne;
 pub mod fanatical_fever;
 pub mod spoils_of_evil;
 pub mod stench_of_evil;
-pub mod essence_vortex;

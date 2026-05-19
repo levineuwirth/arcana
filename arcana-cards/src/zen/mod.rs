@@ -10,8 +10,6 @@ pub mod caravan_hurda;
 pub mod bog_tatters;
 pub mod cliff_threader;
 pub mod trapmaker_s_snare;
-pub mod mind_sludge;
 pub mod trapfinder_s_trick;
 pub mod desecrated_earth;
-pub mod primal_bellow;
 pub mod seismic_shudder;

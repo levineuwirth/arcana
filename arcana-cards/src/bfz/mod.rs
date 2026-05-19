@@ -16,8 +16,5 @@ pub mod scour_from_existence;
 pub mod volcanic_upheaval;
 pub mod dutiful_return;
 pub mod march_from_the_tomb;
-pub mod ugin_s_insight;
 pub mod swell_of_growth;
-pub mod brilliant_spectrum;
-pub mod unified_front;
 pub mod dispel;

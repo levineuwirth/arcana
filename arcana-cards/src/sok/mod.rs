@@ -12,7 +12,6 @@ pub mod sunder_from_within;
 pub mod one_with_nothing;
 pub mod spiraling_embers;
 pub mod inner_calm_outer_strength;
-pub mod sink_into_takenuma;
 pub mod gaze_of_adamaro;
 pub mod cut_the_earthly_bond;
 pub mod kiku_s_shadow;

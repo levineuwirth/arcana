@@ -8,7 +8,6 @@ pub mod icatian_phalanx;
 pub mod kjeldoran_skycaptain;
 pub mod icequake;
 pub mod thermokarst;
-pub mod broken_visage;
 pub mod errand_of_duty;
 pub mod shrink;
 pub mod lat_nam_s_legacy;

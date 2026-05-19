@@ -15,7 +15,6 @@ pub mod didn_t_say_please;
 pub mod righteousness;
 pub mod redcap_melee;
 pub mod barge_in;
-pub mod joust;
 pub mod insatiable_appetite;
 pub mod reave_soul;
 pub mod festive_funeral;

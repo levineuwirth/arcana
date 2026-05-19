@@ -16,7 +16,6 @@ pub mod dauthi_marauder;
 pub mod flame_wave;
 pub mod death_stroke;
 pub mod fugue;
-pub mod deadshot;
 pub mod lightning_blast;
 pub mod meditate;
 pub mod angelic_blessing;

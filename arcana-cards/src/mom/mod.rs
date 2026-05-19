@@ -12,7 +12,6 @@ pub mod vanquish_the_weak;
 pub mod elspeth_s_smite;
 pub mod merciless_repurposing;
 pub mod coming_in_hot;
-pub mod nahiri_s_warcrafting;
 pub mod ral_s_reinforcements;
 pub mod cosmic_hunger;
 pub mod assimilate_essence;

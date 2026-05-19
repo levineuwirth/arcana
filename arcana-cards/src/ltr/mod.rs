@@ -1,5 +1,4 @@
 //! LTR — set module. Auto-created by land_cards.py; add a proper set summary when curating.
-pub mod breaking_of_the_fellowship;
 pub mod glorious_gale;
 pub mod stern_scolding;
 pub mod entish_restoration;
@@ -16,7 +15,6 @@ pub mod fire_of_orthanc;
 pub mod soothing_of_sm_agol;
 pub mod smite_the_deathless;
 pub mod ranger_s_firebrand;
-pub mod stew_the_coneys;
 pub mod shower_of_arrows;
 pub mod rush_the_room;
 pub mod gimli_s_fury;

@@ -10,7 +10,6 @@ pub mod grayscaled_gharial;
 pub mod goliath_spider;
 pub mod rolling_spoil;
 pub mod char;
-pub mod induce_paranoia;
 pub mod seed_spark;
 pub mod flash_conscription;
 pub mod seismic_spike;

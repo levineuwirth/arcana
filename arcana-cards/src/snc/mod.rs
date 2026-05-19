@@ -5,7 +5,6 @@ pub mod a_buy_your_silence;
 pub mod for_the_family;
 pub mod tainted_indulgence;
 pub mod buy_your_silence;
-pub mod exotic_pets;
 pub mod a_warm_welcome;
 pub mod antagonize;
 pub mod strangle;

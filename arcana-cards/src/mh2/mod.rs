@@ -9,8 +9,6 @@ pub mod arcbound_prototype;
 pub mod healer_s_flock;
 pub mod vindicate;
 pub mod tourach_s_canticle;
-pub mod flay_essence;
-pub mod scour_the_desert;
 pub mod echoing_return;
 pub mod late_to_dinner;
 pub mod recalibrate;

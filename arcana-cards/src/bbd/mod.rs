@@ -15,7 +15,6 @@ pub mod hand_of_silumgar;
 pub mod primal_huntbeast;
 pub mod nimbus_of_the_isles;
 pub mod gold_forged_sentinel;
-pub mod blood_feud;
 pub mod grotesque_mutation;
 pub mod fill_with_fright;
 pub mod call_to_heel;

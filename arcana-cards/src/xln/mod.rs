@@ -26,7 +26,6 @@ pub mod river_heralds_boon;
 pub mod crash_the_ramparts;
 pub mod pirate_s_prize;
 pub mod dual_shot;
-pub mod pounce;
 pub mod vraska_s_contempt;
 pub mod emergent_growth;
 pub mod siren_s_ruse;

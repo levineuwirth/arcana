@@ -22,7 +22,6 @@ pub mod storm_crow;
 pub mod anaconda;
 pub mod king_cheetah;
 pub mod vengeance;
-pub mod chastise;
 pub mod stone_rain;
 pub mod volcanic_hammer;
 pub mod inspirit;

@@ -12,6 +12,5 @@ pub mod psychic_miasma;
 pub mod assault_strobe;
 pub mod tainted_strike;
 pub mod withstand_death;
-pub mod wing_puncture;
 pub mod melt_terrain;
 pub mod carrion_call;

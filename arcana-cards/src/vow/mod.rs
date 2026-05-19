@@ -4,7 +4,6 @@ pub mod lacerate_flesh;
 pub mod witch_s_web;
 pub mod bleed_dry;
 pub mod syphon_essence;
-pub mod wolf_strike;
 pub mod flame_blessed_bolt;
 pub mod retrieve;
 pub mod vampire_s_kiss;

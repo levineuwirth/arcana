@@ -14,7 +14,6 @@ pub mod horrible_hordes;
 pub mod cinder_cloud;
 pub mod yare;
 pub mod goblin_scouts;
-pub mod barreling_attack;
 pub mod unyaro_bee_sting;
 pub mod alarum;
 pub mod illumination;

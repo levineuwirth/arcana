@@ -5,7 +5,6 @@ pub mod nema_siltlurker;
 pub mod gloomhunter;
 pub mod soulbound_guardians;
 pub mod stomper_cub;
-pub mod vendetta;
 pub mod lay_bare;
 pub mod unified_will;
 pub mod leaf_arrow;

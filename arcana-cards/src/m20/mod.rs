@@ -31,7 +31,6 @@ pub mod disentomb;
 pub mod chandra_s_flame_wave;
 pub mod natural_end;
 pub mod engulfing_eruption;
-pub mod growth_cycle;
 pub mod show_of_valor;
 pub mod tectonic_rift;
 pub mod sorin_s_thirst;

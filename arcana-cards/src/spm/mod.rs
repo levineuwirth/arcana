@@ -5,7 +5,6 @@ pub mod sudden_strike;
 pub mod thwip;
 pub mod unstable_experiment;
 pub mod risky_research;
-pub mod kapow;
 pub mod romantic_rendezvous;
 pub mod shock;
 pub mod wisecrack;

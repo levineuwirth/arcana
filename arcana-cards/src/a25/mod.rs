@@ -6,8 +6,6 @@ pub mod act_of_heroism;
 pub mod hordeling_outburst;
 pub mod blightning;
 pub mod conflux;
-pub mod accumulated_knowledge;
-pub mod kindle;
 pub mod borrowing_100_000_arrows;
 pub mod plague_wind;
 pub mod path_of_peace;

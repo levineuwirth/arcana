@@ -18,6 +18,5 @@ pub mod eyes_in_the_skies;
 pub mod open_the_gates;
 pub mod voidslime;
 pub mod skullcrack;
-pub mod dogpile;
 pub mod ghostway;
 pub mod ultimate_price;

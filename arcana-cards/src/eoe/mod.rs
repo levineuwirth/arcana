@@ -2,7 +2,6 @@
 pub mod hullcarver;
 pub mod monoist_sentry;
 pub mod orbital_plunge;
-pub mod cerebral_download;
 pub mod depressurize;
 pub mod radiant_strike;
 pub mod dual_sun_technique;
@@ -11,7 +10,6 @@ pub mod biosynthic_burst;
 pub mod emergency_eject;
 pub mod lithobraking;
 pub mod full_bore;
-pub mod diplomatic_relations;
 pub mod seedship_impact;
 pub mod bombard;
 pub mod desculpting_blast;

@@ -19,7 +19,6 @@ pub mod trap_essence;
 pub mod awaken_the_bear;
 pub mod swift_kick;
 pub mod rite_of_the_serpent;
-pub mod master_the_way;
 pub mod despise;
 pub mod erase;
 pub mod waterwhirl;

@@ -4,4 +4,3 @@ pub mod pearled_unicorn;
 pub mod zephyr_falcon;
 pub mod wolverine_pack;
 pub mod pikemen;
-pub mod truce;

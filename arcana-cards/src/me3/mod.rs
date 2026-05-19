@@ -33,7 +33,6 @@ pub mod trip_wire;
 pub mod ashes_to_ashes;
 pub mod stolen_grain;
 pub mod ghostly_visit;
-pub mod blood_lust;
 pub mod misfortune_s_gain;
 pub mod fire_ambush;
 pub mod riding_the_dilu_horse;

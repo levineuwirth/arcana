@@ -11,7 +11,6 @@ pub mod vraska_s_scorn;
 pub mod moment_of_craving;
 pub mod reckless_rage;
 pub mod hornswoggle;
-pub mod hunt_the_weak;
 pub mod blazing_hope;
 pub mod shatter;
 pub mod divine_verdict;

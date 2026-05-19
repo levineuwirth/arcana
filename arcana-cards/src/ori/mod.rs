@@ -13,7 +13,6 @@ pub mod aerial_volley;
 pub mod touch_of_moonglove;
 pub mod chandra_s_fury;
 pub mod enshrouding_mist;
-pub mod wild_instincts;
 pub mod weave_fate;
 pub mod smash_to_smithereens;
 pub mod nightsnare;

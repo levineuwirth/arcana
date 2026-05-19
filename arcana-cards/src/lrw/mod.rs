@@ -10,7 +10,6 @@ pub mod fistful_of_force;
 pub mod faerie_trickery;
 pub mod spring_cleaning;
 pub mod neck_snap;
-pub mod weed_strangle;
 pub mod boggart_birth_rite;
 pub mod rootgrapple;
 pub mod surge_of_thoughtweft;

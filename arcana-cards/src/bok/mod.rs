@@ -17,7 +17,6 @@ pub mod minamo_s_meddling;
 pub mod toils_of_night_and_day;
 pub mod sowing_salt;
 pub mod ribbons_of_the_reikai;
-pub mod ire_of_kaminari;
 pub mod final_judgment;
 pub mod reduce_to_dreams;
 pub mod psychic_spear;

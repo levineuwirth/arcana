@@ -13,7 +13,6 @@ pub mod iona_s_judgment;
 pub mod prying_eyes;
 pub mod peel_from_reality;
 pub mod interpret_the_signs;
-pub mod ancient_animus;
 pub mod skywhaler_s_shot;
 pub mod raise_the_alarm;
 pub mod lifecrafter_s_gift;

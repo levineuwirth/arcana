@@ -17,7 +17,6 @@ pub mod ribbons_of_night;
 pub mod deal_gone_bad;
 pub mod krenko_s_command;
 pub mod afterlife_insurance;
-pub mod pit_fight;
 pub mod gift_of_strength;
 pub mod corpse_churn;
 pub mod slip_out_the_back;

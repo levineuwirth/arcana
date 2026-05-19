@@ -6,7 +6,6 @@ pub mod duskdale_wurm;
 pub mod scion_of_ugin;
 pub mod aerial_predation;
 pub mod haunting_hymn;
-pub mod grisly_spectacle;
 pub mod amass_the_components;
 pub mod dissolve;
 pub mod doom_blade;

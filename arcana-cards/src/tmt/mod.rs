@@ -8,7 +8,6 @@ pub mod death_in_the_family;
 pub mod mutant_chain_reaction;
 pub mod tainted_treats;
 pub mod lessons_from_life;
-pub mod tenderize;
 pub mod pain_101;
 pub mod make_your_move;
 pub mod manhole_missile;

@@ -28,7 +28,6 @@ pub mod scorching_dragonfire;
 pub mod cancel;
 pub mod an_offer_you_can_t_refuse;
 pub mod fleeting_flight;
-pub mod felling_blow;
 pub mod circuitous_route;
 pub mod unsummon;
 pub mod pilfer;

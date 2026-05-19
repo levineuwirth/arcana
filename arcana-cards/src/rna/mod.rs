@@ -8,7 +8,6 @@ pub mod zhur_taa_goblin;
 pub mod rubble_slinger;
 pub mod humongulus;
 pub mod ragefire;
-pub mod savage_smash;
 pub mod regenesis;
 pub mod bring_to_trial;
 pub mod sagittars_volley;
