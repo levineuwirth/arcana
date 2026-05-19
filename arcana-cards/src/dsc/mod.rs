@@ -3,7 +3,6 @@ pub mod explosive_vegetation;
 pub mod bedevil;
 pub mod utter_end;
 pub mod growth_spiral;
-pub mod counterspell;
 pub mod brainstorm;
 pub mod return_to_dust;
 pub mod read_the_bones;

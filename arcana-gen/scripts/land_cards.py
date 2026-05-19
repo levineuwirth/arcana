@@ -220,12 +220,34 @@ def main() -> int:
         print("nothing to land.")
         return 0
 
+    # Card-name → relative path for every card already in the catalog.
+    # `CardRegistry::register` panics on a duplicate name, so a
+    # candidate whose name already exists under a *different* path
+    # (e.g. a Scryfall-canonical printing of a curated seed card) must
+    # not land — it would break the C1 register_all standing test.
+    name_re = re.compile(r'\.intern\(\s*"([^"]+)"\s*\)|'
+                         r'CardDefinition::new\(\s*"([^"]+)"')
+    existing_names: dict[str, str] = {}
+    for f in CARDS_SRC.glob("*/*.rs"):
+        if f.name == "mod.rs":
+            continue
+        m = name_re.search(f.read_text())
+        if m:
+            existing_names[m.group(1) or m.group(2)] = str(
+                f.relative_to(REPO))
+
     failures = 0
     for r in passed:
         set_code, slug, name = r["set"], r["slug"], r["name"]
         src = cards_dir / f"{r['idx']:03d}_{slug}.rs"
         dst = CARDS_SRC / mod_ident(set_code) / f"{slug}.rs"
         rel_dst = dst.relative_to(REPO)
+
+        prior = existing_names.get(name)
+        if prior is not None and prior != str(rel_dst):
+            print(f"  SKIP  {name}: name already in catalog as {prior} "
+                  f"(would collide with the register-name invariant)")
+            continue
 
         if not src.exists():
             print(f"  SKIP  {name}: source {src} missing")
@@ -246,6 +268,14 @@ def main() -> int:
         print(f"  {verb} {name}  [{set_code}]")
         for a in actions:
             print(f"         - {a}")
+
+    if args.apply:
+        # Keep the C1 standing-attestation wiring in sync with the
+        # catalog: every landed card must be in register_all so the
+        # full-catalog registration test exercises it.
+        import subprocess
+        gen = Path(__file__).with_name("gen_register_all.py")
+        subprocess.run([sys.executable, str(gen)], check=True)
 
     print()
     if not args.apply:

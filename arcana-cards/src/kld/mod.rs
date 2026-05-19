@@ -27,7 +27,6 @@ pub mod rush_of_vitality;
 pub mod ceremonious_rejection;
 pub mod appetite_for_the_unnatural;
 pub mod glimmer_of_genius;
-pub mod servo_exhibition;
 pub mod failed_inspection;
 pub mod built_to_last;
 pub mod built_to_smash;

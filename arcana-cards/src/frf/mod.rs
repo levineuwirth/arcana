@@ -3,7 +3,6 @@ pub mod gore_swine;
 pub mod great_horn_krushok;
 pub mod feral_krushok;
 pub mod pilgrim_of_the_fires;
-pub mod typhoid_rats;
 pub mod aven_skirmisher;
 pub mod fearsome_awakening;
 pub mod reach_of_shadows;

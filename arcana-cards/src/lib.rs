@@ -534,6 +534,8 @@ pub mod sth;
 
 pub mod ydft;
 
+pub mod register_all;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;
@@ -701,4 +703,16 @@ mod tests {
         assert_eq!(def.base_characteristics.toughness, Some(PtValue::Fixed(2)));
         assert!(def.base_characteristics.colors.contains(arcana_core::types::Color::Green));
     }
+    #[test]
+    fn register_all_builds_the_whole_catalog() {
+        // C1 standing attestation: every catalog card's `register`
+        // runs, the registry builds, and the duplicate-name invariant
+        // holds across the entire catalog (not just the 35-card seed).
+        let mut reg = arcana_core::registry::CardRegistry::new();
+        let n = crate::register_all::register_all(&mut reg);
+        assert!(n >= 3000, "expected the full catalog, got {n}");
+        assert_eq!(reg.len(), n,
+            "every register() must yield a distinct CardId —              reg.len()={} != calls={n}", reg.len());
+    }
+
 }

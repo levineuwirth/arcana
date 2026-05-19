@@ -3,7 +3,6 @@ pub mod dross_crocodile;
 pub mod scathe_zombies;
 pub mod hill_giant;
 pub mod lumengrid_warden;
-pub mod grizzly_bears;
 pub mod rushwood_dryad;
 pub mod steadfast_guard;
 pub mod rootwater_commando;
