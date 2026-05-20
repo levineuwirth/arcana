@@ -136,6 +136,18 @@ pub enum Effect {
 
     // --- tokens / copies ---------------------------------------------------
     CreateToken { controller: PlayerId, token: TokenDefinition },
+    /// Like [`Self::CreateToken`] but additionally schedules a
+    /// one-shot [`crate::triggers::DelayedTrigger`] that destroys the
+    /// newly-created token at the beginning of the next end step.
+    /// Solves the "create N tokens, sacrifice them at end of turn"
+    /// shape (Thatcher Revolt / Lithobraking / Goblin Sleigh-Ride),
+    /// which a generated resolver can't express via plain
+    /// [`Self::CreateToken`] + [`Self::DelayedAction`] because the
+    /// token id isn't visible to the resolver. Sacrifice is routed
+    /// through `DestroyPermanent` — token-faithful (the token ceases
+    /// on the SBA tick after it hits the graveyard) and consistent
+    /// with `DelayedAction::Sacrifice`.
+    CreateTokenSacEot { controller: PlayerId, token: TokenDefinition },
     CopySpell { target: ObjectId },
     CopyPermanent { target: ObjectId },
 
@@ -669,6 +681,19 @@ impl Effect {
             // --- tokens / copies -----------------------------------------
             Effect::CreateToken { controller, token } => {
                 create_token(state, *controller, token);
+            }
+            Effect::CreateTokenSacEot { controller, token } => {
+                use crate::triggers::{DelayedTrigger, TriggerCondition};
+                if let Some(new_id) = create_token(state, *controller, token) {
+                    state.register_delayed_trigger(DelayedTrigger::one_shot(
+                        new_id, *controller,
+                        TriggerCondition::StepBegins {
+                            step: crate::turn::Step::End,
+                            whose: crate::targets::ControllerConstraint::Any,
+                        },
+                        delayed_sacrifice,
+                    ));
+                }
             }
             Effect::CopySpell { target } => {
                 copy_spell_on_stack(state, *target);
@@ -1603,8 +1628,8 @@ fn create_token(
     state: &mut GameState,
     controller: PlayerId,
     token: &TokenDefinition,
-) {
-    if !valid_player(state, controller) { return; }
+) -> Option<ObjectId> {
+    if !valid_player(state, controller) { return None; }
     let id = state.allocate_object_id();
     // Token owner = controller (CR 110.5a — "the player who created
     // a token is that token's owner"). We're minting a new object so
@@ -1624,6 +1649,7 @@ fn create_token(
     state.emit(GameEvent::EntersBattlefield {
         object_id: id, from_zone: Zone::Stack, was_cast: false,
     });
+    Some(id)
 }
 
 fn manifest_top_of_library(state: &mut GameState, p: PlayerId) {
@@ -3569,6 +3595,52 @@ mod tests {
         let eff = (t.effect)(&s, &pt, &crate::registry::CardRegistry::new());
         assert!(matches!(eff.as_slice(),
             [Effect::ExilePermanent { target: 7 }]));
+    }
+
+    #[test]
+    fn create_token_sac_eot_schedules_delayed_destroy() {
+        use crate::triggers::TriggerCondition;
+        let mut subtypes = crate::types::SubtypeSet::default();
+        let mut s = GameState::new(2, 0);
+        // Need an interner for a token name. The seed registry isn't
+        // required; we can intern via a fresh interner indirectly by
+        // crafting a minimal Token: use any SmallString. Easiest:
+        // skip the name path by constructing the symbol via a stub
+        // registry.
+        let mut reg = crate::registry::CardRegistry::new();
+        let name = reg.interner_mut().intern("Goblin");
+        subtypes.0.insert(reg.interner_mut().intern("Goblin"));
+        let token = TokenDefinition {
+            name, colors: ColorSet::red(),
+            types: TypeLine::CREATURE.into(),
+            subtypes,
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![],
+            abilities: vec![],
+        };
+        let before = s.delayed_triggers.len();
+        Effect::CreateTokenSacEot { controller: 0, token }.execute(&mut s);
+        // One new token on the battlefield + one new delayed trigger.
+        assert!(s.objects.objects_in_zone(Zone::Battlefield)
+            .any(|o| o.is_token));
+        let token_id = s.objects.objects_in_zone(Zone::Battlefield)
+            .find(|o| o.is_token).unwrap().id;
+        assert_eq!(s.delayed_triggers.len(), before + 1);
+        let t = s.delayed_triggers.last().unwrap();
+        assert_eq!(t.source, token_id);
+        assert!(matches!(t.condition,
+            TriggerCondition::StepBegins { step: crate::turn::Step::End, .. }));
+        assert!(t.fire_once);
+        // The callback destroys the token via DestroyPermanent.
+        let pt = crate::triggers::PendingTrigger {
+            source: token_id, trigger_id: 0, controller: 0,
+            trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        let eff = (t.effect)(&s, &pt, &reg);
+        assert!(matches!(eff.as_slice(),
+            [Effect::DestroyPermanent { target }] if *target == token_id));
     }
 
     #[test]
