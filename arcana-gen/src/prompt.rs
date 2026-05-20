@@ -411,9 +411,9 @@ REFERENCE — Servo Exhibition ({{1}}{{W}} sorcery, 'Create two 1/1 colorless Se
 
 ENGINE EFFECT CATALOG — these `Effect` variants are part of the engine API and are ALL permitted in addition to the ones in the references above. Construct each EXACTLY as written: use only the field names shown, never add a field (no `optional`, no `count` on `CreateToken`, no `creature_a` on `Fight`) and never rename one. For 'do this N times' / 'create N tokens', repeat the whole `Effect` value N times in the `vec!` — there is no count field. `p` means a `PlayerId` (use `entry.controller` for 'you'; for 'target player'/'target opponent' read it from the target like Lightning Bolt's `TargetChoice::Player` arm). `id` means an `ObjectId` read from `entry.targets.targets.first()` (single-target shape — see Murder/Lightning Bolt).
 
-Imports (use these EXACT paths): `Effect`, `TokenDefinition`, `DiscardChoice`, `KeywordAbility` from `arcana_core::effects`; `Duration` from `arcana_core::layers`; `CounterKind`, `ManaColor` from `arcana_core::types`; `Zone` from `arcana_core::zones`; `ObjectFilter`, `TargetRequirement`, `TargetFilter`, `TargetCount` from `arcana_core::targets`; `ManaUnit` from `arcana_core::mana`. (`KeywordAbility` is NOT in `arcana_core::types`.)
+Imports (use these EXACT paths): `Effect`, `TokenDefinition`, `DiscardChoice`, `KeywordAbility` from `arcana_core::effects`; `Duration` from `arcana_core::layers`; `CounterKind`, `ManaColor` from `arcana_core::types`; `Zone` from `arcana_core::zones`; `ObjectFilter`, `TargetRequirement`, `TargetFilter`, `TargetCount`, `ControllerConstraint` from `arcana_core::targets`; `ManaUnit` from `arcana_core::mana`; `ReplacementDuration` from `arcana_core::replacement`. (`KeywordAbility` is NOT in `arcana_core::types`; `ControllerConstraint` is NOT in `arcana_core::types`.)
 
-TYPE-LINE RULE: `TypeLine::CREATURE` / `LAND` / `ARTIFACT` / `INSTANT` / `SORCERY` etc. are bitflag CONSTS, not `TypeLine` values. Anywhere a `TypeLine` is needed (an `ObjectFilter`'s `with_types`, a `TokenDefinition.types`) write `TypeLine::LAND.into()` for one type, or `TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)` to combine — exactly as the Servo Exhibition reference does. Never pass a bare `TypeLine::LAND`.
+TYPE-LINE RULE: `TypeLine::CREATURE` / `LAND` / `ARTIFACT` / `INSTANT` / `SORCERY` / `PLANESWALKER` etc. are bitflag CONSTS, not `TypeLine` values. Anywhere a `TypeLine` is needed (an `ObjectFilter`'s `with_types` / `with_types_any` / `without_types`, a `TokenDefinition.types`) write `TypeLine::LAND.into()` for one type, or `TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)` to combine — exactly as the Servo Exhibition reference does. Never pass a bare `TypeLine::LAND` and NEVER a bare bitwise-or like `TypeLine::INSTANT | TypeLine::SORCERY` (that's a `u16`, not a `TypeLine` — the same trap applies to `with_types_any`: wrap the combined consts in `TypeLine(..)`).
 
 Card flow (no target — player is `entry.controller` or a target player):
 - `Effect::DrawCards {{ player: p, count: u32 }}`
@@ -450,6 +450,9 @@ Tokens:
 
 Mana (ritual class):
 - `Effect::AddMana {{ player: p, mana: vec![ManaUnit::plain(ManaColor::Red, entry.source); 3] }}`  (Pyretic Ritual: 'Add {{R}}{{R}}{{R}}' — one `ManaUnit::plain(color, source)` per pip; for mixed colors build the `Vec<ManaUnit>` explicitly. `ManaColor::White|Blue|Black|Red|Green|Colorless`. The `source` is the spell's own object id — `entry.source`.)
+
+Damage prevention (Healing Salve class):
+- `Effect::PreventDamage {{ target: DamageTarget::Object(id), amount: Some(3), duration: ReplacementDuration::EndOfTurn }}`  ('Prevent the next 3 damage that would be dealt to any target this turn' — `amount: None` prevents ALL damage. `DamageTarget::Player(p)` for a player target. `ReplacementDuration` from `arcana_core::replacement`.)
 
 Sacrifice:
 - `Effect::Sacrifice {{ player: p, filter: ObjectFilter::creature(), count: u32 }}`  ('that player sacrifices a creature' → player = the target player, filter selects what; chain the `ObjectFilter` refinements above for 'sacrifices an artifact', etc.)
