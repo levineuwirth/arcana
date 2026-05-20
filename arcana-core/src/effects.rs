@@ -99,6 +99,10 @@ pub enum Effect {
     /// Reanimate a specific card from a graveyard (spec card, not
     /// by filter). No-op if `target` isn't currently in a graveyard.
     ReturnFromGraveyardToBattlefield { target: ObjectId },
+    /// Blink/flicker return: move `target` from exile to the
+    /// battlefield. No-op if `target` isn't currently in exile.
+    /// The owning controller is preserved by the underlying zone move.
+    ReturnFromExileToBattlefield { target: ObjectId },
     /// Like [`Effect::ReturnFromGraveyardToBattlefield`] but places
     /// `count` counters of `kind` on the permanent *as it re-enters*
     /// (the object is re-id'd by the zone move, so the counters must
@@ -410,9 +414,11 @@ pub enum DelayedAction {
     Exile,
     /// Return the source to its owner's hand.
     ReturnToHand,
-    // (Blink "return from exile to the battlefield" is intentionally
-    // absent — no exile→battlefield primitive exists; that stays a
-    // documented GAP rather than a wrong graveyard-return mapping.)
+    /// Blink/flicker: return the source from exile to the
+    /// battlefield. Pair with `Effect::ExilePermanent { target: id }`
+    /// now + `DelayedAction::ReturnFromExileToBattlefield` (when
+    /// `NextEndStep`) for the Cloudshift/Ghostway family.
+    ReturnFromExileToBattlefield,
 }
 
 // =============================================================================
@@ -549,6 +555,12 @@ impl Effect {
             Effect::ReturnFromGraveyardToBattlefield { target } => {
                 let Some(obj) = state.objects.get(*target) else { return; };
                 if !matches!(obj.zone, Zone::Graveyard(_)) { return; }
+                state.move_object_to_zone(
+                    *target, Zone::Battlefield, MoveCause::SpellResolution);
+            }
+            Effect::ReturnFromExileToBattlefield { target } => {
+                let Some(obj) = state.objects.get(*target) else { return; };
+                if obj.zone != Zone::Exile { return; }
                 state.move_object_to_zone(
                     *target, Zone::Battlefield, MoveCause::SpellResolution);
             }
@@ -966,6 +978,8 @@ impl Effect {
                     DelayedAction::Sacrifice => delayed_sacrifice,
                     DelayedAction::Exile => delayed_exile,
                     DelayedAction::ReturnToHand => delayed_return_hand,
+                    DelayedAction::ReturnFromExileToBattlefield =>
+                        delayed_return_exile_bf,
                 };
                 state.register_delayed_trigger(DelayedTrigger::one_shot(
                     *source, *controller, condition, effect_fn));
@@ -994,6 +1008,12 @@ fn delayed_return_hand(
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::ReturnToHand { target: pt.source }]
+}
+fn delayed_return_exile_bf(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ReturnFromExileToBattlefield { target: pt.source }]
 }
 
 // =============================================================================
@@ -3549,6 +3569,28 @@ mod tests {
         let eff = (t.effect)(&s, &pt, &crate::registry::CardRegistry::new());
         assert!(matches!(eff.as_slice(),
             [Effect::ExilePermanent { target: 7 }]));
+    }
+
+    #[test]
+    fn return_from_exile_to_battlefield_moves_object() {
+        let mut s = GameState::new(2, 0);
+        let chars = Characteristics {
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}").unwrap()),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        let id = s.allocate_object_id();
+        let mut o = GameObject::new(id, 0, Zone::Exile, 1, chars);
+        o.controller = 0;
+        s.objects.insert(o);
+        Effect::ReturnFromExileToBattlefield { target: id }.execute(&mut s);
+        // CR 400.7 re-ids on zone move; scan by zone instead.
+        assert!(s.objects.objects_in_zone(Zone::Battlefield)
+            .any(|o| o.controller == 0),
+            "the exiled creature must now be on the battlefield");
+        assert_eq!(s.objects.objects_in_zone(Zone::Exile).count(), 0);
     }
 
     #[test]
