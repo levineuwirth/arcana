@@ -140,6 +140,22 @@ pub fn library_size(state: &GameState, player: PlayerId) -> u32 {
     state.player(player).library_top_to_bottom.len() as u32
 }
 
+/// Controller of object `id` ("that creature's controller", "its
+/// owner" — most cards conflate the two for non-stolen permanents).
+/// Falls back to `default` (typically `entry.controller`) when the
+/// object is gone, so generated code stays total. Use for
+/// `CreateToken {{ controller: script::target_controller(state, id,
+/// entry.controller) }}` when the oracle text says "target's
+/// controller gets a token" / "create a token under that player's
+/// control".
+pub fn target_controller(
+    state: &GameState,
+    id: ObjectId,
+    default: PlayerId,
+) -> PlayerId {
+    state.objects.get(id).map(|o| o.controller).unwrap_or(default)
+}
+
 /// Every player id in turn order. For "each player draws/discards/
 /// loses life": map this into one inner [`crate::effects::Effect`]
 /// per player and wrap in `Effect::Sequence`.
@@ -283,6 +299,15 @@ mod tests {
             count_matching(&s, &ObjectFilter::creature().tapped_only(), 0), 1);
         assert_eq!(
             count_matching(&s, &ObjectFilter::creature().untapped_only(), 0), 1);
+    }
+
+    #[test]
+    fn target_controller_reads_object_else_default() {
+        let mut s = GameState::new(2, 0);
+        let c = put(&mut s, Zone::Battlefield, 1, creature_chars(1, 1));
+        assert_eq!(target_controller(&s, c, 0), 1);
+        assert_eq!(target_controller(&s, 9999, 0), 0,
+            "missing object → falls back to default");
     }
 
     #[test]
