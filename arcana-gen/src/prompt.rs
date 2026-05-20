@@ -433,6 +433,7 @@ Single permanent / card target (`id` from the first target):
 - `Effect::ReturnFromGraveyardToHand {{ target: id }}`  (Raise Dead — target a creature card in a graveyard)
 - `Effect::ReturnFromGraveyardToBattlefield {{ target: id }}`  (Reanimate — target a creature card in a graveyard)
 - `Effect::ReturnFromExileToBattlefield {{ target: id }}`  (blink/flicker return — the matching primitive for cards exiled by an earlier `Effect::ExilePermanent`; no-op if the target isn't currently in exile)
+- `Effect::ChangeControl {{ target: id, new_controller: entry.controller }}`  (permanent gain-control — Mind Control / Take Control family; the controller change persists. There is NO "until end of turn" variant yet, so Threaten/Act-of-Treason-style temporary control is still a partial — emit the expressible parts (Untap, GrantKeyword Haste) and `// GAP:` the gain-control duration, not a permanent control change.)
 - `Effect::ExileFromGraveyard {{ target: id }}`
 - `Effect::AddCounters {{ target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }}`  ·  `Effect::RemoveCounters {{ .. }}`
 - `Effect::Pump {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }}`  ('+X/+X until end of turn'; put granted evergreen `KeywordAbility` values in `keywords`)
