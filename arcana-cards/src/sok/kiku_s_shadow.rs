@@ -1,5 +1,10 @@
-//! Kiku's Shadow — `{B}{B}` sorcery. "Target creature deals damage to itself
-//! equal to its power."
+//! Kiku's Shadow — `{B}{B}` sorcery. "Target creature deals damage to
+//! itself equal to its power."
+//!
+//! Dynamic amount is target's own power; emitted as DealDamage with
+//! the target as both source and target proxy via the resolving
+//! spell's source (so the damage hits the creature with the right
+//! magnitude).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,30 +27,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature deals damage to itself equal to its power.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature deals damage to itself equal to its power.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id).max(0) as u32;
-    if power == 0 {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
-    }
+    };
+    let pow = script::power_of(state, *id).max(0) as u32;
     vec![Effect::DealDamage {
         source: *id,
         target: DamageTarget::Object(*id),
-        amount: power,
+        amount: pow,
     }]
 }

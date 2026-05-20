@@ -1,9 +1,6 @@
-//! Enter the God-Eternals — `{2}{U}{U}{B}` sorcery. "Enter the God-Eternals
-//! deals 4 damage to target creature. You gain life equal to the damage dealt
-//! this way. Mill 4. Amass Zombies 4."
-//!
-//! GAP: Amass Zombies 4 mechanic not in the Effect catalog.
-//! DealDamage 4, GainLife 4, and Mill 4 are expressed.
+//! Enter the God-Eternals — `{2}{U}{U}{B}` sorcery. "Deals 4 damage
+//! to target creature and you gain life equal to the damage dealt.
+//! Target player mills four cards. Amass Zombies 4."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,8 +24,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Enter the God-Eternals deals 4 damage to target creature. You gain life equal to the damage dealt this way. Mill 4. Amass Zombies 4.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                text: "Enter the God-Eternals deals 4 damage to target creature and you gain life equal to the damage dealt this way. Target player mills four cards. Amass Zombies 4.".into(),
+                target_requirements: vec![
+                    TargetRequirement::target_creature(),
+                    TargetRequirement::target_player(),
+                ],
                 modal: None,
                 effect: resolve,
             }),
@@ -40,16 +40,19 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Amass Zombies 4 not in the Effect catalog
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 4,
-        },
-        Effect::GainLife { player: entry.controller, amount: 4 },
-        Effect::Mill { player: entry.controller, count: 4 },
-    ]
+        });
+        out.push(Effect::GainLife { player: entry.controller, amount: 4 });
+    }
+    if let Some(TargetChoice::Player(p)) = entry.targets.targets.get(1) {
+        out.push(Effect::Mill { player: *p, count: 4 });
+    }
+    // "Amass Zombies 4" is not expressible (no Army/amass mechanic in
+    // the catalog); the damage, lifegain, and mill are applied.
+    out
 }

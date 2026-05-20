@@ -1,8 +1,5 @@
-//! Perilous Research — `{1}{U}` instant. "Draw two cards, then sacrifice
-//! a permanent."
-//!
-//! # GAP: "sacrifice a permanent" (controller-chosen sacrifice) is not
-//! in the Effect catalog.
+//! Perilous Research — `{1}{U}` instant. "Draw two cards, then
+//! sacrifice a permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,6 +7,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,21 +20,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards, then sacrifice a permanent.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards, then sacrifice a permanent.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "sacrifice a permanent" (controller-chosen sacrifice) not in Effect catalog
-    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::Sacrifice {
+            player: entry.controller,
+            filter: ObjectFilter::permanent(),
+            count: 1,
+        },
+    ]
 }

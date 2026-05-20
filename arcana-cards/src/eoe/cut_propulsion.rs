@@ -1,21 +1,18 @@
-//! Cut Propulsion — `{2}{R}` instant.
-//! "Target creature deals damage to itself equal to its power. If that
-//! creature has flying, it deals twice that much damage to itself instead."
-//!
-//! # GAP: checking whether the target has flying at resolution time is not
-//! available via the script API (no keyword-presence query). Approximated
-//! as simple self-damage equal to power (flying doubling omitted).
+//! Cut Propulsion — `{2}{R}` instant. "Target creature deals damage to itself
+//! equal to its power. If that creature has flying, it deals twice that much
+//! damage to itself instead." Power readable via script::power_of. "Has
+//! flying" check isn't in the script surface — GAP the doubling rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cut Propulsion");
@@ -27,27 +24,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature deals damage to itself equal to its power. If that creature has flying, it deals twice that much damage to itself instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature deals damage to itself equal to its power. If that creature has flying, it deals twice that much damage to itself instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: flying keyword presence check at resolution not available in script API; doubling omitted.
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     let power = script::power_of(state, *id).max(0) as u32;
+    // GAP: no script check for "has flying" — emitting only the base damage.
     vec![Effect::DealDamage {
-        source: entry.source,
+        source: *id,
         target: DamageTarget::Object(*id),
         amount: power,
     }]

@@ -1,8 +1,8 @@
-//! Don't Make a Sound — `{1}{U}` instant. "Counter target spell unless its
-//! controller pays {2}. If they do, surveil 2."
+//! Don't Make a Sound — `{1}{U}` instant. "Counter target spell
+//! unless its controller pays {2}. If they do, surveil 2."
 //!
-//! GAP: "unless controller pays {2}" (tax counter) not in Effect catalog;
-//! conditional surveil on payment not expressible. Partial: Counter expressed.
+//! The soft counter is expressed; the "if they pay, surveil 2"
+//! conditional rider cannot observe whether payment was made.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,28 +25,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell unless its controller pays {2}. If they do, surveil 2.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell unless its controller pays {2}. If they do, surveil 2.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "unless pays {2}" tax counter not in Effect catalog
-    // GAP: conditional surveil on payment not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Counter { target: *id }]
+    // GAP: "If they do, surveil 2" — cannot observe whether the tax was paid.
+    vec![Effect::CounterUnlessPays {
+        target: *id,
+        cost: ManaCost::parse("{2}").expect("valid cost"),
+    }]
 }

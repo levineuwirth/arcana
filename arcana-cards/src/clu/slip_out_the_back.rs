@@ -1,7 +1,8 @@
-//! Slip Out the Back — `{U}` instant. "Put a +1/+1 counter on target creature.
-//! It phases out."
+//! Slip Out the Back — `{U}` instant. "Put a +1/+1 counter on target
+//! creature. It phases out."
 //!
-//! # GAP: phase out — no Effect variant for phasing out a permanent.
+//! Phasing out has no catalog Effect; only the +1/+1 counter is
+//! expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,29 +23,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature. It phases out.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on target creature. It phases out.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::AddCounters {
-            target: *id,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        },
-        // GAP: phase out — no Effect::PhaseOut variant
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: phasing out has no catalog Effect.
+    vec![Effect::AddCounters {
+        target: *id,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }

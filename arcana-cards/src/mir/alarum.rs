@@ -1,8 +1,5 @@
-//! Alarum — `{1}{W}` instant, "Untap target nonattacking creature.
+//! Alarum — `{1}{W}` instant. "Untap target nonattacking creature.
 //! It gets +1/+3 until end of turn."
-//!
-//! GAP: "nonattacking" creature filter (attacking-state predicate) not in
-//! ObjectFilter; using plain creature target as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -24,13 +21,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Untap target nonattacking creature. It gets +1/+3 until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Untap target nonattacking creature. It gets +1/+3 until end of turn.".into(),
+            // GAP: no "nonattacking" target filter; restricted to
+            // target creature.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,7 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "nonattacking" creature filter not expressible in ObjectFilter
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![

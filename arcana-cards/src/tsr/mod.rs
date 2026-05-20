@@ -14,3 +14,7 @@ pub mod sunlance;
 pub mod mana_tithe;
 pub mod assassinate;
 pub mod careful_consideration;
+pub mod judge_unworthy;
+pub mod tendrils_of_corruption;
+pub mod minions_murmurs;
+pub mod smallpox;

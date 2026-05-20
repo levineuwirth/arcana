@@ -1,16 +1,15 @@
-//! Practical Research — `{3}{U}{R}` instant, "Draw four cards. Then discard two cards
-//! unless you discard an instant or sorcery card."
-//!
-//! GAP: Conditional discard (discard 1 instant/sorcery OR discard 2 cards — player choice
-//! with card-type constraint not in Effect catalog).
+//! Practical Research — `{3}{U}{R}` instant. "Draw four cards. Then discard
+//! two cards unless you discard an instant or sorcery card."
+//! GAP: "unless you discard an instant or sorcery card" conditional discard
+//! (player choice of which card to discard and the conditional branch) not
+//! in engine Effect catalog.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,9 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional discard (1 instant/sorcery OR 2 cards) not in Effect catalog
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 4 },
-        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
-    ]
+    // GAP: "unless you discard an instant or sorcery card" conditional discard branch not in engine
+    vec![Effect::DrawCards { player: entry.controller, count: 4 }]
 }

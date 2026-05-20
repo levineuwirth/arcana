@@ -1,9 +1,6 @@
-//! Fire and Brimstone — `{3}{W}{W}` instant. "Fire and Brimstone deals 4
-//! damage to target player who attacked this turn and 4 damage to you."
-//!
-//! The "who attacked this turn" targeting restriction is not expressible via
-//! `TargetFilter`; we use a plain player target. The self-damage is expressed
-//! as damage to `entry.controller`.
+//! Fire and Brimstone — `{3}{W}{W}` instant. "Fire and Brimstone
+//! deals 4 damage to target player who attacked this turn and 4
+//! damage to you."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -42,6 +39,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // "who attacked this turn" restriction not expressible in target
+    // filter; applied to target player.
     vec![
         Effect::DealDamage {
             source: entry.source,

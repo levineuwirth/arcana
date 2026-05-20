@@ -1,10 +1,8 @@
-//! Victim of Night — `{B}{B}` instant, "Destroy target non-Vampire,
+//! Victim of Night — `{B}{B}` instant. "Destroy target non-Vampire,
 //! non-Werewolf, non-Zombie creature."
 //!
-//! GAP: subtype-exclusion filter (non-Vampire AND non-Werewolf AND
-//! non-Zombie) is not expressible via ObjectFilter (only single
-//! without_types for type-line, not subtype exclusion). Best-effort:
-//! target any creature.
+//! The negative subtype constraints aren't expressible with the
+//! demonstrated ObjectFilter; the target is a creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,14 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target non-Vampire, non-Werewolf, non-Zombie creature.".into(),
-                // GAP: subtype exclusion (non-Vampire, non-Werewolf, non-Zombie) not in ObjectFilter
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target non-Vampire, non-Werewolf, non-Zombie creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,7 +37,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: negative subtype target constraints (non-Vampire/Werewolf/Zombie) not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

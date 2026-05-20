@@ -1,5 +1,5 @@
-//! Stupor — `{2}{B}` sorcery, "Target opponent discards a card at random.
-//! Then that player discards a card of their choice."
+//! Stupor — `{2}{B}` sorcery, "Target opponent discards a card at random,
+//! then discards a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target opponent discards a card at random. Then that player discards a card of their choice.".into(),
+                text: "Target opponent discards a card at random, then discards a card.".into(),
                 target_requirements: vec![TargetRequirement::target_player()],
                 modal: None,
                 effect: resolve,

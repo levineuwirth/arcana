@@ -1,5 +1,5 @@
-//! Boulder Dash — `{1}{R}` sorcery, "Boulder Dash deals 2 damage to any target
-//! and 1 damage to any other target."
+//! Boulder Dash — `{1}{R}` sorcery. "Boulder Dash deals 2 damage to
+//! any target and 1 damage to any other target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,49 +21,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Boulder Dash deals 2 damage to any target and 1 damage to any other target.".into(),
-                target_requirements: vec![
-                    TargetRequirement::any_target(),
-                    TargetRequirement::any_target(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Boulder Dash deals 2 damage to any target and 1 damage to any other target.".into(),
+            target_requirements: vec![
+                TargetRequirement::any_target(),
+                TargetRequirement::any_target(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn target_to_damage(t: &TargetChoice) -> DamageTarget {
-    match t {
+fn to_damage_target(t: &TargetChoice) -> Option<DamageTarget> {
+    Some(match t {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
             ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
-    }
+    })
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let mut effects = Vec::new();
-    if let Some(t0) = entry.targets.targets.first() {
-        effects.push(Effect::DealDamage {
-            source: entry.source,
-            target: target_to_damage(t0),
-            amount: 2,
-        });
+    let targets = &entry.targets.targets;
+    if let Some(t0) = targets.first().and_then(to_damage_target) {
+        effects.push(Effect::DealDamage { source: entry.source, target: t0, amount: 2 });
     }
-    if let Some(t1) = entry.targets.targets.get(1) {
-        effects.push(Effect::DealDamage {
-            source: entry.source,
-            target: target_to_damage(t1),
-            amount: 1,
-        });
+    if let Some(t1) = targets.get(1).and_then(to_damage_target) {
+        effects.push(Effect::DealDamage { source: entry.source, target: t1, amount: 1 });
     }
     effects
 }

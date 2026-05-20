@@ -1,8 +1,5 @@
-//! Ashes to Ashes — `{1}{B}{B}` sorcery, "Exile two target nonartifact creatures.
-//! Ashes to Ashes deals 5 damage to you."
-//!
-//! # GAP: nonartifact creature target filter — ObjectFilter has no color/type
-//! exclusion builder for "nonartifact". Using plain creature filter.
+//! Ashes to Ashes — `{1}{B}{B}` sorcery. "Exile two target nonartifact
+//! creatures. Ashes to Ashes deals 5 damage to you."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -11,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,31 +23,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you.".into(),
-                // GAP: nonartifact filter not expressible; using plain creature target ×2
-                target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().without_types(TypeLine::ARTIFACT.into()),
+                ),
+                count: TargetCount::Exactly(2),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    for t in &entry.targets.targets {
-        if let TargetChoice::Object(id) = t {
-            effects.push(Effect::ExilePermanent { target: *id });
-        }
-    }
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::ExilePermanent { target: *id }),
+            _ => None,
+        })
+        .collect();
     effects.push(Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(entry.controller),

@@ -1,8 +1,8 @@
-//! Finders, Keepers — `{5}{B}` sorcery, "Destroy target creature, then
+//! Finders, Keepers — `{5}{B}` sorcery. "Destroy target creature, then
 //! assemble a Contraption."
 //!
-//! # GAP
-//! * GAP: Contraption / assemble mechanic (no Effect variant; Contraption deck not modeled)
+//! GAP: Assemble / Contraption mechanic is not expressible with any catalog
+//! Effect variant. Only the destroy is expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,8 +40,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        // GAP: Contraption / assemble mechanic (no Effect variant)
-    ]
+    // GAP: Assemble Contraption mechanic not expressible
+    vec![Effect::DestroyPermanent { target: *id }]
 }

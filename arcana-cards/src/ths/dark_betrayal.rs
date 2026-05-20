@@ -1,4 +1,4 @@
-//! Dark Betrayal — `{B}` instant, "Destroy target black creature."
+//! Dark Betrayal — `{B}` instant. "Destroy target black creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

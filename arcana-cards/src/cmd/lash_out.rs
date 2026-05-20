@@ -1,10 +1,9 @@
-//! Lash Out — `{1}{R}` instant, "Lash Out deals 3 damage to target creature.
-//! Clash with an opponent — if you win, Lash Out deals 3 damage to that
-//! creature's controller."
+//! Lash Out — `{1}{R}` instant. "Lash Out deals 3 damage to target
+//! creature. Clash with an opponent. If you win, Lash Out deals 3 damage
+//! to that creature's controller."
 //!
-//! # GAP
-//! Clash mechanic (each player reveals top of library, highest mana cost
-//! wins) is not expressible. The base DealDamage is expressible.
+//! Damage to target is honest; clash + controller-of-target-on-win is
+//! not in the catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Lash Out deals 3 damage to target creature. Clash with an opponent — if you win, Lash Out deals 3 damage to that creature's controller.".into(),
+                text: "Lash Out deals 3 damage to target creature. Clash with an opponent. If you win, Lash Out deals 3 damage to that creature's controller.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,9 +40,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Clash mechanic and conditional damage to target's controller not in catalog
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no clash primitive; no controller-of-target accessor.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,7 +1,7 @@
-//! Drown in Ichor — `{1}{B}` sorcery. "Target creature gets -4/-4 until
-//! end of turn. Proliferate."
+//! Drown in Ichor — `{1}{B}` sorcery. "Target creature gets -4/-4
+//! until end of turn. Proliferate."
 //!
-//! GAP: Proliferate mechanic is not in the Effect catalog.
+//! The -4/-4 is emitted; proliferate has no effect variant (GAP).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -23,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -4/-4 until end of turn. Proliferate.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -4/-4 until end of turn. Proliferate.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,9 +37,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Proliferate mechanic not in Effect catalog
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: proliferate has no effect variant.
     vec![Effect::Pump {
         target: *id,
         power: -4,

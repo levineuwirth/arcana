@@ -1,9 +1,7 @@
-//! Narset's Rebuke — `{4}{R}` instant, "Narset's Rebuke deals 5 damage to
-//! target creature. Add {R}{R}{R}. If that creature would die this turn,
-//! exile it instead."
-//!
-//! GAP: adding mana to mana pool is not expressible; die-exile replacement
-//! effect until end of turn is not expressible.
+//! Narset's Rebuke — `{4}{R}` instant. "Narset's Rebuke deals 5 damage to
+//! target creature. Add {U}{R}{W}. If that creature would die this turn,
+//! exile it instead." Damage is direct; mana production and replacement
+//! effects have no Effect variant — GAP those riders.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,24 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Narset's Rebuke deals 5 damage to target creature. Add {R}{R}{R}. If that creature would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Narset's Rebuke deals 5 damage to target creature. Add {U}{R}{W}. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: add mana to pool not expressible; die-exile replacement not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: no Effect to add mana directly, and no replacement effect for "would die, exile instead".
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

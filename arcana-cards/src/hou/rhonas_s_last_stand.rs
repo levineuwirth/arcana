@@ -2,11 +2,8 @@
 //! creature token. Lands you control don't untap during your next
 //! untap step."
 //!
-//! # GAP
-//! "Lands you control don't untap during your next untap step" is a
-//! delayed continuous effect with a once-only duration — not
-//! expressible with any catalog variant. The token creation is
-//! modeled.
+//! The "lands don't untap next turn" replacement effect is not in
+//! catalog. Only the Snake token is modeled.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -27,22 +24,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create a 5/4 green Snake creature token. Lands you control don't untap during your next untap step.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create a 5/4 green Snake creature token. Lands you control don't untap during your next untap step.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let snake = reg.interner().lookup("Snake").expect("Snake interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let snake = reg.interner().lookup("Snake").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(snake);
     let token = TokenDefinition {
@@ -55,6 +47,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "lands don't untap during your next untap step" delayed continuous effect not expressible
+    // GAP: "lands you control don't untap next untap step" replacement effect not in catalog.
     vec![Effect::CreateToken { controller: entry.controller, token }]
 }

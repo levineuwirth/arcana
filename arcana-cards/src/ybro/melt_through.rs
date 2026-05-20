@@ -1,7 +1,7 @@
-//! Melt Through — `{R}` instant. "Melt Through deals 2 damage to any target. If it's a
-//! creature, it perpetually gains 'damage isn't removed from it during cleanup steps.'"
-//!
-//! # GAP: perpetual effect (damage not removed at cleanup) not expressible.
+//! Melt Through — `{R}` instant. "Melt Through deals 2 damage to any
+//! target. If it's a creature, it perpetually gains '...damage isn't
+//! removed from it during cleanup steps.'" The perpetual rider has no
+//! primitive; the damage is modeled (partial).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,22 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Melt Through deals 2 damage to any target. If it's a creature, it perpetually gains \"damage isn't removed from it during cleanup steps.\"".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Melt Through deals 2 damage to any target. If it's a creature, it perpetually gains \"As long as this creature is on the battlefield, damage isn't removed from it during cleanup steps.\"".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: perpetual "damage not removed at cleanup" effect not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: the perpetual "damage isn't removed during cleanup" grant
+    // has no primitive; only the 2 damage is modeled.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -48,9 +44,5 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 2,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
 }

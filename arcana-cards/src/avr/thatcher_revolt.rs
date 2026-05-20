@@ -1,9 +1,10 @@
-//! Thatcher Revolt — `{2}{R}` sorcery, "Create three 1/1 red Human creature
+//! Thatcher Revolt — `{2}{R}` sorcery. "Create three 1/1 red Human creature
 //! tokens with haste. Sacrifice those tokens at the beginning of the next
 //! end step."
 //!
-//! # GAP
-//! * GAP: delayed triggered ability to sacrifice the created tokens at the beginning of the next end step
+//! GAP: DelayedAction requires a known object id at resolve time; newly
+//! created tokens do not have ids available during resolution. The token
+//! creation is expressible; the sacrifice riders are not (token ids unknown).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,7 +40,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let human = reg.interner().lookup("Human").expect("Human interned during register()");
+    let human = reg.interner().lookup("Human")
+        .expect("Human interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     let token = TokenDefinition {
@@ -52,10 +54,11 @@ fn resolve(
         keywords: vec![KeywordAbility::Haste],
         abilities: vec![],
     };
+    // GAP: sacrifice-at-end-step rider requires known token ids, which are
+    // unavailable at resolution time
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },
-        // GAP: delayed triggered ability to sacrifice those tokens at the beginning of the next end step
     ]
 }

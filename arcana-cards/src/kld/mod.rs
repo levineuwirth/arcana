@@ -34,3 +34,4 @@ pub mod larger_than_life;
 pub mod fateful_showdown;
 pub mod creeping_mold;
 pub mod tezzeret_s_ambition;
+pub mod tidy_conclusion;

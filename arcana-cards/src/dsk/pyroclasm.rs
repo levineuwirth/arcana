@@ -1,11 +1,10 @@
-//! Pyroclasm — `{1}{R}` sorcery.
-//! "Pyroclasm deals 2 damage to each creature."
+//! Pyroclasm — `{1}{R}` sorcery. "Pyroclasm deals 2 damage to each
+//! creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
-use arcana_core::objects::NULL_OBJECT_ID;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -23,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Pyroclasm deals 2 damage to each creature.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Pyroclasm deals 2 damage to each creature.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

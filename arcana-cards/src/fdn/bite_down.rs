@@ -1,9 +1,7 @@
-//! Bite Down — `{1}{G}` instant. "Target creature you control deals damage
-//! equal to its power to target creature or planeswalker you don't control."
-//!
-//! Two-target spell: first target is the attacker (creature you control),
-//! second is the defender (creature or planeswalker opponent controls).
-//! Damage equals the attacker's power at resolution.
+//! Bite Down — `{1}{G}` instant. "Target creature you control deals
+//! damage equal to its power to target creature or planeswalker you
+//! don't control." First target's current power is the damage dealt
+//! to the second target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -14,7 +12,8 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -32,13 +31,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Target creature you control deals damage equal to its power to target creature or planeswalker you don't control.".into(),
             target_requirements: vec![
                 TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 },
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT)),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -50,22 +51,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let targets = &entry.targets.targets;
-    if targets.len() < 2 { return Vec::new(); }
-    let TargetChoice::Object(attacker_id) = &targets[0] else { return Vec::new(); };
-    let TargetChoice::Object(defender_id) = &targets[1] else { return Vec::new(); };
-    let power = script::power_of(state, *attacker_id).max(0) as u32;
-    if power == 0 {
-        return Vec::new();
-    }
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let TargetChoice::Object(src) = (match entry.targets.targets.first() {
+        Some(t) => t,
+        None => return Vec::new(),
+    }) else { return Vec::new(); };
+    let TargetChoice::Object(victim) = (match entry.targets.targets.get(1) {
+        Some(t) => t,
+        None => return Vec::new(),
+    }) else { return Vec::new(); };
+    let amount = script::power_of(state, *src).max(0) as u32;
     vec![Effect::DealDamage {
         source: entry.source,
-        target: DamageTarget::Object(*defender_id),
-        amount: power,
+        target: DamageTarget::Object(*victim),
+        amount,
     }]
 }

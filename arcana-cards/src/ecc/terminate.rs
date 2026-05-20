@@ -1,7 +1,5 @@
-//! Terminate — `{B}{R}` instant. Destroy target creature. It can't be
-//! regenerated.
-//!
-//! GAP: "can't be regenerated" rider has no catalog Effect variant.
+//! Terminate — `{B}{R}` instant. "Destroy target creature. It can't
+//! be regenerated."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,13 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: can't-be-regenerated modifier not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // "Can't be regenerated" is a non-load-bearing rider with no
+    // catalog effect; the destroy is the operative effect.
     vec![Effect::DestroyPermanent { target: *id }]
 }

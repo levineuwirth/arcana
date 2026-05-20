@@ -1,6 +1,5 @@
-//! Riverguard's Reflexes — `{1}{W}` instant.
-//! "Target creature gets +2/+2 and gains first strike until end of turn. Untap
-//! it."
+//! Riverguard's Reflexes — `{1}{W}` instant, "Target creature gets
+//! +2/+2 and gains first strike until end of turn. Untap it."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

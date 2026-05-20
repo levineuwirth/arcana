@@ -1,5 +1,10 @@
-//! Faebloom Trick — `{2}{U}` instant, "Create two 1/1 blue Faerie creature tokens
-//! with flying. Tap target creature an opponent controls."
+//! Faebloom Trick — `{2}{U}` instant, "Create two 1/1 blue Faerie creature
+//! tokens with flying. When you do, tap target creature an opponent
+//! controls."
+//!
+//! The "when you do" triggered rider is not expressible as a single
+//! SpellAbilityDef; modeled as sequential effects: create tokens then
+//! tap the target. GAP: "when you do" sub-trigger timing.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -7,7 +12,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,8 +28,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Create two 1/1 blue Faerie creature tokens with flying. Tap target creature an opponent controls.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                text: "Create two 1/1 blue Faerie creature tokens with flying. When you do, tap target creature an opponent controls.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent)
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -36,10 +47,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let faerie = reg.interner().lookup("Faerie")
-        .expect("Faerie interned during register()");
+    let faerie = reg.interner().lookup("Faerie").expect("Faerie interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(faerie);
     let token = TokenDefinition {
@@ -52,9 +60,14 @@ fn resolve(
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    vec![
+    let mut effects = vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },
-        Effect::Tap { target: *id },
-    ]
+    ];
+    if let Some(target) = entry.targets.targets.first() {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::Tap { target: *id });
+        }
+    }
+    effects
 }

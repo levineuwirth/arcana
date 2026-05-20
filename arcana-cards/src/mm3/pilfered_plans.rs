@@ -1,5 +1,5 @@
-//! Pilfered Plans — `{1}{U}{B}` sorcery, "Target player mills two cards. Draw
-//! two cards."
+//! Pilfered Plans — `{1}{U}{B}` sorcery. "Target player mills two cards.
+//! Draw two cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

@@ -1,11 +1,7 @@
-//! Blitz of the Thunder-Raptor — `{1}{R}` instant. "Blitz of the
-//! Thunder-Raptor deals damage to target creature or planeswalker equal to the
-//! number of instant and sorcery cards in your graveyard. If that creature or
-//! planeswalker would die this turn, exile it instead."
-//!
-//! # GAP: replacement effect "if would die this turn, exile instead"
-//! # GAP: filter graveyard for instant OR sorcery type — graveyard_matching
-//!   only takes a single ObjectFilter; TypeLine OR filtering uses with_types_any
+//! Blitz of the Thunder-Raptor — `{1}{R}` instant. "Deals damage to
+//! target creature or planeswalker equal to the number of instant and
+//! sorcery cards in your graveyard. If that creature or planeswalker
+//! would die this turn, exile it instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,30 +24,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Blitz of the Thunder-Raptor deals damage to target creature or planeswalker equal to the number of instant and sorcery cards in your graveyard. If that creature or planeswalker would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Blitz of the Thunder-Raptor deals damage to target creature or planeswalker equal to the number of instant and sorcery cards in your graveyard. If that creature or planeswalker would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: replacement effect "if would die this turn, exile instead"
-    // Counting instant+sorcery in graveyard via two graveyard_matching calls (summed)
-    let instant_filter = ObjectFilter::new().with_types(TypeLine::INSTANT.into());
-    let sorcery_filter = ObjectFilter::new().with_types(TypeLine::SORCERY.into());
-    let instants = script::graveyard_matching(state, &instant_filter, entry.controller, entry.controller);
-    let sorceries = script::graveyard_matching(state, &sorcery_filter, entry.controller, entry.controller);
-    let amount = instants + sorceries;
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let filter = ObjectFilter::new()
+        .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY).into());
+    let amount = script::graveyard_matching(state, &filter, entry.controller, entry.controller);
+    // GAP: "if it would die this turn, exile it instead" replacement
+    // rider is not expressible; emitting the dynamic damage only.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,5 +1,5 @@
-//! Argivian Find — `{W}` instant. "Return target artifact or enchantment card
-//! from your graveyard to your hand."
+//! Argivian Find — `{W}` instant. "Return target artifact or
+//! enchantment card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -27,9 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT).into(),
-                        ),
+                        filter: ObjectFilter::new()
+                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,

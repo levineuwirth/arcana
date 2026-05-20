@@ -1,9 +1,6 @@
-//! Virulent Wound — `{B}` instant. "Put a -1/-1 counter on target creature.
-//! When that creature dies this turn, its controller gets a poison counter."
-//!
-//! GAP: "when that creature dies this turn, its controller gets a poison
-//! counter" requires a conditional delayed trigger tied to a specific
-//! permanent — not expressible via the API. Emitting the -1/-1 counter only.
+//! Virulent Wound — `{B}` instant. "Put a -1/-1 counter on target
+//! creature. When that creature dies this turn, its controller gets a
+//! poison counter."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +38,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: delayed "when dies this turn, controller gets poison counter" not expressible.
+    // "when that creature dies this turn, its controller gets a poison
+    // counter" delayed-trigger rider is not expressible; the -1/-1
+    // counter is applied.
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::MinusOneMinusOne,

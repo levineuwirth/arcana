@@ -1,4 +1,4 @@
-//! Scorching Shot — `{R}{R}` sorcery, "Scorching Shot deals 5 damage to
+//! Scorching Shot — `{R}{R}` sorcery. "Scorching Shot deals 5 damage to
 //! target creature."
 
 use arcana_core::effects::Effect;

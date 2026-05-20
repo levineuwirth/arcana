@@ -20,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards. Target player mills three cards.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards. Target player mills three cards.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

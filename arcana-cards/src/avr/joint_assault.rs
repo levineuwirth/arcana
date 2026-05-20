@@ -1,11 +1,6 @@
-//! Joint Assault — `{G}` instant. "Target creature gets +2/+2 until end of
-//! turn. If it's paired with a creature, that creature also gets +2/+2
-//! until end of turn."
-//!
-//! GAP: "If paired with a creature" (Soulbond pairing check) and pumping
-//! the paired creature are not expressible with the current Effect catalog.
-//! The +2/+2 on the primary target is expressible; the conditional second
-//! pump is omitted.
+//! Joint Assault — `{G}` instant. "Target creature gets +2/+2 until
+//! end of turn. If it's paired with a creature, that creature also gets
+//! +2/+2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -27,24 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it's paired with a creature, that creature also gets +2/+2 until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. If it's paired with a creature, that creature also gets +2/+2 until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if paired" Soulbond check and conditional +2/+2 to paired creature
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it's paired with a creature" (soulbond pair) is not
+    // modeled, so the paired creature's +2/+2 is omitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

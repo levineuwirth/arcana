@@ -1,10 +1,10 @@
 //! Ringsight — `{1}{U}{B}` sorcery. "The Ring tempts you. Search your
-//! library for a card that shares a color with a legendary creature you
-//! control, reveal it, put it into your hand, then shuffle."
+//! library for a card that shares a color with a legendary creature
+//! you control, reveal it, put it into your hand, then shuffle."
 //!
-//! GAP: "The Ring tempts you" mechanic and color-match-to-legendary-
-//! creature filter are not expressible. Best-effort: tutor any card to
-//! hand (TutorToHand with permanent filter as approximation).
+//! GAP: 'The Ring tempts you' and 'shares a color with a legendary
+//! creature you control' aren't expressible. We tutor an unfiltered
+//! card from library as the closest approximation, with GAP noted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,26 +25,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "The Ring tempts you. Search your library for a card that shares a color with a legendary creature you control, reveal it, put it into your hand, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "The Ring tempts you. Search your library for a card that shares a color with a legendary creature you control, reveal it, put it into your hand, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: The Ring tempts you mechanic
-    // GAP: color-match-to-legendary-creature filter
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: 'Ring tempts you' and 'shares a color with a legendary
+    // creature you control' filter — emit an unfiltered tutor.
     vec![Effect::TutorToHand {
         player: entry.controller,
-        filter: ObjectFilter::permanent(),
+        filter: ObjectFilter::new(),
         reveal: true,
     }]
 }

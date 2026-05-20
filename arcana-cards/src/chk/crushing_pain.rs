@@ -1,13 +1,8 @@
-//! Crushing Pain — `{1}{R}` instant (Arcane), "Crushing Pain deals 6 damage
-//! to target creature that was dealt damage this turn."
+//! Crushing Pain — `{1}{R}` instant — Arcane. "Crushing Pain deals 6
+//! damage to target creature that was dealt damage this turn."
 //!
-//! The type line is "Instant — Arcane"; the engine's TypeLine only models
-//! Instant/Sorcery/etc. at the supertype level, so the Arcane subtype is
-//! dropped silently.
-//!
-//! The "that was dealt damage this turn" restriction requires filtering by
-//! damage-history state; no TargetFilter variant models this constraint.
-//! Best-effort: target any creature.
+//! GAP: "that was dealt damage this turn" target restriction has no
+//! ObjectFilter predicate; the target is an unrestricted creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -29,24 +24,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Crushing Pain deals 6 damage to target creature that was dealt damage this turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Crushing Pain deals 6 damage to target creature that was dealt damage this turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: filter "creature that was dealt damage this turn" not supported in TargetFilter
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "was dealt damage this turn" target restriction not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

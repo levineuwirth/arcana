@@ -1,10 +1,11 @@
-//! Explosive Vegetation — `{3}{G}` sorcery, "Search your library for up to
-//! two basic land cards, put them onto the battlefield tapped, then shuffle."
+//! Explosive Vegetation — `{3}{G}` sorcery. "Search your library for up
+//! to two basic land cards, put them onto the battlefield tapped, then
+//! shuffle."
 //!
-//! # GAP
-//! Basic land supertype filter (SupertypeSet::BASIC) is not available in
-//! ObjectFilter. "Up to two" is modeled as two separate TutorToBattlefield
-//! calls (best-effort); basic restriction is flagged as GAP.
+//! Two `TutorToBattlefield { tapped: true }` calls; "up to two" / "basic
+//! only" are not directly expressible (no "basic" supertype on
+//! ObjectFilter), but emitting two tapped land tutors approximates the
+//! ramp.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,17 +41,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: basic land supertype filter not available in ObjectFilter
-    let filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    // GAP: no "basic" supertype refinement; no "up to N" tutor count
+    // (just repeat the Effect).
     vec![
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: filter.clone(),
+            filter: land.clone(),
             tapped: true,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter,
+            filter: land,
             tapped: true,
         },
     ]

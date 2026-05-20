@@ -1,9 +1,9 @@
 //! Power Word Kill — `{1}{B}` instant. "Destroy target non-Angel,
 //! non-Demon, non-Devil, non-Dragon creature."
 //!
-//! GAP: ObjectFilter does not expose subtype exclusion
-//! (without_subtypes / not_of_subtype). Modeled as a plain creature
-//! destroy; the subtype restrictions cannot be enforced at targeting time.
+//! The negative-subtype target restriction is not expressible in the
+//! `ObjectFilter` builder surface (no subtype-exclusion); the target
+//! is a plain creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,13 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target non-Angel, non-Demon, non-Devil, non-Dragon creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target non-Angel, non-Demon, non-Devil, non-Dragon creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,8 +38,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: cannot restrict targeting to exclude Angel/Demon/Devil/Dragon subtypes
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

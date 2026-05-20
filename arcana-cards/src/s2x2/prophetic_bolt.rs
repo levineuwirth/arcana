@@ -1,11 +1,8 @@
-//! Prophetic Bolt — `{3}{U}{R}` instant, "Prophetic Bolt deals 4 damage to
-//! any target. Look at the top four cards of your library. Put one of those
-//! cards into your hand and the rest on the bottom of your library in any
-//! order."
-//!
-//! # GAP
-//! GAP: selective top-N look-put-one-in-hand-rest-on-bottom not in catalog
-//! (no Effect variant for "look at top N, keep 1, bottom the rest").
+//! Prophetic Bolt — `{3}{U}{R}` instant, "Prophetic Bolt deals 4
+//! damage to any target. Look at the top four cards of your library.
+//! Put one of those cards into your hand and the rest on the bottom of
+//! your library in any order." The dig-and-pick is not expressible; the
+//! damage is.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,21 +24,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -51,10 +43,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: look-at-top-N / keep-one-put-rest-on-bottom not in catalog
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 4,
-    }]
+    // GAP: look at top four, take one to hand, rest to bottom, is not
+    // expressible.
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 4 }]
 }

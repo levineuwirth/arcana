@@ -1,8 +1,9 @@
 //! Lava Coil — `{1}{R}` sorcery, "Lava Coil deals 4 damage to target
-//! creature. If that creature would die this turn, exile it instead."
+//! creature. If that creature would die this turn, exile it
+//! instead."
 //!
-//! GAP: replacement effect "exile instead of die this turn" not expressible;
-//! expressed as DealDamage only.
+//! The 4 damage is applied. GAP: the "if it would die this turn,
+//! exile it instead" replacement rider is not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,24 +25,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Lava Coil deals 4 damage to target creature. If that creature would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Lava Coil deals 4 damage to target creature. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: exile-instead-of-die replacement effect not expressible
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

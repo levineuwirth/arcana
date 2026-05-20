@@ -2,7 +2,7 @@
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -35,15 +35,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::permanent().with_colors(ColorSet::white());
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().with_colors(ColorSet::white()),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: arcana_core::objects::NULL_OBJECT_ID,
-        }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

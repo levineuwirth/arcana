@@ -1,8 +1,8 @@
-//! Jarad's Orders — `{2}{B}{G}` sorcery.
-//! "Search your library for up to two creature cards and reveal them. Put one into your hand
-//! and the other into your graveyard. Then shuffle."
-//! GAP: splitting two tutored cards — one to hand, one to graveyard — has no Effect variant;
-//! TutorToHand covers one card only; the second card going to graveyard is unexpressible.
+//! Jarad's Orders — `{2}{B}{G}` sorcery. "Search your library for up to two
+//! creature cards and reveal them. Put one into your hand and the other into
+//! your graveyard. Then shuffle." Catalog has tutor-to-hand for a single
+//! creature; tutor + place-one-in-graveyard split is not expressible. GAP the
+//! graveyard half.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,22 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for up to two creature cards and reveal them. Put one into your hand and the other into your graveyard. Then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for up to two creature cards and reveal them. Put one into your hand and the other into your graveyard. Then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: split tutor (one card to hand, one to graveyard) has no Effect variant
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: no Effect for "tutor a card from library to graveyard"; emitting only the to-hand half.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::creature(),

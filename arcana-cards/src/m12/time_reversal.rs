@@ -1,13 +1,15 @@
-//! Time Reversal — `{3}{U}{U}` sorcery. "Each player shuffles their hand and
-//! graveyard into their library, then draws seven cards. Exile Time Reversal."
+//! Time Reversal — `{3}{U}{U}` sorcery. "Each player shuffles their hand
+//! and graveyard into their library, then draws seven cards. Exile Time
+//! Reversal."
 //!
-//! GAP: ShuffleHandAndGraveyardIntoLibrary for each player (no catalog variant).
-//! GAP: ExileThisSpell self-exile on resolution (no catalog variant).
+//! GAP: no Effect to shuffle hand+graveyard into library, nor to self-exile
+//! the spell. The per-player draw seven is emitted as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
@@ -33,13 +35,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
+    state: &GameState,
+    _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ShuffleHandAndGraveyardIntoLibrary for each player
-    // GAP: ExileThisSpell (self-exile on resolution)
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 7 },
-    ]
+    // GAP: no shuffle-hand-and-graveyard-into-library effect, no self-exile.
+    vec![Effect::Sequence(
+        script::all_players(state)
+            .into_iter()
+            .map(|p| Effect::DrawCards { player: p, count: 7 })
+            .collect(),
+    )]
 }

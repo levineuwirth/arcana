@@ -1,10 +1,10 @@
-//! Cleansing Beam — `{4}{R}` instant. "Radiance — Cleansing Beam deals
-//! 2 damage to target creature and each other creature that shares a
-//! color with it."
+//! Cleansing Beam — `{4}{R}` instant. "Radiance — Cleansing Beam
+//! deals 2 damage to target creature and each other creature that
+//! shares a color with it."
 //!
-//! GAP: Radiance (target + all creatures sharing a color with the
-//! target) is not expressible — no color-match filter on ObjectFilter.
-//! Best-effort: deal 2 damage to target creature only.
+//! GAP: 'shares a color with the targeted creature' filter is not a
+//! script::* primitive — only the primary 2 damage is applied to the
+//! single target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,24 +26,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Radiance — Cleansing Beam deals 2 damage to target creature and each other creature that shares a color with it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Radiance — Cleansing Beam deals 2 damage to target creature and each other creature that shares a color with it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Radiance — deal damage to each creature sharing a color with target
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'shares a color with' filter for the Radiance sweep.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,12 +1,5 @@
-//! Shatterstorm — `{2}{R}{R}` sorcery, "Destroy all artifacts. They can't be
-//! regenerated."
-//!
-//! Note: "can't be regenerated" is not expressible as a separate effect, but
-//! DestroyPermanent in ForEach handles the destroy; the regeneration clause
-//! is a GAP.
-//!
-//! GAP: "can't be regenerated" modifier on destroy is not expressible.
-//! Partial: destroy all artifacts.
+//! Shatterstorm — `{2}{R}{R}` sorcery, "Destroy all artifacts. They
+//! can't be regenerated."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,24 +21,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all artifacts. They can't be regenerated.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all artifacts. They can't be regenerated.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "can't be regenerated" clause
-    let filter = ObjectFilter::new().with_types(TypeLine::ARTIFACT.into());
-    let ids = script::ids_matching(state, &filter, entry.controller);
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+        entry.controller,
+    );
+    if ids.is_empty() {
+        return Vec::new();
+    }
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

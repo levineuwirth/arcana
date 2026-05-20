@@ -1,8 +1,8 @@
-//! Mugging — `{R}` sorcery, "Mugging deals 2 damage to target creature.
+//! Mugging — `{R}` sorcery. "Mugging deals 2 damage to target creature.
 //! That creature can't block this turn."
 //!
-//! # GAP
-//! - "Can't block this turn" restriction not expressible in Effect catalog
+//! Damage is honest; the "can't block this turn" rider has no Effect
+//! variant — GAP that part.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +41,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "can't block this turn" effect not in catalog
+    // GAP: no "can't block this turn" Effect variant.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

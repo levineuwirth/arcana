@@ -16,3 +16,4 @@ pub mod seismic_spike;
 pub mod leave_no_trace;
 pub mod rain_of_embers;
 pub mod rally_the_righteous;
+pub mod congregation_at_dawn;

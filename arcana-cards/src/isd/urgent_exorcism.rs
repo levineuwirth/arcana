@@ -1,4 +1,7 @@
-//! Urgent Exorcism — `{1}{W}` instant. "Destroy target Spirit or enchantment."
+//! Urgent Exorcism — `{1}{W}` instant. "Destroy target Spirit or
+//! enchantment." The "Spirit or enchantment" disjunction is not
+//! expressible as a single ObjectFilter; the target is a permanent
+//! and the destroy is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -6,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -19,19 +24,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target Spirit or enchantment.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE))
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target Spirit or enchantment.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::new()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,5 +44,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "Spirit or enchantment" disjunctive target restriction is
+    // not expressible as a single ObjectFilter.
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,4 +1,5 @@
-//! Unfriendly Fire — `{4}{R}` instant, "Unfriendly Fire deals 4 damage to any target."
+//! Unfriendly Fire — `{4}{R}` instant, "Unfriendly Fire deals 4 damage
+//! to any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -20,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Unfriendly Fire deals 4 damage to any target.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Unfriendly Fire deals 4 damage to any target.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,7 +35,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),

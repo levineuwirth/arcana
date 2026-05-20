@@ -1,10 +1,6 @@
-//! Call In a Professional — `{2}{R}` instant. "Players can't gain life this
-//! turn. Damage can't be prevented this turn. Call In a Professional deals 3
-//! damage to any target."
-//!
-//! # GAP: "players can't gain life this turn" effect not in catalog
-//! # GAP: "damage can't be prevented this turn" effect not in catalog
-//! Damage is expressible; the two riders are not.
+//! Call In a Professional — `{2}{R}` instant. "Players can't gain life
+//! this turn. Damage can't be prevented this turn. Call In a
+//! Professional deals 3 damage to any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,23 +22,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Players can't gain life this turn. Damage can't be prevented this turn. Call In a Professional deals 3 damage to any target.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Players can't gain life this turn. Damage can't be prevented this turn. Call In a Professional deals 3 damage to any target. (Shield counters don't prevent this damage as they're removed.)".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "players can't gain life this turn" not in Effect catalog
-    // GAP: "damage can't be prevented this turn" not in Effect catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "players can't gain life this turn" and "damage can't be
+    // prevented this turn" continuous restrictions are not expressible;
+    // emitting only the 3 damage.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -52,5 +44,9 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }]
 }

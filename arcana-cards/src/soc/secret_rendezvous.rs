@@ -1,5 +1,5 @@
-//! Secret Rendezvous — `{1}{W}{W}` sorcery. "You and target opponent each
-//! draw three cards."
+//! Secret Rendezvous — `{1}{W}{W}` sorcery. "You and target opponent
+//! each draw three cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,25 +20,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "You and target opponent each draw three cards.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "You and target opponent each draw three cards.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::DrawCards { player: *opponent, count: 3 },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = vec![Effect::DrawCards { player: entry.controller, count: 3 }];
+    if let Some(TargetChoice::Player(p)) = entry.targets.targets.first() {
+        out.push(Effect::DrawCards { player: *p, count: 3 });
+    }
+    out
 }

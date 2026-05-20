@@ -1,5 +1,6 @@
-//! Goblin War Strike — `{R}` sorcery.
-//! "Goblin War Strike deals damage to target player or planeswalker equal to the number of Goblins you control."
+//! Goblin War Strike — `{R}` sorcery. "Goblin War Strike deals
+//! damage to target player or planeswalker equal to the number of
+//! Goblins you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -14,7 +15,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Goblin War Strike");
-    let _goblin = reg.interner_mut().intern("Goblin");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{R}").expect("valid cost")),
@@ -23,24 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Goblin War Strike deals damage to target player or planeswalker equal to the number of Goblins you control.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Goblin War Strike deals damage to target player or planeswalker equal to the number of Goblins you control.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Goblin");
-    let count = script::count_matching(state, &filter, entry.controller);
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let dt = match target {
         TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -49,9 +44,14 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    let n = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Goblin"),
+        entry.controller,
+    );
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,
-        amount: count,
+        amount: n,
     }]
 }

@@ -1,8 +1,5 @@
-//! Diabolic Tutor — `{2}{B}{B}` sorcery. "Search your library for a card, put
-//! that card into your hand, then shuffle."
-//!
-//! GAP: TutorToHand filter covers permanents; non-permanent card types
-//! (instants, sorceries) not reachable via ObjectFilter::permanent().
+//! Diabolic Tutor — `{2}{B}{B}` sorcery. "Search your library for a
+//! card, put that card into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,25 +20,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a card, put that card into your hand, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a card, put that card into your hand, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: TutorToHand only supports permanent filter; instant/sorcery types not reachable
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::TutorToHand {
         player: entry.controller,
-        filter: ObjectFilter::permanent(),
+        filter: ObjectFilter::new(),
         reveal: false,
     }]
 }

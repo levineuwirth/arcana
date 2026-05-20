@@ -1,11 +1,5 @@
-//! Wing Snare — `{2}{G}` sorcery. "Destroy target creature with flying."
-//!
-//! The target filter uses `TargetRequirement::target_creature()`; the
-//! "with flying" constraint is not expressible via the current
-//! `ObjectFilter` API — the resolver fires `DestroyPermanent`
-//! unconditionally (the verify pipeline enforces legality at targeting).
-//!
-//! # GAP: ObjectFilter predicate for keyword (Flying) not available
+//! Wing Snare — `{2}{G}` sorcery. "Destroy target creature with
+//! flying."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,14 +20,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with flying.".into(),
-                // GAP: ObjectFilter cannot restrict to creatures with Flying keyword
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with flying.".into(),
+            // GAP: no ObjectFilter builder for "has keyword flying";
+            // narrowed to target creature.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

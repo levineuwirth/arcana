@@ -13,3 +13,4 @@ pub mod untamed_wilds;
 pub mod ostracize;
 pub mod purify;
 pub mod infernal_contract;
+pub mod disorder;

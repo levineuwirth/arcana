@@ -1,7 +1,9 @@
-//! Foul Play — `{1}{B}` sorcery, "Destroy target creature with power 2 or
-//! less. Investigate."
+//! Foul Play — `{1}{B}` sorcery. "Destroy target creature with power 2
+//! or less. Investigate."
 //!
-//! GAP: Investigate (create a Clue token) is not in the Effect catalog.
+//! Investigate (create a Clue token with an activated draw ability) is
+//! not expressible — the demonstrated TokenDefinition has no activated
+//! ability support; only the destroy is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,17 +26,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with power 2 or less. Investigate.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature().with_max_power(2)),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with power 2 or less. Investigate.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().with_max_power(2),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,8 +46,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Investigate (create Clue token) not in Effect catalog
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: Investigate (Clue token with activated draw ability) not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

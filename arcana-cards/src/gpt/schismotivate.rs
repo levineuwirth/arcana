@@ -1,5 +1,6 @@
-//! Schismotivate — `{1}{U}{R}` instant, "Target creature gets +4/-0 until
-//! end of turn. Another target creature gets -4/+0 until end of turn."
+//! Schismotivate — `{1}{U}{R}` instant. "Target creature gets +4/+0
+//! until end of turn. Another target creature gets -4/-0 until end of
+//! turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -21,46 +22,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +4/-0 until end of turn. Another target creature gets -4/+0 until end of turn.".into(),
-                target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +4/+0 until end of turn. Another target creature gets -4/-0 until end of turn.".into(),
+            target_requirements: vec![
+                TargetRequirement::target_creature(),
+                TargetRequirement::target_creature(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(t) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = t {
-            effects.push(Effect::Pump {
-                target: *id,
-                power: 4,
-                toughness: 0,
-                duration: Duration::EndOfTurn,
-                keywords: vec![],
-            });
-        }
-    }
-    if let Some(t) = entry.targets.targets.get(1) {
-        if let TargetChoice::Object(id) = t {
-            effects.push(Effect::Pump {
-                target: *id,
-                power: -4,
-                toughness: 0,
-                duration: Duration::EndOfTurn,
-                keywords: vec![],
-            });
-        }
-    }
-    effects
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut it = entry.targets.targets.iter();
+    let (Some(TargetChoice::Object(a)), Some(TargetChoice::Object(b))) =
+        (it.next(), it.next())
+    else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Pump {
+            target: *a,
+            power: 4,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+        Effect::Pump {
+            target: *b,
+            power: -4,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+    ]
 }

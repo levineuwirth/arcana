@@ -1,11 +1,10 @@
-//! Chain Lightning — `{R}` sorcery, "Chain Lightning deals 3 damage to any
-//! target. Then that player or that creature's controller may pay {R}{R}. If
-//! the player does, they may copy this spell and may choose a new target for
-//! that copy."
+//! Chain Lightning — `{R}` sorcery. "Chain Lightning deals 3 damage
+//! to any target. Then that player or that permanent's controller may
+//! pay {R}{R}. If the player does, they may copy this spell and may
+//! choose a new target for that copy."
 //!
-//! # GAP
-//! No "pay {cost} to copy and redirect" mechanic. Partial: DealDamage 3 to
-//! any target is expressible.
+//! The optional pay-and-copy chain has no catalog Effect; only the
+//! base 3 damage is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,22 +26,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Chain Lightning deals 3 damage to any target. Then that player or that creature's controller may pay {R}{R}. If the player does, they may copy this spell and may choose a new target for that copy.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Chain Lightning deals 3 damage to any target. Then that player or that permanent's controller may pay {R}{R}. If the player does, they may copy this spell and may choose a new target for that copy.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no pay-to-copy mechanic
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -52,6 +45,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    // GAP: "may pay {R}{R} to copy this spell" optional copy-chain not in catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

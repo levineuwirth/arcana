@@ -1,10 +1,8 @@
-//! Mystic Meditation — `{3}{U}` sorcery. "Draw three cards. Then discard
-//! two cards unless you discard a creature card."
+//! Mystic Meditation — `{3}{U}` sorcery. "Draw three cards. Then discard two
+//! cards unless you discard a creature card."
 //!
-//! GAP: conditional discard ("discard two cards unless you discard a
-//! creature card") requires a player choice with card-type filter that
-//! is not expressible via DiscardChoice variants or Conditional; emitting
-//! the draw and a best-effort discard-two with ControllerChooses.
+//! GAP: cannot model the 'unless you discard a creature card' branch — best
+//! effort is to draw three and discard two.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -39,10 +37,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional discard ("unless you discard a creature card")
-    // requires choosing discard by card type; not expressible in catalog.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

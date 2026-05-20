@@ -1,7 +1,6 @@
-//! Badlands Revival — `{3}{B}{G}` sorcery.
-//! "Return up to one target creature card from your graveyard to the
-//! battlefield. Return up to one target permanent card from your
-//! graveyard to your hand."
+//! Badlands Revival — `{3}{B}{G}` sorcery. "Return up to one target creature
+//! card from your graveyard to the battlefield. Return up to one target
+//! permanent card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -55,15 +56,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    let mut iter = entry.targets.targets.iter();
-    // First target: creature card → battlefield
-    if let Some(TargetChoice::Object(id)) = iter.next() {
-        effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
+    let mut effects: Vec<Effect> = Vec::new();
+    let targets = &entry.targets.targets;
+    if let Some(TargetChoice::Object(a)) = targets.first() {
+        effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *a });
     }
-    // Second target: permanent card → hand
-    if let Some(TargetChoice::Object(id)) = iter.next() {
-        effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
+    if let Some(TargetChoice::Object(b)) = targets.get(1) {
+        effects.push(Effect::ReturnFromGraveyardToHand { target: *b });
     }
     effects
 }

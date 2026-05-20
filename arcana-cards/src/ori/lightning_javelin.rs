@@ -1,5 +1,5 @@
-//! Lightning Javelin — `{3}{R}` sorcery. "Lightning Javelin deals 3 damage to
-//! any target. Scry 1."
+//! Lightning Javelin — `{3}{R}` sorcery. "Lightning Javelin deals 3
+//! damage to any target. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Lightning Javelin deals 3 damage to any target. Scry 1.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Lightning Javelin deals 3 damage to any target. Scry 1.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,7 +45,11 @@ fn resolve(
         },
     };
     vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
+        Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 3,
+        },
         Effect::Scry { player: entry.controller, count: 1 },
     ]
 }

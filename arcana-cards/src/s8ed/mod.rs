@@ -16,3 +16,5 @@ pub mod hibernation;
 pub mod sever_soul;
 pub mod balance_of_power;
 pub mod inferno;
+pub mod boil;
+pub mod sizzle;

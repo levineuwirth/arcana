@@ -1,9 +1,8 @@
-//! Divine Arrow — `{1}{W}` instant, "Divine Arrow deals 4 damage to target
+//! Divine Arrow — `{1}{W}` instant. "Divine Arrow deals 4 damage to target
 //! attacking or blocking creature."
 //!
-//! # GAP
-//! - No "attacking or blocking" filter on TargetFilter/ObjectFilter;
-//!   combat-status filtering not available.
+//! GAP: no attacking-or-blocking filter; falling back to plain
+//! target_creature().
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,7 +39,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacking or blocking" targeting filter not available
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

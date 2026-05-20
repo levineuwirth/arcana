@@ -1,11 +1,10 @@
-//! Planar Engineering — `{3}{G}` sorcery. "Sacrifice two lands. Search your
-//! library for four basic land cards, put them onto the battlefield tapped,
-//! then shuffle."
+//! Planar Engineering — `{3}{G}` sorcery. "Sacrifice two lands.
+//! Search your library for four basic land cards, put them onto the
+//! battlefield tapped, then shuffle."
 //!
-//! # GAP: "sacrifice two lands" cost-as-effect is not in the catalog.
-//! TutorToBattlefield with tapped=true for basic lands is expressible (×4),
-//! but the sacrifice requirement is not. We emit four tutors tapped and note
-//! the sacrifice gap.
+//! Sacrifice (count 2) is expressible. The four-card fetch is modeled
+//! as four `TutorToBattlefield` (tapped) of a basic-land filter —
+//! repeated per the "repeat the Effect N times for N of" rule.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Sacrifice two lands. Search your library for four basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Sacrifice two lands. Search your library for four basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,12 +39,32 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: sacrificing two lands as part of resolution is not expressible
-    let filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
     vec![
-        Effect::TutorToBattlefield { player: entry.controller, filter: filter.clone(), tapped: true },
-        Effect::TutorToBattlefield { player: entry.controller, filter: filter.clone(), tapped: true },
-        Effect::TutorToBattlefield { player: entry.controller, filter: filter.clone(), tapped: true },
-        Effect::TutorToBattlefield { player: entry.controller, filter, tapped: true },
+        Effect::Sacrifice {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            count: 2,
+        },
+        Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: land.clone(),
+            tapped: true,
+        },
+        Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: land.clone(),
+            tapped: true,
+        },
+        Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: land.clone(),
+            tapped: true,
+        },
+        Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: land,
+            tapped: true,
+        },
     ]
 }

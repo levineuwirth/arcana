@@ -1,10 +1,9 @@
-//! Experimental Overload — `{2}{U}{R}` sorcery. "Create an X/X blue and red
-//! Weird creature token, where X is the number of instant and sorcery cards
-//! in your graveyard. Then you may return an instant or sorcery card from your
-//! graveyard to your hand. Exile Experimental Overload."
-//! GAP: "exile this card" (self-exile from stack/graveyard) not in Effect catalog.
-//! The optional graveyard-return of instant/sorcery uses the generic creature
-//! filter as best-effort (instant/sorcery graveyard target not in TargetFilter).
+//! Experimental Overload — `{2}{U}{R}` sorcery. "Create an X/X blue
+//! and red Weird creature token, where X is the number of instant and
+//! sorcery cards in your graveyard. Then you may return an instant or
+//! sorcery card from your graveyard to your hand. Exile Experimental
+//! Overload." The optional return and self-exile have no primitives;
+//! the dynamic-P/T token is emitted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -13,7 +12,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetRequirement};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,31 +26,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create an X/X blue and red Weird creature token, where X is the number of instant and sorcery cards in your graveyard. Then you may return an instant or sorcery card from your graveyard to your hand. Exile Experimental Overload.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create an X/X blue and red Weird creature token, where X is the number of instant and sorcery cards in your graveyard. Then you may return an instant or sorcery card from your graveyard to your hand. Exile Experimental Overload.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: instant/sorcery graveyard filter not in ObjectFilter; using all graveyard cards count
-    // GAP: self-exile not in Effect catalog
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let weird = reg.interner().lookup("Weird").expect("Weird interned");
     let x = script::graveyard_matching(
         state,
-        &ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+        &ObjectFilter::new()
+            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
         entry.controller,
         entry.controller,
     ) as i32;
-    let weird = reg.interner().lookup("Weird")
-        .expect("Weird interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(weird);
     let token = TokenDefinition {
@@ -64,5 +56,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: optional graveyard return and self-exile have no primitive.
     vec![Effect::CreateToken { controller: entry.controller, token }]
 }

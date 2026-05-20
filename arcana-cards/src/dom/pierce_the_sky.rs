@@ -1,10 +1,8 @@
-//! Pierce the Sky — `{1}{G}` instant, "Pierce the Sky deals 7 damage to
+//! Pierce the Sky — `{1}{G}` instant. "Pierce the Sky deals 7 damage to
 //! target creature with flying."
 //!
-//! # GAP
-//! Flying keyword filter on target creature is not available in ObjectFilter
-//! or TargetFilter::Creature. Best-effort: targets any creature; verify
-//! pipeline will flag the missing flying restriction.
+//! GAP: `ObjectFilter` exposes no `with_keyword(Flying)` builder, so the
+//! flying restriction is honest text-only on the target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +39,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: flying-keyword filter on target not available in ObjectFilter
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

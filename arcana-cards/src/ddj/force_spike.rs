@@ -1,8 +1,5 @@
-//! Force Spike — `{U}` instant. "Counter target spell unless its controller
-//! pays {1}."
-//!
-//! # GAP: CounterUnlessPays — no Effect variant for 'counter unless controller
-//!   pays {1}'
+//! Force Spike — `{U}` instant. "Counter target spell unless its
+//! controller pays {1}."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,8 +41,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: CounterUnlessPays — no Effect variant for 'counter unless controller pays {1}'
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Counter { target: *id }]
+    vec![Effect::CounterUnlessPays {
+        target: *id,
+        cost: ManaCost::parse("{1}").expect("valid cost"),
+    }]
 }

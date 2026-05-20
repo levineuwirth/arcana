@@ -1,8 +1,8 @@
-//! Regent's Authority — `{W}` instant, "Target creature gets +2/+2 until end
-//! of turn. If it's enchanted or legendary, put a +1/+1 counter on it instead."
-//!
-//! GAP: conditional check on whether the creature is enchanted or legendary
-//! at resolution time.
+//! Regent's Authority — `{W}` instant. "Target creature gets +2/+2 until
+//! end of turn. If it's an enchantment creature or legendary, instead put
+//! a +1/+1 counter on it, then it gets +1/+1 until end of turn."
+//! GAP: conditional on enchantment-creature or legendary type check is not
+//! expressible in the catalog. Emits best-effort +2/+2 until EOT only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it's enchanted or legendary, put a +1/+1 counter on it instead.".into(),
+                text: "Target creature gets +2/+2 until end of turn. If it's an enchantment creature or legendary, instead put a +1/+1 counter on it, then it gets +1/+1 until end of turn.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,7 +41,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional check on enchanted/legendary status
     vec![Effect::Pump {
         target: *id,
         power: 2,

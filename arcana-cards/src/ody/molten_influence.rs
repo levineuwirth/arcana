@@ -1,10 +1,8 @@
-//! Molten Influence — `{1}{R}` instant. "Counter target instant or sorcery
-//! spell unless its controller has Molten Influence deal 4 damage to them."
-//!
-//! # GAP: "counter unless controller takes damage" variant
-//! The engine only supports `CounterUnlessPays` with a mana cost; there is no
-//! variant for "counter unless controller accepts damage instead."
-//! Best-effort: emit a hard counter on the instant/sorcery spell.
+//! Molten Influence — `{1}{R}` instant. "Counter target instant or
+//! sorcery spell unless its controller has Molten Influence deal 4
+//! damage to them." The "unless they take 4 damage" alternative cost
+//! is not the mana-tax form of CounterUnlessPays; modeled as a plain
+//! counter of the target spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,10 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target instant or sorcery spell unless its controller has Molten Influence deal 4 damage to them.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
-                ),
+                filter: TargetFilter::Spell(ObjectFilter::default()),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -43,13 +38,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no "counter unless controller takes 4 damage" variant; emitting hard counter
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "unless its controller has it deal 4 damage to them" is a
+    // damage-based alternative, not the mana-tax CounterUnlessPays.
+    // Plain counter emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Counter { target: *id }]
 }

@@ -1,4 +1,5 @@
-//! Throttle — `{4}{B}` instant. "Target creature gets -4/-4 until end of turn."
+//! Throttle — `{4}{B}` instant.
+//! "Target creature gets -4/-4 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

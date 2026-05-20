@@ -1,17 +1,19 @@
-//! Combustion Technique — `{1}{R}` Instant — Lesson. "Combustion
-//! Technique deals damage equal to 2 plus the number of Lesson cards in
-//! your graveyard to target creature. If that creature would die this
-//! turn, exile it instead."
+//! Combustion Technique — `{1}{R}` instant — Lesson. "Combustion Technique
+//! deals damage equal to 2 plus the number of Lesson cards in your graveyard
+//! to target creature. If that creature would die this turn, exile it
+//! instead."
 //!
-//! GAP: damage amount dynamic (2 + Lesson count in graveyard) not
-//! expressible; replacement effect "exile instead of die" not in catalog.
-//! Emitting best-effort 2 damage only.
+//! GAP: no 'Lesson card in graveyard' filter (no subtype helper for cards in
+//! graveyard via graveyard_matching needs an ObjectFilter that can specify a
+//! subtype card-zone-side); using script::graveyard_matching with a generic
+//! filter. No 'dies → exile' replacement available.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -38,17 +40,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: dynamic damage (2 + Lesson count in graveyard) not in catalog.
-    // GAP: replacement effect "exile instead of die" not in catalog.
+    let lessons = script::graveyard_matching(
+        state,
+        &script::subtype_filter(reg, "Lesson"),
+        entry.controller,
+        entry.controller,
+    );
+    // GAP: 'dies-replacement' rider dropped
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
-        amount: 2,
+        amount: 2 + lessons,
     }]
 }

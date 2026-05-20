@@ -1,10 +1,10 @@
-//! Teferi's Contingency — `{W}{U}{U}` instant, "Counter target spell. Each
-//! card in its controller's graveyard, hand, and library with the same name as
-//! that spell perpetually gains 'This spell costs {2} more to cast.'"
+//! Teferi's Contingency — `{W}{U}{U}` instant. "Counter target spell.
+//! Each card in its controller's graveyard, hand, and library with
+//! the same name as that spell perpetually gains 'This spell costs
+//! {2} more to cast.'"
 //!
-//! # GAP
-//! No "perpetually gains cost increase" effect in the catalog. Partial:
-//! Counter is expressible.
+//! "Perpetually gains" cost modification on same-named cards across
+//! zones has no catalog Effect. Only the counter is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,30 +27,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. Each card in its controller's graveyard, hand, and library with the same name as that spell perpetually gains \"This spell costs {2} more to cast.\"".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell. Each card in its controller's graveyard, hand, and library with the same name as that spell perpetually gains \"This spell costs {2} more to cast.\"".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no perpetual cost-increase effect; no same-name enumeration across zones
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: perpetual cost-up rider on same-named cards across zones not in catalog.
+    vec![Effect::Counter { target: *id }]
 }

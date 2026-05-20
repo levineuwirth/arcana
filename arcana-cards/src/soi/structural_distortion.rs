@@ -1,10 +1,9 @@
-//! Structural Distortion — `{3}{R}` sorcery, "Exile target artifact or
-//! land. Structural Distortion deals 2 damage to that permanent's
-//! controller." Partial: ExilePermanent expressed; damage to the
-//! controller of the exiled permanent requires state lookup at resolve
-//! time not supported in the current catalog signature.
-//!
-//! # GAP: deal damage to the controller of the just-exiled permanent not in catalog.
+//! Structural Distortion — `{3}{R}` sorcery. "Exile target artifact
+//! or land. Structural Distortion deals 2 damage to that permanent's
+//! controller." We exile the targeted artifact/land; the
+//! "2 damage to that permanent's controller" rider has no way to
+//! resolve the exiled permanent's controller after exile, so it is a
+//! GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,31 +26,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target artifact or land. Structural Distortion deals 2 damage to that permanent's controller.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::ARTIFACT | TypeLine::LAND),
-                        ),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target artifact or land. Structural Distortion deals 2 damage to that permanent's controller.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types_any(TypeLine::ARTIFACT.into())
+                        .with_types_any(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: deal 2 damage to the controller of the exiled permanent not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "2 damage to that permanent's controller" — no way to read
+    // the exiled permanent's controller. Exile emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,7 +1,8 @@
-//! Kaito's Pursuit — `{2}{B}` sorcery, "Target player discards two cards. Ninjas
-//! and Rogues you control gain menace until end of turn."
+//! Kaito's Pursuit — `{2}{B}` sorcery. "Target player discards two cards.
+//! Ninjas and Rogues you control gain menace until end of turn."
 //!
-//! # GAP: subtype filter (Ninja/Rogue) for ForEach GrantKeyword not in ObjectFilter
+//! GAP: no Effect variant grants a keyword to a tribal subset of your board en
+//! masse for the turn. Only the targeted discard is emitted.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -39,6 +40,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: Ninja/Rogue subtype filter for ForEach GrantKeyword not in ObjectFilter
-    vec![Effect::Discard { player: *p, count: 2, choice: DiscardChoice::ControllerChooses }]
+    // GAP: "Ninjas and Rogues you control gain menace until end of turn"
+    vec![Effect::Discard {
+        player: *p,
+        count: 2,
+        choice: DiscardChoice::ControllerChooses,
+    }]
 }

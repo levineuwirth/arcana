@@ -1,9 +1,10 @@
-//! Drag the Canal — `{U}{B}` instant, "Create a 2/2 white-blue Detective creature
-//! token. If a creature died this turn, you may pay {1}. If you do, gain 2 life,
-//! surveil 2, and investigate."
+//! Drag the Canal — `{U}{B}` instant, "Create a 2/2 white and blue Detective
+//! creature token. If a creature died this turn, you gain 2 life, surveil 2,
+//! then investigate."
 //!
-//! GAP: conditional triggered by "if a creature died this turn" (no death-this-turn
-//! state query); optional payment branch; Investigate effect not in catalog.
+//! GAP: "if a creature died this turn" — turn-death tracking not in script API.
+//! GAP: Investigate (Clue token activated ability) not expressible in TokenDefinition.
+//! Only the token creation is modeled.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -26,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Create a 2/2 white-blue Detective creature token. If a creature died this turn, you may pay {1}. If you do, gain 2 life, surveil 2, and investigate.".into(),
+                text: "Create a 2/2 white and blue Detective creature token. If a creature died this turn, you gain 2 life, surveil 2, then investigate.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -39,8 +40,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let detective = reg.interner().lookup("Detective")
-        .expect("Detective interned during register()");
+    let detective = reg.interner().lookup("Detective").expect("Detective interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(detective);
     let token = TokenDefinition {
@@ -53,7 +53,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: conditional "if a creature died this turn" check + optional {1}
-    // payment + GainLife(2) + Surveil(2) + Investigate
+    // GAP: "if a creature died this turn" — turn-death tracking not in script API.
+    // GAP: GainLife 2, Surveil 2, and Clue token (activated ability) not modeled.
     vec![Effect::CreateToken { controller: entry.controller, token }]
 }

@@ -1,9 +1,9 @@
-//! Barge In — `{R}` instant, "Target attacking creature gets +2/+2 until end
-//! of turn. Each attacking non-Human creature gains trample until end of turn."
-//!
-//! GAP: "attacking" creature state filter; targeting only attacking creatures;
-//! granting trample to each attacking non-Human (ForEach over attacking
-//! non-Humans not supported without combat-state query).
+//! Barge In — `{R}` instant. "Target attacking creature gets +2/+2 until
+//! end of turn. Each attacking non-Human creature gains trample until
+//! end of turn."
+//! GAP: "attacking" filter not in ObjectFilter; creature subtype exclusion
+//! ("non-Human") for board-wide trample grant not expressible.
+//! Emits +2/+2 on the single target creature only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -42,8 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking" state filter for the target requirement
-    // GAP: grant trample to each attacking non-Human creature
+    // GAP: "attacking" filter and non-Human board-wide trample grant not in catalog
     vec![Effect::Pump {
         target: *id,
         power: 2,

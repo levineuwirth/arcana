@@ -3,3 +3,4 @@ pub mod venomthrope;
 pub mod nurgle_s_conscription;
 pub mod their_name_is_death;
 pub mod mandate_of_abaddon;
+pub mod tyranid_invasion;

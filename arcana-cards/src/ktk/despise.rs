@@ -1,11 +1,6 @@
 //! Despise — `{B}` sorcery. "Target opponent reveals their hand. You
-//! choose a creature or planeswalker card from it. That player discards
-//! that card."
-//!
-//! # GAP: "look at opponent's hand and choose a specific card to discard"
-//! — OpponentChooses discard is the closest, but does not let the
-//! controller choose. Using ControllerChooses as approximation since
-//! the controller picks from the revealed hand.
+//! choose a creature or planeswalker card from it. That player
+//! discards that card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -26,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target opponent reveals their hand. You choose a creature or planeswalker card from it. That player discards that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target opponent reveals their hand. You choose a creature or planeswalker card from it. That player discards that card.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,8 +35,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
-    // GAP: controller chooses a specific creature/planeswalker from opponent's hand to discard
-    vec![Effect::Discard { player: *opponent, count: 1, choice: DiscardChoice::OpponentChooses }]
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: cannot constrain the discard to a controller-chosen
+    // creature/planeswalker from the revealed hand; modeled as the
+    // target player discarding one card of the caster's choice.
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::OpponentChooses,
+    }]
 }

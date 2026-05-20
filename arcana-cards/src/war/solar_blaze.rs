@@ -1,10 +1,10 @@
-//! Solar Blaze — `{2}{R}{W}` sorcery.
-//! "Each creature deals damage to itself equal to its power."
+//! Solar Blaze — `{2}{R}{W}` sorcery. "Each creature deals damage to
+//! itself equal to its power."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -22,13 +22,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Each creature deals damage to itself equal to its power.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Each creature deals damage to itself equal to its \
+                   power."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,14 +38,19 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // Each creature deals damage to itself equal to its power; build individual effects
-    ids.into_iter().map(|id| {
-        let power = script::power_of(state, id).max(0) as u32;
-        Effect::DealDamage {
-            source: entry.source,
+    // Per-creature damage scales on that creature's own power, so this
+    // can't use ForEach (single fixed inner effect); emit one
+    // DealDamage per id with its individually computed power.
+    let ids =
+        script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut out = Vec::new();
+    for id in ids {
+        let amount = script::power_of(state, id).max(0) as u32;
+        out.push(Effect::DealDamage {
+            source: id,
             target: DamageTarget::Object(id),
-            amount: power,
-        }
-    }).collect()
+            amount,
+        });
+    }
+    out
 }

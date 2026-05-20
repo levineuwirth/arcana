@@ -1,9 +1,9 @@
-//! Underworld Fires — `{1}{R}` sorcery.
-//! "Underworld Fires deals 1 damage to each creature and each planeswalker.
-//! If a permanent dealt damage this way would die this turn, exile it instead."
-//!
-//! GAP: "exile instead of dying" replacement effect is not in the catalog.
-//! The ForEach damage to all creatures is emitted as best effort.
+//! Underworld Fires — `{1}{R}` sorcery. "Underworld Fires deals 1
+//! damage to each creature and each planeswalker. If a permanent
+//! dealt damage this way would die this turn, exile it instead." The
+//! damage to each creature is expressible via ForEach; planeswalkers
+//! aren't a script filter and the die-replacement rider has no
+//! primitive (GAP-noted, partial).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,32 +26,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Underworld Fires deals 1 damage to each creature and each planeswalker. If a permanent dealt damage this way would die this turn, exile it instead.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Underworld Fires deals 1 damage to each creature and each planeswalker. If a permanent dealt damage this way would die this turn, exile it instead.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let targets = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    vec![
-        Effect::ForEach {
-            targets,
-            effect: Box::new(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(NULL_OBJECT_ID),
-                amount: 1,
-            }),
-        },
-        // GAP: "exile instead of dying" replacement effect for planeswalkers and creatures
-        // GAP: deal 1 damage to each planeswalker (no planeswalker filter in ObjectFilter)
-    ]
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "each planeswalker" is not a script filter, and the
+    // "would die -> exile instead" replacement has no primitive; the
+    // 1 damage to each creature is modeled.
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
+    vec![Effect::ForEach {
+        targets,
+        effect: Box::new(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(NULL_OBJECT_ID),
+            amount: 1,
+        }),
+    }]
 }

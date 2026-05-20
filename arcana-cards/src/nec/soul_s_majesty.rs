@@ -1,5 +1,6 @@
-//! Soul's Majesty — `{4}{G}` sorcery.
-//! "Draw cards equal to the power of target creature you control."
+//! Soul's Majesty — `{4}{G}` sorcery. "Draw cards equal to the power
+//! of target creature you control." The draw count is dynamic (the
+//! target creature's power).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +9,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,23 +25,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw cards equal to the power of target creature you control.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw cards equal to the power of target creature you control.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id).max(0) as u32;
-    vec![Effect::DrawCards { player: entry.controller, count: power }]
+    let n = script::power_of(state, *id).max(0) as u32;
+    vec![Effect::DrawCards { player: entry.controller, count: n }]
 }

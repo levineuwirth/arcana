@@ -1,11 +1,10 @@
-//! Cache Grab — `{1}{G}` instant, "Mill four cards. You may put a permanent
-//! card from among the cards milled this way into your hand. If you control
-//! a Squirrel or returned a Squirrel card to your hand this way, create a
-//! Food token."
+//! Cache Grab — `{1}{G}` instant. "Mill four cards. You may put a
+//! permanent card from among the cards milled this way into your hand.
+//! If you control a Squirrel or returned a Squirrel card to your hand
+//! this way, create a Food token."
 //!
-//! GAP: 'put a permanent card from among milled cards into your hand' (choice
-//! from milled subset) is not in the Effect catalog. Food token creation is
-//! also not in the catalog. Best-effort: mill 4.
+//! The post-mill optional return and the conditional Food token are
+//! not expressible; only the mill is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,13 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Mill four cards. You may put a permanent card from among the cards milled this way into your hand. If you control a Squirrel or returned a Squirrel card to your hand this way, create a Food token.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Mill four cards. You may put a permanent card from among the cards milled this way into your hand. If you control a Squirrel or returned a Squirrel card to your hand this way, create a Food token.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,7 +38,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: put a permanent card from milled cards into hand (milled-subset choice) not in catalog
-    // GAP: Food token creation not in Effect catalog
+    // GAP: post-mill optional return and conditional Food token not expressible.
     vec![Effect::Mill { player: entry.controller, count: 4 }]
 }

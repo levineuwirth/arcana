@@ -1,8 +1,8 @@
-//! Heed the Mists — `{3}{U}{U}` sorcery—Arcane. "Mill a card, then draw cards
-//! equal to the milled card's mana value."
+//! Heed the Mists — `{3}{U}{U}` sorcery. "Mill a card, then draw
+//! cards equal to the milled card's mana value."
 //!
-//! GAP: draw-equal-to-milled-card's-mana-value (dynamic count based on milled card).
-//! Partial: Mill 1 is expressed.
+//! The mill is expressed. The draw count is dynamic on the milled
+//! card's mana value, which no script helper exposes — GAP the draw.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,21 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Mill a card, then draw cards equal to that card's mana value.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Mill a card, then draw cards equal to the milled card's mana value.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: draw-equal-to-milled-card's-mana-value — dynamic draw count not supported
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "draw cards equal to the milled card's mana value" — no
+    // script helper exposes the just-milled card's mana value.
     vec![Effect::Mill { player: entry.controller, count: 1 }]
 }

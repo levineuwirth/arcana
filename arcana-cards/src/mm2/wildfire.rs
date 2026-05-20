@@ -1,7 +1,5 @@
-//! Wildfire — `{4}{R}{R}` sorcery.
-//! "Each player sacrifices four lands of their choice. Wildfire deals 4 damage to each creature."
-//! GAP: 'each player sacrifices N lands of their choice' — no Effect variant for player-choice
-//! sacrifice of N permanents; implementing only the 4 damage to each creature.
+//! Wildfire — `{4}{R}{R}` sorcery. "Each player sacrifices four lands of
+//! their choice. Wildfire deals 4 damage to each creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -39,17 +37,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: each player sacrifices four lands of their choice
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    if creature_ids.is_empty() {
-        return Vec::new();
-    }
-    vec![Effect::ForEach {
-        targets: creature_ids,
+    let mut effects: Vec<Effect> = script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+            count: 4,
+        })
+        .collect();
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    effects.push(Effect::ForEach {
+        targets: creatures,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 4,
         }),
-    }]
+    });
+    effects
 }

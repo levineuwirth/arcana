@@ -1,6 +1,10 @@
-//! Firemind's Foresight — `{5}{U}{R}` instant. "Search your library for an instant card with mana
-//! value 3, reveal it, and put it into your hand. Then repeat for mana values 2 and 1. Then shuffle."
-//! Expressed as three TutorToHand effects with exact-CMC ObjectFilters.
+//! Firemind's Foresight — `{5}{U}{R}` instant. "Search your library
+//! for an instant card with mana value 3, reveal it, and put it into
+//! your hand. Then repeat this process for instant cards with mana
+//! values 2 and 1. Then shuffle."
+//!
+//! Three sequential tutors to hand, filtered to instant cards of
+//! exact mana value 3, 2, and 1.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for an instant card with mana value 3, reveal it, and put it into your hand. Then repeat this process for instant cards with mana values 2 and 1. Then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for an instant card with mana value 3, reveal it, and put it into your hand. Then repeat this process for instant cards with mana values 2 and 1. Then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

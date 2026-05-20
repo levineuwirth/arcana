@@ -1,7 +1,7 @@
-//! Desperate Measures — `{B}` instant, "Target creature gets +1/-1 until end of turn.
-//! When it dies under your control this turn, draw two cards."
-//!
-//! GAP: No engine effect for registering a one-time 'when [specific creature] dies this turn' triggered draw.
+//! Desperate Measures — `{B}` instant, "Target creature gets +1/-1
+//! until end of turn. When it dies under your control this turn, draw
+//! two cards." The delayed dies-triggered draw is not expressible
+//! (DelayedAction has no draw action); the pump is.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -23,13 +23,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +1/-1 until end of turn. When it dies under your control this turn, draw two cards.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +1/-1 until end of turn. When it \
+                   dies under your control this turn, draw two cards."
+                .into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,9 +39,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: No engine effect for registering a one-time 'when this creature dies this turn, draw' trigger
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "when it dies this turn, draw two cards" — DelayedAction
+    // only supports Sacrifice/Exile/ReturnToHand, no delayed draw.
     vec![Effect::Pump {
         target: *id,
         power: 1,

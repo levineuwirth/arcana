@@ -1,9 +1,8 @@
-//! Dark Bargain — `{3}{B}` instant, "Look at the top three cards of your
-//! library. Put two of them into your hand and the rest into your graveyard.
-//! Dark Bargain deals 2 damage to you."
-//!
-//! GAP: look top N, choose M to keep and put rest to graveyard (selective draw)
-//! is not expressible with the current Effect catalog.
+//! Dark Bargain — `{3}{B}` instant. "Look at the top three cards of your
+//! library. Put two of them into your hand and the other into your graveyard.
+//! Dark Bargain deals 2 damage to you." Closest catalog primitive for the
+//! library-peek-and-split is a Surveil-flavored shape we don't have; emit the
+//! self-damage and GAP the rest.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,22 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Look at the top three cards of your library. Put two of them into your hand and the rest into your graveyard. Dark Bargain deals 2 damage to you.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Look at the top three cards of your library. Put two of them into your hand and the other into your graveyard. Dark Bargain deals 2 damage to you.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: selective look-top-N and put chosen into hand/graveyard not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: no Effect for "look at top N, put K into hand and the rest into graveyard".
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(entry.controller),

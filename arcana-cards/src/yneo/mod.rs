@@ -3,3 +3,4 @@ pub mod painful_bond;
 pub mod fragment_reality;
 pub mod molten_impact;
 pub mod undercity_plunder;
+pub mod soul_servitude;

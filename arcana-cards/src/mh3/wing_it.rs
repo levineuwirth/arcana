@@ -1,11 +1,7 @@
-//! Wing It — `{1}{W}` instant. Target creature gets +2/+2 until end of turn.
-//! Put a flying counter on it. Scry 1.
-//!
-//! GAP: flying counter placement (AddCounters only supports PlusOnePlusOne /
-//! CounterKind variants; a flying counter kind is not in the catalog).
-//! Pump +2/+2 and Scry 1 are expressible.
+//! Wing It — `{1}{W}` instant. "Target creature gets +2/+2 until end
+//! of turn. Put a flying counter on it. Scry 1."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -34,21 +30,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: flying counter (CounterKind::Flying not in catalog)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // "Flying counter" grants flying; modeled as a keyword grant
+    // (no permanent flying-counter primitive — duration approximated
+    // as end of turn alongside the pump).
     vec![
         Effect::Pump {
             target: *id,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,
-            keywords: vec![],
+            keywords: vec![KeywordAbility::Flying],
         },
         Effect::Scry { player: entry.controller, count: 1 },
     ]

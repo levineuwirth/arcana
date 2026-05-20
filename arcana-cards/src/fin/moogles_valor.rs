@@ -1,17 +1,21 @@
-//! Moogles' Valor — `{3}{W}{W}` instant, white. "For each creature you
-//! control, create a 1/2 white Moogle creature token with lifelink. Then
-//! creatures you control gain indestructible until end of turn."
+//! Moogles' Valor — `{3}{W}{W}` instant. "For each creature you control,
+//! create a 1/2 white Moogle creature token with lifelink. Then creatures
+//! you control gain indestructible until end of turn."
+//!
+//! Dynamic per-creature token count via `script::count_matching`. The
+//! indestructible rider would need ForEach over creatures-you-control
+//! with GrantKeyword; we emit that as well.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Moogles' Valor");
@@ -39,7 +43,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let moogle = reg.interner().lookup("Moogle").expect("Moogle interned during register()");
+    let moogle = reg.interner().lookup("Moogle").expect("Moogle interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(moogle);
     let token = TokenDefinition {
@@ -57,24 +61,24 @@ fn resolve(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let mut effects: Vec<Effect> = (0..n)
-        .map(|_| Effect::CreateToken { controller: entry.controller, token: token.clone() })
+    let mut effs: Vec<Effect> = (0..n)
+        .map(|_| Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        })
         .collect();
-    // Grant indestructible to all creatures you control
-    let creature_ids = script::ids_matching(
+    let yours = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    if !creature_ids.is_empty() {
-        effects.push(Effect::ForEach {
-            targets: creature_ids,
-            effect: Box::new(Effect::GrantKeyword {
-                target: arcana_core::objects::NULL_OBJECT_ID,
-                keyword: KeywordAbility::Indestructible,
-                duration: Duration::EndOfTurn,
-            }),
-        });
-    }
-    effects
+    effs.push(Effect::ForEach {
+        targets: yours,
+        effect: Box::new(Effect::GrantKeyword {
+            target: NULL_OBJECT_ID,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        }),
+    });
+    effs
 }

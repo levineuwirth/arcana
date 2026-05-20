@@ -1,5 +1,5 @@
-//! Imperial Oath — `{5}{W}` sorcery. "Create three 2/2 white Samurai creature
-//! tokens with vigilance. Scry 3."
+//! Imperial Oath — `{5}{W}` sorcery. "Create three 2/2 white Samurai
+//! creature tokens with vigilance. Scry 3."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 2/2 white Samurai creature tokens with vigilance. Scry 3.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 2/2 white Samurai creature tokens with vigilance. Scry 3.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,7 +34,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let samurai = reg.interner().lookup("Samurai").expect("Samurai interned during register()");
+    let samurai = reg.interner().lookup("Samurai").expect("Samurai interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(samurai);
     let token = TokenDefinition {

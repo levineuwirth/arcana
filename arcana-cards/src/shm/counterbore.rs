@@ -1,9 +1,6 @@
-//! Counterbore — `{3}{U}{U}` instant. Counter target spell. Search its
-//! controller's graveyard, hand, and library for all cards with the same name
-//! as that spell and exile them. Then that player shuffles.
-//!
-//! GAP: search-by-name-across-zones and exile-all-copies not in catalog.
-//! Counter effect is expressible.
+//! Counterbore — `{3}{U}{U}` instant. "Counter target spell. Search
+//! its controller's graveyard, hand, and library for all cards with
+//! the same name as that spell and exile them."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,16 +36,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: search-by-name across graveyard/hand/library and exile all copies
-    vec![Effect::Counter { target: stack_id }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: the name-matching multi-zone exile rider is not
+    // expressible; only the counter is modeled.
+    vec![Effect::Counter { target: *id }]
 }

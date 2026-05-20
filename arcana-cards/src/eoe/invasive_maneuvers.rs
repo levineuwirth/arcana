@@ -1,9 +1,10 @@
-//! Invasive Maneuvers — `{1}{R}` instant, "Invasive Maneuvers deals 3 damage
-//! to target creature. It deals 5 damage instead if you control a Spacecraft."
+//! Invasive Maneuvers — `{1}{R}` instant. "Invasive Maneuvers deals 3
+//! damage to target creature. It deals 5 damage instead if you control
+//! a Spacecraft."
 //!
-//! GAP: conditional damage based on controlling a Spacecraft (subtype check at
-//! resolution for a conditional amount) is not in the Effect catalog.
-//! Best-effort: deal 3 damage unconditionally.
+//! Spacecraft is a card type with no script-queryable predicate; the
+//! conditional 5-damage branch is GAP'd while the base 3 damage is
+//! emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,13 +26,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Invasive Maneuvers deals 3 damage to target creature. It deals 5 damage instead if you control a Spacecraft.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Invasive Maneuvers deals 3 damage to target creature. It deals 5 damage instead if you control a Spacecraft.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,9 +40,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional damage amount (3 vs 5 based on controlling a Spacecraft) not in catalog
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "5 damage instead if you control a Spacecraft" — Spacecraft predicate not queryable.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

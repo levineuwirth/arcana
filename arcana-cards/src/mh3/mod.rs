@@ -7,3 +7,4 @@ pub mod tune_the_narrative;
 pub mod pyretic_rebirth;
 pub mod brainsurge;
 pub mod consuming_corruption;
+pub mod horrific_assault;

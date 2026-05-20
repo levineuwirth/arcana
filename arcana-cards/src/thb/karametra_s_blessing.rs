@@ -1,10 +1,7 @@
 //! Karametra's Blessing — `{W}` instant. "Target creature gets +2/+2
 //! until end of turn. If it's an enchanted creature or enchantment
-//! creature, it also gains hexproof and indestructible until end of turn."
-//!
-//! # GAP: conditional check "if it's enchanted or an enchantment creature"
-//! not expressible via Effect::Conditional (no predicate for enchantment
-//! attachment or type checking). Emitting the base +2/+2 only.
+//! creature, it also gains hexproof and indestructible until end of
+//! turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it's an enchanted creature or enchantment creature, it also gains hexproof and indestructible until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. If it's an enchanted creature or enchantment creature, it also gains hexproof and indestructible until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -43,7 +39,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional hexproof/indestructible if enchanted or enchantment creature not expressible
+    // GAP: the conditional hexproof/indestructible grant depends on
+    // "is an enchanted/enchantment creature", which has no catalog
+    // condition; only the unconditional +2/+2 is modeled.
     vec![Effect::Pump {
         target: *id,
         power: 2,

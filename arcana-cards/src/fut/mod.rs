@@ -3,3 +3,4 @@ pub mod blind_phantasm;
 pub mod force_of_savagery;
 pub mod lucent_liminid;
 pub mod venser_s_diffusion;
+pub mod nix;

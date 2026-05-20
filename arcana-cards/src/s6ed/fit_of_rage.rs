@@ -1,5 +1,5 @@
-//! Fit of Rage — `{1}{R}` sorcery. "Target creature gets +3/+3 and gains
-//! first strike until end of turn."
+//! Fit of Rage — `{1}{R}` sorcery. "Target creature gets +3/+3 and
+//! gains first strike until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

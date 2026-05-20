@@ -1,12 +1,8 @@
-//! Fatal Frenzy — `{2}{R}` instant.
-//! "Until end of turn, target creature you control gains trample and gets
-//! +X/+0, where X is its power. Sacrifice it at the beginning of the next
-//! end step."
-//!
-//! GAP: "sacrifice at beginning of next end step" delayed trigger not in
-//! catalog. Best-effort: pump by current power and grant trample.
+//! Fatal Frenzy — `{2}{R}` instant. "Until end of turn, target creature you
+//! control gains trample and gets +X/+0, where X is its power. Sacrifice it at
+//! the beginning of the next end step."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -14,7 +10,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +28,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Until end of turn, target creature you control gains trample and gets +X/+0, where X is its power. Sacrifice it at the beginning of the next end step.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -44,13 +48,20 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id);
-    // GAP: "sacrifice at beginning of next end step" delayed trigger not in catalog
-    vec![Effect::Pump {
-        target: *id,
-        power,
-        toughness: 0,
-        duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Trample],
-    }]
+    let x = script::power_of(state, *id);
+    vec![
+        Effect::Pump {
+            target: *id,
+            power: x,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Trample],
+        },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::Sacrifice,
+        },
+    ]
 }

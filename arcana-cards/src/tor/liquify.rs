@@ -1,10 +1,9 @@
-//! Liquify — `{2}{U}` instant. "Counter target spell with mana value 3 or
-//! less. If that spell is countered this way, exile it instead of putting
-//! it into its owner's graveyard."
+//! Liquify — `{2}{U}` instant. "Counter target spell with mana value
+//! 3 or less. If that spell is countered this way, exile it instead
+//! of putting it into its owner's graveyard."
 //!
-//! GAP: mana-value restriction on target spell filtering and "exile instead
-//! of graveyard" replacement for countered spell are not expressible with
-//! the current Effect catalog.
+//! The counter (filtered to mana value 3 or less) is emitted; the
+//! exile-instead-of-graveyard replacement is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,17 +26,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell with mana value 3 or less. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell with mana value 3 or less. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default().with_max_cmc(3)),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,8 +44,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: mana value restriction on targeting; exile-instead-of-graveyard replacement
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: exile-instead-of-graveyard replacement is not modeled.
     vec![Effect::Counter { target: *id }]
 }

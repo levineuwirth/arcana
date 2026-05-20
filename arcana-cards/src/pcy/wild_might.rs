@@ -1,10 +1,9 @@
-//! Wild Might — `{1}{G}` instant, "Target creature gets +1/+1 until end of
-//! turn. Then that creature gets an additional +4/+4 until end of turn unless
-//! any player pays {2}."
+//! Wild Might — `{1}{G}` instant. "Target creature gets +1/+1 until
+//! end of turn. That creature gets an additional +4/+4 until end of
+//! turn unless any player pays {2}."
 //!
-//! # GAP
-//! No "unless any player pays {cost}" effect modifier in the catalog.
-//! Partial: base +1/+1 pump is expressible; conditional +4/+4 is not.
+//! "Unless any player pays {2}" has no catalog Effect; only the base
+//! +1/+1 is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,24 +25,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +1/+1 until end of turn. Then that creature gets an additional +4/+4 until end of turn unless any player pays {2}.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +1/+1 until end of turn. That creature gets an additional +4/+4 until end of turn unless any player pays {2}.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no "unless any player pays {2}" conditional modifier
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "unless any player pays {2}" optional cost-prompt has no catalog Effect.
     vec![Effect::Pump {
         target: *id,
         power: 1,

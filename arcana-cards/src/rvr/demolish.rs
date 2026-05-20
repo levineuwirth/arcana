@@ -1,4 +1,4 @@
-//! Demolish — `{3}{R}` sorcery, "Destroy target artifact or land."
+//! Demolish — `{3}{R}` sorcery. "Destroy target artifact or land."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new()
-                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::LAND).into()),
+                            .with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::LAND)),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

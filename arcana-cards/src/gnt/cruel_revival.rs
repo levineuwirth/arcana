@@ -1,11 +1,10 @@
-//! Cruel Revival — `{4}{B}` instant, "Destroy target non-Zombie creature. It
-//! can't be regenerated. Return up to one target Zombie card from your graveyard
-//! to your hand."
+//! Cruel Revival — `{4}{B}` instant. "Destroy target non-Zombie creature. It
+//! can't be regenerated. Return up to one target Zombie card from your
+//! graveyard to your hand."
 //!
-//! # GAP: "non-Zombie" subtype exclusion filter not in ObjectFilter
-//! # GAP: "can't be regenerated" effect not in catalog
-//! # GAP: UpTo filter for graveyard target (up to one Zombie card) partially
-//!        represented as best-effort single target
+//! GAP: ObjectFilter has no "exclude subtype" refinement for the non-Zombie
+//! target restriction, and the second optional Zombie-graveyard target is
+//! dropped; only the core destroy of a single targeted creature is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,9 +12,8 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cruel Revival");
@@ -30,17 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target non-Zombie creature. It can't be regenerated. Return up to one target Zombie card from your graveyard to your hand.".into(),
-                target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::creature(),
-                        },
-                        count: TargetCount::UpTo(1),
-                        controller: None,
-                    },
-                ],
+                target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
             }),
@@ -52,18 +40,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(first) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = first {
-            // GAP: "non-Zombie" filter and "can't be regenerated" not expressible
-            effects.push(Effect::DestroyPermanent { target: *id });
-        }
-    }
-    if let Some(second) = entry.targets.targets.get(1) {
-        if let TargetChoice::Object(id) = second {
-            // GAP: Zombie subtype filter on graveyard target not expressible
-            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
-        }
-    }
-    effects
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: non-Zombie restriction (no exclude-subtype filter) + the optional
+    // "return a Zombie card from your graveyard" second target
+    vec![Effect::DestroyPermanent { target: *id }]
 }

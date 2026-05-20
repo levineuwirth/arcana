@@ -1,8 +1,9 @@
-//! Blood Curdle — `{3}{B}` instant. "Destroy target creature. Put a menace
-//! counter on a creature you control."
+//! Blood Curdle — `{3}{B}` instant. "Destroy target creature. Put a
+//! menace counter on a creature you control."
 //!
-//! GAP: "menace counter" is not a CounterKind variant in the engine;
-//! only the destroy effect is modeled.
+//! There is no menace-counter `CounterKind`; only the destroy is
+//! emitted. The "put a counter on a creature you control" half is a
+//! GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,13 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. Put a menace counter on a creature you control.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature. Put a menace counter on a creature you control.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,8 +38,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: menace counter (CounterKind::Menace) not available in engine
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: no "menace counter" CounterKind; the counter half is dropped.
     vec![Effect::DestroyPermanent { target: *id }]
 }

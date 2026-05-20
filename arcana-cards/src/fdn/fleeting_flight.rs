@@ -1,11 +1,10 @@
-//! Fleeting Flight — `{W}` instant. "Put a +1/+1 counter on target creature.
-//! It gains flying until end of turn. Prevent all combat damage that would be
-//! dealt to it this turn."
+//! Fleeting Flight — `{W}` instant. "Put a +1/+1 counter on target
+//! creature. It gains flying until end of turn. Prevent all combat
+//! damage that would be dealt to it this turn."
 //!
-//! # GAP: prevent-combat-damage effect is not in the engine catalog.
-//! The +1/+1 counter and flying grant are implemented; the damage-prevention
-//! clause returns Vec::new() in isolation but is folded into the same resolver.
-//! We emit AddCounters + GrantKeyword and note the gap.
+//! The +1/+1 counter and the flying grant are expressible. The
+//! combat-damage prevention shield is not modeled by any catalog
+//! Effect; it is omitted (best-effort).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -27,13 +26,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature. It gains flying until end of turn. Prevent all combat damage that would be dealt to it this turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on target creature. It gains flying until end of turn. Prevent all combat damage that would be dealt to it this turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,9 +42,17 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: prevent-combat-damage effect is not expressible via the catalog
     vec![
-        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Flying, duration: Duration::EndOfTurn },
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Flying,
+            duration: Duration::EndOfTurn,
+        },
+        // GAP: prevent-all-combat-damage shield is not an expressible Effect.
     ]
 }

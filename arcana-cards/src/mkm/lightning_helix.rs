@@ -1,5 +1,5 @@
-//! Lightning Helix — `{R}{W}` instant. "Lightning Helix deals 3 damage
-//! to any target and you gain 3 life."
+//! Lightning Helix — `{R}{W}` instant. "Lightning Helix deals 3
+//! damage to any target and you gain 3 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Lightning Helix deals 3 damage to any target and you gain 3 life.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Lightning Helix deals 3 damage to any target and you gain 3 life.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -51,9 +50,6 @@ fn resolve(
             target: dt,
             amount: 3,
         },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 3,
-        },
+        Effect::GainLife { player: entry.controller, amount: 3 },
     ]
 }

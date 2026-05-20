@@ -1,5 +1,5 @@
-//! Lost in a Labyrinth — `{U}` instant, "Target creature gets -3/-0 until
-//! end of turn. Scry 1."
+//! Lost in a Labyrinth — `{U}` instant. "Target creature gets -3/-0
+//! until end of turn. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

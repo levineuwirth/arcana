@@ -1,5 +1,5 @@
-//! Creeping Mold — `{2}{G}{G}` sorcery. "Destroy target artifact, enchantment,
-//! or land."
+//! Creeping Mold — `{2}{G}{G}` sorcery.
+//! "Destroy target artifact, enchantment, or land."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

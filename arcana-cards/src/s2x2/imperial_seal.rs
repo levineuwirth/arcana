@@ -1,7 +1,9 @@
-//! Imperial Seal — `{B}` sorcery.
-//! "Search your library for a card, then shuffle and put that card on top. You lose 2 life."
-//! GAP: TutorToHand / TutorToBattlefield find but put on top of library; no TutorToTopOfLibrary
-//! variant in the catalog — using Vec::new() for the tutor half.
+//! Imperial Seal — `{B}` sorcery. "Search your library for a card, then
+//! shuffle and put that card on top. You lose 2 life."
+//!
+//! GAP: no tutor variant that places onto the top of the library;
+//! `TutorToHand`/`TutorToBattlefield` are the only library-search
+//! primitives. Emitting only the life-loss honestly.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,8 +38,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no TutorToTopOfLibrary (any-card tutor that puts result on top rather than into hand/battlefield)
-    vec![
-        Effect::LoseLife { player: entry.controller, amount: 2 },
-    ]
+    // GAP: no tutor-to-top-of-library variant; only life-loss is honest.
+    vec![Effect::LoseLife { player: entry.controller, amount: 2 }]
 }

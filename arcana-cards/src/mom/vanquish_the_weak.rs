@@ -1,7 +1,5 @@
-//! Vanquish the Weak — `{2}{B}` instant. "Destroy target creature with power 3 or less."
-//!
-//! # GAP: ObjectFilter has no with_max_power builder. We destroy via
-//! target_creature() and note the power constraint as a gap.
+//! Vanquish the Weak — `{2}{B}` instant. "Destroy target creature
+//! with power 3 or less."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,13 +22,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with power 3 or less.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with power 3 or less.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().with_max_power(3),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,6 +44,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: power <= 3 constraint not enforceable via catalog ObjectFilter
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,11 +1,11 @@
-//! Nightsnare — `{3}{B}` sorcery. "Target opponent reveals their hand.
-//! You may choose a nonland card from it. If you do, that player discards
-//! that card. If you don't, that player discards two cards."
+//! Nightsnare — `{3}{B}` sorcery. "Target opponent reveals their
+//! hand. You may choose a nonland card from it. If you do, that
+//! player discards that card. If you don't, that player discards two
+//! cards."
 //!
-//! GAP: hand-reveal + caster-chooses-a-specific-card mechanic (no Effect
-//! variant for targeted discard where the caster picks from a revealed hand).
-//! Best effort: target player discards 2 (the "if you don't" branch as a
-//! floor); the optional single-card selection is a GAP.
+//! GAP: optional choose-a-card / fallback-two-discards branching has
+//! no Effect form. We emit a single controller-chooses discard as the
+//! main-line outcome.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -26,29 +26,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target opponent reveals their hand. You may choose a nonland card from it. If you do, that player discards that card. If you don't, that player discards two cards.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target opponent reveals their hand. You may choose a nonland card from it. If you do, that player discards that card. If you don't, that player discards two cards.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: hand-reveal + caster-chooses-nonland-card from revealed hand
-    // (no Effect variant for targeted discard-from-shown-hand; falling back to
-    // the unconditional 2-card discard branch as best effort)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: optional pick + fallback-two-random branching.
     vec![Effect::Discard {
         player: *p,
-        count: 2,
+        count: 1,
         choice: DiscardChoice::ControllerChooses,
     }]
 }

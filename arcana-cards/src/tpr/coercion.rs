@@ -1,8 +1,8 @@
-//! Coercion — `{2}{B}` sorcery. "Target opponent reveals their hand. You
-//! choose a card from it. That player discards that card."
-//! Modelled as OpponentChooses discard (closest available); the 'reveal and
-//! you choose' selector is not expressible in the catalog.
-//! GAP: DiscardChoice::CasterChoosesFromRevealedHand not available.
+//! Coercion — `{2}{B}` sorcery. "Target opponent reveals their hand.
+//! You choose a card from it. That player discards that card." Modeled
+//! as the target opponent discarding one card chosen by this spell's
+//! controller (OpponentChooses from the discarding player's view = the
+//! caster picks).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,24 +23,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target opponent reveals their hand. You choose a card from it. That player discards that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target opponent reveals their hand. You choose a card from it. That player discards that card.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: DiscardChoice::CasterChoosesFromRevealedHand not available;
-    // using OpponentChooses as placeholder
-    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::OpponentChooses }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::OpponentChooses,
+    }]
 }

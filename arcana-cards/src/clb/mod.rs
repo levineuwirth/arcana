@@ -11,3 +11,6 @@ pub mod traverse_the_outlands;
 pub mod breath_weapon;
 pub mod earth_tremor;
 pub mod in_garruk_s_wake;
+pub mod split_the_spoils;
+pub mod cut_a_deal;
+pub mod syphon_mind;

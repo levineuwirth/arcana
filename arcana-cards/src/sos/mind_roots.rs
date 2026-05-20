@@ -1,10 +1,10 @@
-//! Mind Roots — `{1}{B}{G}` sorcery. "Target player discards two cards. Put up to one
-//! land card discarded this way onto the battlefield tapped under your control."
-//!
-//! # GAP: "put a card discarded this way onto the battlefield" — conditional reanimate
-//! based on specific card discarded not expressible.
+//! Mind Roots — `{1}{B}{G}` sorcery. "Target player discards two
+//! cards. Put up to one land card discarded this way onto the
+//! battlefield tapped under your control." The discard is
+//! expressible; recovering a land from the just-discarded cards has
+//! no primitive (GAP-noted, partial).
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -23,26 +23,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player discards two cards. Put up to one land card discarded this way onto the battlefield tapped under your control.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player discards two cards. Put up to one land card discarded this way onto the battlefield tapped under your control.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let player = match target {
-        TargetChoice::Player(p) => *p,
-        _ => return Vec::new(),
-    };
-    // GAP: "put a discarded land card onto the battlefield tapped" not expressible
-    vec![Effect::Discard { player, count: 2, choice: DiscardChoice::ControllerChooses }]
+fn resolve(_state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "put up to one land card discarded this way onto the
+    // battlefield" — no primitive references the just-discarded cards.
+    let Some(target) = _entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    vec![Effect::Discard {
+        player: *p,
+        count: 2,
+        choice: DiscardChoice::OpponentChooses,
+    }]
 }

@@ -1,11 +1,10 @@
-//! Burn the Impure — `{1}{R}` instant.
-//! "Burn the Impure deals 3 damage to target creature. If that creature
-//! has infect, Burn the Impure deals 3 damage to that creature's
-//! controller."
-//
-// GAP: conditional "if that creature has infect" — no Effect::Conditional
-//      with a keyword-check condition is expressible. Best effort: deal
-//      3 damage to the creature only.
+//! Burn the Impure — `{1}{R}` instant. "Burn the Impure deals 3 damage to
+//! target creature. If that creature has infect, Burn the Impure deals 3
+//! damage to that creature's controller."
+//!
+//! GAP: cannot inspect target's keywords for conditional, and cannot derive
+//! 'that creature's controller' as a player target. Emitting unconditional
+//! 3-damage to creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -44,7 +43,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional 3 damage to controller if creature has infect
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

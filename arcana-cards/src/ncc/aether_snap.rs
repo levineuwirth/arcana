@@ -1,11 +1,5 @@
-//! Aether Snap — `{3}{B}{B}` sorcery. "Remove all counters from all permanents
-//! and exile all tokens."
-//!
-//! GAP: 'Remove all counters from all permanents' (no counter-kind-agnostic
-//! mass remove-counters effect) and 'exile all tokens' are not expressible
-//! with the current Effect catalog. ForEach with ExilePermanent covers tokens
-//! if we can filter tokens_only(), but RemoveCounters requires a specific
-//! CounterKind.
+//! Aether Snap — `{3}{B}{B}` sorcery. "Remove all counters from all
+//! permanents and exile all tokens."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Remove all counters from all permanents and exile all tokens.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Remove all counters from all permanents and exile all tokens.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,14 +35,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let token_ids = script::ids_matching(
+    // Partial: "remove all counters from all permanents" has no
+    // catalog effect (RemoveCounters needs a kind + count) and is
+    // GAPed. "Exile all tokens" is implemented.
+    let tokens = script::ids_matching(
         state,
         &ObjectFilter::permanent().tokens_only(),
         entry.controller,
     );
-    // GAP: remove all counters from all permanents (no counter-agnostic mass RemoveCounters)
     vec![Effect::ForEach {
-        targets: token_ids,
-        effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
+        targets: tokens,
+        effect: Box::new(Effect::ExilePermanent {
+            target: NULL_OBJECT_ID,
+        }),
     }]
 }

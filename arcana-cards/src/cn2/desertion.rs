@@ -1,12 +1,11 @@
-//! Desertion — `{3}{U}{U}` instant.
-//! "Counter target spell. If an artifact or creature spell is countered this
-//! way, put that card onto the battlefield under your control instead of into
-//! its owner's graveyard."
+//! Desertion — `{3}{U}{U}` instant, "Counter target spell. If an
+//! artifact or creature spell is countered this way, put that card onto
+//! the battlefield under your control instead of into its owner's
+//! graveyard."
 //!
-//! # GAP: counter-and-steal rider
-//! The catalog's `Effect::Counter` sends the card to the owner's graveyard.
-//! There is no variant for "counter and put onto the battlefield under
-//! controller's control instead."
+//! GAP: the "put the countered card onto the battlefield under your
+//! control instead" rider has no corresponding Effect. Only the counter
+//! is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +13,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,11 +48,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // Partial: counter resolves; steal-to-battlefield rider not expressible.
-    // GAP: conditional redirect of countered spell to battlefield under controller's control
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: steal-on-counter rider not expressible.
+    vec![Effect::Counter { target: *id }]
 }

@@ -1,9 +1,10 @@
-//! Flare of Faith — `{1}{W}` instant, "Target creature gets +2/+2 until end of
-//! turn. If it's a Human, instead it gets +3/+3 and gains indestructible until
-//! end of turn."
+//! Flare of Faith — `{1}{W}` instant. "Target creature gets +2/+2
+//! until end of turn. If it's a Human, instead it gets +3/+3 and gains
+//! indestructible until end of turn."
 //!
-//! GAP: conditional pump amount based on the target's subtype (Human check) is
-//! not in the Effect catalog. Best-effort: Pump +2/+2 unconditionally.
+//! The "if it's a Human" branch keys on the target's subtype, which is
+//! not queryable with the demonstrated script helpers; the base +2/+2
+//! is emitted and the Human branch GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,13 +26,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it's a Human, instead it gets +3/+3 and gains indestructible until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. If it's a Human, instead it gets +3/+3 and gains indestructible until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,9 +40,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional pump (+3/+3 + Indestructible if target is a Human) not in catalog
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it's a Human, instead +3/+3 and indestructible" — target subtype not queryable.
     vec![Effect::Pump {
         target: *id,
         power: 2,

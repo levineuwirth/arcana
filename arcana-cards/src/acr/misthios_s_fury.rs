@@ -1,11 +1,9 @@
-//! Misthios's Fury — `{1}{R}` instant.
-//! "Misthios's Fury deals 3 damage to target creature. If you control
-//! an Equipment, Misthios's Fury also deals 2 damage to that creature's
-//! controller."
-//
-// GAP: conditional "if you control an Equipment" is not expressible
-//      without Effect::Conditional (condition type not shown in catalog).
-//      Best effort: deal 3 damage to the creature only.
+//! Misthios's Fury — `{1}{R}` instant. "Misthios's Fury deals 3 damage to
+//! target creature. If you control an Equipment, Misthios's Fury also deals 2
+//! damage to that creature's controller."
+//!
+//! GAP: cannot read 'that creature's controller' as a damage target — only
+//! id-targeted damage is expressible. Conditional 3-damage delivered.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -44,7 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional 2 damage to creature's controller if you control an Equipment
+    // GAP: cannot derive 'that creature's controller' as PlayerId from target id
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

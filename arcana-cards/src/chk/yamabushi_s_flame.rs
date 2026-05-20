@@ -1,11 +1,9 @@
-//! Yamabushi's Flame — `{2}{R}` instant, "Yamabushi's Flame deals 3 damage to
-//! any target. If a creature dealt damage this way would die this turn, exile
-//! it instead."
+//! Yamabushi's Flame — `{2}{R}` instant. "Yamabushi's Flame deals 3 damage
+//! to any target. If a creature dealt damage this way would die this
+//! turn, exile it instead."
 //!
-//! # GAP
-//! "Exile instead of dying" replacement effect for creatures damaged this
-//! turn is not expressible with the current Effect catalog. The base
-//! DealDamage is fully expressed.
+//! Damage stays honest; "exile-if-dies-this-turn" rider has no Effect
+//! variant tied to a damaged target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -42,7 +40,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "exile instead of dying" replacement effect not in catalog
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -52,9 +49,6 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 3,
-    }]
+    // GAP: exile-if-dies-this-turn rider on a damaged target.
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
 }

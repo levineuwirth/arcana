@@ -1,7 +1,9 @@
-//! Pulse of the Grid — `{1}{U}{U}` instant, "Draw two cards, then discard a card.
-//! Then if an opponent has more cards in hand than you, return Pulse of the Grid to its owner's hand."
-//!
-//! GAP: Conditional return-to-hand of the spell itself based on opponent's hand size comparison.
+//! Pulse of the Grid — `{1}{U}{U}` instant. "Draw two cards, then discard a
+//! card. Then if an opponent has more cards in hand than you, return Pulse of
+//! the Grid to its owner's hand."
+//! GAP: conditional return of the resolving spell itself (hand-size comparison
+//! across players; returning a resolving spell from stack to hand) not in
+//! engine Effect catalog.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -9,7 +11,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,7 +38,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional return-to-hand of the source spell based on opponent hand size comparison
+    // GAP: conditional return of the spell itself based on hand-size comparison not in engine
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
         Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },

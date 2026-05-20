@@ -1,11 +1,10 @@
-//! Spelljack — `{3}{U}{U}{U}` instant. "Counter target spell. If that spell
-//! is countered this way, exile it instead of putting it into its owner's
-//! graveyard. You may play it without paying its mana cost for as long as it
-//! remains exiled."
+//! Spelljack — `{3}{U}{U}{U}` instant. "Counter target spell. If that
+//! spell is countered this way, exile it instead of putting it into its
+//! owner's graveyard. You may play it without paying its mana cost for as
+//! long as it remains exiled."
 //!
-//! # GAP: CounterAndExileWithFreecast — no Effect variant for countering a
-//!   spell, exiling it, and granting the controller the ability to cast it
-//!   for free from exile
+//! GAP: no exile-countered-spell-and-play-for-free rider; plain counter
+//! emitted as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +12,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,8 +46,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: CounterAndExileWithFreecast — no Effect variant for counter+exile+freecast grant
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: exile-and-play-for-free rider not modeled.
     vec![Effect::Counter { target: *id }]
 }

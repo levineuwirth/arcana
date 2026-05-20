@@ -1,8 +1,6 @@
-//! Tarfire — `{R}` kindred instant — Goblin.
-//! "Tarfire deals 2 damage to any target."
-//!
-//! Note: Kindred type line. TypeLine has no KINDRED constant in demonstrated API;
-//! using INSTANT.into() as best-effort — GAP: Kindred supertype not modeled.
+//! Tarfire — `{R}` Kindred Instant — Goblin. "Tarfire deals 2
+//! damage to any target." (Kindred type/subtype is not modeled; the
+//! card is registered as a plain instant.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -16,31 +14,24 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tarfire");
-    let _goblin = reg.interner_mut().intern("Goblin");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{R}").expect("valid cost")),
         colors: ColorSet::red(),
         types: TypeLine::INSTANT.into(),
-        // GAP: Kindred type and Goblin subtype not expressible on instants in this API.
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Tarfire deals 2 damage to any target.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Tarfire deals 2 damage to any target.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -50,9 +41,5 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 2,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
 }

@@ -1,10 +1,5 @@
-//! Unsubstantiate — `{1}{U}` instant, "Return target spell or creature to its
-//! owner's hand."
-//!
-//! GAP: targeting "target spell or creature" (either stack object or battlefield
-//! creature) as a unified target requirement is not expressible with a single
-//! TargetRequirement; using ReturnToHand (bounce creature) as best-effort for
-//! the battlefield half; stack-object bounce not in Effect catalog.
+//! Unsubstantiate — `{1}{U}` instant. "Return target spell or
+//! creature to its owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,13 +20,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target spell or creature to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target spell or creature to its owner's hand.".into(),
+            // GAP: no combined "spell or creature" target filter;
+            // restricted to a creature permanent.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,8 +36,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: unified "spell or creature" target (stack object or battlefield permanent)
-    // GAP: bouncing a spell on the stack (Effect::ReturnToHand targets battlefield objects only)
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]

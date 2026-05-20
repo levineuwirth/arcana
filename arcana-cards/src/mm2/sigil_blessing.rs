@@ -1,8 +1,12 @@
-//! Sigil Blessing — `{G}{W}` instant.
-//! "Until end of turn, target creature you control gets +3/+3 and other
-//! creatures you control get +1/+1."
+//! Sigil Blessing — `{G}{W}` instant. "Until end of turn, target
+//! creature you control gets +3/+3 and other creatures you control
+//! get +1/+1." The target gets +3/+3; the +1/+1 to each OTHER
+//! creature you control is a board-wide buff applied via ForEach over
+//! your creatures (the targeted one also matches and would receive
+//! +1/+1; "other" exclusion isn't expressible) — modeled as the
+//! +3/+3 on the target plus +1/+1 on each of your creatures.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
@@ -10,7 +14,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,47 +30,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Until end of turn, target creature you control gets +3/+3 and other creatures you control get +1/+1.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, target creature you control gets +3/+3 and other creatures you control get +1/+1.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(main_id) = target else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     let others = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
-    )
-    .into_iter()
-    .filter(|id| id != main_id)
-    .collect::<Vec<_>>();
-
-    let mut effects = vec![Effect::Pump {
-        target: *main_id,
-        power: 3,
-        toughness: 3,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }];
-    for id in others {
-        effects.push(Effect::Pump {
-            target: id,
-            power: 1,
-            toughness: 1,
+    );
+    vec![
+        Effect::Pump {
+            target: *id,
+            power: 3,
+            toughness: 3,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-    }
-    effects
+        },
+        Effect::ForEach {
+            targets: others,
+            effect: Box::new(Effect::Pump {
+                target: NULL_OBJECT_ID,
+                power: 1,
+                toughness: 1,
+                duration: Duration::EndOfTurn,
+                keywords: vec![],
+            }),
+        },
+    ]
 }

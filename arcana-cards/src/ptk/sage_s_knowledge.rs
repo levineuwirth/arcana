@@ -1,5 +1,5 @@
-//! Sage's Knowledge — `{2}{U}` sorcery.
-//! "Return target sorcery card from your graveyard to your hand."
+//! Sage's Knowledge — `{2}{U}` sorcery. "Return target sorcery card from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 

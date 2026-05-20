@@ -1,10 +1,10 @@
-//! Devils' Playground — `{4}{R}{R}` sorcery, "Create four 1/1 red Devil
-//! creature tokens. They have 'When this token dies, it deals 1 damage to
-//! any target.'"
+//! Devils' Playground — `{4}{R}{R}` sorcery.
+//! "Create four 1/1 red Devil creature tokens. They have 'When this token dies,
+//! it deals 1 damage to any target.'"
 //!
-//! GAP: Devil tokens have a triggered "when this dies, deal 1 damage to any
-//! target" ability not expressible via TokenDefinition (no triggered-ability
-//! field). Tokens are created without that ability.
+//! GAP: Devil token triggered ability "When this token dies, it deals 1 damage
+//! to any target" is not expressible via the TokenDefinition abilities field.
+//! The tokens are created without the triggered ability.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,6 +12,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,6 +44,7 @@ fn resolve(
     let devil = reg.interner().lookup("Devil").expect("Devil interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(devil);
+    // GAP: devil "when dies deals 1 damage" triggered ability not in TokenDefinition
     let token = TokenDefinition {
         name: devil,
         colors: ColorSet::red(),
@@ -51,8 +53,6 @@ fn resolve(
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
-        // GAP: "when this dies, deal 1 damage to any target" triggered ability
-        // not expressible in TokenDefinition
         abilities: vec![],
     };
     vec![

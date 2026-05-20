@@ -1,5 +1,5 @@
-//! Sworn Companions — `{2}{W}` sorcery. "Create two 1/1 white Soldier creature
-//! tokens with lifelink."
+//! Sworn Companions — `{2}{W}` sorcery. "Create two 1/1 white Soldier
+//! creature tokens with lifelink."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 1/1 white Soldier creature tokens with lifelink.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 1/1 white Soldier creature tokens with lifelink.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,7 +34,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {

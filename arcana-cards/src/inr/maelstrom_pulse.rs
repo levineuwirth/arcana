@@ -1,7 +1,7 @@
-//! Maelstrom Pulse — `{1}{B}{G}` sorcery, "Destroy target nonland permanent and all other
-//! permanents with the same name as that permanent."
-//!
-//! GAP: Destroy all permanents sharing the same name as the target (name-matching board wipe).
+//! Maelstrom Pulse — `{1}{B}{G}` sorcery. "Destroy target nonland permanent
+//! and all other permanents with the same name."
+//! GAP: no "same-name" filter in ObjectFilter; no way to enumerate all
+//! permanents sharing a name with the target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,10 +26,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target nonland permanent and all other permanents with the same name as that permanent.".into(),
+                text: "Destroy target nonland permanent and all other permanents with the same name.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -47,6 +47,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: destroy all other permanents sharing the same name as the target
+    // GAP: no same-name filter to enumerate all other permanents sharing the target's name
     vec![Effect::DestroyPermanent { target: *id }]
 }

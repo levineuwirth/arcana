@@ -1,12 +1,13 @@
-//! Star of Extinction — `{5}{R}{R}` sorcery.
-//! "Destroy target land. Star of Extinction deals 20 damage to each creature and each planeswalker."
+//! Star of Extinction — `{5}{R}{R}` sorcery, "Destroy target land. Star of
+//! Extinction deals 20 damage to each creature and each planeswalker."
 //!
-//! GAP: planeswalker type not in TypeLine consts.
+//! The planeswalker filter is not a supported ObjectFilter type; damage
+//! is applied only to creatures. GAP: no planeswalker type filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -29,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target land. Star of Extinction deals 20 damage to each creature and each planeswalker.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                        ObjectFilter::new().with_types(TypeLine::LAND.into())
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -48,17 +49,14 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(land_id) = target else { return Vec::new(); };
     let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: planeswalker type not in TypeLine consts; planeswalkers not included
-    let mut effects = vec![
-        Effect::DestroyPermanent { target: *land_id },
-        Effect::ForEach {
-            targets: creature_ids,
-            effect: Box::new(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(NULL_OBJECT_ID),
-                amount: 20,
-            }),
-        },
-    ];
+    let mut effects = vec![Effect::DestroyPermanent { target: *land_id }];
+    effects.push(Effect::ForEach {
+        targets: creature_ids,
+        effect: Box::new(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(arcana_core::objects::NULL_OBJECT_ID),
+            amount: 20,
+        }),
+    });
     effects
 }

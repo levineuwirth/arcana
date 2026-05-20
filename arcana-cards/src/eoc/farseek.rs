@@ -1,5 +1,6 @@
-//! Farseek — `{1}{G}` sorcery. "Search your library for a Plains, Island,
-//! Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle."
+//! Farseek — `{1}{G}` sorcery. "Search your library for a Plains,
+//! Island, Swamp, or Mountain card, put it onto the battlefield tapped,
+//! then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,21 +21,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // Best effort: the specific Plains/Island/Swamp/Mountain subtype
+    // restriction is not expressible via ObjectFilter; tutors a land.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

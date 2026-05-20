@@ -1,14 +1,15 @@
-//! Purify — `{3}{W}{W}` sorcery. "Destroy all artifacts and all enchantments."
+//! Purify — `{3}{W}{W}` sorcery. "Destroy all artifacts and
+//! enchantments."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Purify");
@@ -20,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all artifacts and all enchantments.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all artifacts and enchantments.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,20 +35,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let artifact_filter = ObjectFilter::new().with_types(TypeLine::ARTIFACT.into());
-    let artifact_ids = script::ids_matching(state, &artifact_filter, entry.controller);
-
-    let enchantment_filter = ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into());
-    let enchantment_ids = script::ids_matching(state, &enchantment_filter, entry.controller);
-
-    vec![
-        Effect::ForEach {
-            targets: artifact_ids,
-            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-        },
-        Effect::ForEach {
-            targets: enchantment_ids,
-            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-        },
-    ]
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine::ARTIFACT.into())
+            .with_types_any(TypeLine::ENCHANTMENT.into()),
+        entry.controller,
+    );
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DestroyPermanent {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+        }),
+    }]
 }

@@ -1,9 +1,10 @@
-//! Rite of the Serpent — `{4}{B}{B}` sorcery, "Destroy target creature.
-//! If that creature had a +1/+1 counter on it, create a 1/1 green Snake
-//! creature token."
+//! Rite of the Serpent — `{4}{B}{B}` sorcery, "Destroy target
+//! creature. If that creature had a +1/+1 counter on it, create a
+//! 1/1 green Snake creature token."
 //!
-//! GAP: conditional token creation based on whether target had a +1/+1
-//! counter not expressible without Conditional; destroy expressed fully.
+//! The destroy is applied. GAP: no script helper inspects a
+//! permanent's +1/+1 counters, so the conditional Snake token is
+//! omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +26,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. If that creature had a +1/+1 counter on it, create a 1/1 green Snake creature token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature. If that creature had a +1/+1 counter on it, create a 1/1 green Snake creature token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: conditional Snake token (counter inspection) omitted.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional Snake token if creature had +1/+1 counter
     vec![Effect::DestroyPermanent { target: *id }]
 }

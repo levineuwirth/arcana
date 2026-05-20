@@ -1,5 +1,5 @@
-//! Read the Bones — `{2}{B}` sorcery. "Scry 2, then draw two cards. You lose
-//! 2 life."
+//! Read the Bones — `{2}{B}` sorcery.
+//! "Scry 2, then draw two cards. You lose 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

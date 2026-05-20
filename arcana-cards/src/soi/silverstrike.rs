@@ -1,8 +1,7 @@
-//! Silverstrike — `{3}{W}` instant. "Destroy target attacking creature.
-//! You gain 3 life."
+//! Silverstrike — `{3}{W}` instant. "Destroy target attacking creature. You
+//! gain 3 life."
 //!
-//! GAP: no TargetFilter for "attacking creature"; using target_creature()
-//! and noting gap.
+//! GAP: no ObjectFilter for 'attacking'; using plain creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target attacking creature. You gain 3 life.".into(),
-                // GAP: no TargetFilter variant for "attacking creature"
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

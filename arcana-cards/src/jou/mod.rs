@@ -17,3 +17,4 @@ pub mod rise_of_eagles;
 pub mod deicide;
 pub mod starfall;
 pub mod nightmarish_end;
+pub mod spite_of_mogis;

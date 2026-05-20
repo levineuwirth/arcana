@@ -1,5 +1,6 @@
-//! Deathsprout — `{1}{B}{B}{G}` instant. "Destroy target creature. Search your
-//! library for a basic land card, put it onto the battlefield tapped, then shuffle."
+//! Deathsprout — `{1}{B}{B}{G}` instant. "Destroy target creature. Search
+//! your library for a basic land card, put it onto the battlefield tapped,
+//! then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

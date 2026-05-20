@@ -1,6 +1,5 @@
-//! Armor of Shadows — `{B}` instant.
-//! "Until end of turn, target creature gets +1/+0 and gains
-//! indestructible."
+//! Armor of Shadows — `{B}` instant. "Until end of turn, target creature gets
+//! +1/+0 and gains indestructible."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

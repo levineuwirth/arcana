@@ -1,5 +1,5 @@
-//! Sorin's Thirst — `{B}{B}` instant, "Sorin's Thirst deals 2 damage to target
-//! creature and you gain 2 life."
+//! Sorin's Thirst — `{B}{B}` instant.
+//! "Sorin's Thirst deals 2 damage to target creature and you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

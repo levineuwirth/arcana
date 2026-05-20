@@ -1,5 +1,5 @@
-//! Sheltering Light — `{W}` instant. "Target creature gains indestructible until
-//! end of turn. Scry 1."
+//! Sheltering Light — `{W}` instant. "Target creature gains
+//! indestructible until end of turn. Scry 1."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gains indestructible until end of turn. Scry 1.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gains indestructible until end of turn. Scry 1.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,7 +38,11 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Indestructible, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        },
         Effect::Scry { player: entry.controller, count: 1 },
     ]
 }

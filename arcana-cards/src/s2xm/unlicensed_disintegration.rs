@@ -1,11 +1,11 @@
-//! Unlicensed Disintegration — `{1}{B}{R}` instant.
-//! "Destroy target creature. If you control an artifact, Unlicensed
-//! Disintegration deals 3 damage to that creature's controller."
+//! Unlicensed Disintegration — `{1}{B}{R}` instant, "Destroy target
+//! creature. If you control an artifact, Unlicensed Disintegration
+//! deals 3 damage to that creature's controller."
 //!
-//! # GAP: conditional on controlling an artifact; damage to destroyed
-//! creature's controller (not a fixed target player)
-//! The destroy is expressible. The conditional artifact check and "deal damage
-//! to the target's controller" rider are not expressible with the catalog.
+//! GAP: the conditional 3 damage is dealt to the destroyed creature's
+//! controller; the controlling player of a target object is not exposed
+//! by the script helpers, so the rider cannot be modeled. Only the
+//! destroy is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,6 +43,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional on controlling an artifact; damage to target creature's controller
+    // GAP: damage to destroyed creature's controller not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

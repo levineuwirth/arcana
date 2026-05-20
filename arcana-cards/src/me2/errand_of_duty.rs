@@ -1,5 +1,5 @@
-//! Errand of Duty — `{1}{W}` instant. "Create a 1/1 white Knight creature token
-//! with banding."
+//! Errand of Duty — `{1}{W}` instant. "Create a 1/1 white Knight
+//! creature token with banding."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,13 +20,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create a 1/1 white Knight creature token with banding.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create a 1/1 white Knight creature token with banding."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,13 +35,13 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let knight = reg.interner().lookup("Knight").expect("Knight interned during register()");
+    let knight = reg.interner().lookup("Knight").expect("Knight interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(knight);
     let token = TokenDefinition {
         name: knight,
         colors: ColorSet::white(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),

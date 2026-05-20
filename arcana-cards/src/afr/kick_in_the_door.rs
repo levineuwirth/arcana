@@ -1,9 +1,9 @@
-//! Kick in the Door — `{R}` sorcery, "Put a +1/+1 counter on target creature.
-//! That creature gains haste until end of turn and can't be blocked by Walls
-//! this turn. Venture into the dungeon."
+//! Kick in the Door — `{R}` sorcery.
+//! "Put a +1/+1 counter on target creature. That creature gains haste until
+//! end of turn and can't be blocked by Walls this turn. Venture into the dungeon."
 //!
-//! GAP: "can't be blocked by Walls this turn" restriction not expressible.
-//! GAP: Venture into the dungeon mechanic not in effect catalog.
+//! GAP: "Can't be blocked by Walls this turn" — no evasion-vs-subtype Effect.
+//! GAP: "Venture into the dungeon" — dungeon mechanic not in engine catalog.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -42,16 +42,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "can't be blocked by Walls this turn" — no evasion-vs-subtype Effect
+    // GAP: "Venture into the dungeon" — dungeon mechanic not in engine catalog
     vec![
         Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
-        Effect::Pump {
-            target: *id,
-            power: 0,
-            toughness: 0,
-            duration: Duration::EndOfTurn,
-            keywords: vec![KeywordAbility::Haste],
-        },
-        // GAP: can't be blocked by Walls this turn
-        // GAP: Venture into the dungeon
+        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn },
     ]
 }

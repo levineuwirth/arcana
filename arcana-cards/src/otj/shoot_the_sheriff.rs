@@ -1,8 +1,7 @@
-//! Shoot the Sheriff — `{1}{B}` instant, "Destroy target non-outlaw creature."
-//!
-//! GAP: non-outlaw subtype filter (excluding Assassins, Mercenaries, Pirates,
-//! Rogues, and Warlocks) is not expressible with the current TargetFilter API.
-//! Falling back to target_creature.
+//! Shoot the Sheriff — `{1}{B}` instant. "Destroy target non-outlaw
+//! creature." Outlaws are Assassin/Mercenary/Pirate/Rogue/Warlock — there's no
+//! "without any of these subtypes" filter; closest expressible target is plain
+//! creature with a doc note. GAP the subtype exclusion.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,23 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target non-outlaw creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target non-outlaw creature.".into(),
+            // GAP: ObjectFilter has no "without any of these subtypes" predicate (outlaw = Assassin/Mercenary/Pirate/Rogue/Warlock).
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: non-outlaw subtype exclusion filter not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

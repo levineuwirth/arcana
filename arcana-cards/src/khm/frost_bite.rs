@@ -1,10 +1,9 @@
-//! Frost Bite — `{R}` snow instant. "Frost Bite deals 2 damage to target
-//! creature or planeswalker. If you control three or more snow permanents,
-//! it deals 3 damage instead."
+//! Frost Bite — `{R}` snow instant. "Frost Bite deals 2 damage to
+//! target creature or planeswalker. If you control three or more snow
+//! permanents, it deals 3 damage instead."
 //!
-//! GAP: Snow supertype not in TypeLine; planeswalker targeting not available;
-//! snow-permanent count conditional not expressible. Deals 2 damage to target
-//! creature as baseline.
+//! The base 2 damage is expressed; the snow-permanent escalation
+//! cannot be tested (no snow predicate).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,24 +25,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Frost Bite deals 2 damage to target creature or planeswalker. If you control three or more snow permanents, it deals 3 damage instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Frost Bite deals 2 damage to target creature or planeswalker. If you control three or more snow permanents, it deals 3 damage instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: snow-permanent count conditional not expressible; planeswalker targeting not available
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "3 damage instead if you control 3+ snow permanents" — no snow predicate.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

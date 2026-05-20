@@ -1,13 +1,8 @@
-//! Involuntary Employment — `{3}{R}` sorcery. "Gain control of target creature
-//! until end of turn. Untap that creature. It gains haste until end of turn.
-//! Create a Treasure token."
-//!
-//! # GAP: temporary control change (gain control until end of turn);
-//!        Treasure token (no mana ability on tokens)
-//! The engine has no `Effect::GainControl` variant.
-//! Treasure token activated ability ({T}, Sacrifice: add mana) is not
-//! expressible in `TokenDefinition.abilities`.
-//! Best-effort: untap, grant haste, and create a colorless artifact token.
+//! Involuntary Employment — `{3}{R}` sorcery. "Gain control of target
+//! creature until end of turn. Untap that creature. It gains haste
+//! until end of turn. Create a Treasure token." Temporary control
+//! change is not modeled; we untap + grant haste to the target and
+//! create a vanilla Treasure artifact token.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -39,15 +34,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let treasure = reg.interner().lookup("Treasure")
-        .expect("Treasure interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: temporary "gain control until end of turn" not modeled.
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::Untap { target: *id });
+        out.push(Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        });
+    }
+    let treasure = reg.interner().lookup("Treasure").expect("Treasure interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
     let token = TokenDefinition {
@@ -60,14 +58,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: no Effect::GainControl; Treasure mana ability not expressible
-    vec![
-        Effect::Untap { target: *id },
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Haste,
-            duration: Duration::EndOfTurn,
-        },
-        Effect::CreateToken { controller: entry.controller, token },
-    ]
+    out.push(Effect::CreateToken { controller: entry.controller, token });
+    out
 }

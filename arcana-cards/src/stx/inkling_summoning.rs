@@ -1,5 +1,5 @@
-//! Inkling Summoning — `{1}{W/B}{W/B}` sorcery — Lesson. "Create a 2/1
-//! white and black Inkling creature token with flying."
+//! Inkling Summoning — `{1}{W/B}{W/B}` sorcery — Lesson. "Create a
+//! 2/1 white and black Inkling creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Inkling Summoning");
-    let _inkling = reg.interner_mut().intern("Inkling");
+    let _ink = reg.interner_mut().intern("Inkling");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W/B}{W/B}").expect("valid cost")),
@@ -20,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create a 2/1 white and black Inkling creature token with flying.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create a 2/1 white and black Inkling creature token with flying.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,11 +34,14 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let inkling = reg.interner().lookup("Inkling").expect("interned");
+    let ink = reg
+        .interner()
+        .lookup("Inkling")
+        .expect("Inkling interned during register()");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(inkling);
+    subtypes.0.insert(ink);
     let token = TokenDefinition {
-        name: inkling,
+        name: ink,
         colors: ColorSet::white() | ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,

@@ -1,10 +1,7 @@
-//! Blessing of Belzenlok — `{B}` instant. "Target creature gets +2/+1 until
-//! end of turn. If it's legendary, it also gains lifelink until end of turn."
-//!
-//! GAP: Conditional effect based on a permanent's legendary supertype at
-//! resolve time is not expressible with Effect::Conditional (the catalog shows
-//! a Conditional variant but its `condition` type is not demonstrated). Best-effort:
-//! render the Pump unconditionally; the lifelink-if-legendary conditional is not expressible.
+//! Blessing of Belzenlok — `{B}` instant. "Target creature gets
+//! +2/+1 until end of turn. If it's legendary, it also gains lifelink
+//! until end of turn." The legendary conditional is not checkable;
+//! the +2/+1 is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,24 +23,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+1 until end of turn. If it's legendary, it also gains lifelink until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+1 until end of turn. If it's legendary, it also gains lifelink until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Effect::Conditional `condition` type not demonstrated; cannot branch on legendary supertype.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if it's legendary, also gains lifelink" — legendary
+    // conditional not checkable.
     vec![Effect::Pump {
         target: *id,
         power: 2,

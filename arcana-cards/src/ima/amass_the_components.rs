@@ -1,11 +1,8 @@
-//! Amass the Components — `{3}{U}` sorcery, "Draw three cards, then put a
+//! Amass the Components — `{3}{U}` sorcery. "Draw three cards, then put a
 //! card from your hand on the bottom of your library."
 //!
-//! # GAP
-//! "Put a card from your hand on the bottom of your library" requires a
-//! player-choice prompt for which hand card to move; there is no
-//! Effect::PutFromHandToBottomOfLibrary or equivalent. DrawCards is fully
-//! expressible.
+//! GAP: no put-card-from-hand-on-bottom-of-library Effect. Emitting the
+//! draw honestly.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: player-choice put-hand-card-to-bottom-of-library not in Effect catalog
+    // GAP: no put-from-hand-on-bottom-of-library primitive.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

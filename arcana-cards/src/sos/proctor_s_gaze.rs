@@ -1,7 +1,10 @@
-//! Proctor's Gaze — `{2}{G}{U}` instant.
-//! "Return up to one target nonland permanent to its owner's hand. Search your
-//! library for a basic land card, put it onto the battlefield tapped, then
-//! shuffle."
+//! Proctor's Gaze — `{2}{G}{U}` instant, "Return up to one target
+//! nonland permanent to its owner's hand. Search your library for a
+//! basic land card, put it onto the battlefield tapped, then shuffle."
+//!
+//! GAP: the tutor filter cannot constrain to the Basic supertype
+//! (ObjectFilter has no supertype refinement), so it is modeled as a
+//! land-card tutor.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +12,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Return up to one target nonland permanent to its owner's hand. Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -44,18 +49,13 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects = Vec::new();
-
-    if let Some(target) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::ReturnToHand { target: *id });
-        }
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ReturnToHand { target: *id });
     }
-
     effects.push(Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
         tapped: true,
     });
-
     effects
 }

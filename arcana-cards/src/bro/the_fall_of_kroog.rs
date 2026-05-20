@@ -1,18 +1,19 @@
-//! The Fall of Kroog — `{4}{R}{R}` sorcery. "Choose target opponent. Destroy
-//! target land that player controls. The Fall of Kroog deals 3 damage to that
-//! player and 1 damage to each creature they control."
+//! The Fall of Kroog — `{4}{R}{R}` sorcery.
+//! "Choose target opponent. Destroy target land that player controls. The Fall
+//! of Kroog deals 3 damage to that player and 1 damage to each creature they control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::objects::NULL_OBJECT_ID;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("The Fall of Kroog");
@@ -48,32 +49,37 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let targets = &entry.targets.targets;
-    if targets.len() < 2 { return Vec::new(); }
-    let opp = match &targets[0] {
+    let mut targets = entry.targets.targets.iter();
+    let Some(player_target) = targets.next() else { return Vec::new(); };
+    let Some(land_target) = targets.next() else { return Vec::new(); };
+
+    let opp = match player_target {
         TargetChoice::Player(p) => *p,
         _ => return Vec::new(),
     };
-    let land_id = match &targets[1] {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    let opp_creatures = script::ids_matching(
+    let TargetChoice::Object(land_id) = land_target else { return Vec::new(); };
+
+    let creature_ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
         entry.controller,
     );
+
     let mut effects = vec![
-        Effect::DestroyPermanent { target: land_id },
-        Effect::DealDamage { source: entry.source, target: DamageTarget::Player(opp), amount: 3 },
-    ];
-    effects.push(Effect::ForEach {
-        targets: opp_creatures,
-        effect: Box::new(Effect::DealDamage {
+        Effect::DestroyPermanent { target: *land_id },
+        Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
-            amount: 1,
-        }),
-    });
+            target: DamageTarget::Player(opp),
+            amount: 3,
+        },
+        Effect::ForEach {
+            targets: creature_ids,
+            effect: Box::new(Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Object(NULL_OBJECT_ID),
+                amount: 1,
+            }),
+        },
+    ];
     effects
 }

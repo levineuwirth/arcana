@@ -1,5 +1,4 @@
-//! Rain of Salt — `{4}{R}{R}` sorcery, "Destroy target land. Destroy target land."
-//! (Two separate targets, each destroyed — effectively destroy two target lands.)
+//! Rain of Salt — `{4}{R}{R}` sorcery. "Destroy two target lands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,23 +23,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target land. Destroy target land.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::new().with_types(TypeLine::LAND.into()),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::new().with_types(TypeLine::LAND.into()),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
+                text: "Destroy two target lands.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(2),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -52,10 +42,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    for target in &entry.targets.targets {
-        let TargetChoice::Object(id) = target else { continue; };
-        effects.push(Effect::DestroyPermanent { target: *id });
+    let mut effs = Vec::new();
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
+            effs.push(Effect::DestroyPermanent { target: *id });
+        }
     }
-    effects
+    effs
 }

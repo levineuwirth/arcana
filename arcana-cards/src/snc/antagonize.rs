@@ -1,4 +1,5 @@
-//! Antagonize — `{1}{R}` instant. "Target creature gets +4/+3 until end of turn."
+//! Antagonize — `{1}{R}` instant. "Target creature gets +4/+3 until
+//! end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

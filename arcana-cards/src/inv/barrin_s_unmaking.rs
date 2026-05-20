@@ -1,9 +1,9 @@
 //! Barrin's Unmaking — `{1}{U}` instant. "Return target permanent to its
-//! owner's hand if that permanent shares a color with the most common color
-//! among all permanents or a color tied for most common."
+//! owner's hand if that permanent shares a color with the most common
+//! color among all permanents or a color tied for most common."
 //!
-//! # GAP: MostCommonColorCondition — no Effect::Conditional predicate for
-//!   'shares a color with the most common color among all permanents'
+//! GAP: no "most common color among all permanents" analysis; the
+//! conditional bounce is emitted unconditionally as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,8 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: MostCommonColorCondition — no Effect::Conditional predicate for most-common-color check
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: most-common-color condition not modeled.
     vec![Effect::ReturnToHand { target: *id }]
 }

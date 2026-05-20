@@ -10,3 +10,5 @@ pub mod vanquish;
 pub mod armed_response;
 pub mod feedback_bolt;
 pub mod shattered_dreams;
+pub mod devour_in_shadow;
+pub mod granulate;

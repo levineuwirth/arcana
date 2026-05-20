@@ -1,8 +1,6 @@
-//! Reprisal — `{1}{W}` instant. "Destroy target creature with power 4 or greater.
-//! It can't be regenerated."
-//!
-//! # GAP: power >= 4 filter on target not expressible; "can't be regenerated" not expressible.
-//! Best approximation: target any creature and destroy it.
+//! Reprisal — `{1}{W}` instant. "Destroy target creature with power
+//! 4 or greater. It can't be regenerated." The can't-be-regenerated
+//! clause has no primitive; the filtered destruction is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,22 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with power 4 or greater. It can't be regenerated.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with power 4 or greater. It can't be regenerated.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().with_min_power(4),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: power >= 4 target filter not expressible; "can't be regenerated" not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // "It can't be regenerated" — no regeneration-shield-denial
+    // primitive; the destruction itself is modeled.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]

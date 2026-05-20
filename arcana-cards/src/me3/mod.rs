@@ -42,3 +42,5 @@ pub mod boomerang;
 pub mod guan_yu_s_1_000_li_march;
 pub mod forked_lightning;
 pub mod cleanse;
+pub mod blood_lust;
+pub mod hellfire;

@@ -1,10 +1,8 @@
-//! Countermand — `{2}{U}{U}` instant, "Counter target spell. Its controller
-//! mills four cards."
+//! Countermand — `{2}{U}{U}` instant. "Counter target spell. Its
+//! controller mills four cards."
 //!
-//! # GAP
-//! Reading the controller of the countered stack object at resolution in
-//! order to mill them is not accessible via the demonstrated StackEntry API.
-//! Counter is fully expressible.
+//! GAP: no controller-of-target accessor to wire the mill to the spell's
+//! controller. Emitting counter only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -46,8 +44,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: target spell's controller not accessible for Mill
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no controller-of-target-spell accessor; emit counter only.
     vec![Effect::Counter { target: *id }]
 }

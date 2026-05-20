@@ -1,5 +1,5 @@
-//! Vines of the Recluse — `{G}` instant. "Target creature gets +1/+2 and
-//! gains reach until end of turn. Untap it."
+//! Vines of the Recluse — `{G}` instant. "Target creature gets +1/+2
+//! and gains reach until end of turn. Untap it."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -23,8 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +1/+2 and gains reach until end of turn. Untap it."
-                    .into(),
+                text: "Target creature gets +1/+2 and gains reach until end of turn. Untap it.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

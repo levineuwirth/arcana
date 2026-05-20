@@ -1,21 +1,20 @@
-//! Gruesome Encore — `{2}{B}` sorcery, "Put target creature card from an
+//! Gruesome Encore — `{2}{B}` sorcery. "Put target creature card from an
 //! opponent's graveyard onto the battlefield under your control. It gains
 //! haste. Exile it at the beginning of the next end step. If that creature
-//! would leave the battlefield, exile it instead of putting it anywhere
-//! else."
+//! would leave the battlefield, exile it instead of putting it anywhere else."
 //!
-//! # GAP
-//! * GAP: delayed triggered ability to exile at the beginning of the next end step
-//! * GAP: replacement effect "if would leave the battlefield, exile it instead"
+//! Note: "exile it instead of putting it anywhere else" is a replacement
+//! effect not expressible as a DelayedAction; the DelayedAction exile covers
+//! the normal end-step case. The replacement rider is a GAP.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -31,11 +30,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Put target creature card from an opponent's graveyard onto the battlefield under your control. It gains haste. Exile it at the beginning of the next end step. If that creature would leave the battlefield, exile it instead of putting it anywhere else.".into(),
+                text: "Put target creature card from an opponent's graveyard onto the battlefield under your control. It gains haste. Exile it at the beginning of the next end step.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: arcana_core::targets::ObjectFilter::creature(),
+                        filter: ObjectFilter::creature(),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -53,6 +52,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "exile it instead of putting it anywhere else" replacement effect not expressible
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: *id },
         Effect::GrantKeyword {
@@ -60,7 +60,11 @@ fn resolve(
             keyword: KeywordAbility::Haste,
             duration: Duration::EndOfTurn,
         },
-        // GAP: delayed triggered ability to exile at the beginning of the next end step
-        // GAP: replacement effect "if would leave the battlefield, exile it instead"
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::Exile,
+        },
     ]
 }

@@ -1,10 +1,10 @@
-//! Chain of Plasma — `{1}{R}` instant. "Chain of Plasma deals 3 damage to any
-//! target. Then that player or that permanent's controller may discard a card.
-//! If the player does, they may copy this spell and may choose a new target
-//! for that copy."
+//! Chain of Plasma — `{1}{R}` instant. "Chain of Plasma deals 3
+//! damage to any target. Then that player or that permanent's
+//! controller may discard a card. If the player does, they may copy
+//! this spell..."
 //!
-//! # GAP: "then controller may discard a card; if they do, copy this spell"
-//! — no Effect variant for optional discard-and-copy-spell chaining.
+//! The optional discard-to-copy chain is not expressible; only the 3
+//! damage is expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,22 +26,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Chain of Plasma deals 3 damage to any target. Then that player or that permanent's controller may discard a card. If the player does, they may copy this spell and may choose a new target for that copy.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Chain of Plasma deals 3 damage to any target. Then that player or that permanent's controller may discard a card. If the player does, they may copy this spell and may choose a new target for that copy.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -50,12 +47,10 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: dt,
-            amount: 3,
-        },
-        // GAP: optional discard by target controller then copy-spell chaining
-    ]
+    // GAP: optional discard-to-copy chain is not expressible.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }]
 }

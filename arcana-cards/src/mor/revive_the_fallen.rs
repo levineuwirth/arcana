@@ -1,12 +1,9 @@
-//! Revive the Fallen — `{1}{B}` sorcery.
-//! "Return target creature card from a graveyard to its owner's hand.
-//! Clash with an opponent. If you win, return Revive the Fallen to its
-//! owner's hand."
-//
-// Keywords (Scryfall-parsed): Clash
-//
-// GAP: Clash mechanic not in supported keyword surface.
-// GAP: "return this spell to owner's hand if you win clash" not expressible.
+//! Revive the Fallen — `{1}{B}` sorcery. "Return target creature card from a
+//! graveyard to its owner's hand. Clash with an opponent. If you win, return
+//! Revive the Fallen to its owner's hand."
+//!
+//! GAP: no Effect variant for Clash or for returning this spell from
+//! graveyard to hand. Emitting the reanimation-to-hand only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -52,6 +51,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Clash mechanic; GAP: return this spell to hand on win
+    // GAP: Clash mechanic and 'return self from graveyard' not supported
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

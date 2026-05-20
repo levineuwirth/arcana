@@ -1,7 +1,7 @@
-//! Afterlife Insurance — `{1}{W/B}` instant. "Creatures you control gain afterlife 1 until end
-//! of turn. Draw a card."
-//! GAP: grant afterlife 1 until end of turn to all creatures you control — GrantKeyword targets
-//! a single ObjectId, not all your creatures; no board-wide temporary keyword grant variant.
+//! Afterlife Insurance — `{1}{W/B}` instant. "Creatures you control
+//! gain afterlife 1 until end of turn. Draw a card." Granting a
+//! keyword to a whole group has no primitive (GrantKeyword is
+//! single-target); the draw is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,24 +21,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Creatures you control gain afterlife 1 until end of turn. Draw a card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Creatures you control gain afterlife 1 until end of turn. Draw a card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    vec![
-        // GAP: grant afterlife 1 until end of turn to all your creatures —
-        // GrantKeyword takes a single ObjectId; no board-wide temporary keyword grant
-        Effect::DrawCards { player: entry.controller, count: 1 },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: granting afterlife 1 to all creatures you control (group
+    // keyword grant) has no primitive.
+    vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

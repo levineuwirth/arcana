@@ -1,9 +1,10 @@
-//! Trade Secrets — `{1}{U}{U}` sorcery.
-//! "Target opponent draws two cards, then you draw up to four cards. That
-//! opponent may repeat this process as many times as they choose."
+//! Trade Secrets — `{1}{U}{U}` sorcery. "Target opponent draws two cards, then
+//! you draw up to four cards. That opponent may repeat this process as many
+//! times as they choose."
 //!
-//! GAP: "opponent may repeat as many times as they choose" loop choice not
-//! expressible with catalog. Best-effort: opponent draws 2, you draw 4.
+//! GAP: the optional "repeat this process as many times as they choose" loop
+//! is not expressible. One iteration (opponent draws two, you draw four) is
+//! emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,10 +41,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
-    // GAP: "may repeat as many times as they choose" loop not in catalog
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: optional repeat-the-process loop
     vec![
-        Effect::DrawCards { player: *opponent, count: 2 },
+        Effect::DrawCards { player: *p, count: 2 },
         Effect::DrawCards { player: entry.controller, count: 4 },
     ]
 }

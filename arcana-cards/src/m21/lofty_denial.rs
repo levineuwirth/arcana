@@ -1,12 +1,6 @@
-//! Lofty Denial — `{1}{U}` instant. "Counter target spell unless its controller
-//! pays {1}. If you control a creature with flying, counter that spell unless
-//! its controller pays {4} instead."
-//!
-//! GAP: Conditional counter cost based on whether controller controls a creature
-//! with flying at resolution time — requires a Conditional wrapping
-//! CounterUnlessPays with flying-creature check, which is not expressible with
-//! the current Effect::Conditional API (no ConditionKind for board-state checks).
-//! Emitting the simpler {1} form.
+//! Lofty Denial — `{1}{U}` instant. "Counter target spell unless its
+//! controller pays {1}. If you control a creature with flying,
+//! counter that spell unless its controller pays {4} instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,17 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell unless its controller pays {1}. If you control a creature with flying, counter that spell unless its controller pays {4} instead.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell unless its controller pays {1}. If you control a creature with flying, counter that spell unless its controller pays {4} instead.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,9 +41,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional counter cost ({1} vs {4}) based on controlling a flying creature
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: the {4} alternate tax conditional on controlling a flier
+    // cannot be expressed; using the base {1} tax.
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{1}").expect("valid cost"),

@@ -1,7 +1,9 @@
-//! Feast of Worms — `{3}{G}{G}` sorcery—Arcane, "Destroy target land. If that land was legendary, its
-//! controller sacrifices another land."
+//! Feast of Worms — `{3}{G}{G}` sorcery — Arcane. "Destroy target
+//! land. If that land was legendary, its controller sacrifices
+//! another land of their choice."
 //!
-//! GAP: conditional sacrifice triggered by legendary subtype is not expressible.
+//! GAP: 'if legendary, its controller sacrifices another land' rider
+//! — no helper to introspect target legendariness or its controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,6 +16,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Feast of Worms");
+    let _arcane = reg.interner_mut().intern("Arcane");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}{G}").expect("valid cost")),
@@ -22,27 +25,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target land. If that land was legendary, its controller sacrifices another land.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::LAND.into())),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target land. If that land was legendary, its controller sacrifices another land of their choice.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::LAND.into())),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional sacrifice on legendary subtype not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: legendary check + 'sacrifices another land' rider.
     vec![Effect::DestroyPermanent { target: *id }]
 }

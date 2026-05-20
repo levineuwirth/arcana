@@ -1,11 +1,9 @@
 //! Thoughtweft Charge — `{1}{G}` instant. "Target creature gets +3/+3
-//! until end of turn. If a creature entered the battlefield under your
-//! control this turn, draw a card."
+//! until end of turn. If a creature entered the battlefield under
+//! your control this turn, draw a card."
 //!
-//! # GAP
-//! "If a creature entered the battlefield under your control this
-//! turn" requires turn-event history not accessible in the resolver.
-//! The pump is modeled; the conditional draw is noted.
+//! "Creature entered the battlefield under your control this turn"
+//! is not in `script::*`; only the pump is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -27,24 +25,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+3 until end of turn. If a creature entered the battlefield under your control this turn, draw a card.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+3 until end of turn. If a creature entered the battlefield under your control this turn, draw a card.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional draw ("if a creature entered this turn") requires turn-event history not accessible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "creature ETB under your control this turn" condition not in script::*.
     vec![Effect::Pump {
         target: *id,
         power: 3,

@@ -1,10 +1,10 @@
-//! Volcanic Spite — `{1}{R}` instant, "Volcanic Spite deals 3 damage to
+//! Volcanic Spite — `{1}{R}` instant. "Volcanic Spite deals 3 damage to
 //! target creature, planeswalker, or battle. You may put a card from your
 //! hand on the bottom of your library. If you do, draw a card."
 //!
-//! # GAP
-//! * GAP: optional "put card from hand to bottom of library" as loot mode selector
-//! * GAP: conditional draw based on above optional choice
+//! GAP: no TargetFilter for planeswalker or battle type, and no Effect variant
+//! for optional hand-to-bottom-of-library looting. Using creature target for
+//! the damage; optional draw rider omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -13,7 +13,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,11 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Volcanic Spite deals 3 damage to target creature, planeswalker, or battle. You may put a card from your hand on the bottom of your library. If you do, draw a card.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                // GAP: no TargetFilter for planeswalker or battle; using creature only
+                target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
             }),
@@ -47,13 +44,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id),
-            amount: 3,
-        },
-        // GAP: optional "put card from hand to bottom of library" as loot mode selector
-        // GAP: conditional draw based on above optional choice
-    ]
+    // GAP: no Effect variant for optional hand-to-bottom loot rider
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Object(*id),
+        amount: 3,
+    }]
 }

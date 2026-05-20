@@ -1,9 +1,6 @@
-//! First Volley — `{1}{R}` instant — Arcane, "First Volley deals 1 damage to
-//! target creature and 1 damage to that creature's controller."
-//!
-//! GAP: Arcane subtype on Instant type line not expressible in TypeLine constants;
-//! GAP: dealing damage to the controller of the targeted creature (derived player
-//! target from object's controller field) not in Effect catalog.
+//! First Volley — `{1}{R}` instant — Arcane. "First Volley deals 1
+//! damage to target creature and 1 damage to that creature's
+//! controller."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "First Volley deals 1 damage to target creature and 1 damage to that creature's controller.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "First Volley deals 1 damage to target creature and 1 damage to that creature's controller.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,10 +36,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Arcane subtype not in TypeLine
-    // GAP: damage to target creature's controller (derived player from object) not in catalog
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: cannot resolve "that creature's controller" to a player for
+    // the second damage; only the creature damage is modeled.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

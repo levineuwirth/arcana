@@ -17,3 +17,6 @@ pub mod bestow_greatness;
 pub mod rise_from_the_wreck;
 pub mod syphon_fuel;
 pub mod spectral_interference;
+pub mod road_rage;
+pub mod risky_shortcut;
+pub mod haunt_the_network;

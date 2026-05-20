@@ -1,8 +1,10 @@
-//! Razor Rings — `{1}{W}` instant.
-//! "Razor Rings deals 4 damage to target attacking or blocking creature. You
-//! gain life equal to the excess damage dealt this way."
-//! GAP: attacking/blocking restriction on target; 'gain life equal to excess damage'
-//! (lifelink-like excess damage calculation not expressible as a simple Effect).
+//! Razor Rings — `{1}{W}` instant. "Razor Rings deals 4 damage to
+//! target attacking or blocking creature. You gain life equal to the
+//! excess damage dealt this way."
+//!
+//! No "attacking or blocking" target filter, and excess-damage
+//! lifegain is not expressible. We deal 4 damage to a targeted
+//! creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,24 +26,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Razor Rings deals 4 damage to target attacking or blocking creature. You gain life equal to the excess damage dealt this way.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Razor Rings deals 4 damage to target attacking or blocking creature. You gain life equal to the excess damage dealt this way.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: attacking/blocking restriction; gain life equal to excess damage
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: no attacking/blocking target filter; excess-damage
+    // lifegain not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

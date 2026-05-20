@@ -1,10 +1,9 @@
-//! Lightning Dart — `{1}{R}` instant.
-//! "Lightning Dart deals 1 damage to target creature. If that creature
-//! is white or blue, Lightning Dart deals 4 damage to it instead."
-//
-// GAP: conditional damage based on creature's color is not expressible
-//      without Effect::Conditional with a color-check condition.
-//      Best effort: deal 1 damage.
+//! Lightning Dart — `{1}{R}` instant. "Lightning Dart deals 1 damage to
+//! target creature. If that creature is white or blue, Lightning Dart deals 4
+//! damage to it instead."
+//!
+//! GAP: cannot inspect target color at resolution for conditional damage.
+//! Emitting unconditional 1-damage as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -43,7 +42,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional 4 damage if creature is white or blue (color-check condition)
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

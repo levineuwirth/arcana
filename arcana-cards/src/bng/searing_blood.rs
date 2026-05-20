@@ -1,12 +1,8 @@
-//! Searing Blood — `{R}{R}` instant. "Searing Blood deals 2 damage to target
-//! creature. When that creature dies this turn, Searing Blood deals 3 damage
-//! to the creature's controller."
-//!
-//! GAP: "when that creature dies this turn" — delayed triggered ability
-//! conditioned on a specific permanent dying within the same turn; no API for
-//! registering a one-shot delayed trigger from a spell resolver.
+//! Searing Blood — `{R}{R}` instant.
+//! "Searing Blood deals 2 damage to target creature. When that creature dies
+//! this turn, Searing Blood deals 3 damage to the creature's controller."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -41,12 +37,24 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "when that creature dies this turn" delayed trigger — no API for one-shot delayed triggers
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 2,
-    }]
+    // The "deals 3 damage to the creature's controller" on-death rider cannot be
+    // expressed exactly: DelayedAction supports Sacrifice/Exile/ReturnToHand actions,
+    // not DealDamage. GAP: on-dies DealDamage to former controller not in DelayedAction catalog.
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 2,
+        },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::ThisDies,
+            action: DelayedAction::Sacrifice,
+        },
+        // GAP: on-dies trigger should deal 3 damage to creature's controller, not sacrifice.
+        //      No DealDamage action exists in DelayedAction.
+    ]
 }

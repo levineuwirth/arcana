@@ -1,7 +1,5 @@
 //! Vivisurgeon's Insight — `{3}{U}{U}` sorcery. "Draw three cards.
 //! Proliferate."
-//!
-//! # GAP: Proliferate effect not in the engine Effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,13 +19,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards. Proliferate.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,6 +33,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Proliferate not in the engine Effect catalog
+    // GAP: Proliferate has no catalog effect; only the draw is modeled.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

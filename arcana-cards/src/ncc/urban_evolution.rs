@@ -1,7 +1,5 @@
-//! Urban Evolution — `{3}{G}{U}` sorcery. Draw three cards. You may play an
-//! additional land this turn.
-//!
-//! GAP: extra land-drop grant for the turn has no catalog Effect variant.
+//! Urban Evolution — `{3}{G}{U}` sorcery. "Draw three cards. You may
+//! play an additional land this turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,11 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: extra land drop this turn not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "you may play an additional land this turn" (extra land
+    // play grant) is not expressible.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

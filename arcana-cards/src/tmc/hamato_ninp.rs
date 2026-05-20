@@ -1,8 +1,8 @@
-//! Hamato Ninpō — `{1}{W}` instant, "Hamato Ninpō deals 4 damage to target
+//! Hamato Ninpō — `{1}{W}` instant. "Hamato Ninpō deals 4 damage to target
 //! attacking or blocking creature."
 //!
-//! # GAP
-//! * GAP: "attacking or blocking" creature filter (no TargetFilter variant restricts by combat status)
+//! GAP: no TargetFilter variant to restrict to attacking-or-blocking creatures;
+//! falling back to unfiltered creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -15,7 +15,7 @@ use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
-    let name = reg.interner_mut().intern("Hamato Ninpō");
+    let name = reg.interner_mut().intern("Hamato Ninp\u{014d}");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
@@ -26,8 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Hamato Ninpō deals 4 damage to target attacking or blocking creature.".into(),
-                // Using generic creature target; GAP: no "attacking or blocking" filter
+                text: "Hamato Ninp\u{014d} deals 4 damage to target attacking or blocking creature.".into(),
+                // GAP: no filter for attacking-or-blocking; using unfiltered creature target
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -40,7 +40,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacking or blocking" creature filter (no TargetFilter variant restricts by combat status)
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

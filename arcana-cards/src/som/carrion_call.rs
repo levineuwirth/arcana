@@ -1,5 +1,5 @@
-//! Carrion Call — `{3}{G}` instant. "Create two 1/1 green Phyrexian Insect
-//! creature tokens with infect."
+//! Carrion Call — `{3}{G}` instant.
+//! "Create two 1/1 green Phyrexian Insect creature tokens with infect."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;

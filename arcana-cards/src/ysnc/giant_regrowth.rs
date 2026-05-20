@@ -1,7 +1,8 @@
-//! Giant Regrowth — `{1}{G}{G}` instant, "Return target card from your graveyard to your hand.
-//! If it's a creature card, it perpetually gets +3/+3."
-//!
-//! GAP: Perpetual +3/+3 effect on a creature card (permanent stat modification across zones).
+//! Giant Regrowth — `{1}{G}{G}` instant. "Return target card from your
+//! graveyard to your hand. If it's a creature card, it perpetually gets
+//! +3/+3."
+//! GAP: "perpetually gets +3/+3" (persistent modifier that follows a card
+//! across zones) not in engine Effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,6 +50,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: perpetual +3/+3 for creature cards (no perpetual effect variant in catalog)
+    // GAP: "perpetually gets +3/+3" persistent cross-zone modifier not in engine Effect catalog
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

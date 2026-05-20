@@ -18,3 +18,5 @@ pub mod rite_of_renewal;
 pub mod perennation;
 pub mod death_begets_life;
 pub mod aggressive_negotiations;
+pub mod knockout_maneuver;
+pub mod twin_bolt;

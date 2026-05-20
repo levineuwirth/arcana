@@ -1,11 +1,7 @@
-//! Structural Assault — `{3}{R}{R}` sorcery. "Destroy all artifacts, then
-//! Structural Assault deals damage to each creature equal to the number of
-//! artifacts that were put into graveyards from the battlefield this turn."
-//!
-//! # GAP: tracking how many artifacts were destroyed (went to graveyard) during
-//!   this resolution — no script helper for "permanents that died this turn"
-//! Best-effort: count artifacts on the battlefield before destroying them, then
-//! use that count for the damage.
+//! Structural Assault — `{3}{R}{R}` sorcery. "Destroy all artifacts,
+//! then Structural Assault deals damage to each creature equal to the
+//! number of artifacts that were put into graveyards from the
+//! battlefield this turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,37 +24,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all artifacts, then Structural Assault deals damage to each creature equal to the number of artifacts that were put into graveyards from the battlefield this turn.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all artifacts, then Structural Assault deals damage to each creature equal to the number of artifacts that were put into graveyards from the battlefield this turn.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // Number of artifacts destroyed this way == artifacts on
+    // battlefield right now (measured before the wipe resolves).
     let artifact_filter = ObjectFilter::new().with_types(TypeLine::ARTIFACT.into());
-    let artifacts = script::ids_matching(state, &artifact_filter, entry.controller);
-    let artifact_count = artifacts.len() as u32;
-    let mut effects: Vec<Effect> = vec![Effect::ForEach {
-        targets: artifacts,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+    let artifact_ids = script::ids_matching(state, &artifact_filter, entry.controller);
+    let amount = artifact_ids.len() as u32;
+    let mut effects = vec![Effect::ForEach {
+        targets: artifact_ids,
+        effect: Box::new(Effect::DestroyPermanent {
+            target: NULL_OBJECT_ID,
+        }),
     }];
-    if artifact_count > 0 {
-        let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-        for id in creatures {
-            effects.push(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(id),
-                amount: artifact_count,
-            });
-        }
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    for c in creatures {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(c),
+            amount,
+        });
     }
     effects
 }

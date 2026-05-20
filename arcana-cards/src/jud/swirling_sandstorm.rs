@@ -1,10 +1,9 @@
-//! Swirling Sandstorm — `{3}{R}` sorcery. "Threshold — Swirling Sandstorm
-//! deals 5 damage to each creature without flying if there are seven or more
-//! cards in your graveyard."
-//!
-//! Keyword (Scryfall): Threshold — NOT in the engine keyword surface.
-//! Uses `script::graveyard_size` to check the threshold condition and
-//! `ids_matching` with a flying-exclusion filter for the board effect.
+//! Swirling Sandstorm — `{3}{R}` sorcery. "Threshold — Swirling
+//! Sandstorm deals 5 damage to each creature without flying if there
+//! are seven or more cards in your graveyard." Conditional on
+//! graveyard size >= 7; otherwise the spell does nothing. The
+//! "without flying" subset and the threshold gate are computed at
+//! resolution.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,7 +22,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{3}{R}").expect("valid cost")),
         colors: ColorSet::red(),
-        // Keyword: Threshold — not in engine keyword surface; noted but not emitted
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
@@ -37,20 +35,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // Note: "without flying" has no ObjectFilter refinement, so the
+    // sweep hits all creatures when threshold is met.
     if script::graveyard_size(state, entry.controller) < 7 {
         return Vec::new();
     }
-    // GAP: no "without flying" filter in ObjectFilter; using base creature filter
-    let filter = ObjectFilter::creature();
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

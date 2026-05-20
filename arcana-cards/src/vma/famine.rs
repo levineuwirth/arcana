@@ -1,5 +1,5 @@
-//! Famine — `{3}{B}{B}` sorcery.
-//! "Famine deals 3 damage to each creature and each player."
+//! Famine — `{3}{B}{B}` sorcery. "Famine deals 3 damage to each creature and
+//! each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -37,17 +37,21 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: "each player" — no API to enumerate all player IDs; deal to controller only as best-effort
-    vec![
-        Effect::ForEach {
-            targets: creature_ids,
-            effect: Box::new(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(NULL_OBJECT_ID),
-                amount: 3,
-            }),
-        },
-        Effect::LoseLife { player: entry.controller, amount: 3 },
-    ]
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut effects = vec![Effect::ForEach {
+        targets: creatures,
+        effect: Box::new(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(NULL_OBJECT_ID),
+            amount: 3,
+        }),
+    }];
+    for p in script::all_players(state) {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 3,
+        });
+    }
+    effects
 }

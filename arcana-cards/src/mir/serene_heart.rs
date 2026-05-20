@@ -1,14 +1,12 @@
-//! Serene Heart — `{1}{G}` instant.
-//! "Destroy all Auras."
+//! Serene Heart — `{1}{G}` instant. "Destroy all Auras."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,29 +19,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all Auras.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all Auras.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // Auras are enchantments; ObjectFilter::permanent with enchantment type covers them
-    let filter = ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into());
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let ids = script::ids_matching(state, &script::subtype_filter(reg, "Aura"), entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: arcana_core::objects::NULL_OBJECT_ID }),
+        effect: Box::new(Effect::DestroyPermanent {
+            target: NULL_OBJECT_ID,
+        }),
     }]
 }

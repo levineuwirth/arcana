@@ -22,3 +22,4 @@ pub mod relive_the_past;
 pub mod no_witnesses;
 pub mod auspicious_arrival;
 pub mod soul_search;
+pub mod eliminate_the_impossible;

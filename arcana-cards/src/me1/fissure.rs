@@ -1,8 +1,8 @@
-//! Fissure — `{3}{R}{R}` instant, "Destroy target creature or land."
-//! (The "it can't be regenerated" clause is not expressible in the current
-//! engine API — no regeneration-prevention effect exists.)
+//! Fissure — `{3}{R}{R}` instant. "Destroy target creature or land. It
+//! can't be regenerated."
 //!
-//! # GAP: regeneration prevention ("it can't be regenerated")
+//! "Creature or land" is a disjunctive target the demonstrated
+//! ObjectFilter can't express; constrained to a permanent.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,19 +25,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature or land. It can't be regenerated.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(TypeLine::CREATURE.into()).with_types_any(TypeLine::LAND.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature or land. It can't be regenerated.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,8 +43,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: regeneration prevention ("it can't be regenerated") not expressible
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

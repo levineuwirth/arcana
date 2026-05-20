@@ -1,10 +1,6 @@
-//! Planetary Annihilation — `{3}{R}{R}` sorcery. "Each player chooses six
-//! lands they control, then sacrifices the rest. Planetary Annihilation deals
-//! 6 damage to each creature."
-//!
-//! # GAP: "each player chooses N lands they control, sacrifice the rest" —
-//!   no Sacrifice or player-choice-of-N-permanents Effect variant
-//! Best-effort: deal 6 damage to each creature (expressible).
+//! Planetary Annihilation — `{3}{R}{R}` sorcery. "Each player chooses
+//! six lands they control, then sacrifices the rest. Planetary
+//! Annihilation deals 6 damage to each creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,26 +23,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Each player chooses six lands they control, then sacrifices the rest. Planetary Annihilation deals 6 damage to each creature.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Each player chooses six lands they control, then sacrifices the rest. Planetary Annihilation deals 6 damage to each creature.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: each player chooses N lands then sacrifices the rest (no Sacrifice / choose-to-keep Effect)
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "each player keeps six lands, sacrifices the rest" (a
+    // keep-N-sacrifice-the-rest choice) is not expressible; emitting
+    // the 6-damage-to-each-creature half.
     let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    creatures.into_iter().map(|id| Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(id),
-        amount: 6,
-    }).collect()
+    creatures
+        .into_iter()
+        .map(|id| Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(id),
+            amount: 6,
+        })
+        .collect()
 }

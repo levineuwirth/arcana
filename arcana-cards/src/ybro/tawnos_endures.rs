@@ -1,8 +1,8 @@
-//! Tawnos Endures — `{W}` instant. "Exile target creature. It gains 'At the
-//! beginning of your upkeep, if this card is exiled, it perpetually gets
-//! +1/+1, then you may put it onto the battlefield.'"
-//! GAP: perpetual effect and triggered upkeep ability granted to an exiled
-//! card not expressible in the current catalog.
+//! Tawnos Endures — `{W}` instant. "Exile target creature. It gains
+//! 'At the beginning of your upkeep, if this card is exiled, it
+//! perpetually gets +1/+1, then you may put it onto the
+//! battlefield.'" The granted upkeep ability with perpetual buff and
+//! optional return is not expressible; we exile the target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,23 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. It gains 'At the beginning of your upkeep, if this card is exiled, it perpetually gets +1/+1, then you may put it onto the battlefield.'".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. It gains \"At the beginning of your upkeep, if this card is exiled, it perpetually gets +1/+1, then you may put it onto the battlefield.\"".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: perpetual effect and upkeep trigger granted to exiled card not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: granted upkeep ability with perpetual +1/+1 and optional
+    // return from exile is not expressible. Exile is emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

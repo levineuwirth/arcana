@@ -1,8 +1,9 @@
-//! Beacon of Destruction — `{3}{R}{R}` instant, "Beacon of Destruction deals 5
-//! damage to any target. Shuffle Beacon of Destruction into its owner's library."
+//! Beacon of Destruction — `{3}{R}{R}` instant. "Beacon of Destruction deals 5
+//! damage to any target. Shuffle Beacon of Destruction into its owner's
+//! library."
 //!
-//! # GAP: shuffle-self-into-library effect not in Effect catalog
-//! Best-effort: DealDamage 5 to any target
+//! GAP: no Effect variant to shuffle this spell back into its owner's library
+//! after resolution. Only the damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -48,7 +49,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: shuffle-self-into-library effect not in Effect catalog
+    // GAP: "shuffle Beacon of Destruction into its owner's library"
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

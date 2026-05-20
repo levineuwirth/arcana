@@ -1,17 +1,15 @@
-//! Chilling Trap — `{U}` instant. Target creature gets -4/-0 until end of
-//! turn. If you control a Wizard, draw a card.
-//!
-//! GAP: conditional draw based on controlling a subtype (Wizard check); the
-//! Pump effect with negative power is expressible.
+//! Chilling Trap — `{U}` instant. "Target creature gets -4/-0 until
+//! end of turn. If you control a Wizard, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -33,19 +31,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional draw if you control a Wizard (subtype check)
-    vec![Effect::Pump {
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let mut out = vec![Effect::Pump {
         target: *id,
         power: -4,
         toughness: 0,
         duration: Duration::EndOfTurn,
         keywords: vec![],
-    }]
+    }];
+    let wizards = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Wizard").controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    if wizards > 0 {
+        out.push(Effect::DrawCards { player: entry.controller, count: 1 });
+    }
+    out
 }

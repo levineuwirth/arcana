@@ -20,3 +20,5 @@ pub mod kick_in_the_door;
 pub mod a_fates_reversal;
 pub mod ray_of_enfeeblement;
 pub mod burning_hands;
+pub mod feign_death;
+pub mod split_the_party;

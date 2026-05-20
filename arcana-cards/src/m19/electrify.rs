@@ -1,4 +1,4 @@
-//! Electrify — `{3}{R}` instant, "Electrify deals 4 damage to target creature."
+//! Electrify — `{3}{R}` instant. "Electrify deals 4 damage to target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

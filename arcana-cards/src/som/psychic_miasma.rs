@@ -2,8 +2,8 @@
 //! land card is discarded this way, return Psychic Miasma to its owner's
 //! hand."
 //!
-//! # GAP: ConditionalReturnSelfToHand — no Effect variant for 'if the
-//!   discarded card was a land, return this spell to its owner's hand'
+//! GAP: no "if a land was discarded, return this spell to hand" rider; the
+//! discard is emitted as best-effort.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -39,9 +39,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ConditionalReturnSelfToHand — no Effect variant for returning this spell based on
-    // what the target player discarded (land check on discarded card)
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::ControllerChooses }]
+    // GAP: "if a land was discarded, return this to hand" rider not modeled.
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::ControllerChooses,
+    }]
 }

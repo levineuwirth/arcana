@@ -4,3 +4,4 @@ pub mod immortal_obligation;
 pub mod mission_briefing;
 pub mod counterpoint;
 pub mod showstopping_surprise;
+pub mod fell_the_mighty;

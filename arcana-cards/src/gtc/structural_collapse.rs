@@ -1,7 +1,6 @@
-//! Structural Collapse — `{5}{R}` sorcery, "Target player sacrifices an artifact and a land
-//! of their choice. Structural Collapse deals 2 damage to that player."
-//!
-//! GAP: No engine effect for 'target player sacrifices a permanent of their choice'.
+//! Structural Collapse — `{5}{R}` sorcery, "Target player sacrifices
+//! an artifact and a land of their choice. Structural Collapse deals 2
+//! damage to that player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,13 +22,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player sacrifices an artifact and a land of their choice. Structural Collapse deals 2 damage to that player.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player sacrifices an artifact and a land of their \
+                   choice. Structural Collapse deals 2 damage to that \
+                   player."
+                .into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,12 +39,24 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: No engine effect for 'target player sacrifices an artifact and a land of their choice'
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Player(*p),
-        amount: 2,
-    }]
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Sacrifice {
+            player: *p,
+            filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+            count: 1,
+        },
+        Effect::Sacrifice {
+            player: *p,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            count: 1,
+        },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(*p),
+            amount: 2,
+        },
+    ]
 }

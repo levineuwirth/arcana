@@ -1,12 +1,12 @@
-//! A-Warm Welcome — `{3}{G}` sorcery.
-//! "Look at the top five cards of your library. You may reveal a creature card
-//! from among them and put it into your hand. Put the rest on the bottom of
-//! your library in a random order. Create two 1/1 green and white Citizen
-//! creature tokens."
+//! A-Warm Welcome — `{3}{G}` sorcery, "Look at the top five cards of
+//! your library. You may reveal a creature card from among them and put
+//! it into your hand. Put the rest on the bottom of your library in a
+//! random order. Create two 1/1 green and white Citizen creature
+//! tokens."
 //!
-//! # GAP: look-at-top-N / optional reveal creature to hand / rest to bottom
-//! random — no Effect variant for this selection pattern. The token creation
-//! is expressible; the library manipulation is not.
+//! GAP: the "look at top five, reveal a creature to hand, rest to
+//! bottom" library-dig has no corresponding Effect. The two token
+//! creations are modeled.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -42,20 +42,20 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: look at top 5, optional reveal creature to hand, rest to bottom random
-    let citizen = reg.interner().lookup("Citizen").expect("Citizen interned during register()");
+    let citizen = reg.interner().lookup("Citizen").expect("Citizen interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(citizen);
     let token = TokenDefinition {
         name: citizen,
         colors: ColorSet::green() | ColorSet::white(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: top-five look / reveal-creature-to-hand not expressible.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

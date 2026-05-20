@@ -1,5 +1,5 @@
-//! Summon Undead — `{4}{B}` sorcery, "You may mill three cards. Then return a
-//! creature card from your graveyard to the battlefield."
+//! Summon Undead — `{4}{B}` sorcery. "You may mill three cards. Then return
+//! target creature card from your graveyard to the battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,9 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "You may mill three cards. Then return a creature card from your graveyard to the battlefield.".into(),
+                text: "You may mill three cards. Then return target creature card from your graveyard to the battlefield.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card { zone: Zone::Graveyard(0), filter: ObjectFilter::creature() },
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
+                    },
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -40,13 +43,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    // "You may mill three" — emit unconditionally (best effort; GAP: optional mill)
-    effects.push(Effect::Mill { player: entry.controller, count: 3 });
-    if let Some(target) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
-        }
-    }
-    effects
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "You may mill 3" is optional; emit the mill then the reanimate.
+    vec![
+        Effect::Mill { player: entry.controller, count: 3 },
+        Effect::ReturnFromGraveyardToBattlefield { target: *id },
+    ]
 }

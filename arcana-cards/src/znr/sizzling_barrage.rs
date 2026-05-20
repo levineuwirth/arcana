@@ -1,10 +1,5 @@
-//! Sizzling Barrage — `{1}{R}` instant. "Sizzling Barrage deals 4 damage
-//! to target creature that blocked this turn."
-//!
-//! # GAP: TargetRequirement cannot filter for "creature that blocked this
-//! turn"; the restriction is not expressible in TargetFilter or
-//! ObjectFilter. The target requirement is simplified to any creature;
-//! the "that blocked this turn" constraint is noted.
+//! Sizzling Barrage — `{1}{R}` instant. "Sizzling Barrage deals 4
+//! damage to target creature that blocked this turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,22 +21,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Sizzling Barrage deals 4 damage to target creature that blocked this turn.".into(),
-                // GAP: "that blocked this turn" filter not expressible in TargetRequirement
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Sizzling Barrage deals 4 damage to target creature that blocked this turn.".into(),
+            // GAP: "that blocked this turn" is not an expressible
+            // target filter; using a plain creature target.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

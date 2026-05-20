@@ -1,8 +1,9 @@
-//! Go Blank — `{2}{B}` sorcery, "Target player discards two cards. Then
-//! exile that player's graveyard."
+//! Go Blank — `{2}{B}` sorcery. "Target player discards two cards.
+//! Then exile that player's graveyard."
 //!
-//! GAP: exile-entire-graveyard-of-player (ExileFromGraveyard targets a
-//! single card — no bulk-exile-player-graveyard variant).
+//! GAP note: "exile that player's graveyard" (mass exile of a whole
+//! graveyard) is not expressible with the available effect catalog;
+//! only the two-card discard is emitted.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,24 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player discards two cards. Then exile that player's graveyard.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player discards two cards. Then exile that player's graveyard.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: exile-entire-graveyard-of-player (no bulk variant in catalog)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: exiling an entire graveyard is not expressible.
     vec![Effect::Discard {
         player: *p,
         count: 2,

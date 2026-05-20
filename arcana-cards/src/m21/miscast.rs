@@ -1,9 +1,5 @@
 //! Miscast — `{U}` instant, "Counter target instant or sorcery spell unless
 //! its controller pays {3}."
-//!
-//! GAP: soft counter ("unless its controller pays {3}") — no conditional-payment
-//! variant of Effect::Counter in catalog; instant-or-sorcery type filter not
-//! available on TargetFilter::Spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +24,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Counter target instant or sorcery spell unless its controller pays {3}.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new()
+                            .without_types(TypeLine::CREATURE.into())
+                            .without_types(TypeLine::ARTIFACT.into())
+                            .without_types(TypeLine::ENCHANTMENT.into())
+                            .without_types(TypeLine::LAND.into())
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -43,9 +45,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: soft counter unless controller pays {3};
-    // instant-or-sorcery type constraint on spell target
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Counter { target: *id }]
+    vec![Effect::CounterUnlessPays {
+        target: *id,
+        cost: ManaCost::parse("{3}").expect("valid cost"),
+    }]
 }

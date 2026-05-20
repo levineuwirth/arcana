@@ -1,10 +1,8 @@
-//! Wolf's Quarry — `{4}{G}{G}` sorcery. "Create three 1/1 green Boar creature
-//! tokens with 'When this token dies, create a Food token.'"
+//! Wolf's Quarry — `{4}{G}{G}` sorcery. "Create three 1/1 green Boar
+//! creature tokens with 'When this token dies, create a Food token.'"
 //!
-//! GAP: triggered ability on tokens ("when this dies, create Food token") not
-//! expressible in TokenDefinition.abilities (no triggered ability API there);
-//! Food token not supported. Partial: three Boar tokens created without
-//! death trigger.
+//! The Boar tokens are created; their dies-trigger (create a Food
+//! token) is not modeled — token abilities are not expressible.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -25,36 +23,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 1/1 green Boar creature tokens with 'When this token dies, create a Food token.'".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 1/1 green Boar creature tokens with \"When this token dies, create a Food token.\"".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: death-trigger "create Food token" not expressible in TokenDefinition.abilities
-    // GAP: Food token not supported
-    let boar = reg.interner().lookup("Boar").expect("Boar interned");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(boar);
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let boar = reg.interner().lookup("Boar").expect("interned");
+    let mut sub = SubtypeSet::default();
+    sub.0.insert(boar);
     let token = TokenDefinition {
         name: boar,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: sub,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: token dies-trigger "create a Food token" not modeled.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token: token.clone() },

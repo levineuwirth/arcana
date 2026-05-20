@@ -1,5 +1,5 @@
-//! Ferocious Charge — `{2}{G}` instant, "Target creature gets +4/+4 until
-//! end of turn. Scry 2."
+//! Ferocious Charge — `{2}{G}` instant. "Target creature gets +4/+4 until end
+//! of turn. Scry 2."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

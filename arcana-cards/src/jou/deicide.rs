@@ -1,10 +1,6 @@
-//! Deicide — `{1}{W}` instant. Exile target enchantment. If the exiled card is
-//! a God card, search its controller's graveyard, hand, and library for any
-//! number of cards with the same name as that card and exile them. Then that
-//! player shuffles.
-//!
-//! GAP: conditional "if exiled card is a God" check; search-by-name-across-zones
-//! and exile-all-copies not in catalog. Core exile-enchantment is expressible.
+//! Deicide — `{1}{W}` instant. "Exile target enchantment. If the
+//! exiled card is a God card, search its controller's graveyard, hand,
+//! and library for cards with the same name and exile them."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target enchantment. If the exiled card is a God card, search its controller's graveyard, hand, and library for any number of cards with the same name as that card and exile them. Then that player shuffles.".into(),
+            text: "Exile target enchantment. If the exiled card is a God card, search its controller's graveyard, hand, and library for any number of cards with the same name as that card and exile them.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
                     ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
@@ -40,13 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional God-check + search-by-name-across-zones exile
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: the God-card name-matching multi-zone exile rider is not
+    // expressible; only the enchantment exile is modeled.
     vec![Effect::ExilePermanent { target: *id }]
 }

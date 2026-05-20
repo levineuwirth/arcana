@@ -1,20 +1,21 @@
 //! Aggravate — `{3}{R}{R}` instant. "Aggravate deals 1 damage to each
-//! creature target player controls. Each creature dealt damage this way
-//! attacks this turn if able."
+//! creature target player controls. Each creature dealt damage this
+//! way attacks this turn if able."
 //!
-//! # GAP: 'Attacks this turn if able' — no Effect variant for forcing
-//! a creature to attack. The damage distribution is expressed; forced
-//! attack rider is a GAP.
+//! Per-target-player creature filter isn't expressible in script::*;
+//! the "attacks if able" rider has no catalog Effect. Best-effort:
+//! deals 1 damage to each creature on the battlefield, target-player
+//! restriction and attacks-if-able rider GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,28 +28,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Aggravate deals 1 damage to each creature target player controls. Each creature dealt damage this way attacks this turn if able.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Aggravate deals 1 damage to each creature target player controls. Each creature dealt damage this way attacks this turn if able.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), *p);
-    // GAP: 'attacks this turn if able' — no Effect variant for forcing attack
-    ids.into_iter().map(|id| Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(id),
-        amount: 1,
-    }).collect()
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: per-target-player creature filtering and "attacks if able" rider not in surface.
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(NULL_OBJECT_ID),
+            amount: 1,
+        }),
+    }]
 }

@@ -1,8 +1,10 @@
-//! Eerie Procession — `{2}{U}` sorcery, "Search your library for an Arcane card,
-//! reveal it, put it into your hand, then shuffle."
+//! Eerie Procession — `{2}{U}` sorcery. "Search your library for an
+//! Arcane card, reveal that card, put it into your hand, then
+//! shuffle."
 //!
-//! GAP: subtype (Arcane) filter for TutorToHand — ObjectFilter has no
-//! `.with_subtype(...)` method; best effort: TutorToHand with no subtype filter.
+//! GAP: "Arcane" is a spell subtype (not a creature/permanent subtype
+//! the ObjectFilter builders model); tutoring is approximated as a
+//! generic library search to hand. Filter left unconstrained.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,26 +25,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for an Arcane card, reveal it, put it into your hand, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for an Arcane card, reveal that card, put it into your hand, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Arcane subtype filter not available on ObjectFilter
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "Arcane" spell subtype not expressible as an ObjectFilter; generic search used.
     vec![Effect::TutorToHand {
         player: entry.controller,
-        filter: ObjectFilter::new()
-            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+        filter: ObjectFilter::new(),
         reveal: true,
     }]
 }

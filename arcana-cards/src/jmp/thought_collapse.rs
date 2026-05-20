@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -20,34 +22,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. Its controller mills three cards.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell. Its controller mills three cards.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
-    // Find the controller of the countered spell from the stack.
-    let spell_controller = state.stack.iter()
-        .find(|e| e.id == *stack_id)
-        .map(|e| e.controller);
-    let Some(spell_controller) = spell_controller else { return Vec::new(); };
-    vec![
-        Effect::Counter { target: *stack_id },
-        Effect::Mill { player: spell_controller, count: 3 },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "its controller mills three cards" needs the countered
+    // spell's controller PlayerId; no permitted script helper resolves
+    // it, so only the counter is emitted.
+    vec![Effect::Counter { target: *id }]
 }

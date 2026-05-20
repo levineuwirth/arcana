@@ -1,9 +1,8 @@
-//! Fated Intervention — `{2}{G}{G}{G}` instant, "Create two 3/3 green Centaur
+//! Fated Intervention — `{2}{G}{G}{G}` instant. "Create two 3/3 green Centaur
 //! enchantment creature tokens. If it's your turn, scry 2."
 //!
-//! # GAP: "if it's your turn" conditional Scry not expressible via Effect::Conditional
-//!        (no ActiveTurn condition in catalog)
-//! Best-effort: always creates tokens; Scry omitted (conditional not expressible)
+//! GAP: no predicate for "if it's your turn", so the conditional Scry 2 is
+//! dropped. The two token creations are emitted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,7 +38,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let centaur = reg.interner().lookup("Centaur").expect("Centaur interned during register()");
+    let centaur = reg.interner().lookup("Centaur").expect("Centaur interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(centaur);
     let token = TokenDefinition {
@@ -52,7 +51,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "if it's your turn, scry 2" — active-turn conditional not in Effect catalog
+    // GAP: conditional "if it's your turn, scry 2"
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

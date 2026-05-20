@@ -1,8 +1,6 @@
-//! Enlarge — `{3}{G}{G}` sorcery, "Target creature gets +7/+7 and gains
-//! trample until end of turn. It must be blocked this turn if able."
-//!
-//! # GAP
-//! GAP: forced-block requirement ("must be blocked if able") not in catalog.
+//! Enlarge — `{3}{G}{G}` sorcery, "Target creature gets +7/+7 and
+//! gains trample until end of turn. It must be blocked this turn if
+//! able." The must-be-blocked rider is not expressible.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -24,24 +22,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +7/+7 and gains trample until end of turn. It must be blocked this turn if able.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +7/+7 and gains trample until end of turn. It must be blocked this turn if able.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: forced-block requirement ("must be blocked if able") not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "must be blocked this turn if able" is not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 7,

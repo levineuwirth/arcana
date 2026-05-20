@@ -1,9 +1,11 @@
-//! Steer Clear — `{W}` instant.
-//! "Steer Clear deals 2 damage to target attacking or blocking creature. Steer
-//! Clear deals 4 damage to that creature instead if you controlled a Mount as
-//! you cast this spell."
-//! GAP: targeting restricted to attacking/blocking creatures; conditional damage
-//! based on controlling a Mount subtype at cast time.
+//! Steer Clear — `{W}` instant. "Steer Clear deals 2 damage to
+//! target attacking or blocking creature. Steer Clear deals 4 damage
+//! to that creature instead if you controlled a Mount as you cast
+//! this spell."
+//!
+//! No catalog filter for "attacking or blocking" creatures, and the
+//! Mount-conditional damage replacement is not expressible. We deal
+//! the base 2 damage to a targeted creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,24 +27,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Steer Clear deals 2 damage to target attacking or blocking creature. Steer Clear deals 4 damage to that creature instead if you controlled a Mount as you cast this spell.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Steer Clear deals 2 damage to target attacking or blocking creature. Steer Clear deals 4 damage to that creature instead if you controlled a Mount as you cast this spell.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: attacking/blocking restriction on target; conditional 4 damage if Mount controlled
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: no "attacking or blocking" target filter; Mount-controlled
+    // 4-damage replacement not expressible. Base 2 damage applied.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,7 +1,8 @@
-//! Live Fast — `{2}{B}` sorcery. "Draw two cards, lose 2 life, and get two
-//! energy counters."
+//! Live Fast — `{2}{B}` sorcery. "You draw two cards, lose 2 life,
+//! and get {E}{E} (two energy counters)."
 //!
-//! GAP: energy counter gain not in Effect catalog.
+//! Draw and life loss are expressed; energy counters have no
+//! primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,22 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards, lose 2 life, and get two energy counters.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "You draw two cards, lose 2 life, and get {E}{E} (two energy counters).".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: energy counter gain not in Effect catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "get {E}{E}" — no energy-counter primitive.
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
         Effect::LoseLife { player: entry.controller, amount: 2 },

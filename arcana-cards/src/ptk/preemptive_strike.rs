@@ -1,4 +1,5 @@
-//! Preemptive Strike — `{1}{U}` instant. "Counter target creature spell."
+//! Preemptive Strike — `{1}{U}` instant. "Counter target creature
+//! spell."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -6,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,9 +44,6 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::Counter { target: *id }]
 }

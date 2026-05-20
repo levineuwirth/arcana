@@ -1,5 +1,5 @@
-//! Spiraling Embers — `{3}{R}` Sorcery—Arcane.
-//! "Spiraling Embers deals damage to any target equal to the number of cards in your hand."
+//! Spiraling Embers — `{3}{R}` sorcery — Arcane, "Spiraling Embers deals
+//! damage to any target equal to the number of cards in your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -37,8 +37,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let amount = script::hand_size(state, entry.controller);
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let amount = script::hand_size(state, entry.controller);
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),

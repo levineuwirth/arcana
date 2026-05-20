@@ -5,3 +5,5 @@ pub mod volcanic_vision;
 pub mod deadly_tempest;
 pub mod reinterpret;
 pub mod nissa_s_renewal;
+pub mod taste_of_death;
+pub mod essence_pulse;

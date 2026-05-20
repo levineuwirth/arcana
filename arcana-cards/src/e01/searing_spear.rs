@@ -1,5 +1,4 @@
-//! Searing Spear — `{1}{R}` instant, "Searing Spear deals 3 damage to any
-//! target."
+//! Searing Spear — `{1}{R}` instant. "Searing Spear deals 3 damage to any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

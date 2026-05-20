@@ -1,8 +1,8 @@
-//! Permission Denied — `{W}{U}` instant, "Counter target noncreature spell.
+//! Permission Denied — `{W}{U}` instant. "Counter target noncreature spell.
 //! Your opponents can't cast noncreature spells this turn."
 //!
-//! # GAP
-//! * GAP: "opponents can't cast noncreature spells this turn" continuous restriction layer
+//! GAP: no Effect variant to prevent opponents from casting spells for a turn.
+//! Only the counter is expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,9 +45,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
-    vec![
-        Effect::Counter { target: *stack_id },
-        // GAP: "opponents can't cast noncreature spells this turn" continuous restriction layer
-    ]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    // GAP: no Effect variant to prevent opponents casting spells for a turn
+    vec![Effect::Counter { target: stack_id }]
 }

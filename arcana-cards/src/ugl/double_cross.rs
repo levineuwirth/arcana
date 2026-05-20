@@ -1,13 +1,12 @@
-//! Double Cross — `{3}{B}{B}` sorcery. "Choose another player. Look at
-//! that player's hand and choose a card other than a basic land card
-//! from it. They discard that card. At the beginning of the first upkeep
-//! in your next game with that player, look at that player's hand and
-//! choose a card other than a basic land card from it. They discard that
-//! card."
+//! Double Cross — `{3}{B}{B}` sorcery. "Choose another player. Look
+//! at that player's hand and choose a card other than a basic land
+//! card from it. They discard that card. At the beginning of the
+//! first upkeep in your next game with that player, look at that
+//! player's hand and choose a card other than a basic land card from
+//! it. They discard that card."
 //!
-//! GAP: look at a player's hand and choose a specific card from it;
-//! cross-game triggered ability ("next game") are not expressible.
-//! Best-effort: target player discards a card (controller chooses).
+//! Modeled as a single targeted discard where you choose; the
+//! cross-game delayed trigger is not expressible.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -28,28 +27,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Choose another player. Look at that player's hand and choose a card other than a basic land card from it. They discard that card. At the beginning of the first upkeep in your next game with that player, look at that player's hand and choose a card other than a basic land card from it. They discard that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Choose another player. Look at that player's hand and choose a card other than a basic land card from it. They discard that card. At the beginning of the first upkeep in your next game with that player, look at that player's hand and choose a card other than a basic land card from it. They discard that card.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: look at hand and choose a specific non-basic-land card
-    // GAP: cross-game triggered ability for next game
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'other than a basic land' card filter on the discard; the
+    // delayed trigger 'in your next game with that player' is also
+    // unsupportable.
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::ControllerChooses,
+        choice: DiscardChoice::OpponentChooses,
     }]
 }

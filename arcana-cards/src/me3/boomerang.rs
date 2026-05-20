@@ -1,5 +1,5 @@
-//! Boomerang — `{U}{U}` instant. "Return target permanent to its owner's
-//! hand."
+//! Boomerang — `{U}{U}` instant. "Return target permanent to its
+//! owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,26 +22,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target permanent to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target permanent to its owner's hand.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ReturnToHand { target: *id }]
 }

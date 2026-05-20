@@ -14,3 +14,4 @@ pub mod ulcerate;
 pub mod butcher_s_glee;
 pub mod nature_s_claim;
 pub mod mark_of_mutiny;
+pub mod grisly_spectacle;

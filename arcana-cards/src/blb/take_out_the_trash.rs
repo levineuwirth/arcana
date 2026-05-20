@@ -2,11 +2,9 @@
 //! damage to target creature or planeswalker. If you control a
 //! Raccoon, you may discard a card. If you do, draw a card."
 //!
-//! # GAP: conditional loot gated on controlling a creature of subtype Raccoon
-//! DealDamage to a permanent is expressible. The optional loot
-//! conditional on a Raccoon in play is not (no subtype-in-play check
-//! in Conditional, no optional discard/draw pairing). Emitting damage
-//! only.
+//! Modeled as the 3 damage; the loot rider depends on a 'Raccoon you
+//! control' check + optional discard-to-draw, which can't be wired as
+//! a discard-then-conditional-draw. GAP: Raccoon-conditional loot.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -15,7 +13,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, ObjectOrPlayer, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,31 +26,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Take Out the Trash deals 3 damage to target creature or planeswalker. If you control a Raccoon, you may discard a card. If you do, draw a card.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Take Out the Trash deals 3 damage to target creature or planeswalker. If you control a Raccoon, you may discard a card. If you do, draw a card.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new().with_types_any(
+                        TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER),
+                    ),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: optional loot conditional on controlling a Raccoon-subtype permanent
+    let dt = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
+    };
+    // GAP: 'If you control a Raccoon, you may discard a card; if you do, draw a card.'
     vec![Effect::DealDamage {
         source: entry.source,
-        target: DamageTarget::Object(*id),
+        target: dt,
         amount: 3,
     }]
 }

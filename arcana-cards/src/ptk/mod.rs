@@ -38,3 +38,4 @@ pub mod return_to_battle;
 pub mod counterintelligence;
 pub mod burning_fields;
 pub mod desert_sandstorm;
+pub mod imperial_edict;

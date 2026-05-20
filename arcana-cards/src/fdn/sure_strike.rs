@@ -1,5 +1,5 @@
-//! Sure Strike — `{1}{R}` instant. "Target creature gets +3/+0 and gains
-//! first strike until end of turn."
+//! Sure Strike — `{1}{R}` instant. "Target creature gets +3/+0 and
+//! gains first strike until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,13 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: 3,

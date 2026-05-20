@@ -1,9 +1,6 @@
-//! Bond of Revival — `{4}{B}` sorcery. "Return target creature card from your
-//! graveyard to the battlefield. It gains haste until your next turn."
-//!
-//! GAP: "until your next turn" duration — Duration only has EndOfTurn; no
-//! "until next upkeep / next turn" variant. ReturnFromGraveyardToBattlefield
-//! is expressed; the haste grant is omitted.
+//! Bond of Revival — `{4}{B}` sorcery. "Return target creature card
+//! from your graveyard to the battlefield. It gains haste until your
+//! next turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -47,8 +46,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: haste until your NEXT turn — Duration has no "until next turn" variant
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "gains haste until your next turn" rider not expressible on a
+    // freshly-reanimated object; the reanimation is applied.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

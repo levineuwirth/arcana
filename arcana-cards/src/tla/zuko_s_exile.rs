@@ -1,9 +1,10 @@
-//! Zuko's Exile — `{5}` instant (colorless) — Lesson, "Exile target artifact,
-//! creature, or enchantment. Its controller creates a Clue token."
+//! Zuko's Exile — `{5}` instant — Lesson, "Exile target artifact,
+//! creature, or enchantment. Its controller creates a Clue token.
+//! (It's an artifact with '{2}, Sacrifice this token: Draw a card.')"
 //!
-//! GAP: target's controller creates a Clue token (Clue token for the target's
-//! controller, not the caster; no way to read target's controller as PlayerId
-//! at resolve time; also Clue / Investigate is not in the Effect catalog).
+//! GAP: Clue token has an activated ability which is not expressible
+//! in TokenDefinition.abilities in the current catalog. Only the exile
+//! is modeled; the Clue token creation is omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,10 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Exile target artifact, creature, or enchantment. Its controller creates a Clue token.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
-                            .with_types_any(TypeLine::ARTIFACT.into())
-                            .with_types_any(TypeLine::CREATURE.into())
-                            .with_types_any(TypeLine::ENCHANTMENT.into()),
+                        ObjectFilter::permanent()
+                            .without_types(TypeLine::LAND.into())
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -50,7 +49,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: target's controller creates a Clue token (Investigate effect not
-    // in catalog; target's controller not accessible as PlayerId)
+    // GAP: Clue token (activated ability) not expressible in TokenDefinition.
     vec![Effect::ExilePermanent { target: *id }]
 }

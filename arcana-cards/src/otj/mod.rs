@@ -17,3 +17,5 @@ pub mod outlaws_fury;
 pub mod full_steam_ahead;
 pub mod slick_sequence;
 pub mod binding_negotiation;
+pub mod betrayal_at_the_vault;
+pub mod throw_from_the_saddle;

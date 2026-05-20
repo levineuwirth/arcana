@@ -1,8 +1,9 @@
-//! Absorb Identity — `{1}{U}` instant, "Return target creature to its owner's
+//! Absorb Identity — `{1}{U}` instant. "Return target creature to its owner's
 //! hand. You may have Shapeshifters you control become copies of that creature
 //! until end of turn."
 //!
-//! # GAP: Shapeshifter-becomes-copy effect not in Effect catalog
+//! GAP: no Effect variant for "Shapeshifters you control become copies of that
+//! creature". Only the bounce is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +41,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Shapeshifter-becomes-copy effect not in Effect catalog
+    // GAP: "Shapeshifters you control become copies of that creature"
     vec![Effect::ReturnToHand { target: *id }]
 }

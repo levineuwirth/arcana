@@ -1,9 +1,9 @@
-//! Declare Dominance — `{3}{G}{G}` sorcery. "Target creature gets +3/+3 until
-//! end of turn. All creatures able to block it this turn do so."
+//! Declare Dominance — `{3}{G}{G}` sorcery. "Target creature gets
+//! +3/+3 until end of turn. All creatures able to block it this turn
+//! do so."
 //!
-//! GAP: "all creatures able to block it this turn do so" (forced-block
-//! restriction until end of turn) is not expressible with the catalog's
-//! Effect variants.
+//! The +3/+3 pump is expressible; the lure ("all creatures able to
+//! block it must do so") has no catalog primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,13 +25,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+3 until end of turn. All creatures able to block it this turn do so.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+3 until end of turn. All \
+                   creatures able to block it this turn do so."
+                .into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,17 +41,19 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: 3,
-            toughness: 3,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        // GAP: all creatures able to block it this turn do so — forced-block
-        // restriction not expressible
-    ]
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "all creatures able to block it this turn do so" (lure) has
+    // no catalog primitive.
+    vec![Effect::Pump {
+        target: *id,
+        power: 3,
+        toughness: 3,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

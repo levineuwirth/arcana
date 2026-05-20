@@ -1,9 +1,9 @@
-//! Absorb Energy — `{1}{U}{U}` instant. "Counter target spell. Cards in your
-//! hand that share a card type with that spell perpetually gain 'This spell
-//! costs {1} less to cast.'"
+//! Absorb Energy — `{1}{U}{U}` instant. "Counter target spell. Cards in
+//! your hand that share a card type with that spell perpetually gain 'This
+//! spell costs {1} less to cast.'"
 //!
-//! # GAP: PerpetualCostReduction — no Effect variant for perpetual cost
-//!   reduction on cards in hand
+//! GAP: no perpetual cost-reduction effect; the counter is emitted as
+//! best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,8 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: PerpetualCostReduction — no Effect variant for perpetual cost reduction on hand cards
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: perpetual "costs {1} less" rider not modeled.
     vec![Effect::Counter { target: *id }]
 }

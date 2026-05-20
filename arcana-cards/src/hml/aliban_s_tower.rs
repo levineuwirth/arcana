@@ -1,6 +1,8 @@
-//! Aliban's Tower — `{1}{R}` instant. "Target blocking creature gets +3/+1 until end of turn."
+//! Aliban's Tower — `{1}{R}` instant. "Target blocking creature gets
+//! +3/+1 until end of turn."
 //!
-//! # GAP: "blocking" filter on TargetFilter/ObjectFilter not in engine catalog.
+//! "blocking" is not an ObjectFilter refinement; the target is an
+//! ordinary creature and the +3/+1 is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,24 +24,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target blocking creature gets +3/+1 until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target blocking creature gets +3/+1 until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "blocking" filter on TargetFilter not in engine catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: 3,

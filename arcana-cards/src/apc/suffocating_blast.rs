@@ -1,9 +1,5 @@
-//! Suffocating Blast — `{1}{U}{U}{R}` instant, "Counter target spell. Suffocating
-//! Blast deals 3 damage to that spell's controller."
-//! Two effects: counter the spell + deal 3 damage to its controller.
-//! GAP: identifying the spell's controller from the stack — damage applied to
-//! the caster of the countered spell; best effort damages the spell's stack
-//! entry controller by using the second target as a player target.
+//! Suffocating Blast — `{1}{U}{U}{R}` instant. "Counter target spell
+//! and Suffocating Blast deals 3 damage to target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,41 +21,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. Suffocating Blast deals 3 damage to that spell's controller.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Spell(ObjectFilter::default()),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement::target_player(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell and Suffocating Blast deals 3 damage to target creature.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement::target_creature(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let stack_id = match t0 {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    let dt = match t1 {
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
-        TargetChoice::Object(id) => DamageTarget::Object(*id),
-        _ => return Vec::new(),
-    };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut iter = entry.targets.targets.iter();
+    let Some(TargetChoice::Object(spell)) = iter.next() else { return Vec::new(); };
+    let Some(TargetChoice::Object(crea)) = iter.next() else { return Vec::new(); };
     vec![
-        Effect::Counter { target: stack_id },
-        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
+        Effect::Counter { target: *spell },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*crea),
+            amount: 3,
+        },
     ]
 }

@@ -1,10 +1,12 @@
-//! Burn the Accursed — `{4}{R}` instant, "Burn the Accursed deals 4 damage to
-//! target creature. If that creature dies this turn, Burn the Accursed deals 2
-//! damage to that creature's controller."
+//! Burn the Accursed — `{4}{R}` instant. "Burn the Accursed deals 5
+//! damage to target creature and 2 damage to that creature's
+//! controller. If that creature would die this turn, exile it
+//! instead."
 //!
-//! GAP: (1) exile-instead-of-die replacement clause; (2) damage to the targeted
-//! creature's controller (requires reading controller field from the object, not
-//! from a TargetChoice::Player) — best effort: DealDamage 4 to target creature.
+//! GAP: replacement "if that creature would die this turn, exile it
+//! instead" has no catalog Effect; and "2 damage to that creature's
+//! controller" has no controller-of-target resolver. The 5 damage to
+//! the targeted creature is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,27 +28,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Burn the Accursed deals 4 damage to target creature. If that creature dies this turn, Burn the Accursed deals 2 damage to that creature's controller.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Burn the Accursed deals 5 damage to target creature and 2 damage to that creature's controller. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: triggered "if dies this turn, deal 2 to controller" and controller lookup
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "2 damage to that creature's controller" + die-replacement-with-exile not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
-        amount: 4,
+        amount: 5,
     }]
 }

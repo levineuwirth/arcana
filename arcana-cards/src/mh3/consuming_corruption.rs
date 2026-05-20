@@ -1,6 +1,6 @@
-//! Consuming Corruption — `{B}{B}` instant. "Consuming Corruption deals X
-//! damage to target creature or planeswalker and you gain X life, where X is
-//! the number of Swamps you control."
+//! Consuming Corruption — `{B}{B}` instant. "Consuming Corruption
+//! deals X damage to target creature or planeswalker and you gain X
+//! life, where X is the number of Swamps you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +10,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,19 +26,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Consuming Corruption deals X damage to target creature or planeswalker and you gain X life, where X is the number of Swamps you control.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Consuming Corruption deals X damage to target creature or planeswalker and you gain X life, where X is the number of Swamps you control.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -47,8 +42,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let swamp_filter = script::subtype_filter(reg, "Swamp");
-    let x = script::count_matching(state, &swamp_filter, entry.controller);
+    let x = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Swamp")
+            .controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
     vec![
         Effect::DealDamage {
             source: entry.source,

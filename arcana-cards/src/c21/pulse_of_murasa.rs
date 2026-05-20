@@ -1,5 +1,5 @@
-//! Pulse of Murasa — `{2}{G}` instant, "Return target creature or land card from a graveyard
-//! to its owner's hand. You gain 6 life."
+//! Pulse of Murasa — `{2}{G}` instant. "Return target creature or land card
+//! from a graveyard to its owner's hand. You gain 6 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,8 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new()
-                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::LAND)),
+                        filter: ObjectFilter::new().with_types_any(
+                            TypeLine(TypeLine::CREATURE | TypeLine::LAND),
+                        ),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,

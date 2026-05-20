@@ -1,7 +1,7 @@
 //! AWOL — `{2}{W}` instant, "Exile target attacking creature."
 //!
-//! GAP: "target attacking creature" — TargetFilter::Creature does not support
-//! an "attacking" constraint.
+//! GAP: no "attacking" creature filter in ObjectFilter; targeting is
+//! approximated as any creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Exile target attacking creature.".into(),
-                // GAP: no "attacking" constraint on TargetFilter::Creature
+                // GAP: no attacking-creature filter; using generic creature target.
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

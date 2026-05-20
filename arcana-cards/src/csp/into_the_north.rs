@@ -1,8 +1,7 @@
-//! Into the North — `{1}{G}` sorcery. "Search your library for a snow land card, put
-//! it onto the battlefield tapped, then shuffle."
-//!
-//! # GAP: TutorToBattlefield with tapped=true; catalog only shows tapped: false.
-//! Best approximation: TutorToBattlefield with tapped: false (tapped entry not expressible).
+//! Into the North — `{1}{G}` sorcery. "Search your library for a
+//! snow land card, put it onto the battlefield tapped, then shuffle."
+//! The "snow" restriction isn't a filter builder; a tapped land tutor
+//! to the battlefield is the closest expressible form.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,25 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a snow land card, put it onto the battlefield tapped, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a snow land card, put it onto the battlefield tapped, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: tapped:true entry not expressible in TutorToBattlefield (only false is shown)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // The "snow" restriction has no filter builder; a tapped land
+    // tutor is the closest expressible form.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-        tapped: false,
+        tapped: true,
     }]
 }

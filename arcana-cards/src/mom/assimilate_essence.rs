@@ -1,8 +1,6 @@
-//! Assimilate Essence — `{1}{U}` instant. "Counter target creature or battle spell unless its
-//! controller pays {4}. If they do, you incubate 2."
-//!
-//! GAP: 'battle' spell filter not in TargetFilter; Incubate mechanic not in Effect catalog.
-//! Emitting CounterUnlessPays targeting creature spell only, with GAP note for battle and incubate.
+//! Assimilate Essence — `{1}{U}` instant. "Counter target creature or
+//! battle spell unless its controller pays {4}. If they do, you
+//! incubate 2."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,28 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target creature or battle spell unless its controller pays {4}. If they do, you incubate 2.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(
-                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target creature or battle spell unless its controller pays {4}. If they do, you incubate 2.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(
+                    ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: battle spell filter not available; Incubate 2 effect not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // The "if they pay, you incubate 2" rider has no Incubate effect;
+    // emit the soft-counter core.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::CounterUnlessPays {

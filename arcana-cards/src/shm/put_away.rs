@@ -1,8 +1,8 @@
-//! Put Away — `{2}{U}{U}` instant, "Counter target spell. You may shuffle
+//! Put Away — `{2}{U}{U}` instant. "Counter target spell. You may shuffle
 //! up to one target card from your graveyard into your library."
 //!
-//! # GAP
-//! - Shuffle card from graveyard into library not in Effect catalog
+//! Counter is honest; the graveyard-shuffle rider has no Effect variant
+//! — GAP that piece.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -36,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     TargetRequirement {
                         filter: TargetFilter::Card {
                             zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::permanent(),
+                            filter: ObjectFilter::new(),
                         },
                         count: TargetCount::UpTo(1),
                         controller: None,
@@ -53,8 +55,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(first) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(spell_id) = first else { return Vec::new(); };
-    // GAP: shuffle card from graveyard into library not in Effect catalog
-    vec![Effect::Counter { target: *spell_id }]
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no shuffle-card-from-graveyard-into-library Effect.
+    vec![Effect::Counter { target: *id }]
 }

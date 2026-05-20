@@ -1,5 +1,5 @@
-//! Ozai's Cruelty — `{2}{B}` Sorcery — Lesson. "Ozai's Cruelty deals 2
-//! damage to target player. That player discards two cards."
+//! Ozai's Cruelty — `{2}{B}` sorcery. "Ozai's Cruelty deals 2 damage to
+//! target player. That player discards two cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::events::DamageTarget;

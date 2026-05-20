@@ -1,21 +1,21 @@
-//! Stern Lesson — `{2}{U}` instant, "Draw two cards, then discard a card. Create
-//! a tapped colorless Powerstone artifact token with '{T}: Add {C}. Spend this
-//! mana only to cast artifact spells or activate abilities of artifacts.'"
+//! Stern Lesson — `{2}{U}` instant. "Draw two cards, then discard a card.
+//! Create a tapped Powerstone token."
 //!
-//! # GAP: Powerstone token's restricted activated mana ability not expressible
-//!        via TokenDefinition.abilities (activated ability syntax not in catalog)
+//! GAP: the Powerstone token enters tapped and carries a mana-ability
+//! ("{T}: Add {C}. This mana can't be spent to cast a nonartifact spell."),
+//! neither of which TokenDefinition can express. Only the draw and discard are
+//! emitted.
 
-use arcana_core::effects::{DiscardChoice, Effect, TokenDefinition};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Stern Lesson");
-    let _powerstone = reg.interner_mut().intern("Powerstone");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{U}").expect("valid cost")),
@@ -26,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards, then discard a card. Create a tapped colorless Powerstone artifact token with '{T}: Add {C}. Spend this mana only to cast artifact spells or activate abilities of artifacts.'".into(),
+                text: "Draw two cards, then discard a card. Create a tapped Powerstone token.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -37,25 +37,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     _state: &GameState,
     entry: &StackEntry,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let powerstone = reg.interner().lookup("Powerstone").expect("Powerstone interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(powerstone);
-    // GAP: Powerstone token's restricted activated mana ability not expressible
-    let token = TokenDefinition {
-        name: powerstone,
-        colors: ColorSet::new(),
-        types: TypeLine::ARTIFACT.into(),
-        subtypes,
-        power: None,
-        toughness: None,
-        keywords: vec![],
-        abilities: vec![],
-    };
+    // GAP: tapped Powerstone token with restricted mana ability
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

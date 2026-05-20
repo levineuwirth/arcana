@@ -1,7 +1,6 @@
-//! Rally Maneuver — `{2}{W}` instant.
-//! "Target creature gets +2/+0 and gains first strike until end of turn.
-//! Up to one other target creature gets +0/+2 and gains lifelink until
-//! end of turn."
+//! Rally Maneuver — `{2}{W}` instant. "Target creature gets +2/+0 and gains
+//! first strike until end of turn. Up to one other target creature gets +0/+2
+//! and gains lifelink until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -10,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,13 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Target creature gets +2/+0 and gains first strike until end of turn. Up to one other target creature gets +0/+2 and gains lifelink until end of turn.".into(),
                 target_requirements: vec![
+                    TargetRequirement::target_creature(),
                     TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
+                        filter: TargetFilter::Permanent(ObjectFilter::creature()),
                         count: TargetCount::UpTo(1),
                         controller: None,
                     },
@@ -49,20 +46,20 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    let mut iter = entry.targets.targets.iter();
-    if let Some(TargetChoice::Object(id)) = iter.next() {
+    let mut effects: Vec<Effect> = Vec::new();
+    let targets = &entry.targets.targets;
+    if let Some(TargetChoice::Object(a)) = targets.first() {
         effects.push(Effect::Pump {
-            target: *id,
+            target: *a,
             power: 2,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::FirstStrike],
         });
     }
-    if let Some(TargetChoice::Object(id)) = iter.next() {
+    if let Some(TargetChoice::Object(b)) = targets.get(1) {
         effects.push(Effect::Pump {
-            target: *id,
+            target: *b,
             power: 0,
             toughness: 2,
             duration: Duration::EndOfTurn,

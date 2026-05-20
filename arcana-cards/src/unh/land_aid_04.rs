@@ -1,9 +1,10 @@
-//! Land Aid '04 — `{G}{G}` sorcery, "Search your library for a basic land card,
-//! put it onto the battlefield tapped, then shuffle. If you sang a song while
-//! casting this spell, untap that land."
+//! Land Aid '04 — `{G}{G}` sorcery, "Search your library for a basic land
+//! card, put that card onto the battlefield tapped, then shuffle. If you
+//! sang a song the whole time you were searching and shuffling, you may
+//! untap that land."
 //!
-//! GAP: conditional untap "if you sang a song while casting" (humorous
-//! out-of-game conditional not expressible in any catalog variant).
+//! The flavor condition ("if you sang a song") is unenforced and
+//! unmodelable; the base effect is TutorToBattlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. If you sang a song while casting this spell, untap that land.".into(),
+                text: "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -39,7 +40,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional untap "if you sang a song while casting" not expressible
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

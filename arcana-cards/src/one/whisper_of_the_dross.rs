@@ -1,9 +1,8 @@
-//! Whisper of the Dross — `{B}` instant. "Target creature gets -1/-1 until
-//! end of turn. Proliferate."
+//! Whisper of the Dross — `{B}` instant. "Target creature gets -1/-1
+//! until end of turn. Proliferate."
 //!
-//! # GAP: Proliferate — no Effect variant for proliferate (choose any number
-//! of permanents and/or players, give each another counter of each kind
-//! already there).
+//! Proliferate has no catalog Effect; only the -1/-1 pump is
+//! expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,31 +24,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -1/-1 until end of turn. Proliferate.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -1/-1 until end of turn. Proliferate.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: -1,
-            toughness: -1,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        // GAP: proliferate — no Effect::Proliferate variant
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: proliferate has no catalog Effect.
+    vec![Effect::Pump {
+        target: *id,
+        power: -1,
+        toughness: -1,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

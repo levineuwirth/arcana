@@ -1,9 +1,11 @@
-//! Pest Summoning — `{1}{B/G}{B/G}` sorcery — Lesson. "Create two 1/1 black and green Pest
-//! creature tokens with 'When this token dies, you gain 1 life.'"
+//! Pest Summoning — `{1}{B/G}{B/G}` sorcery (Lesson). "Create two 1/1
+//! black and green Pest creature tokens with 'When this token dies,
+//! you gain 1 life.'"
 //!
-//! GAP: token triggered ability ("When this token dies, you gain 1 life") is not expressible
-//! via the TokenDefinition.abilities field shown in the catalog (vec of unspecified type).
-//! Type line includes Lesson subtype — expressed via SubtypeSet.
+//! GAP: the per-token death-triggered ability isn't expressible on a
+//! TokenDefinition (abilities vec accepts the engine's ability
+//! struct, not a free-form trigger spec). Tokens are emitted without
+//! the trigger.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -16,7 +18,6 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Pest Summoning");
     let _pest = reg.interner_mut().intern("Pest");
-    let _lesson = reg.interner_mut().intern("Lesson");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{B/G}{B/G}").expect("valid cost")),
@@ -25,22 +26,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 1/1 black and green Pest creature tokens with \"When this token dies, you gain 1 life.\"".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 1/1 black and green Pest creature tokens with \"When this token dies, you gain 1 life.\"".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let pest = reg.interner().lookup("Pest").expect("Pest interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let pest = reg.interner().lookup("Pest").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(pest);
     let token = TokenDefinition {
@@ -51,7 +47,7 @@ fn resolve(
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
-        // GAP: "When this token dies, you gain 1 life" triggered ability not expressible
+        // GAP: token death trigger 'you gain 1 life' not encoded.
         abilities: vec![],
     };
     vec![

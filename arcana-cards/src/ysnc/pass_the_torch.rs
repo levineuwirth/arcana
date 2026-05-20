@@ -1,8 +1,7 @@
-//! Pass the Torch — `{1}{R}` instant, "Pass the Torch deals 2 damage to any
-//! target. That permanent perpetually gains haste."
-//!
-//! GAP: perpetual keyword grants (effects that persist across zones, not just
-//! until end of turn) are not expressible.
+//! Pass the Torch — `{1}{R}` instant. "Pass the Torch deals 2 damage to any
+//! target. Choose a creature card in your hand. It perpetually gains [a
+//! cast-from-graveyard trigger]." Damage is direct; perpetual effects and
+//! hand-card-selection mechanics have no Effect variant — GAP that rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,22 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Pass the Torch deals 2 damage to any target. That permanent perpetually gains haste.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Pass the Torch deals 2 damage to any target. Choose a creature card in your hand. It perpetually gains \"Whenever this creature deals combat damage to a player, you may cast target card named Pass the Torch from your graveyard without paying its mana cost. If you do, this creature perpetually loses this ability\".".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: perpetual keyword grant not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -49,6 +42,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    // GAP: no Effect for perpetual hand-card grant of a triggered ability.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

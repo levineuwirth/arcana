@@ -39,17 +39,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    for target in &entry.targets.targets {
-        let id = match target {
-            TargetChoice::Object(id) => *id,
-            _ => continue,
-        };
-        effects.push(Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(id),
-            amount: 3,
-        });
+    let mut out = Vec::new();
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Object(*id),
+                amount: 3,
+            });
+        }
     }
-    effects
+    out
 }

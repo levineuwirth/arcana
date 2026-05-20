@@ -1,13 +1,8 @@
-//! Feed the Flames — `{3}{R}` instant. "Feed the Flames deals 5
-//! damage to target creature. If that creature would die this turn,
-//! exile it instead."
-//!
-//! # GAP: death-replacement effect (exile instead of dying)
-//! DealDamage 5 to the creature is expressible. The "exile instead of
-//! dying" replacement effect is not available in the Effect catalog.
-//! Emitting damage only.
+//! Feed the Flames — `{3}{R}` instant. "Feed the Flames deals 5 damage
+//! to target creature. If that creature would die this turn, exile it
+//! instead."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -27,27 +22,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Feed the Flames deals 5 damage to target creature. If that creature would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Feed the Flames deals 5 damage to target creature. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: death-replacement effect (exile instead of dying this turn)
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 5,
-    }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 5,
+        },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::ThisDies,
+            action: DelayedAction::Exile,
+        },
+    ]
 }

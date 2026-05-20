@@ -1,12 +1,9 @@
-//! Synthetic Destiny — `{4}{U}{U}` instant. "Exile all creatures you control.
-//! At the beginning of the next end step, reveal cards from the top of your
-//! library until you reveal that many creature cards, put all creature cards
-//! revealed this way onto the battlefield, then shuffle the rest into your
-//! library."
-//!
-//! # GAP: delayed trigger (beginning of next end step) with reveal-until loop
-//! The engine has no mechanism for deferred reveal-until-N-creatures triggers.
-//! Best-effort: exile all your creatures; the delayed replacement is dropped.
+//! Synthetic Destiny — `{4}{U}{U}` instant. "Exile all creatures you
+//! control. At the beginning of the next end step, reveal cards from
+//! the top of your library until you reveal that many creature cards,
+//! put all creature cards revealed this way onto the battlefield ..."
+//! We exile your creatures via ForEach; the delayed library-reveal-
+//! and-deploy rider is not modeled and is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,7 +12,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, ControllerConstraint};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,17 +34,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: the delayed "reveal until N creatures, deploy them" rider
+    // is not modeled. The exile of your creatures is emitted.
     let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
     let ids = script::ids_matching(state, &filter, entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
-    // GAP: delayed end-step trigger to put creature cards onto battlefield
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),

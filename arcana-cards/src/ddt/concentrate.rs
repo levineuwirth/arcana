@@ -1,4 +1,4 @@
-//! Concentrate — `{2}{U}{U}` sorcery, "Draw three cards."
+//! Concentrate — `{2}{U}{U}` sorcery. "Draw three cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

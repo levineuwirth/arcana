@@ -3,3 +3,4 @@ pub mod scarwood_goblins;
 pub mod marsh_goblins;
 pub mod fire_and_brimstone;
 pub mod eternal_flame;
+pub mod cleansing;

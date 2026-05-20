@@ -1,5 +1,5 @@
-//! Into the Maw of Hell — `{4}{R}{R}` sorcery, "Destroy target land. Into the
-//! Maw of Hell deals 13 damage to target creature."
+//! Into the Maw of Hell — `{4}{R}{R}` sorcery. "Destroy target land.
+//! Into the Maw of Hell deals 13 damage to target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -45,20 +45,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(t0) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = t0 {
-            effects.push(Effect::DestroyPermanent { target: *id });
-        }
-    }
-    if let Some(t1) = entry.targets.targets.get(1) {
-        if let TargetChoice::Object(id) = t1 {
-            effects.push(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(*id),
-                amount: 13,
-            });
-        }
-    }
-    effects
+    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(land_id) = t0 else { return Vec::new(); };
+    let TargetChoice::Object(creature_id) = t1 else { return Vec::new(); };
+    vec![
+        Effect::DestroyPermanent { target: *land_id },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*creature_id),
+            amount: 13,
+        },
+    ]
 }

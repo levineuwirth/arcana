@@ -1,4 +1,4 @@
-//! Bathe in Dragonfire — `{2}{R}` sorcery, "Bathe in Dragonfire deals 4 damage
+//! Bathe in Dragonfire — `{2}{R}` sorcery. "Bathe in Dragonfire deals 4 damage
 //! to target creature."
 
 use arcana_core::effects::Effect;

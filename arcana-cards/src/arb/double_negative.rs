@@ -1,4 +1,5 @@
-//! Double Negative — `{U}{U}{R}` instant. "Counter up to two target spells."
+//! Double Negative — `{U}{U}{R}` instant. "Counter up to two target
+//! spells."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -6,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -19,17 +22,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter up to two target spells.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::UpTo(2),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter up to two target spells.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::UpTo(2),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,11 +40,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    entry.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t {
-            Some(Effect::Counter { target: *id })
-        } else {
-            None
-        }
-    }).collect()
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::Counter { target: *id }),
+            _ => None,
+        })
+        .collect()
 }

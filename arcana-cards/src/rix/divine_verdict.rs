@@ -1,4 +1,6 @@
-//! Divine Verdict — `{3}{W}` instant. "Destroy target attacking or blocking creature."
+//! Divine Verdict — `{3}{W}` instant. "Destroy target attacking or
+//! blocking creature." The attacking/blocking restriction has no
+//! filter predicate; a creature target is used.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -6,7 +8,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -19,26 +21,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target attacking or blocking creature.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target attacking or blocking creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "attacking or blocking" target restriction not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,10 +1,9 @@
-//! Fork in the Road — `{1}{G}` sorcery.
-//! "Search your library for up to two basic land cards and reveal them. Put one into your hand
-//!  and the other into your graveyard. Then shuffle."
+//! Fork in the Road — `{1}{G}` sorcery. "Search your library for up to
+//! two basic land cards and reveal them. Put one into your hand and
+//! the other into your graveyard. Then shuffle."
 //!
-//! GAP: Searching for two lands and splitting them between hand and graveyard (player choice)
-//! is not expressible with a single TutorToHand or TutorToBattlefield. Best effort: tutor one
-//! basic land to hand.
+//! Only one basic land to hand is expressible; the second card to
+//! graveyard has no search-to-graveyard primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,13 +24,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for up to two basic land cards and reveal them. Put one into your hand and the other into your graveyard. Then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for up to two basic land cards \
+                   and reveal them. Put one into your hand and the other \
+                   into your graveyard. Then shuffle."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,7 +41,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: search for two lands and split one to hand / one to graveyard not expressible
+    // GAP: ObjectFilter has no "basic" supertype predicate, and there
+    // is no search-to-graveyard primitive for the second card; emitting
+    // a single land tutor-to-hand as the closest approximation.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

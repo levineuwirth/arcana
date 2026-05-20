@@ -1,11 +1,9 @@
-//! Presumed Dead — `{1}{B}` instant. "Target creature gets +2/+0 until end of turn. When that
-//! creature dies this turn, if it was suspected, return it to the battlefield under its owner's
-//! control with a +1/+1 counter on it."
+//! Presumed Dead — `{1}{B}` instant. "Until end of turn, target
+//! creature gets +2/+0 and gains \"When this creature dies, return it
+//! to the battlefield under its owner's control and suspect it.\""
 //!
-//! # GAP: Suspect keyword not in engine catalog.
-//! # GAP: Granting a complex on-death triggered ability with a condition (was suspected)
-//! not in engine catalog.
-//! Partial: Pump +2/+0 only.
+//! The granted dies-trigger / suspect mechanic isn't catalog-
+//! expressible; the +2/+0 until end of turn is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -27,25 +25,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+0 until end of turn. When that creature dies this turn, if it was suspected, return it to the battlefield under its owner's control with a +1/+1 counter on it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, target creature gets +2/+0 and gains \"When this creature dies, return it to the battlefield under its owner's control and suspect it.\"".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Suspect keyword not in engine catalog
-    // GAP: on-death triggered ability conditional on "was suspected" not in engine catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: granting the dies-return + suspect triggered ability is not
+    // a catalog Effect.
     vec![Effect::Pump {
         target: *id,
         power: 2,

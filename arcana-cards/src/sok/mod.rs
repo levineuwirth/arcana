@@ -15,3 +15,4 @@ pub mod inner_calm_outer_strength;
 pub mod gaze_of_adamaro;
 pub mod cut_the_earthly_bond;
 pub mod kiku_s_shadow;
+pub mod oppressive_will;

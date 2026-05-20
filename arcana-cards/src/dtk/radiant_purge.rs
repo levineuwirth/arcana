@@ -1,9 +1,8 @@
-//! Radiant Purge — `{1}{W}` instant, "Exile target multicolored creature or
-//! enchantment."
+//! Radiant Purge — `{1}{W}` instant. "Exile target multicolored
+//! creature or multicolored enchantment."
 //!
-//! # GAP
-//! No ObjectFilter predicate for "multicolored" (more than one color).
-//! Falling back to targeting any creature or enchantment.
+//! No "multicolored" ObjectFilter refinement; best-effort targets a
+//! creature or enchantment. The multicolored predicate is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,29 +25,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target multicolored creature or enchantment.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types_any(
-                        TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT),
-                    )),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target multicolored creature or multicolored enchantment.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types_any(TypeLine::CREATURE.into())
+                        .with_types_any(TypeLine::ENCHANTMENT.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no "multicolored" ObjectFilter predicate
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "multicolored" predicate not in ObjectFilter surface.
     vec![Effect::ExilePermanent { target: *id }]
 }

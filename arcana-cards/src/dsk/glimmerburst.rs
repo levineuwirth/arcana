@@ -1,5 +1,5 @@
-//! Glimmerburst — `{3}{U}` instant, "Draw two cards. Create a 1/1 white
-//! Glimmer enchantment creature token."
+//! Glimmerburst — `{3}{U}` instant. "Draw two cards. Create a 1/1
+//! white Glimmer enchantment creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,22 +20,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards. Create a 1/1 white Glimmer enchantment creature token."
-                    .into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards. Create a 1/1 white Glimmer enchantment creature token.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let glimmer = reg.interner().lookup("Glimmer").expect("Glimmer interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(glimmer);

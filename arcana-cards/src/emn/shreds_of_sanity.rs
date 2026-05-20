@@ -1,18 +1,20 @@
-//! Shreds of Sanity — `{2}{R}` sorcery. "Return up to one target instant card and up
-//! to one target sorcery card from your graveyard to your hand, then discard a card.
-//! Exile Shreds of Sanity."
-//!
-//! # GAP: self-exile not expressible.
+//! Shreds of Sanity — `{2}{R}` sorcery. "Return up to one target
+//! instant card and up to one target sorcery card from your
+//! graveyard to your hand, then discard a card. Exile Shreds of
+//! Sanity." The self-exile has no primitive; the returns and discard
+//! are modeled (partial).
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::zones::Zone;
+use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Shreds of Sanity");
@@ -24,45 +26,48 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return up to one target instant card and up to one target sorcery card from your graveyard to your hand, then discard a card. Exile Shreds of Sanity.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::new().with_types(TypeLine::INSTANT.into()),
-                        },
-                        count: TargetCount::UpTo(1),
-                        controller: None,
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return up to one target instant card and up to one target sorcery card from your graveyard to your hand, then discard a card. Exile Shreds of Sanity.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new()
+                            .with_types(TypeLine::INSTANT.into()),
                     },
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::new().with_types(TypeLine::SORCERY.into()),
-                        },
-                        count: TargetCount::UpTo(1),
-                        controller: None,
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new()
+                            .with_types(TypeLine::SORCERY.into()),
                     },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: self-exile not expressible
-    let mut effects = Vec::new();
-    for t in &entry.targets.targets {
-        if let TargetChoice::Object(id) = t {
-            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
-        }
-    }
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "Exile Shreds of Sanity" (self-exile on resolution) has no
+    // primitive; the returns and discard are modeled.
+    let mut effects: Vec<Effect> = entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => {
+                Some(Effect::ReturnFromGraveyardToHand { target: *id })
+            }
+            _ => None,
+        })
+        .collect();
     effects.push(Effect::Discard {
         player: entry.controller,
         count: 1,

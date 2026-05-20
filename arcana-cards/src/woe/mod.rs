@@ -20,3 +20,4 @@ pub mod monstrous_rage;
 pub mod ego_drain;
 pub mod faerie_slumber_party;
 pub mod gnawing_crescendo;
+pub mod frantic_firebolt;

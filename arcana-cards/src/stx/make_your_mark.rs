@@ -1,10 +1,10 @@
-//! Make Your Mark — `{R/W}` instant. "Target creature gets +1/+0 until end
-//! of turn. When that creature dies this turn, create a 3/2 red and white
-//! Spirit creature token."
-//! GAP: 'when that creature dies this turn' triggered clause cannot be wired
-//! from a spell resolver (no per-resolution trigger registration).
+//! Make Your Mark — `{R/W}` instant. "Target creature gets +1/+0
+//! until end of turn. When that creature dies this turn, create a 3/2
+//! red and white Spirit creature token." The delayed dies-trigger
+//! token is not expressible (DelayedAction has no token-create
+//! action); we emit the +1/+0 pump.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -24,24 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +1/+0 until end of turn. When that creature dies this turn, create a 3/2 red and white Spirit creature token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +1/+0 until end of turn. When that creature dies this turn, create a 3/2 red and white Spirit creature token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'when that creature dies this turn' trigger not registerable from resolver
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "when that creature dies this turn, create a token" — a
+    // delayed dies-triggered token; DelayedAction has no token-create
+    // action variant. Pump is emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: 1,

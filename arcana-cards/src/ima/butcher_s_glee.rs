@@ -1,5 +1,5 @@
-//! Butcher's Glee — `{2}{B}` instant.
-//! "Target creature gets +3/+0 and gains lifelink until end of turn. Regenerate it."
+//! Butcher's Glee — `{2}{B}` instant. "Target creature gets +3/+0 and
+//! gains lifelink until end of turn. Regenerate it."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+0 and gains lifelink until end of turn. Regenerate it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+0 and gains lifelink until end of turn. Regenerate it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

@@ -1,7 +1,6 @@
-//! Duh — `{B}` instant. "Destroy target creature with reminder text."
-//! The "with reminder text" restriction is a targeting constraint; the destroy effect is standard.
-//! GAP: target restriction "has reminder text" — ObjectFilter has no predicate for reminder text
-//! presence; modeled as target_creature() with a note.
+//! Duh — `{B}` instant. "Destroy target creature with reminder
+//! text." The "has reminder text" predicate has no ObjectFilter
+//! support; a creature target is used.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,23 +21,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with reminder text.".into(),
-                // GAP: ObjectFilter cannot express "has reminder text" restriction
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with reminder text.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "with reminder text" target restriction not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

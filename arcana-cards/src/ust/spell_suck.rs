@@ -1,9 +1,8 @@
-//! Spell Suck — `{2}{U}{U}` instant. "Counter target spell, then assemble a
-//! Contraption."
+//! Spell Suck — `{2}{U}{U}` instant. "Counter target spell, then
+//! assemble a Contraption."
 //!
-//! GAP: Contraption assembly mechanic (assemble a Contraption — put the top card
-//! of your Contraption deck face up onto one of your sprockets) is not
-//! expressible with the catalog's Effect variants.
+//! Counter is expressible; "assemble a Contraption" has no catalog
+//! primitive (Contraption decks/sprockets unmodeled).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,17 +25,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell, then assemble a Contraption.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell, then assemble a Contraption."
+                .into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -43,10 +44,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Counter { target: *id },
-        // GAP: assemble a Contraption — Contraption mechanic not in catalog
-    ]
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "assemble a Contraption" is not expressible (Contraption
+    // deck/sprockets unmodeled).
+    vec![Effect::Counter { target: *id }]
 }

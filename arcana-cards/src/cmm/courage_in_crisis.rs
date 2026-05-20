@@ -1,8 +1,6 @@
 //! Courage in Crisis — `{2}{G}` sorcery. "Put a +1/+1 counter on target
-//! creature, then proliferate."
-//!
-//! GAP: Proliferate is not in the usable keyword surface and there is no
-//! Effect::Proliferate in the catalog. Only the +1/+1 counter is emitted.
+//! creature, then proliferate." Counter is direct; proliferate has no Effect
+//! variant in the catalog. GAP that.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,23 +21,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature, then proliferate.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on target creature, then proliferate.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Proliferate effect not in catalog
-    vec![Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: no Effect variant for proliferate.
+    vec![Effect::AddCounters {
+        target: *id,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }

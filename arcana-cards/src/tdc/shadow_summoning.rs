@@ -1,7 +1,5 @@
-//! Shadow Summoning — `{W}{B}` sorcery. Create two tapped 1/1 white Spirit
-//! creature tokens with flying.
-//!
-//! GAP: tokens enter tapped; `CreateToken` has no `tapped` field.
+//! Shadow Summoning — `{W}{B}` sorcery. "Create two tapped 1/1 white
+//! Spirit creature tokens with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -13,7 +11,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Shadow Summoning");
-    let _spirit = reg.interner_mut().intern("Spirit");
+    let _s = reg.interner_mut().intern("Spirit");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{W}{B}").expect("valid cost")),
@@ -31,11 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let spirit = reg.interner().lookup("Spirit").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
@@ -49,7 +43,8 @@ fn resolve(
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    // GAP: tokens enter tapped (no tapped field on CreateToken)
+    // GAP: "tapped" entry state for created tokens is not modeled by
+    // Effect::CreateToken.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

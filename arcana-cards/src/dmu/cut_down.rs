@@ -1,7 +1,9 @@
-//! Cut Down — `{B}` instant, "Destroy target creature with total power and
+//! Cut Down — `{B}` instant. "Destroy target creature with total power and
 //! toughness 5 or less."
 //!
-//! # GAP: "total power and toughness 5 or less" filter not in ObjectFilter
+//! GAP: ObjectFilter offers only independent max-power / max-toughness
+//! refinements, not a combined "power + toughness <= 5" predicate, so the
+//! target is filtered only as a creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +41,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "total power and toughness 5 or less" filter not in ObjectFilter
+    // GAP: no combined power+toughness <= 5 target filter
     vec![Effect::DestroyPermanent { target: *id }]
 }

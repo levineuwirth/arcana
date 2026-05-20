@@ -1,4 +1,5 @@
-//! Tar Snare — `{2}{B}` instant. "Target creature gets -3/-2 until end of turn."
+//! Tar Snare — `{2}{B}` instant.
+//! "Target creature gets -3/-2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

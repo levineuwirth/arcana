@@ -1,7 +1,6 @@
-//! Ranger's Firebrand — `{R}` sorcery. "Ranger's Firebrand deals 2 damage to
-//! any target. The Ring tempts you."
-//!
-//! GAP: "The Ring tempts you" is not in the engine Effect catalog.
+//! Ranger's Firebrand — `{R}` sorcery. "Ranger's Firebrand deals 2
+//! damage to any target. The Ring tempts you." "The Ring tempts you"
+//! has no primitive; the damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,22 +22,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Ranger's Firebrand deals 2 damage to any target. The Ring tempts you.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Ranger's Firebrand deals 2 damage to any target. The Ring tempts you.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "The Ring tempts you" not in Effect catalog.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -48,9 +41,6 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 2,
-    }]
+    // GAP: "The Ring tempts you" has no primitive.
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
 }

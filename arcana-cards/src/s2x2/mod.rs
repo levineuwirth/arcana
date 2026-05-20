@@ -19,3 +19,4 @@ pub mod imperial_seal;
 pub mod ambuscade;
 pub mod damnation;
 pub mod inquisition_of_kozilek;
+pub mod crackling_doom;

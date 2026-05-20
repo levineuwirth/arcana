@@ -44,3 +44,4 @@ pub mod nature_s_way;
 pub mod pillar_of_flame;
 pub mod immolating_gyre;
 pub mod spitting_earth;
+pub mod aerial_assault;

@@ -1,5 +1,6 @@
 //! Consume Strength — `{1}{B}{G}` instant. "Target creature gets +2/+2
-//! until end of turn. Another target creature gets -2/-2 until end of turn."
+//! until end of turn. Another target creature gets -2/-2 until end of
+//! turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -21,31 +22,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. Another target creature gets -2/-2 until end of turn.".into(),
-                target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. Another target creature gets -2/-2 until end of turn.".into(),
+            target_requirements: vec![
+                TargetRequirement::target_creature(),
+                TargetRequirement::target_creature(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let targets = &entry.targets.targets;
-    let Some(t0) = targets.first() else { return Vec::new(); };
-    let Some(t1) = targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(a) = t0 else { return Vec::new(); };
-    let TargetChoice::Object(b) = t1 else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(a)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(b)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
     vec![
-        Effect::Pump { target: *a, power: 2, toughness: 2, duration: Duration::EndOfTurn, keywords: vec![] },
-        Effect::Pump { target: *b, power: -2, toughness: -2, duration: Duration::EndOfTurn, keywords: vec![] },
+        Effect::Pump {
+            target: *a,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+        Effect::Pump {
+            target: *b,
+            power: -2,
+            toughness: -2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
     ]
 }

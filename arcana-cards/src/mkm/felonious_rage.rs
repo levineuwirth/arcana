@@ -1,13 +1,11 @@
-//! Felonious Rage — `{R}` instant. "Target creature you control gets +2/+0
-//! and gains haste until end of turn. When that creature dies this turn,
-//! create a 2/2 white and blue Detective creature token."
+//! Felonious Rage — `{R}` instant. "Target creature you control gets
+//! +2/+0 and gains haste until end of turn. When that creature dies
+//! this turn, create a 2/2 white and blue Detective creature token."
 //!
-//! GAP: death-triggered token creation conditioned on a specific creature
-//! dying this turn (delayed conditional trigger on a chosen permanent) is
-//! not expressible with the current Effect catalog.
+//! The delayed dies-trigger token (Detective) is not expressible from
+//! the spell-resolver effect surface — only the pump/haste is emitted.
 
-use arcana_core::effects::Effect;
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -27,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature you control gets +2/+0 and gains haste until end of turn. When that creature dies this turn, create a 2/2 white and blue Detective creature token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature you control gets +2/+0 and gains haste until end of turn. When that creature dies this turn, create a 2/2 white and blue Detective creature token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,7 +41,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: delayed death-triggered token creation on a specific creature dying this turn
+    // GAP: delayed "when that creature dies this turn, create token"
+    // rider is not expressible from the spell-resolver surface.
     vec![Effect::Pump {
         target: *id,
         power: 2,

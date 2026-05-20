@@ -1,7 +1,7 @@
 //! Not on My Watch — `{1}{W}` instant. "Exile target attacking creature."
 //!
-//! GAP: no TargetFilter for "attacking creature" specifically; using
-//! target_creature() and noting the gap.
+//! GAP: no ObjectFilter refinement for 'attacking'. Best effort: target any
+//! creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Exile target attacking creature.".into(),
-                // GAP: no TargetFilter variant for "attacking creature"
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

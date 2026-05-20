@@ -1,11 +1,6 @@
-//! Chaotic Backlash — `{4}{R}` instant. "Chaotic Backlash deals damage to
-//! target player equal to twice the number of white and/or blue permanents
-//! they control."
-//!
-//! The "white and/or blue permanents they control" count requires filtering by
-//! the target player's control, not the caster's. We use ObjectFilter with
-//! color filter; ControllerConstraint::Opponent is used as best-effort (works
-//! in two-player games).
+//! Chaotic Backlash — `{4}{R}` instant. "Chaotic Backlash deals
+//! damage to target player equal to twice the number of white and/or
+//! blue permanents they control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -45,25 +40,27 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // Count white permanents + blue permanents they control (opponent = best-effort).
+    // Count permanents that player controls that are white or blue.
+    // count_matching is relative to a controller perspective; count
+    // white-or-blue permanents controlled by the target player.
     let white = script::count_matching(
         state,
         &ObjectFilter::permanent()
-            .with_colors(ColorSet::white())
-            .controlled_by(ControllerConstraint::Opponent),
-        entry.controller,
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::white()),
+        *p,
     );
     let blue = script::count_matching(
         state,
         &ObjectFilter::permanent()
-            .with_colors(ColorSet::blue())
-            .controlled_by(ControllerConstraint::Opponent),
-        entry.controller,
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::blue()),
+        *p,
     );
-    let amount = (white + blue) * 2;
+    let n = (white + blue) * 2;
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(*p),
-        amount,
+        amount: n,
     }]
 }

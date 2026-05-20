@@ -1,4 +1,4 @@
-//! Ironwright's Cleansing — `{2}{W}` sorcery, "Exile target artifact or
+//! Ironwright's Cleansing — `{2}{W}` sorcery. "Exile target artifact or
 //! enchantment."
 
 use arcana_core::effects::Effect;
@@ -25,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Exile target artifact or enchantment.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
+                        ObjectFilter::permanent()
                             .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
                     ),
                     count: TargetCount::Exactly(1),

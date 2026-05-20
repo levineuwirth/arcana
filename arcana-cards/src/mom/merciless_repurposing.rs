@@ -1,7 +1,7 @@
-//! Merciless Repurposing — `{4}{B}{B}` instant, "Exile target creature.
+//! Merciless Repurposing — `{4}{B}{B}` instant. "Exile target creature.
 //! Incubate 3."
-//!
-//! GAP: Incubate mechanic (create an Incubator token with 3 +1/+1 counters).
+//! GAP: Incubate token mechanic not in catalog.
+//! Emits ExilePermanent only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +39,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Incubate 3 (create an Incubator token with 3 +1/+1 counters)
+    // GAP: Incubate token mechanic not in catalog
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,9 +1,5 @@
-//! Righteousness — `{W}` instant. "Target blocking creature gets +7/+7 until
-//! end of turn."
-//!
-//! GAP: target restriction "blocking creature" — TargetFilter::Creature has no
-//! predicate for combat state (blocking). Pump +7/+7 is expressed against any
-//! creature.
+//! Righteousness — `{W}` instant. "Target blocking creature gets
+//! +7/+7 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -28,7 +24,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Target blocking creature gets +7/+7 until end of turn.".into(),
-                // GAP: no TargetFilter predicate for "blocking" combat state
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -43,6 +38,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "blocking creature" restriction not expressible in target filter;
+    // applied to target creature.
     vec![Effect::Pump {
         target: *id,
         power: 7,

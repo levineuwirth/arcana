@@ -1,9 +1,8 @@
-//! Electrosiphon — `{U}{U}{R}` instant, "Counter target spell. You get an
+//! Electrosiphon — `{U}{U}{R}` instant. "Counter target spell. You get an
 //! amount of {E} (energy counters) equal to its mana value."
 //!
-//! # GAP
-//! * GAP: energy counter mechanic (no AddEnergyCounters Effect variant)
-//! * GAP: amount equal to target spell's mana value (dynamic value from stack object)
+//! GAP: no Effect variant to give energy counters. Only the counter is
+//! expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,10 +43,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
-    vec![
-        Effect::Counter { target: *stack_id },
-        // GAP: energy counter mechanic (no AddEnergyCounters Effect variant)
-        // GAP: amount equal to target spell's mana value (dynamic value from stack object)
-    ]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    // GAP: no Effect variant for energy counters
+    vec![Effect::Counter { target: stack_id }]
 }

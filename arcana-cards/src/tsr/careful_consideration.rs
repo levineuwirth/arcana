@@ -1,8 +1,10 @@
-//! Careful Consideration — `{2}{U}{U}` instant, "Target player draws four
-//! cards, then discards three cards. If it's your main phase, instead that
-//! player draws four cards, then discards two cards."
-//! GAP: main-phase conditional on discard count not expressible; best effort
-//! uses the non-main-phase clause (draw 4, discard 3).
+//! Careful Consideration — `{2}{U}{U}` instant. "Target player draws
+//! four cards, then discards three cards. If you cast this spell
+//! during your main phase, instead that player draws four cards,
+//! then discards two cards."
+//!
+//! GAP: 'cast during your main phase' phase introspection isn't
+//! available. We model the base draw-4 / discard-3 shape.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,29 +25,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player draws four cards, then discards three cards. If it's your main phase, instead that player draws four cards, then discards two cards.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player draws four cards, then discards three cards. If you cast this spell during your main phase, instead that player draws four cards, then discards two cards.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let player = match target {
-        arcana_core::targets::TargetChoice::Player(p) => *p,
-        _ => return Vec::new(),
-    };
-    // GAP: main-phase conditional on discard count not expressible; using draw 4 discard 3
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'cast during your main phase' phase check.
     vec![
-        Effect::DrawCards { player, count: 4 },
-        Effect::Discard { player, count: 3, choice: DiscardChoice::ControllerChooses },
+        Effect::DrawCards { player: *p, count: 4 },
+        Effect::Discard {
+            player: *p,
+            count: 3,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

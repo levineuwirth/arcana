@@ -1,10 +1,9 @@
-//! Devouring Tendrils — `{1}{G}` sorcery, "Target creature you control deals damage equal to
-//! its power to target creature or planeswalker you don't control. When the permanent you don't
-//! control dies this turn, you gain 2 life."
-//!
-//! GAP: 'target creature or planeswalker' — TargetFilter has no Planeswalker variant; using
-//! Creature target for the non-controller permanent. The 'when it dies this turn, gain 2 life'
-//! triggered ability cannot be registered from a spell resolver.
+//! Devouring Tendrils — `{1}{G}` sorcery. "Target creature you control deals
+//! damage equal to its power to target creature or planeswalker you don't
+//! control. When the permanent you don't control dies this turn, you gain
+//! 2 life."
+//! GAP: DelayedAction supports only Sacrifice/Exile/ReturnToHand; "when it
+//! dies gain 2 life" cannot be expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +12,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,8 +31,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Target creature you control deals damage equal to its power to target creature or planeswalker you don't control. When the permanent you don't control dies this turn, you gain 2 life.".into(),
                 target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
                 ],
                 modal: None,
                 effect: resolve,
@@ -44,13 +57,19 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(attacker_target) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(defender_target) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(attacker_id) = attacker_target else { return Vec::new(); };
-    let TargetChoice::Object(defender_id) = defender_target else { return Vec::new(); };
-    let _pwr = script::power_of(state, *attacker_id);
-    // GAP: one-directional 'deals damage equal to its power' (Fight is symmetric); 'when defender
-    //      dies this turn, gain 2 life' triggered ability from resolver; planeswalker target not
-    //      available in TargetFilter
-    vec![Effect::Fight { a: *attacker_id, b: *defender_id }]
+    let Some(attacker_t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(attacker_id) = attacker_t else { return Vec::new(); };
+    let Some(defender_t) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(defender_id) = defender_t else { return Vec::new(); };
+
+    let pwr = script::power_of(state, *attacker_id);
+    let amount = pwr.max(0) as u32;
+
+    // GAP: "when the permanent you don't control dies this turn, you gain 2 life" —
+    // DelayedAction does not support GainLife as an action
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: arcana_core::events::DamageTarget::Object(*defender_id),
+        amount,
+    }]
 }

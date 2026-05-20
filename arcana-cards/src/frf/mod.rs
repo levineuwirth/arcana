@@ -13,3 +13,7 @@ pub mod neutralizing_blast;
 pub mod enhanced_awareness;
 pub mod sudden_reclamation;
 pub mod harsh_sustenance;
+pub mod pyrotechnics;
+pub mod dark_deal;
+pub mod abzan_advantage;
+pub mod grim_contest;

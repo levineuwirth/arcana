@@ -1,7 +1,7 @@
-//! Avoid Fate — `{G}` instant, "Counter target instant or Aura spell that
-//! targets a permanent you control."
-//!
-//! GAP: "targets a permanent you control" constraint on the spell filter.
+//! Avoid Fate — `{G}` instant. "Counter target instant or Aura spell
+//! that targets a permanent you control."
+//! GAP: TargetFilter::Spell cannot filter for "targets a permanent you
+//! control". Best-effort: counter target spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,10 +42,6 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: "targets a permanent you control" constraint
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::Counter { target: *id }]
 }

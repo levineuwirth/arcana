@@ -1,10 +1,5 @@
-//! Untamed Wilds — `{2}{G}` sorcery, "Search your library for a basic land
-//! card, put it onto the battlefield, then shuffle."
-//!
-//! # GAP
-//! Basic land qualifier (SupertypeSet::BASIC filter) is not available in
-//! ObjectFilter. Best-effort: searches for any land card. Verify pipeline
-//! will flag the missing basic restriction.
+//! Untamed Wilds — `{2}{G}` sorcery. "Search your library for a basic land
+//! card, put that card onto the battlefield, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a basic land card, put it onto the battlefield, then shuffle.".into(),
+                text: "Search your library for a basic land card, put that card onto the battlefield, then shuffle.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -40,7 +35,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: basic land supertype filter not available in ObjectFilter
+    // GAP: ObjectFilter has no "basic" supertype refinement; emitting a
+    // land tutor — broader than "basic" only.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

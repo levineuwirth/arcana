@@ -1,4 +1,5 @@
-//! Spore Swarm — `{3}{G}` instant. "Create three 1/1 green Saproling creature tokens."
+//! Spore Swarm — `{3}{G}` instant. "Create three 1/1 green Saproling
+//! creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -10,7 +11,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Spore Swarm");
-    let _saproling = reg.interner_mut().intern("Saproling");
+    let _sap = reg.interner_mut().intern("Saproling");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
@@ -19,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 1/1 green Saproling creature tokens.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 1/1 green Saproling creature tokens.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -34,13 +34,13 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let saproling = reg.interner().lookup("Saproling").expect("Saproling interned during register()");
+    let sap = reg.interner().lookup("Saproling").expect("Saproling interned");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(saproling);
+    subtypes.0.insert(sap);
     let token = TokenDefinition {
-        name: saproling,
+        name: sap,
         colors: ColorSet::green(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),

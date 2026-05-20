@@ -1,5 +1,5 @@
-//! Oracle's Restoration — `{G}` sorcery. "Target creature you control gets
-//! +1/+1 until end of turn. You draw a card and gain 1 life."
+//! Oracle's Restoration — `{G}` sorcery. "Target creature you control
+//! gets +1/+1 until end of turn. You draw a card and gain 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -8,7 +8,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,13 +24,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature you control gets +1/+1 until end of turn. You draw a card and gain 1 life.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature you control gets +1/+1 until end of turn. You draw a card and gain 1 life.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

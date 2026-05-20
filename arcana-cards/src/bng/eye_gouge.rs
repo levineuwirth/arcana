@@ -1,10 +1,5 @@
 //! Eye Gouge — `{B}` instant. "Target creature gets -1/-1 until end of
 //! turn. If it's a Cyclops, destroy it."
-//!
-//! GAP: SubtypeConditional (checking whether the targeted creature has
-//! the Cyclops subtype at resolution to conditionally destroy it) is
-//! not in the engine effect catalog. The -1/-1 pump is expressed; the
-//! conditional destroy is omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,24 +21,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -1/-1 until end of turn. If it's a Cyclops, destroy it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -1/-1 until end of turn. If it's a Cyclops, destroy it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: SubtypeConditional (conditional destroy if creature is a Cyclops)
+    // GAP: the "if it's a Cyclops, destroy it" subtype-conditional
+    // destroy is not expressible (no per-object subtype predicate in
+    // the catalog); only the -1/-1 is applied.
     vec![Effect::Pump {
         target: *id,
         power: -1,

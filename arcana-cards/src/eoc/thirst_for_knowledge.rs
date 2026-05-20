@@ -1,9 +1,8 @@
-//! Thirst for Knowledge — `{2}{U}` instant, "Draw three cards. Then discard
-//! two cards unless you discard an artifact card."
+//! Thirst for Knowledge — `{2}{U}` instant. "Draw three cards. Then
+//! discard two cards unless you discard an artifact card."
 //!
-//! # GAP
-//! - Conditional discard "unless discard artifact" not expressible; the
-//!   catalog only supports ControllerChooses, OpponentChooses, or Random.
+//! GAP: no conditional-discard-or-pay-with-artifact primitive. We honor
+//! the draw and the worst-case discard-two.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -38,9 +37,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional discard "unless you discard an artifact" not expressible
+    // GAP: no discard-2-unless-discard-an-artifact primitive; emitting
+    // worst case (discard 2).
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

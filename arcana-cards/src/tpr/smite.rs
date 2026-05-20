@@ -1,8 +1,4 @@
 //! Smite — `{W}` instant. "Destroy target blocked creature."
-//!
-//! GAP: TargetBlockedCreature (no TargetFilter variant that restricts to
-//! creatures currently in the blocked state). Using plain creature target
-//! as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,23 +19,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target blocked creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target blocked creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: TargetBlockedCreature (no filter for blocked combat status)
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "blocked creature" target restriction is not filterable.
     vec![Effect::DestroyPermanent { target: *id }]
 }

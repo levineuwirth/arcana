@@ -1,19 +1,17 @@
-//! Statute of Denial — `{2}{U}{U}` instant.
-//! "Counter target spell. If you control a blue creature, draw a card, then
-//! discard a card."
-//!
-//! # GAP: conditional on controlling a blue creature
-//! The counter is expressible. The conditional loot (draw then discard) based
-//! on controlling a blue creature requires a runtime board check not available
-//! in the catalog.
+//! Statute of Denial — `{2}{U}{U}` instant, "Counter target spell. If
+//! you control a blue creature, draw a card, then discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,15 +39,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: conditional "if you control a blue creature" — no runtime board check available
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let mut effects = vec![Effect::Counter { target: *id }];
+    let blue_creatures = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::blue()),
+        entry.controller,
+    );
+    if blue_creatures > 0 {
+        effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
+        effects.push(Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        });
+    }
+    effects
 }

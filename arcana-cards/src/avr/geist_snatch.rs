@@ -1,5 +1,5 @@
-//! Geist Snatch — `{2}{U}{U}` instant. Counter target creature spell. Create a
-//! 1/1 blue Spirit creature token with flying.
+//! Geist Snatch — `{2}{U}{U}` instant. "Counter target creature
+//! spell. Create a 1/1 blue Spirit creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -7,12 +7,14 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Geist Snatch");
-    let _spirit = reg.interner_mut().intern("Spirit");
+    let _s = reg.interner_mut().intern("Spirit");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{U}{U}").expect("valid cost")),
@@ -24,7 +26,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target creature spell. Create a 1/1 blue Spirit creature token with flying.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::creature()),
+                filter: TargetFilter::Spell(
+                    ObjectFilter::new().with_types_any(TypeLine::CREATURE.into()),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -34,16 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     let spirit = reg.interner().lookup("Spirit").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
@@ -58,7 +54,7 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::Counter { target: stack_id },
+        Effect::Counter { target: *id },
         Effect::CreateToken { controller: entry.controller, token },
     ]
 }

@@ -1,8 +1,9 @@
-//! Bring Low — `{3}{R}` instant. "Bring Low deals 3 damage to target creature.
-//! If that creature has a +1/+1 counter on it, Bring Low deals 5 damage to it instead."
+//! Bring Low — `{3}{R}` instant. "Bring Low deals 3 damage to target
+//! creature. If that creature has a +1/+1 counter on it, Bring Low deals 5
+//! damage to it instead."
 //!
-//! GAP: Conditional damage based on whether the target has a +1/+1 counter
-//! (no catalog variant to check counter presence at resolve time; falls back to 3 damage).
+//! GAP: no way to query whether the target has a +1/+1 counter at resolve;
+//! emits the base 3 damage.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional damage based on +1/+1 counter presence; always deals 3
+    // GAP: cannot query +1/+1 counter presence to deal 5 instead.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

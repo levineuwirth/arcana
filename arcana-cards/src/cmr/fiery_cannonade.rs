@@ -1,12 +1,15 @@
-//! Fiery Cannonade — `{2}{R}` instant.
-//! "Fiery Cannonade deals 2 damage to each non-Pirate creature."
-//! GAP: ObjectFilter lacks a builder to exclude a named subtype (non-Pirate constraint);
-//! applies 2 damage to ALL creatures as best effort.
+//! Fiery Cannonade — `{2}{R}` instant. "Fiery Cannonade deals 2 damage to
+//! each non-Pirate creature."
+//!
+//! Iterates non-Pirate creatures via `ids_matching` over creature() with
+//! a Pirate subtype exclusion. GAP: `ObjectFilter` exposes no
+//! `without_subtype` builder, so non-Pirate cannot be narrowed at the
+//! filter level — falling back to damaging every creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -39,13 +42,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter lacks a builder to exclude a named subtype (non-Pirate constraint)
+    // GAP: no "without subtype" builder; damages every creature instead
+    // of only non-Pirate creatures.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    ids.into_iter()
-        .map(|id| Effect::DealDamage {
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(id),
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 2,
-        })
-        .collect()
+        }),
+    }]
 }

@@ -1,9 +1,7 @@
-//! Venser's Diffusion — `{2}{U}` instant, "Return target nonland
-//! permanent or suspended card to its owner's hand."
-//! Partial: ReturnToHand on nonland permanent expressed; suspended card
-//! targeting is a separate zone not expressible with current TargetFilter.
-//!
-//! # GAP: targeting suspended cards (in exile with time counters) not in catalog.
+//! Venser's Diffusion — `{2}{U}` instant. "Return target nonland
+//! permanent or suspended card to its owner's hand." Modeled as
+//! bouncing a target nonland permanent (the suspended-card mode is
+//! not modeled).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,29 +24,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target nonland permanent or suspended card to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target nonland permanent or suspended card to its owner's hand.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: targeting suspended cards in exile not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]
 }

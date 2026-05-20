@@ -1,13 +1,9 @@
-//! Martyr's Cry — `{W}{W}` sorcery. "Exile all white creatures. For each
-//! creature exiled this way, its controller draws a card."
+//! Martyr's Cry — `{W}{W}` sorcery. "Exile all white creatures. For
+//! each creature exiled this way, its controller draws a card."
 //!
-//! The exile-all-white sweep uses `script::ids_matching` with a white-creature
-//! filter fed into `Effect::ForEach { effect: ExilePermanent }`.
-//!
-//! GAP: "its controller draws a card" per exiled creature requires applying
-//! two effects per target (exile + draw for that permanent's controller) —
-//! `ForEach` accepts a single boxed `Effect`, so the per-controller draw
-//! rider cannot be expressed and is omitted.
+//! "Each exiled creature's controller draws" requires a per-id
+//! post-exile callback not in catalog. Best-effort: exile each white
+//! creature; the per-controller draw is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,26 +25,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile all white creatures. For each creature exiled this way, its controller draws a card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile all white creatures. For each creature exiled this way, its controller draws a card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().with_colors(ColorSet::white());
-    let targets = script::ids_matching(state, &filter, entry.controller);
-    // GAP: per-exiled-creature controller draw not expressible via ForEach single-effect
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_colors(ColorSet::white()),
+        entry.controller,
+    );
+    // GAP: per-id post-exile, each exiled creature's controller draws a card —
+    // no per-id callback in catalog.
     vec![Effect::ForEach {
-        targets,
+        targets: ids,
         effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
     }]
 }

@@ -26,3 +26,4 @@ pub mod rakshasa_s_secret;
 pub mod arc_lightning;
 pub mod end_hostilities;
 pub mod bring_low;
+pub mod master_the_way;

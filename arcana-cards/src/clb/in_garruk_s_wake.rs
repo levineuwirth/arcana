@@ -1,5 +1,5 @@
-//! In Garruk's Wake — `{7}{B}{B}` sorcery. "Destroy all creatures you don't
-//! control and all planeswalkers you don't control."
+//! In Garruk's Wake — `{7}{B}{B}` sorcery. "Destroy all creatures you
+//! don't control and all planeswalkers you don't control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures you don't control and all planeswalkers you don't control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures you don't control and all planeswalkers you don't control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,11 +35,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creature_filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let creature_ids = script::ids_matching(state, &creature_filter, entry.controller);
+    // Planeswalkers have no ObjectFilter type const in the catalog;
+    // the creature half ("you don't control") is implemented.
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        entry.controller,
+    );
     vec![Effect::ForEach {
-        targets: creature_ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        targets: ids,
+        effect: Box::new(Effect::DestroyPermanent {
+            target: NULL_OBJECT_ID,
+        }),
     }]
-    // GAP: also destroy all planeswalkers opponents control (no planeswalker ObjectFilter variant)
 }

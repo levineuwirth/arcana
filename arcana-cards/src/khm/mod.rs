@@ -20,3 +20,5 @@ pub mod tibalt_s_trickery;
 pub mod elven_ambush;
 pub mod roots_of_wisdom;
 pub mod blessing_of_frost;
+pub mod reckless_crew;
+pub mod king_harald_s_revenge;

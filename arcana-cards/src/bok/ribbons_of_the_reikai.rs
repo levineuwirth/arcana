@@ -1,6 +1,5 @@
-//! Ribbons of the Reikai — `{4}{U}` sorcery — Arcane.
+//! Ribbons of the Reikai — `{4}{U}` sorcery (Arcane).
 //! "Draw a card for each Spirit you control."
-//! GAP: no subtype filter for Spirit-typed creatures in the scripting API (script::subtype_filter is for creatures by creature subtype, but here it's used in a count — this is expressible via subtype_filter + count_matching).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,18 +21,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw a card for each Spirit you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw a card for each Spirit you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Spirit");
-    let n = script::count_matching(state, &filter, entry.controller);
+    let n = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Spirit"),
+        entry.controller,
+    );
     vec![Effect::DrawCards { player: entry.controller, count: n }]
 }

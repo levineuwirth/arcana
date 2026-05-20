@@ -1,9 +1,10 @@
-//! Transmogrify — `{3}{R}` sorcery. "Exile target creature. That creature's controller reveals
-//! cards from the top of their library until they reveal a creature card. That player puts that
-//! card onto the battlefield, then shuffles the rest into their library."
-//! GAP: exile creature then reveal-until-creature-and-put-onto-battlefield for that creature's
-//!      controller (not the spell's controller) not in catalog.
-//! Best effort: exile target creature; tutor portion is GAP.
+//! Transmogrify — `{3}{R}` sorcery. "Exile target creature. That
+//! creature's controller reveals cards from the top of their library
+//! until they reveal a creature card. That player puts that card onto
+//! the battlefield, then shuffles the rest into their library."
+//!
+//! The exile is emitted; reveal-until-creature and put-onto-battlefield
+//! are not modeled — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. That creature's controller reveals cards from the top of their library until they reveal a creature card. That player puts that card onto the battlefield, then shuffles the rest into their library.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. That creature's controller reveals cards from the top of their library until they reveal a creature card. That player puts that card onto the battlefield, then shuffles the rest into their library.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,8 +39,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: reveal-until-creature + put onto battlefield for that creature's controller
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: reveal-until-creature + put-onto-battlefield not modeled.
     vec![Effect::ExilePermanent { target: *id }]
 }

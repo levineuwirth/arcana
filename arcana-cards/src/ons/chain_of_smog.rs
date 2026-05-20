@@ -1,7 +1,7 @@
-//! Chain of Smog — `{1}{B}` sorcery, "Target player discards two cards. That player may copy
-//! this spell and may choose a new target for that copy."
-//!
-//! GAP: Spell-copy mechanic (player may copy the spell and retarget) not in Effect catalog.
+//! Chain of Smog — `{1}{B}` sorcery. "Target player discards two cards. That
+//! player may copy this spell and may choose a new target for that copy."
+//! GAP: "may copy this spell" (spell copy / fork mechanic) not in engine
+//! Effect catalog.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -38,11 +38,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: target player may copy this spell (spell-copy mechanic)
-    vec![Effect::Discard {
-        player: *p,
-        count: 2,
-        choice: DiscardChoice::ControllerChooses,
-    }]
+    let player = match target {
+        arcana_core::targets::TargetChoice::Player(p) => *p,
+        _ => return Vec::new(),
+    };
+    // GAP: "may copy this spell" fork mechanic not in engine Effect catalog
+    vec![Effect::Discard { player, count: 2, choice: DiscardChoice::ControllerChooses }]
 }

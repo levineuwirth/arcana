@@ -1,10 +1,7 @@
-//! No Witnesses — `{2}{W}{W}` sorcery. "Each player who controls the most
-//! creatures investigates. Then destroy all creatures."
-//!
-//! # GAP: "player who controls the most creatures investigates" conditional
-//! The engine has no Clue token or Investigate effect, and no way to evaluate
-//! which player controls the most creatures.  Best-effort: destroy all
-//! creatures (the board wipe).
+//! No Witnesses — `{2}{W}{W}` sorcery. "Each player who controls the
+//! most creatures investigates. Then destroy all creatures." The
+//! conditional per-player investigate (Clue token) is not modeled; we
+//! emit the board wipe (destroy all creatures).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,16 +32,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: conditional per-player investigate (Clue token) not
+    // modeled. Board wipe emitted.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
-    // GAP: no Investigate effect and no most-creatures-player check
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

@@ -1,8 +1,6 @@
-//! Light of Judgment — `{4}{R}` instant, "Light of Judgment deals 6 damage to target creature.
-//! Destroy up to one Equipment attached to that creature."
-//!
-//! GAP: Destroy Equipment attached to the target creature (conditional secondary destroy
-//! on an object filtered by attachment relationship to target).
+//! Light of Judgment — `{4}{R}` instant. "Light of Judgment deals 6 damage to
+//! target creature. Destroy up to one Equipment attached to that creature."
+//! GAP: no ObjectFilter for "equipment attached to a specific target creature"
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +39,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: destroy up to one Equipment attached to the target creature
+    // GAP: no filter for "equipment attached to a specific creature" — only damage emitted
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

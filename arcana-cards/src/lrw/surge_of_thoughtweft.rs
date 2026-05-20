@@ -1,15 +1,11 @@
-//! Surge of Thoughtweft — `{1}{W}` kindred instant — Kithkin.
-//! "Creatures you control get +1/+1 until end of turn. If you control a
-//! Kithkin, draw a card."
-//!
-//! Note: Kindred instant type and Kithkin subtype not modeled in TypeLine;
-//! treated as plain Instant. GAP: Arcane/Kindred supertypes on Instant.
-//! GAP: conditional draw based on controlling a specific creature subtype.
+//! Surge of Thoughtweft — `{1}{W}` Kindred Instant — Kithkin.
+//! "Creatures you control get +1/+1 until end of turn. If you control
+//! a Kithkin, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -19,7 +15,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Surge of Thoughtweft");
-    // GAP: Kindred instant type not modeled
+    let _kithkin = reg.interner_mut().intern("Kithkin");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
@@ -28,41 +24,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Creatures you control get +1/+1 until end of turn. If you control a Kithkin, draw a card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Creatures you control get +1/+1 until end of turn. If you control a Kithkin, draw a card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // The "if you control a Kithkin, draw" rider is not expressible;
+    // emit the team pump.
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let mut effects: Vec<Effect> = ids.into_iter().map(|id| Effect::Pump {
-        target: id,
-        power: 1,
-        toughness: 1,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }).collect();
-    // Conditional draw if you control a Kithkin
-    let kithkin_count = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Kithkin").controlled_by(ControllerConstraint::You),
-        entry.controller,
-    );
-    if kithkin_count > 0 {
-        effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
-    }
-    effects
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::Pump {
+            target: NULL_OBJECT_ID,
+            power: 1,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        }),
+    }]
 }

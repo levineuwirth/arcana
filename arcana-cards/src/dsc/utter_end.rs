@@ -1,4 +1,4 @@
-//! Utter End — `{2}{W}{B}` instant, "Exile target nonland permanent."
+//! Utter End — `{2}{W}{B}` instant. "Exile target nonland permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

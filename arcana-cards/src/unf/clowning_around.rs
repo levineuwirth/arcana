@@ -1,10 +1,8 @@
 //! Clowning Around — `{1}{W}` sorcery. "Create two 1/1 white Clown Robot
 //! artifact creature tokens, then roll a six-sided die. If the result is
-//! equal to or less than the number of Robots you control, create a 1/1 white
-//! Clown Robot artifact creature token."
-//!
-//! GAP: die-rolling mechanic and conditional token creation based on Robot
-//! count are not expressible with the catalog. Two base tokens are created.
+//! equal to or less than the number of Robots you control, create a 1/1
+//! white Clown Robot artifact creature token." Die-roll has no Effect; we
+//! emit only the two unconditional tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +10,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,21 +24,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 1/1 white Clown Robot artifact creature tokens, then roll a six-sided die. If the result is equal to or less than the number of Robots you control, create a 1/1 white Clown Robot artifact creature token.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 1/1 white Clown Robot artifact creature tokens, then roll a six-sided die. If the result is equal to or less than the number of Robots you control, create a 1/1 white Clown Robot artifact creature token.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let clown = reg.interner().lookup("Clown").expect("Clown interned during register()");
     let robot = reg.interner().lookup("Robot").expect("Robot interned during register()");
     let mut subtypes = SubtypeSet::default();
@@ -57,7 +49,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: die roll and conditional third token not supported
+    // GAP: die roll + conditional third token requires randomness/Effect we don't have.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

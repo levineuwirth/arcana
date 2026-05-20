@@ -24,3 +24,5 @@ pub mod scatter_ray;
 pub mod hostile_negotiations;
 pub mod the_fall_of_kroog;
 pub mod emergency_weld;
+pub mod sibling_rivalry;
+pub mod corrupt;

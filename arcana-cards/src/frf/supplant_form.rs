@@ -1,9 +1,6 @@
-//! Supplant Form — `{4}{U}{U}` instant. Return target creature to its owner's
-//! hand. You create a token that's a copy of that creature.
-//!
-//! GAP: "create a token that's a copy of that creature" requires inspecting
-//! the target creature's characteristics at resolution to build a TokenDefinition;
-//! no copy-token Effect variant in catalog.
+//! Supplant Form — `{4}{U}{U}` instant. "Return target creature to
+//! its owner's hand. You create a token that's a copy of that
+//! creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,13 +30,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: create token copy of the targeted creature
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "create a token that's a copy of that creature" requires a
+    // copy-token primitive (TokenDefinition is static); only the
+    // bounce is modeled.
     vec![Effect::ReturnToHand { target: *id }]
 }

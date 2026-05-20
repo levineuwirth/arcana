@@ -1,8 +1,8 @@
-//! Wrap in Flames — `{3}{R}` sorcery, "Wrap in Flames deals 1 damage to each
-//! of up to three target creatures. Those creatures can't block this turn."
-//!
-//! GAP: "can't block this turn" restriction; UpTo(3) targeting with
-//! ForEach damage across multiple chosen targets.
+//! Wrap in Flames — `{3}{R}` sorcery. "Wrap in Flames deals 1 damage to
+//! each of up to three target creatures. Those creatures can't block this
+//! turn."
+//! GAP: "can't block this turn" effect not in catalog.
+//! Emits DealDamage to each of up to 3 targets (TargetCount::UpTo(3)).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -43,7 +43,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "can't block this turn" restriction
     entry.targets.targets.iter().filter_map(|t| {
         if let TargetChoice::Object(id) = t {
             Some(Effect::DealDamage {

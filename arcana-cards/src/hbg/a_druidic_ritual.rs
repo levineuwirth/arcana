@@ -1,11 +1,6 @@
-//! A-Druidic Ritual — `{2}{G}` sorcery.
-//! "You may mill three cards. Then return up to two creature and/or land
-//! cards from your graveyard to your hand."
-//!
-//! # GAP: 'return up to two creature and/or land cards from graveyard to hand'
-//! — no TargetCount::UpTo(2) on a graveyard Card filter with a
-//! creature-or-land type union is demonstrated. Modelled as mill + single
-//! graveyard-to-hand as partial approximation.
+//! A-Druidic Ritual — `{2}{G}` sorcery. "You may mill three cards.
+//! Then return up to two creature and/or land cards from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,22 +20,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "You may mill three cards. Then return up to two creature and/or land cards from your graveyard to your hand.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "You may mill three cards. Then return up to two creature and/or land cards from your graveyard to your hand.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: optional mill (no 'may' Effect modifier)
-    // GAP: return up to two creature/land cards from graveyard to hand
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // "Return up to two creature and/or land cards from your
+    // graveyard" needs a disjunctive multi-target graveyard
+    // selection, not expressible; emit the mill (the optional "may"
+    // is taken).
     vec![Effect::Mill { player: entry.controller, count: 3 }]
 }

@@ -1,11 +1,8 @@
-//! Anticognition — `{1}{U}` instant. "Counter target creature or planeswalker
-//! spell unless its controller pays {2}. If an opponent has eight or more
-//! cards in their graveyard, instead counter that spell, then scry 2."
-//!
-//! # GAP: conditional counter-or-scry based on opponent graveyard size
-//! The engine has no `Effect::Conditional` condition variant that checks an
-//! opponent's graveyard size.  Best-effort: emit the unconditional soft-counter
-//! only; the scry-2 bonus branch is dropped.
+//! Anticognition — `{1}{U}` instant. "Counter target creature or
+//! planeswalker spell unless its controller pays {2}. If an opponent
+//! has eight or more cards in their graveyard, instead counter that
+//! spell, then scry 2." The graveyard-conditional hard-counter+scry
+//! branch isn't expressible; we emit the base soft counter ({2}).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,10 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target creature or planeswalker spell unless its controller pays {2}. If an opponent has eight or more cards in their graveyard, instead counter that spell, then scry 2.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::SORCERY))
-                ),
+                filter: TargetFilter::Spell(ObjectFilter::default()),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -44,14 +38,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional branch (scry 2 when opponent has 8+ cards in graveyard)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: opponent-graveyard-size-conditional hard counter + scry 2
+    // branch not expressible. Base soft counter emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{2}").expect("valid cost"),

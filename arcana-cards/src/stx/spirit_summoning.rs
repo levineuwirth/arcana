@@ -1,5 +1,5 @@
-//! Spirit Summoning — `{1}{R/W}{R/W}` sorcery — Lesson.
-//! "Create a 3/2 red and white Spirit creature token."
+//! Spirit Summoning — `{1}{R/W}{R/W}` sorcery — Lesson. "Create a 3/2 red
+//! and white Spirit creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -16,7 +16,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{1}{R/W}{R/W}").expect("valid cost")),
         colors: ColorSet::red() | ColorSet::white(),
-        types: TypeLine::SORCERY.into(),
+        types: TypeLine(TypeLine::SORCERY),
         ..Default::default()
     };
     reg.register(
@@ -35,13 +35,13 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned during register()");
+    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
     let token = TokenDefinition {
         name: spirit,
         colors: ColorSet::red() | ColorSet::white(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),

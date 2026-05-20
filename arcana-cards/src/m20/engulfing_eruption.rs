@@ -1,4 +1,5 @@
-//! Engulfing Eruption — `{2}{R}{R}` sorcery, "Engulfing Eruption deals 5 damage to target creature."
+//! Engulfing Eruption — `{2}{R}{R}` sorcery. "Engulfing Eruption deals 5
+//! damage to target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

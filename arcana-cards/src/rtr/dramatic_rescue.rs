@@ -1,5 +1,5 @@
-//! Dramatic Rescue — `{W}{U}` instant.
-//! "Return target creature to its owner's hand. You gain 2 life."
+//! Dramatic Rescue — `{W}{U}` instant. "Return target creature to its owner's
+//! hand. You gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

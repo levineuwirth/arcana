@@ -1,4 +1,4 @@
-//! Dispel — `{U}` instant. "Counter target instant spell."
+//! Dispel — `{U}` instant, "Counter target instant spell."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

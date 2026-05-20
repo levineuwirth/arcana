@@ -1,11 +1,14 @@
-//! Price of Loyalty — `{2}{R}` sorcery, "Gain control of target creature until
-//! end of turn. Untap that creature. It gains haste until end of turn."
+//! Price of Loyalty — `{2}{R}` sorcery, "Gain control of target creature
+//! until end of turn. Untap that creature. It gains haste until end of turn.
+//! If mana from a Treasure was spent to cast this spell, that creature gets
+//! +2/+0 until end of turn."
 //!
-//! GAP: gain control of target creature until end of turn (no
-//! Effect::GainControl or temporary-control-change effect in catalog).
+//! GAP: "gain control of target creature until end of turn" — control-change
+//! effect is not in the Effect catalog.
+//! GAP: "if mana from a Treasure was spent" — mana source tracking not
+//! available.
 
-use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -26,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn.".into(),
+                text: "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. If mana from a Treasure was spent to cast this spell, that creature gets +2/+0 until end of turn.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,13 +44,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: gain control of target creature until end of turn
-    vec![
-        Effect::Untap { target: *id },
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Haste,
-            duration: Duration::EndOfTurn,
-        },
-    ]
+    // GAP: control change until end of turn not in Effect catalog.
+    // GAP: Treasure mana source tracking not available.
+    // Partial: Untap is expressible.
+    vec![Effect::Untap { target: *id }]
 }

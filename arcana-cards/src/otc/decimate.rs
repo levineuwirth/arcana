@@ -22,58 +22,50 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact, target creature, target enchantment, and target land.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::new().with_types(TypeLine::LAND.into()),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact, target creature, target enchantment, and target land.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| {
-            if let TargetChoice::Object(id) = t {
-                Some(Effect::DestroyPermanent { target: *id })
-            } else {
-                None
-            }
-        })
-        .collect()
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            effects.push(Effect::DestroyPermanent { target: *id });
+        }
+    }
+    effects
 }

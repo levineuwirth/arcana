@@ -1,7 +1,9 @@
-//! Otherworldly Outburst — `{R}` instant. "Target creature gets +1/+0 until end of turn. When
-//! that creature dies this turn, create a 3/2 colorless Eldrazi Horror creature token."
-//! GAP: granting a temporary until-end-of-turn death trigger to the targeted creature.
-//! Best effort: pump +1/+0; death-trigger token creation is GAP.
+//! Otherworldly Outburst — `{R}` instant. "Target creature gets +1/+0
+//! until end of turn. When that creature dies this turn, create a 3/2
+//! colorless Eldrazi Horror creature token."
+//!
+//! The +1/+0 is emitted; the delayed dies-trigger token is not
+//! expressible — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -23,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +1/+0 until end of turn. When that creature dies this turn, create a 3/2 colorless Eldrazi Horror creature token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +1/+0 until end of turn. When that creature dies this turn, create a 3/2 colorless Eldrazi Horror creature token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,9 +39,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "when that creature dies this turn, create a 3/2 colorless Eldrazi Horror token"
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: delayed dies-trigger token creation not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 1,

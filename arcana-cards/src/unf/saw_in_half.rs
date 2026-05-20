@@ -1,10 +1,6 @@
-//! Saw in Half — `{2}{B}` instant. Destroy target creature. If that creature
-//! dies this way, its controller creates two tokens that are copies of that
-//! creature, except their power is half that creature's power and their
-//! toughness is half that creature's toughness (round up each time).
-//!
-//! GAP: conditional death trigger from spell; copy tokens with modified
-//! half-PT values; no catalog variant supports these mechanics.
+//! Saw in Half — `{2}{B}` instant. "Destroy target creature. If that
+//! creature dies this way, its controller creates two tokens that are
+//! copies of that creature (halved P/T)."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature. If that creature dies this way, its controller creates two tokens that are copies of that creature, except each token's power is half that creature's power and each token's toughness is half that creature's toughness. Round up each time.".into(),
+            text: "Destroy target creature. If that creature dies this way, its controller creates two tokens that are copies of that creature, except their power and toughness are half (round up).".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -34,13 +30,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional on creature dying this way + copy tokens with halved PT
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "create two halved copies of that creature" requires a
+    // copy-token primitive; only the destroy is modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

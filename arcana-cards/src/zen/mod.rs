@@ -13,3 +13,5 @@ pub mod trapmaker_s_snare;
 pub mod trapfinder_s_trick;
 pub mod desecrated_earth;
 pub mod seismic_shudder;
+pub mod primal_bellow;
+pub mod mind_sludge;

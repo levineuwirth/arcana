@@ -1,10 +1,9 @@
-//! Tasteful Offering — `{1}{B}` sorcery.
-//! "You get a two-time boon with 'Whenever you sacrifice one or more permanents,
-//! seek a nonland card.' Create a Food token."
-//! GAP: 'two-time boon' (limited-use triggered ability) not in catalog;
-//! GAP: Seek mechanic not in catalog;
-//! GAP: Food token has activated ability not expressible in TokenDefinition;
-//! emitting a plain Food artifact token only.
+//! Tasteful Offering — `{1}{B}` sorcery. "You get a two-time boon with
+//! 'Whenever you sacrifice one or more permanents, seek a nonland card.'
+//! Create a Food token."
+//!
+//! GAP: no 'two-time boon' / replacement-budget Effect; no 'seek' Effect.
+//! Best effort: create a Food token (with no activated ability modeled).
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -40,21 +39,19 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let food = reg.interner().lookup("Food").expect("Food interned during register()");
+    let food = reg.interner().lookup("Food").expect("Food interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
-    // GAP: two-time boon triggered ability not in catalog
-    // GAP: Seek mechanic not in catalog
-    // GAP: Food token activated ability not expressible in TokenDefinition
     let token = TokenDefinition {
         name: food,
         colors: ColorSet::new(),
-        types: TypeLine(TypeLine::ARTIFACT),
+        types: TypeLine::ARTIFACT.into(),
         subtypes,
         power: None,
         toughness: None,
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: 'two-time boon' and seek not modeled
     vec![Effect::CreateToken { controller: entry.controller, token }]
 }

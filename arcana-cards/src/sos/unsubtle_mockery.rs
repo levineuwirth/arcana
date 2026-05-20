@@ -1,5 +1,5 @@
-//! Unsubtle Mockery — `{2}{R}` instant, "Unsubtle Mockery deals 4 damage
-//! to target creature. Surveil 1."
+//! Unsubtle Mockery — `{2}{R}` instant. "Unsubtle Mockery deals 4
+//! damage to target creature. Surveil 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,29 +21,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Unsubtle Mockery deals 4 damage to target creature. Surveil 1.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Unsubtle Mockery deals 4 damage to target creature. Surveil 1.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![
         Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 4,
         },
-        Effect::Surveil { player: entry.controller, count: 1 },
+        Effect::Surveil {
+            player: entry.controller,
+            count: 1,
+        },
     ]
 }

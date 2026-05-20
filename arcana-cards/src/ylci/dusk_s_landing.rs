@@ -1,14 +1,8 @@
-//! Dusk's Landing — `{B}` sorcery.
-//! "Draw a card. If an opponent lost life this turn and you gained life
-//! this turn, seek two Vampire cards instead."
-//
-// Keywords (Scryfall-parsed): Seek
-//
-// GAP: Seek mechanic not supported.
-// GAP: conditional check "opponent lost life this turn AND you gained
-//      life this turn" not expressible (no Effect::Conditional with
-//      life-event history).
-// Best effort: draw 1 card.
+//! Dusk's Landing — `{B}` sorcery. "Draw a card. If an opponent lost life
+//! this turn and you gained life this turn, seek two Vampire cards instead."
+//!
+//! GAP: no Effect for seek; no 'lost/gained life this turn' condition. Best
+//! effort: draw a card.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,6 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Seek mechanic; GAP: conditional check on life-event history
+    // GAP: 'seek' and turn-history conditions not supported
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

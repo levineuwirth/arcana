@@ -1,5 +1,5 @@
-//! Give In to Violence — `{1}{B}` instant. "Target creature gets +2/+2
-//! and gains lifelink until end of turn."
+//! Give In to Violence — `{1}{B}` instant. "Target creature gets +2/+2 and
+//! gains lifelink until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

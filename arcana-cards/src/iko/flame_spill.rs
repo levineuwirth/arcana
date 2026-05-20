@@ -1,8 +1,9 @@
-//! Flame Spill — `{2}{R}` instant. "Flame Spill deals 4 damage to target
-//! creature. Excess damage is dealt to that creature's controller instead."
+//! Flame Spill — `{2}{R}` instant. "Flame Spill deals 4 damage to
+//! target creature. Excess damage is dealt to that creature's
+//! controller instead."
 //!
-//! # GAP: excess damage to controller — no Effect variant for trample-style
-//! excess damage routing from creature target to its controller.
+//! Excess-damage redirection to the controller is not expressible;
+//! we deal 4 damage to the targeted creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,29 +25,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Flame Spill deals 4 damage to target creature. Excess damage is dealt to that creature's controller instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Flame Spill deals 4 damage to target creature. Excess damage is dealt to that creature's controller instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id),
-            amount: 4,
-        },
-        // GAP: excess damage to creature's controller — no Effect for excess-damage routing
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: excess-damage redirection to controller not expressible.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Object(*id),
+        amount: 4,
+    }]
 }

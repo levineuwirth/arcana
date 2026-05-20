@@ -1,5 +1,5 @@
-//! Hordeling Outburst — `{1}{R}{R}` sorcery. "Create three 1/1 red Goblin
-//! creature tokens."
+//! Hordeling Outburst — `{1}{R}{R}` sorcery. "Create three 1/1 red
+//! Goblin creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -35,7 +35,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned during register()");
+    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     let token = TokenDefinition {

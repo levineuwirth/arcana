@@ -1,7 +1,10 @@
-//! Ultimate Price — `{1}{B}` instant. "Destroy target monocolored creature."
+//! Ultimate Price — `{1}{B}` instant.
+//! "Destroy target monocolored creature."
 //!
-//! GAP: "monocolored creature" filter — ObjectFilter has no monocolored constraint
-//! in the cataloged API. Using plain creature target as best-effort.
+//! GAP: TargetFilter / ObjectFilter does not expose a "monocolored" predicate
+//! (exactly one color). The best approximation would be checking without_colors
+//! for each non-target color, which is not equivalent to monocolored. Emitted
+//! as an unfiltered creature target with a GAP note.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target monocolored creature.".into(),
-                // GAP: no monocolored filter on ObjectFilter; using plain creature target
+                // GAP: no ObjectFilter predicate for "monocolored" (exactly one color).
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

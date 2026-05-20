@@ -1,7 +1,7 @@
-//! Magma Spray — `{R}` instant, "Magma Spray deals 2 damage to target creature.
-//! If that creature would die this turn, exile it instead."
-//!
-//! GAP: replacement effect — exile on death instead of going to graveyard.
+//! Magma Spray — `{R}` instant. "Magma Spray deals 2 damage to target
+//! creature. If that creature would die this turn, exile it instead."
+//! GAP: "if that creature would die this turn, exile it instead" is a
+//! replacement effect not in catalog. Emits DealDamage only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,7 +40,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: replacement effect — exile instead of graveyard on death this turn
+    // GAP: "if that creature would die this turn, exile it instead" replacement effect not in catalog
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

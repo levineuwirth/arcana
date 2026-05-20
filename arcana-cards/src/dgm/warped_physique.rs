@@ -1,5 +1,5 @@
-//! Warped Physique — `{U}{B}` instant. "Target creature gets +X/-X until end
-//! of turn, where X is the number of cards in your hand."
+//! Warped Physique — `{U}{B}` instant. "Target creature gets +X/-X
+//! until end of turn, where X is the number of cards in your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +X/-X until end of turn, where X is the number of cards in your hand.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +X/-X until end of turn, where X is the number of cards in your hand.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

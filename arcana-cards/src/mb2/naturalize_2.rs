@@ -1,8 +1,5 @@
-//! Naturalize 2 — `{1}{G}` instant. "Destroy target artifact, enchantment,
-//! emblem, or gameplay tracker."
-//!
-//! Emblems and gameplay trackers are not permanent types in the engine;
-//! targeting is restricted to artifact or enchantment permanents.
+//! Naturalize 2 — `{1}{G}` instant. "Destroy target artifact,
+//! enchantment, emblem, or gameplay tracker."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,5 +46,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "emblem or gameplay tracker" targets not expressible; artifact /
+    // enchantment is handled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

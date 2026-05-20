@@ -18,3 +18,4 @@ pub mod rumbling_rockslide;
 pub mod tectonic_hazard;
 pub mod huatli_s_final_strike;
 pub mod calamitous_cave_in;
+pub mod triumphant_chomp;

@@ -1,10 +1,7 @@
-//! Turn Inside Out — `{R}` instant. "Target creature gets +3/+0 until end
-//! of turn. When it dies this turn, manifest dread."
-//!
-//! GAP: "When it dies this turn, manifest dread" requires granting a
-//! temporary triggered ability to the targeted creature, which is not
-//! expressible with the current Effect catalog. The Pump effect is rendered;
-//! the manifest-dread-on-death trigger is not.
+//! Turn Inside Out — `{R}` instant. "Target creature gets +3/+0
+//! until end of turn. When it dies this turn, manifest dread."
+//! Manifest dread (and the delayed dies-trigger) has no primitive;
+//! the pump is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,24 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+0 until end of turn. When it dies this turn, manifest dread.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+0 until end of turn. When it dies this turn, manifest dread.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Cannot grant a temporary "when this creature dies this turn, manifest dread" trigger.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "when it dies this turn, manifest dread" has no primitive.
     vec![Effect::Pump {
         target: *id,
         power: 3,

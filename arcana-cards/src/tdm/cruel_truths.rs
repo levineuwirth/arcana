@@ -1,5 +1,5 @@
-//! Cruel Truths — `{3}{B}` instant.
-//! "Surveil 2, then draw two cards. You lose 2 life."
+//! Cruel Truths — `{3}{B}` instant, "Surveil 2, then draw two cards.
+//! You lose 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

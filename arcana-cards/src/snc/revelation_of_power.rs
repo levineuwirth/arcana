@@ -1,12 +1,8 @@
-//! Revelation of Power — `{1}{W}` instant.
-//! "Target creature gets +2/+2 until end of turn. If it has a counter on it, it also gains flying
+//! Revelation of Power — `{1}{W}` instant. "Target creature gets +2/+2
+//! until end of turn. If it has a counter on it, it also gains flying
 //! and lifelink until end of turn."
-//!
-//! # GAP: ConditionalKeywordIfHasCounter — no Effect::Conditional condition variant for "if the
-//! target creature has a counter on it". The +2/+2 pump is expressed; the conditional
-//! flying+lifelink grant is dropped.
 
-use arcana_core::effects::{Effect};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -26,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it has a counter on it, it also gains flying and lifelink until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. If it has a counter on it, it also gains flying and lifelink until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -43,8 +38,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: ConditionalKeywordIfHasCounter — cannot express "if it has a counter, grant flying
-    // and lifelink" with available Effect::Conditional conditions.
+    // GAP: "if it has a counter on it" predicate (flying + lifelink) —
+    // no catalog test for counters on a target; only the unconditional
+    // pump is applied.
     vec![Effect::Pump {
         target: *id,
         power: 2,

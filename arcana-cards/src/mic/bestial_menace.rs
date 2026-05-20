@@ -1,4 +1,4 @@
-//! Bestial Menace — `{3}{G}{G}` sorcery, "Create a 1/1 green Snake
+//! Bestial Menace — `{3}{G}{G}` sorcery. "Create a 1/1 green Snake
 //! creature token, a 2/2 green Wolf creature token, and a 3/3 green
 //! Elephant creature token."
 
@@ -23,71 +23,44 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create a 1/1 green Snake creature token, a 2/2 green Wolf creature token, and a 3/3 green Elephant creature token.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create a 1/1 green Snake creature token, a 2/2 green Wolf creature token, and a 3/3 green Elephant creature token.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let snake = reg.interner().lookup("Snake").expect("Snake interned");
-    let wolf = reg.interner().lookup("Wolf").expect("Wolf interned");
-    let elephant = reg.interner().lookup("Elephant").expect("Elephant interned");
+fn token(reg: &CardRegistry, subtype: &str, p: i32) -> TokenDefinition {
+    let s = reg.interner().lookup(subtype).expect("subtype interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(s);
+    TokenDefinition {
+        name: s,
+        colors: ColorSet::green(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(p)),
+        toughness: Some(PtValue::Fixed(p)),
+        keywords: vec![],
+        abilities: vec![],
+    }
+}
 
-    let mut snake_subtypes = SubtypeSet::default();
-    snake_subtypes.0.insert(snake);
-    let mut wolf_subtypes = SubtypeSet::default();
-    wolf_subtypes.0.insert(wolf);
-    let mut elephant_subtypes = SubtypeSet::default();
-    elephant_subtypes.0.insert(elephant);
-
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     vec![
         Effect::CreateToken {
             controller: entry.controller,
-            token: TokenDefinition {
-                name: snake,
-                colors: ColorSet::green(),
-                types: TypeLine::CREATURE.into(),
-                subtypes: snake_subtypes,
-                power: Some(PtValue::Fixed(1)),
-                toughness: Some(PtValue::Fixed(1)),
-                keywords: vec![],
-                abilities: vec![],
-            },
+            token: token(reg, "Snake", 1),
         },
         Effect::CreateToken {
             controller: entry.controller,
-            token: TokenDefinition {
-                name: wolf,
-                colors: ColorSet::green(),
-                types: TypeLine::CREATURE.into(),
-                subtypes: wolf_subtypes,
-                power: Some(PtValue::Fixed(2)),
-                toughness: Some(PtValue::Fixed(2)),
-                keywords: vec![],
-                abilities: vec![],
-            },
+            token: token(reg, "Wolf", 2),
         },
         Effect::CreateToken {
             controller: entry.controller,
-            token: TokenDefinition {
-                name: elephant,
-                colors: ColorSet::green(),
-                types: TypeLine::CREATURE.into(),
-                subtypes: elephant_subtypes,
-                power: Some(PtValue::Fixed(3)),
-                toughness: Some(PtValue::Fixed(3)),
-                keywords: vec![],
-                abilities: vec![],
-            },
+            token: token(reg, "Elephant", 3),
         },
     ]
 }

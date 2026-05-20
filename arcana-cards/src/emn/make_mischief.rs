@@ -1,11 +1,11 @@
-//! Make Mischief — `{2}{R}` sorcery, "Make Mischief deals 1 damage to any target.
-//! Create a 1/1 red Devil creature token. It has 'When this token dies, it deals
-//! 1 damage to any target.'"
+//! Make Mischief — `{2}{R}` sorcery. "Make Mischief deals 1 damage to
+//! any target. Create a 1/1 red Devil creature token. It has 'When
+//! this token dies, it deals 1 damage to any target.'"
 //!
-//! GAP: the created token has a triggered ability ("when this token dies, deal 1
-//! damage to any target") — token triggered abilities are not expressible via
-//! TokenDefinition.abilities. Best effort: DealDamage 1 + CreateToken (1/1 red
-//! Devil, no triggered ability).
+//! GAP: the Devil token's "when this token dies, deals 1 damage"
+//! triggered ability is not expressible on a TokenDefinition via the
+//! catalog. The 1 damage and the token (without its death trigger)
+//! are emitted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
@@ -28,22 +28,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Make Mischief deals 1 damage to any target. Create a 1/1 red Devil creature token. It has 'When this token dies, it deals 1 damage to any target.'".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Make Mischief deals 1 damage to any target. Create a 1/1 red Devil creature token. It has \"When this token dies, it deals 1 damage to any target.\"".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: token triggered ability ("when this dies, deal 1 damage") not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -53,7 +47,6 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-
     let devil = reg.interner().lookup("Devil").expect("Devil interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(devil);
@@ -67,12 +60,9 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: Devil token's "when this dies, deals 1 damage" trigger not expressible.
     vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: dt,
-            amount: 1,
-        },
+        Effect::DealDamage { source: entry.source, target: dt, amount: 1 },
         Effect::CreateToken { controller: entry.controller, token },
     ]
 }

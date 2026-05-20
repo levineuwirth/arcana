@@ -1,8 +1,8 @@
-//! Ultima — `{3}{W}{W}` sorcery.
-//! "Destroy all artifacts and creatures. End the turn."
-//! GAP: 'End the turn' (exile all spells/abilities from stack, discard to max hand size, clear
-//! damage/end-of-turn effects) has no Effect variant.
-//! Implementing only the destroy-all-artifacts-and-creatures board wipe.
+//! Ultima — `{3}{W}{W}` sorcery. "Destroy all artifacts and creatures. End
+//! the turn."
+//!
+//! GAP: no Effect variant for 'End the turn'. Best effort: destroy all
+//! artifacts and creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,14 +39,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::permanent()
-        .without_types(TypeLine::LAND.into())
-        .without_types(TypeLine::ENCHANTMENT.into());
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    // GAP: Effect::EndTurn not available
-    if ids.is_empty() {
-        return Vec::new();
-    }
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let artifacts = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+        entry.controller,
+    );
+    let mut ids = creatures;
+    ids.extend(artifacts);
+    // GAP: 'End the turn' not expressible
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

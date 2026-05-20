@@ -1,5 +1,5 @@
-//! Burst of Strength — `{G}` instant, "Put a +1/+1 counter on target creature
-//! and untap it."
+//! Burst of Strength — `{G}` instant. "Put a +1/+1 counter on target
+//! creature and untap it."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

@@ -1,8 +1,10 @@
-//! Annihilating Fire — `{1}{R}{R}` instant, "Annihilating Fire deals 3 damage
-//! to any target. If a creature dealt damage this way would die this turn,
-//! exile it instead."
+//! Annihilating Fire — `{1}{R}{R}` instant.
+//! "Annihilating Fire deals 3 damage to any target. If a creature dealt damage
+//! this way would die this turn, exile it instead."
 //!
-//! GAP: "exile instead of dying" replacement effect not expressible.
+//! GAP: "if a creature would die this turn, exile it instead" — replacement effect
+//! (die → exile) conditioned on prior damage from this spell is not in the catalog.
+//! Partial: emit the 3 damage to any target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,6 +42,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "if creature would die exile it instead" replacement not in catalog
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -48,8 +51,9 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
-        // GAP: "exile instead of dying" replacement effect not expressible
-    ]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }]
 }

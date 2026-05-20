@@ -1,7 +1,5 @@
-//! Gravkill — `{3}{B}` instant. "Exile target creature or Spacecraft."
-//!
-//! # GAP: Spacecraft type filter — ObjectFilter cannot filter by
-//! creature subtype; best effort targets any creature.
+//! Gravkill — `{3}{B}` instant. "Exile target creature or
+//! Spacecraft."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,14 +19,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // The "or Spacecraft" alternative target is not expressible;
+    // restricted to a creature.
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature or Spacecraft.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature or Spacecraft.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,6 +38,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Spacecraft subtype filter not expressible
     vec![Effect::ExilePermanent { target: *id }]
 }

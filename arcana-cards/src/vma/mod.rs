@@ -6,3 +6,5 @@ pub mod famine;
 pub mod burning_of_xinye;
 pub mod nature_s_ruin;
 pub mod cruel_bargain;
+pub mod exile;
+pub mod addle;

@@ -1,6 +1,9 @@
-//! Sudden Spinnerets — `{G}` instant, "Target creature gets +0/+2 and gains reach until end of turn."
+//! Sudden Spinnerets — `{G}` instant. "Target creature gets +1/+3
+//! until end of turn. Put a reach counter on it. Untap it."
 //!
-//! GAP: reach counter type not in catalog; partial pump expressible but "put a reach counter" is not.
+//! GAP: CounterKind::Reach (only PlusOnePlusOne is catalogued). The
+//! reach 'counter' is modeled as a direct GrantKeyword(Reach) for the
+//! turn instead.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -22,28 +25,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +0/+2 and gains reach until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +1/+3 until end of turn. Put a reach counter on it. Untap it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Pump {
-        target: *id,
-        power: 0,
-        toughness: 2,
-        duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Reach],
-    }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'reach counter' (only PlusOnePlusOne kind exists) — model
+    // as until-end-of-turn reach grant.
+    vec![
+        Effect::Pump {
+            target: *id,
+            power: 1,
+            toughness: 3,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Reach],
+        },
+        Effect::Untap { target: *id },
+    ]
 }

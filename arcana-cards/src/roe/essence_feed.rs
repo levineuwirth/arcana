@@ -1,10 +1,10 @@
-//! Essence Feed — `{5}{B}` sorcery, "Target player loses 3 life. You gain
-//! 3 life and create three 0/1 colorless Eldrazi Spawn creature tokens.
-//! They have 'Sacrifice this token: Add {C}.'"
+//! Essence Feed — `{5}{B}` sorcery.
+//! "Target player loses 3 life. You gain 3 life and create three 0/1 colorless
+//! Eldrazi Spawn creature tokens. They have 'Sacrifice this token: Add {C}.'"
 //!
-//! GAP: Eldrazi Spawn tokens have a sacrifice-to-add-mana activated ability
-//! which is not expressible via TokenDefinition (no activated-ability field).
-//! Token creation is implemented without that ability.
+//! GAP: Token activated ability "Sacrifice this token: Add {C}" is not
+//! expressible via the TokenDefinition API (no abilities field for mana
+//! abilities). The token is created with empty abilities vec.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -45,8 +45,10 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(target_player) = target else { return Vec::new(); };
 
+    let eldrazi = reg.interner().lookup("Eldrazi").expect("Eldrazi interned during register()");
     let spawn = reg.interner().lookup("Spawn").expect("Spawn interned during register()");
     let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(eldrazi);
     subtypes.0.insert(spawn);
     let token = TokenDefinition {
         name: spawn,
@@ -58,6 +60,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+
     vec![
         Effect::LoseLife { player: *target_player, amount: 3 },
         Effect::GainLife { player: entry.controller, amount: 3 },

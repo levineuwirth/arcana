@@ -1,11 +1,5 @@
 //! Pulse of the Forge — `{1}{R}{R}` instant. "Pulse of the Forge deals
-//! 4 damage to target player or planeswalker. Then if that player or
-//! that planeswalker's controller has more life than you, return Pulse
-//! of the Forge to its owner's hand."
-//!
-//! GAP: ReturnSelfToHandConditional (returning this spell to hand based
-//! on a life-total comparison) is not in the engine effect catalog.
-//! The damage is expressed; the conditional return is omitted.
+//! 4 damage to target player or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,31 +21,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Pulse of the Forge deals 4 damage to target player or planeswalker. Then if that player or that planeswalker's controller has more life than you, return Pulse of the Forge to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Pulse of the Forge deals 4 damage to target player or planeswalker.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
-        TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::ObjectOrPlayer(o) => match o {
             ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: ReturnSelfToHandConditional (return this card to hand if target controller has more life)
+    // GAP: "if that player/controller has more life than you, return
+    // Pulse of the Forge to its owner's hand" — recursion-buyback of
+    // the spell card itself is not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

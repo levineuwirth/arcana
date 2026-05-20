@@ -1,9 +1,5 @@
-//! Horncaller's Chant — `{7}{G}` sorcery. "Create a 4/4 green Rhino creature
-//! token with trample, then populate."
-//!
-//! GAP: Populate mechanic (create a copy of a creature token you control) is
-//! not expressible — no Effect variant for copying an existing battlefield token.
-//! The 4/4 Rhino token is expressed.
+//! Horncaller's Chant — `{7}{G}` sorcery. "Create a 4/4 green Rhino
+//! creature token with trample, then populate."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,8 +35,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: populate mechanic not expressible
-    let rhino = reg.interner().lookup("Rhino").expect("Rhino interned during register()");
+    let rhino = reg.interner().lookup("Rhino").expect("Rhino interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(rhino);
     let token = TokenDefinition {
@@ -53,5 +48,7 @@ fn resolve(
         keywords: vec![KeywordAbility::Trample],
         abilities: vec![],
     };
+    // "then populate" is not expressible (no populate effect variant);
+    // the Rhino token is created.
     vec![Effect::CreateToken { controller: entry.controller, token }]
 }

@@ -13,3 +13,4 @@ pub mod taste_of_blood;
 pub mod slaughter_cry;
 pub mod time_reversal;
 pub mod monomania;
+pub mod timely_reinforcements;

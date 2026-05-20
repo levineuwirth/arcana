@@ -1,6 +1,6 @@
-//! Meditate — `{2}{U}` instant. "Draw four cards. You skip your next turn."
-//!
-//! # GAP: "skip your next turn" effect not expressible with the catalog.
+//! Meditate — `{2}{U}` instant. "Draw four cards. You skip your next
+//! turn." The draw is expressible; "skip your next turn" has no
+//! primitive and is GAP-noted (partial).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,21 +20,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw four cards. You skip your next turn.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw four cards. You skip your next turn.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: skip next turn effect not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "you skip your next turn" — no skip-turn effect primitive.
     vec![Effect::DrawCards { player: entry.controller, count: 4 }]
 }

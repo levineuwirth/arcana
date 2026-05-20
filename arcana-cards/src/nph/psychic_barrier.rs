@@ -1,4 +1,7 @@
-//! Psychic Barrier — `{U}{U}` instant, "Counter target creature spell. Its controller loses 1 life."
+//! Psychic Barrier — `{U}{U}` instant. "Counter target creature spell. Its
+//! controller loses 1 life."
+//! GAP: no way to retrieve the target spell's controller id at resolve time
+//! to apply the LoseLife effect to them (only the stack object id is available).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,6 +47,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
-    // GAP: identify the controller of the countered spell to apply LoseLife
+    // GAP: cannot retrieve the target spell's controller to apply LoseLife to them —
+    // only the counter is emitted
     vec![Effect::Counter { target: *stack_id }]
 }

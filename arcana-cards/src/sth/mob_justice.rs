@@ -1,6 +1,9 @@
-//! Mob Justice — `{1}{R}` sorcery.
-//! "Mob Justice deals damage to target player equal to the number of creatures you
-//! control."
+//! Mob Justice — `{1}{R}` sorcery. "Mob Justice deals damage to
+//! target player or planeswalker equal to the number of creatures
+//! you control."
+//!
+//! No planeswalker target filter exists; approximated as target
+//! player.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,29 +26,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Mob Justice deals damage to target player equal to the number of creatures you control.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Mob Justice deals damage to target player or planeswalker equal to the number of creatures you control.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    let filter = ObjectFilter::creature()
-        .controlled_by(ControllerConstraint::You);
-    let count = script::count_matching(state, &filter, entry.controller);
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(*p),
-        amount: count,
+        amount: n,
     }]
 }

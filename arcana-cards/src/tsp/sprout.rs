@@ -1,4 +1,4 @@
-//! Sprout — `{G}` instant. "Create a 1/1 green Saproling creature token."
+//! Sprout — `{G}` instant, "Create a 1/1 green Saproling creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;

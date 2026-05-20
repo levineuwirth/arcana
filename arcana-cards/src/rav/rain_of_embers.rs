@@ -1,13 +1,10 @@
-//! Rain of Embers — `{1}{R}` sorcery.
-//! "Rain of Embers deals 1 damage to each creature and each player."
-//!
-//! GAP: "each player" requires enumerating all player ids, which is not a
-//! permitted script helper. Creature sweep is expressible; player sweep is not.
+//! Rain of Embers — `{1}{R}` sorcery. "Rain of Embers deals 1 damage
+//! to each creature and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -25,31 +22,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Rain of Embers deals 1 damage to each creature and each player.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Rain of Embers deals 1 damage to each creature and each player.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut effects: Vec<Effect> = creature_ids
-        .into_iter()
-        .map(|id| Effect::DealDamage {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut effects = vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(id),
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 1,
-        })
-        .collect();
-    // GAP: enumerating all players to deal 1 damage to each player is not
-    // a supported script helper
+        }),
+    }];
+    for p in script::all_players(state) {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 1,
+        });
+    }
     effects
 }

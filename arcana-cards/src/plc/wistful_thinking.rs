@@ -1,5 +1,5 @@
-//! Wistful Thinking — `{2}{U}` sorcery. "Target player draws two cards, then
-//! discards four cards."
+//! Wistful Thinking — `{2}{U}` sorcery. "Target player draws two
+//! cards, then discards four cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -20,28 +20,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player draws two cards, then discards four cards.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player draws two cards, then discards four cards.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let p = match target {
-        TargetChoice::Player(p) => *p,
-        _ => return Vec::new(),
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
     };
     vec![
-        Effect::DrawCards { player: p, count: 2 },
-        Effect::Discard { player: p, count: 4, choice: DiscardChoice::ControllerChooses },
+        Effect::DrawCards {
+            player: *p,
+            count: 2,
+        },
+        Effect::Discard {
+            player: *p,
+            count: 4,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

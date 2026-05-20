@@ -1,9 +1,8 @@
-//! Rapturous Moment — `{4}{U}{R}` sorcery, "Draw three cards, then discard
-//! two cards. Add {U}{U}{R}{R}{R}."
+//! Rapturous Moment — `{4}{U}{R}` sorcery. "Draw three cards, then
+//! discard two cards. Add {U}{U}{R}{R}{R}."
 //!
-//! # GAP
-//! No "add mana" effect in the catalog (mana-production effects are not
-//! modeled). Partial: DrawCards and Discard are expressible.
+//! "Add mana to your pool" has no catalog Effect (spells don't have
+//! a mana-production primitive); GAP'd. Draw/discard are modeled.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -18,27 +17,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{U}{R}").expect("valid cost")),
-        colors: ColorSet::red() | ColorSet::blue(),
+        colors: ColorSet::blue() | ColorSet::red(),
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards, then discard two cards. Add {U}{U}{R}{R}{R}.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards, then discard two cards. Add {U}{U}{R}{R}{R}.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no "add mana" effect
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "add {U}{U}{R}{R}{R}" mana production not in catalog.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::Discard {

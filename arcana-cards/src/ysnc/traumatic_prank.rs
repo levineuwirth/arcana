@@ -1,11 +1,6 @@
-//! Traumatic Prank — `{2}{R}` sorcery.
-//! "Gain control of target creature until end of turn. Untap that creature. It perpetually gains
-//! haste, 'This creature can't block,' and 'At the beginning of your upkeep, this creature deals
-//! 1 damage to you.'"
-//!
-//! # GAP: GainControl — no Effect variant for gaining control of a permanent until end of turn.
-//! # GAP: PerpetualAbilityGrant — no Effect variant for perpetually granting abilities (rules
-//! text abilities, not keywords) to a creature.
+//! Traumatic Prank — `{2}{R}` sorcery. "Gain control of target
+//! creature until end of turn. Untap that creature. It perpetually
+//! gains haste, ... and an upkeep self-damage trigger."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Gain control of target creature until end of turn. Untap that creature. It perpetually gains haste, 'This creature can't block,' and 'At the beginning of your upkeep, this creature deals 1 damage to you.'".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Gain control of target creature until end of turn. Untap that creature. It perpetually gains haste, \"This creature can't block,\" and \"At the beginning of your upkeep, this creature deals 1 damage to you.\"".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -43,8 +37,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: GainControl — no Effect variant for gaining control until end of turn.
-    // GAP: PerpetualAbilityGrant — no Effect variant for perpetually granting haste, can't-block,
-    // and "deals 1 damage to you each upkeep".
+    // GAP: "gain control until end of turn" and the perpetual granted
+    // text abilities have no catalog effect; only the untap is
+    // implemented.
     vec![Effect::Untap { target: *id }]
 }

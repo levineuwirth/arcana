@@ -20,27 +20,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Surveil 2, then draw two cards. Notion Rain deals 2 damage to you.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Surveil 2, then draw two cards. Notion Rain deals 2 damage to you.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
-        Effect::Surveil { player: entry.controller, count: 2 },
-        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::Surveil {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
         Effect::DealDamage {
             source: entry.source,
-            target: arcana_core::events::DamageTarget::Player(entry.controller),
+            target: DamageTarget::Player(entry.controller),
             amount: 2,
         },
     ]

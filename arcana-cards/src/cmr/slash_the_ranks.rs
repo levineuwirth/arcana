@@ -1,13 +1,13 @@
-//! Slash the Ranks — `{3}{W}{W}` sorcery.
-//! "Destroy all creatures and planeswalkers except for commanders."
+//! Slash the Ranks — `{3}{W}{W}` sorcery. "Destroy all creatures and
+//! planeswalkers except for commanders."
 //!
-//! GAP: "except for commanders" filter (supertype Commander) not available
-//! in ObjectFilter. GAP: planeswalker type not directly addressable alongside
-//! creatures in a single filter. Best-effort: destroy all creatures.
+//! The "except for commanders" clause is inert outside the Commander format
+//! (no objects are commanders), so destroying all creatures and planeswalkers
+//! is faithful here.
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::mana::ManaCost;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -40,11 +40,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "except for commanders" filter not in ObjectFilter
-    // GAP: planeswalkers not separately enumerable; destroying creatures only as best-effort
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
+        entry.controller,
+    );
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

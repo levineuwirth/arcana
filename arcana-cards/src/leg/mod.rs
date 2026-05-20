@@ -9,3 +9,4 @@ pub mod hornet_cobra;
 pub mod devouring_deep;
 pub mod remove_enchantments;
 pub mod jovial_evil;
+pub mod glyph_of_destruction;

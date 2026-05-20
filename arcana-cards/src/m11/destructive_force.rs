@@ -1,12 +1,14 @@
-//! Destructive Force — `{5}{R}{R}` sorcery.
-//! "Each player sacrifices five lands of their choice. Destructive Force deals 5 damage
-//! to each creature."
-//! GAP: player-chooses-N-permanents-to-sacrifice effect not in catalog.
+//! Destructive Force — `{5}{R}{R}` sorcery. "Each player sacrifices five
+//! lands of their choice. Destructive Force deals 5 damage to each
+//! creature."
+//!
+//! Uses `script::all_players` to sacrifice per player, then ForEach over
+//! every creature for the 5 damage sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -39,13 +41,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: player-chooses-N-lands-to-sacrifice effect not in catalog
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    ids.into_iter()
-        .map(|id| Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(id),
-            amount: 5,
+    let mut effs: Vec<Effect> = script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            count: 5,
         })
-        .collect()
+        .collect();
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    effs.push(Effect::ForEach {
+        targets: creatures,
+        effect: Box::new(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(NULL_OBJECT_ID),
+            amount: 5,
+        }),
+    });
+    effs
 }

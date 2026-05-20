@@ -1,4 +1,5 @@
-//! Specter's Wail — `{1}{B}` sorcery, "Target player discards a card at random."
+//! Specter's Wail — `{1}{B}` sorcery. "Target player discards a card at
+//! random."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,6 +36,9 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::Random }]
+    let player = match target {
+        TargetChoice::Player(p) => *p,
+        _ => return Vec::new(),
+    };
+    vec![Effect::Discard { player, count: 1, choice: DiscardChoice::Random }]
 }

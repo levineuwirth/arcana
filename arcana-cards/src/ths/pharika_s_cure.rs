@@ -1,5 +1,5 @@
-//! Pharika's Cure — `{B}{B}` instant, "Pharika's Cure deals 2 damage to target creature.
-//! You gain 2 life."
+//! Pharika's Cure — `{B}{B}` instant. "Pharika's Cure deals 2 damage to target
+//! creature. You gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -44,6 +44,9 @@ fn resolve(
             target: DamageTarget::Object(*id),
             amount: 2,
         },
-        Effect::GainLife { player: entry.controller, amount: 2 },
+        Effect::GainLife {
+            player: entry.controller,
+            amount: 2,
+        },
     ]
 }

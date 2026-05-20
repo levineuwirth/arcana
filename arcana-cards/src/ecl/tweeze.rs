@@ -1,11 +1,10 @@
-//! Tweeze — `{2}{R}` instant. "Tweeze deals 3 damage to any target. You may discard a card.
-//! If you do, draw a card."
+//! Tweeze — `{2}{R}` instant. "Tweeze deals 3 damage to any target.
+//! You may discard a card. If you do, draw a card."
 //!
-//! # GAP: Optional discard-then-draw ("you may discard a card; if you do, draw a card")
-//! requires a player-choice prompt not expressible with current catalog.
-//! Partial: DealDamage 3 to any target only.
+//! The "may" optionality on the loot isn't modeled; the damage plus
+//! discard-then-draw is emitted.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -25,21 +24,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Tweeze deals 3 damage to any target. You may discard a card. If you do, draw a card.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Tweeze deals 3 damage to any target. You may discard a card. If you do, draw a card.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -49,10 +43,13 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: optional "may discard; if you do, draw" not expressible with current catalog
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 3,
-    }]
+    vec![
+        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
+        Effect::DrawCards { player: entry.controller, count: 1 },
+    ]
 }

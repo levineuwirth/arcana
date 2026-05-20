@@ -1,13 +1,5 @@
-//! Sold Out — `{3}{B}` instant. "Exile target creature. If it was dealt
-//! damage this turn, create a Clue token. (It's an artifact with
-//! '{2}, Sacrifice this token: Draw a card.')"
-//!
-//! # GAP: "if it was dealt damage this turn" conditional check not
-//! expressible via Effect::Conditional (no damage-this-turn predicate).
-//! # GAP: Clue token creation (artifact token with activated ability)
-//! not expressible — TokenDefinition has no `abilities` that are
-//! activated abilities.
-//! Emitting ExilePermanent only.
+//! Sold Out — `{3}{B}` instant. "Exile target creature. If it was
+//! dealt damage this turn, create a Clue token."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. If it was dealt damage this turn, create a Clue token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. If it was dealt damage this turn, create a Clue token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -45,6 +36,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional Clue token if dealt damage this turn not expressible
+    // GAP: no "was dealt damage this turn" condition and no Clue
+    // token primitive; only the exile is modeled.
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,6 +1,7 @@
 //! Turn to Dust — `{G}` instant. "Destroy target Equipment. Add {G}."
 //!
-//! # GAP: AddMana — no Effect variant to add mana to the mana pool
+//! GAP: no mana-addition Effect; the "Add {G}" rider is omitted. Equipment
+//! is targeted as an artifact (no Equipment subtype filter available).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target Equipment. Add {G}.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::ARTIFACT.into())),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -40,8 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: AddMana — no Effect variant to add mana ({G}) to the mana pool
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no mana-addition effect for "Add {G}".
     vec![Effect::DestroyPermanent { target: *id }]
 }

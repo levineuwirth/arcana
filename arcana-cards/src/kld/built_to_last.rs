@@ -1,12 +1,8 @@
-//! Built to Last — `{W}` instant.
-//! "Target creature gets +2/+2 until end of turn. If it's an artifact creature, it gains
-//! indestructible until end of turn."
-//!
-//! # GAP: ConditionalKeywordIfArtifactCreature — no Effect::Conditional condition variant for
-//! "if the target is an artifact creature". The +2/+2 pump is expressed; the conditional
-//! indestructible grant is dropped.
+//! Built to Last — `{W}` instant. "Target creature gets +2/+2 until
+//! end of turn. If it's an artifact creature, it gains indestructible
+//! until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -26,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it's an artifact creature, it gains indestructible until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. If it's an artifact creature, it gains indestructible until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -43,8 +38,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: ConditionalKeywordIfArtifactCreature — cannot express "if it's an artifact creature,
-    // grant Indestructible" with available Effect::Conditional conditions.
+    // GAP: conditional "if it's an artifact creature" indestructible —
+    // no catalog predicate for a target's type at resolution; only the
+    // unconditional pump is applied.
     vec![Effect::Pump {
         target: *id,
         power: 2,

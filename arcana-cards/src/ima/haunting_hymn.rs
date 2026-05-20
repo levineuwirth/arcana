@@ -1,9 +1,6 @@
 //! Haunting Hymn — `{4}{B}{B}` instant. "Target player discards two
 //! cards. If you cast this spell during your main phase, that player
 //! discards four cards instead."
-//!
-//! # GAP: conditional discard count based on current game phase at cast
-//! time not expressible.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -24,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player discards two cards. If you cast this spell during your main phase, that player discards four cards instead.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player discards two cards. If you cast this spell during your main phase, that player discards four cards instead.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,10 +37,11 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: conditional on main-phase cast; always 2 cards as best effort
+    // The "during your main phase → four instead" rider has no catalog
+    // phase predicate; modeled as the base "discards two".
     vec![Effect::Discard {
         player: *p,
         count: 2,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

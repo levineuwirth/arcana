@@ -1,10 +1,8 @@
-//! Unbreakable Bond — `{4}{B}` sorcery, "Return target creature card from
+//! Unbreakable Bond — `{4}{B}` sorcery. "Return target creature card from
 //! your graveyard to the battlefield with a lifelink counter on it."
 //!
-//! # GAP
-//! - Lifelink counter kind not in CounterKind enum (only PlusOnePlusOne shown).
-//!   ReturnFromGraveyardToBattlefield is expressible but the lifelink counter
-//!   cannot be placed.
+//! GAP: `CounterKind` only exposes PlusOnePlusOne; no Lifelink counter
+//! variant. Returning the creature honestly without the counter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -50,6 +50,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: lifelink counter kind not in CounterKind enum
+    // GAP: no Lifelink counter variant in CounterKind.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

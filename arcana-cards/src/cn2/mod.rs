@@ -8,3 +8,4 @@ pub mod zealous_strike;
 pub mod into_the_void;
 pub mod burn_away;
 pub mod flame_slash;
+pub mod public_execution;

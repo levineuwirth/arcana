@@ -1,10 +1,8 @@
-//! Bleed Dry — `{2}{B}{B}` instant.
-//! "Target creature gets -13/-13 until end of turn. If that creature
-//! would die this turn, exile it instead."
-//
-// GAP: "if that creature would die this turn, exile it instead" —
-//      replacement effect on death not expressible. Best effort: pump
-//      -13/-13 only.
+//! Bleed Dry — `{2}{B}{B}` instant. "Target creature gets -13/-13 until end
+//! of turn. If that creature would die this turn, exile it instead."
+//!
+//! GAP: no replacement effect for 'if it would die, exile instead'. Best
+//! effort: -13/-13 via Pump.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -43,7 +41,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: death-replacement exile effect
+    // GAP: 'die → exile instead' replacement not supported
     vec![Effect::Pump {
         target: *id,
         power: -13,

@@ -1,15 +1,18 @@
-//! Send in the Pest — `{1}{B}` sorcery, "Each opponent discards a card. You
-//! create a 1/1 black and green Pest creature token with 'Whenever this token
-//! attacks, you gain 1 life.'"
+//! Send in the Pest — `{1}{B}` sorcery, "Each opponent discards a card.
+//! You create a 1/1 black and green Pest creature token with 'Whenever
+//! this token attacks, you gain 1 life.'"
 //!
-//! GAP: "each opponent discards" — no ForEach-over-players variant; Pest token
-//! has an attack-triggered ability that cannot be expressed in TokenDefinition
-//! (abilities: vec![] only).
+//! The token's triggered ability ("whenever this token attacks, you gain
+//! 1 life") is not expressible in TokenDefinition.abilities without a
+//! full TriggeredAbilityDef structure — GAP: token triggered ability.
+//! The discard and token creation are modeled; the attack trigger is
+//! omitted.
 
 use arcana_core::effects::{DiscardChoice, Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
@@ -36,12 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let pest = reg.interner().lookup("Pest")
-        .expect("Pest interned during register()");
+    let pest = reg.interner().lookup("Pest").expect("Pest interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(pest);
     let token = TokenDefinition {
@@ -52,10 +54,12 @@ fn resolve(
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
-        // GAP: "Whenever this token attacks, you gain 1 life" triggered ability
-        // not expressible in TokenDefinition
         abilities: vec![],
     };
-    // GAP: each opponent discards a card (no ForEach-over-players variant)
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    let mut effects: Vec<Effect> = script::opponents(state, entry.controller)
+        .into_iter()
+        .map(|p| Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses })
+        .collect();
+    effects.push(Effect::CreateToken { controller: entry.controller, token });
+    effects
 }

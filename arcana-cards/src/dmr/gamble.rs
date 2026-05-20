@@ -1,5 +1,7 @@
-//! Gamble — `{R}` sorcery. "Search your library for a card, put that card into your hand,
-//! then shuffle. Discard a card at random."
+//! Gamble — `{R}` sorcery. "Search your library for a card, put that
+//! card into your hand, discard a card at random, then shuffle."
+//!
+//! The shuffle is automatic on tutor; the random discard follows.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -20,25 +22,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a card, put that card into your hand, then shuffle. Discard a card at random.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a card, put that card into your hand, discard a card at random, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
         Effect::TutorToHand {
             player: entry.controller,
-            filter: ObjectFilter::permanent(),
+            filter: ObjectFilter::new(),
             reveal: false,
         },
         Effect::Discard {

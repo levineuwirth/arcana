@@ -1,8 +1,9 @@
-//! Murderous Spoils — `{5}{B}` instant. "Destroy target nonblack creature. It can't
-//! be regenerated. You gain control of all Equipment that were attached to it."
+//! Murderous Spoils — `{5}{B}` instant. "Destroy target nonblack creature.
+//! It can't be regenerated. You gain control of all Equipment that were
+//! attached to it."
 //!
-//! # GAP: CantBeRegenerated — no Effect variant to prevent regeneration
-//! # GAP: GainControlOfAttachedEquipment — no Effect variant to steal attached Equipment
+//! GAP: no effect to gain control of attached Equipment; "can't be
+//! regenerated" not separately modeled. Destroy emitted as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +30,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target nonblack creature. It can't be regenerated. You gain control of all Equipment that were attached to it.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_colors(ColorSet::black()),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -42,9 +47,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: CantBeRegenerated — no Effect variant to prevent regeneration
-    // GAP: GainControlOfAttachedEquipment — no Effect variant to steal attached Equipment
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no gain-control-of-attached-Equipment effect.
     vec![Effect::DestroyPermanent { target: *id }]
 }

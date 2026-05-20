@@ -1,9 +1,7 @@
-//! Freeze in Place — `{1}{U}` sorcery. "Tap target creature an opponent
-//! controls and put three stun counters on it. Scry 2."
-//!
-//! GAP: Stun counters (CounterKind::Stun) are not listed in the engine's
-//! CounterKind variants. The Tap and Scry effects are rendered; the stun
-//! counter placement is not expressible.
+//! Freeze in Place — `{1}{U}` sorcery. "Tap target creature an
+//! opponent controls and put three stun counters on it. Scry 2."
+//! Stun counters are outside the demonstrated CounterKind surface;
+//! the tap and scry are emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,24 +22,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Tap target creature an opponent controls and put three stun counters on it. Scry 2.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Tap target creature an opponent controls and put three stun counters on it. Scry 2.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: CounterKind::Stun is not in the engine catalog; cannot place stun counters.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: stun counters are outside the CounterKind surface.
     vec![
         Effect::Tap { target: *id },
         Effect::Scry { player: entry.controller, count: 2 },

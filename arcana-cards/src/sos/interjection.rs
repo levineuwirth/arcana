@@ -1,5 +1,5 @@
-//! Interjection — `{W}` instant, "Target creature gets +2/+2 and gains first
-//! strike until end of turn."
+//! Interjection — `{W}` instant. "Target creature gets +2/+2 and gains
+//! first strike until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

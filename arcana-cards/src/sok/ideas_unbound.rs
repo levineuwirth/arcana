@@ -1,13 +1,11 @@
-//! Ideas Unbound — `{U}{U}` sorcery (Arcane). "Draw three cards.
+//! Ideas Unbound — `{U}{U}` sorcery — Arcane. "Draw three cards.
 //! Discard three cards at the beginning of the next end step."
 //!
-//! # GAP
-//! "Discard three cards at the beginning of the next end step" is a
-//! delayed triggered effect — not expressible with the immediate
-//! `Effect::Discard`. The draw is modeled; the delayed discard is
-//! noted.
+//! DelayedAction supports Sacrifice/Exile/ReturnToHand on a known
+//! permanent id — not a player-discards-N at end step. The delayed
+//! discard is GAP'd; only the draw is modeled.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -25,21 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards. Discard three cards at the beginning of the next end step.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards. Discard three cards at the beginning of the next end step.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: delayed triggered discard at next end step not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: end-step-delayed discard-N on a player has no DelayedAction variant.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

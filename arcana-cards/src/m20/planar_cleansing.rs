@@ -1,5 +1,5 @@
-//! Planar Cleansing — `{3}{W}{W}{W}` sorcery.
-//! "Destroy all nonland permanents."
+//! Planar Cleansing — `{3}{W}{W}{W}` sorcery. "Destroy all nonland
+//! permanents."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,11 +36,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::permanent().without_types(TypeLine::LAND.into());
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

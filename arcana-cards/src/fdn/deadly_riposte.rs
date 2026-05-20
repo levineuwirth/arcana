@@ -1,8 +1,5 @@
-//! Deadly Riposte — `{1}{W}` instant, "Deadly Riposte deals 3 damage to target
-//! tapped creature. You gain 2 life."
-//!
-//! GAP: tapped-creature filter in TargetRequirement is not expressible;
-//! targeting any creature instead.
+//! Deadly Riposte — `{1}{W}` instant. "Deadly Riposte deals 3 damage to
+//! target tapped creature and you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -11,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,30 +23,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Deadly Riposte deals 3 damage to target tapped creature. You gain 2 life.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Deadly Riposte deals 3 damage to target tapped creature and you gain 2 life."
+                .into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().tapped_only(),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: tapped-creature filter not expressible; applied to any creature
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 3,
-        },
-        Effect::GainLife { player: entry.controller, amount: 2 },
-    ]
+        });
+    }
+    out.push(Effect::GainLife {
+        player: entry.controller,
+        amount: 2,
+    });
+    out
 }

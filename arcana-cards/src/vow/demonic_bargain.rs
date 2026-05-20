@@ -1,9 +1,6 @@
-//! Demonic Bargain — `{2}{B}` sorcery, "Exile the top thirteen cards of your
-//! library, then search your library for a card. Put that card into your hand,
-//! then shuffle."
-//!
-//! GAP: exile top N cards of library (ExileFromLibrary with count 13) is not
-//! in the catalog. Best-effort: TutorToHand for any card; exile clause omitted.
+//! Demonic Bargain — `{2}{B}` sorcery. "Exile the top thirteen cards
+//! of your library, then search your library for a card. Put that
+//! card into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +8,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, ObjectOrPlayer, TargetChoice, TargetRequirement};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile the top thirteen cards of your library, then search your library for a card. Put that card into your hand, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile the top thirteen cards of your library, then search your library for a card. Put that card into your hand, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,10 +35,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: exile top 13 cards of library before tutoring
+    // GAP: no "exile the top N cards of library" effect; only the
+    // tutor-to-hand is modeled.
     vec![Effect::TutorToHand {
         player: entry.controller,
-        filter: ObjectFilter::new(),
+        filter: ObjectFilter::default(),
         reveal: false,
     }]
 }

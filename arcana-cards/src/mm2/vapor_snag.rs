@@ -1,5 +1,5 @@
-//! Vapor Snag — `{U}` instant. "Return target creature to its owner's hand. Its controller loses
-//! 1 life."
+//! Vapor Snag — `{U}` instant. "Return target creature to its owner's
+//! hand. Its controller loses 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,28 +20,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature to its owner's hand. Its controller loses 1 life.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target creature to its owner's hand. Its controller loses 1 life.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: LoseLife should target the creature's controller, not entry.controller;
-    // no API to get controller of a targeted object at resolve time; using entry.controller
-    // as best-effort approximation
-    vec![
-        Effect::ReturnToHand { target: *id },
-        Effect::LoseLife { player: entry.controller, amount: 1 },
-    ]
+    // "Its controller loses 1 life" cannot be expressed: no way to
+    // resolve the targeted creature's controller into a PlayerId.
+    vec![Effect::ReturnToHand { target: *id }]
 }

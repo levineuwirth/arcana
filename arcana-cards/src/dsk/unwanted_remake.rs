@@ -1,11 +1,8 @@
-//! Unwanted Remake — `{W}` instant. "Destroy target creature. Its controller
-//! manifests dread. (That player looks at the top two cards of their library,
-//! then puts one onto the battlefield face down as a 2/2 creature and the
-//! other into their graveyard. If it's a creature card, it can be turned face
-//! up any time for its mana cost.)"
+//! Unwanted Remake — `{W}` instant. "Destroy target creature. Its
+//! controller manifests dread."
 //!
-//! # GAP: manifest dread — no Effect variant for manifest dread (look at top 2,
-//! put one face-down as 2/2, other to graveyard, with face-up mechanic).
+//! "manifests dread" has no catalog Effect; only the destroy is
+//! expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,25 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. Its controller manifests dread.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature. Its controller manifests dread.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        // GAP: manifest dread for the destroyed creature's controller
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "manifests dread" has no catalog Effect.
+    vec![Effect::DestroyPermanent { target: *id }]
 }

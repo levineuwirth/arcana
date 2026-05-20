@@ -1,6 +1,7 @@
-//! Fill with Fright — `{3}{B}` sorcery, "Target player discards two cards. Scry 2."
+//! Fill with Fright — `{3}{B}` sorcery, "Target player discards two
+//! cards. Scry 2."
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -19,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player discards two cards. Scry 2.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player discards two cards. Scry 2.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -34,10 +34,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![
-        Effect::Discard { player: *p, count: 2, choice: DiscardChoice::ControllerChooses },
-        Effect::Scry { player: entry.controller, count: 2 },
+        Effect::Discard {
+            player: *p,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
+        Effect::Scry {
+            player: entry.controller,
+            count: 2,
+        },
     ]
 }

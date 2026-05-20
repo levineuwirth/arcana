@@ -11,7 +11,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Call to the Feast");
-    let _vampire = reg.interner_mut().intern("Vampire");
+    let _v = reg.interner_mut().intern("Vampire");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{W}{B}").expect("valid cost")),
@@ -20,22 +20,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 1/1 white Vampire creature tokens with lifelink.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 1/1 white Vampire creature tokens with lifelink.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let vampire = reg.interner().lookup("Vampire").expect("Vampire interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let vampire = reg.interner().lookup("Vampire").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(vampire);
     let token = TokenDefinition {

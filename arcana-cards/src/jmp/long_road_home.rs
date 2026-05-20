@@ -1,10 +1,9 @@
-//! Long Road Home — `{1}{W}` instant. "Exile target creature. At the beginning
-//! of the next end step, return that card to the battlefield under its owner's
-//! control with a +1/+1 counter on it."
-//!
-//! # GAP: delayed return-from-exile with +1/+1 counter at next end step is not
-//! expressible. ExilePermanent is used for the first effect; the delayed
-//! return-to-battlefield with counter is omitted.
+//! Long Road Home — `{1}{W}` instant. "Exile target creature. At the
+//! beginning of the next end step, return that card to the
+//! battlefield under its owner's control with a +1/+1 counter on it."
+//! DelayedAction supports only Sacrifice/Exile/ReturnToHand — a
+//! delayed return-to-battlefield with a counter is not expressible,
+//! so only the exile is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,13 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. At the beginning of the next end step, return that card to the battlefield under its owner's control with a +1/+1 counter on it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. At the beginning of the next end step, return that card to the battlefield under its owner's control with a +1/+1 counter on it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,6 +40,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: delayed return from exile at next end step with +1/+1 counter not expressible
+    // GAP: delayed return-to-battlefield with a +1/+1 counter — the
+    // DelayedAction set is only Sacrifice/Exile/ReturnToHand.
     vec![Effect::ExilePermanent { target: *id }]
 }

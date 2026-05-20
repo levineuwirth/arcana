@@ -1,5 +1,5 @@
-//! Survey the Wreckage — `{4}{R}` sorcery. Destroy target land. Create a 1/1
-//! red Goblin creature token.
+//! Survey the Wreckage — `{4}{R}` sorcery. "Destroy target land.
+//! Create a 1/1 red Goblin creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -7,12 +7,14 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Survey the Wreckage");
-    let _goblin = reg.interner_mut().intern("Goblin");
+    let _g = reg.interner_mut().intern("Goblin");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{R}").expect("valid cost")),
@@ -36,13 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     let goblin = reg.interner().lookup("Goblin").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);

@@ -1,4 +1,4 @@
-//! Psionic Blast — `{2}{U}` instant, "Psionic Blast deals 4 damage to any
+//! Psionic Blast — `{2}{U}` instant. "Psionic Blast deals 4 damage to any
 //! target and 2 damage to you."
 
 use arcana_core::effects::Effect;
@@ -47,10 +47,6 @@ fn resolve(
     };
     vec![
         Effect::DealDamage { source: entry.source, target: dt, amount: 4 },
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Player(entry.controller),
-            amount: 2,
-        },
+        Effect::LoseLife { player: entry.controller, amount: 2 },
     ]
 }

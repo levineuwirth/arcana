@@ -22,3 +22,4 @@ pub mod chain_reaction;
 pub mod culling_ritual;
 pub mod ceaseless_conflict;
 pub mod swords_to_plowshares;
+pub mod deadly_brew;

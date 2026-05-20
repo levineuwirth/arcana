@@ -1,10 +1,5 @@
 //! Furious Resistance — `{R}` instant. "Target blocking creature gets
 //! +3/+0 and gains first strike until end of turn."
-//!
-//! GAP: TargetBlockingCreature (targeting specifically a creature that
-//! is currently blocking) — TargetFilter::Creature does not constrain
-//! to blocking status; no TargetFilter variant for blocking creatures.
-//! Using TargetFilter::Creature as approximation.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -26,24 +21,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target blocking creature gets +3/+0 and gains first strike until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target blocking creature gets +3/+0 and gains first strike until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: TargetBlockingCreature (no TargetFilter variant restricts to blocking creatures)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "blocking creature" target restriction is not filterable;
+    // targets any creature.
     vec![Effect::Pump {
         target: *id,
         power: 3,

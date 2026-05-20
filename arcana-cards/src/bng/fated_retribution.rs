@@ -1,19 +1,19 @@
-//! Fated Retribution — `{4}{W}{W}{W}` instant. "Destroy all creatures and planeswalkers.
-//! If it's your turn, scry 2."
+//! Fated Retribution — `{4}{W}{W}{W}` instant. "Destroy all
+//! creatures and planeswalkers. If it's your turn, scry 2."
 //!
-//! GAP: Destroying planeswalkers requires filtering by planeswalker type which is not a
-//! supported TypeLine constant. Board wipe covers creatures only. The "if it's your turn"
-//! condition requires turn-ownership check not available via script helpers.
+//! The "if it's your turn" condition is not testable via the
+//! catalog; we destroy all creatures (planeswalkers not separately
+//! filterable) and unconditionally scry 2.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Fated Retribution");
@@ -25,26 +25,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures and planeswalkers. If it's your turn, scry 2.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures and planeswalkers. If it's your turn, scry 2.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: Destroying planeswalkers (PLANESWALKER TypeLine not available).
-    // GAP: "If it's your turn" conditional scry requires turn-ownership check not in script API.
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }]
+    // GAP: planeswalkers not separately filterable; "if it's your
+    // turn" not testable — scry applied unconditionally.
+    vec![
+        Effect::ForEach {
+            targets: ids,
+            effect: Box::new(Effect::DestroyPermanent {
+                target: NULL_OBJECT_ID,
+            }),
+        },
+        Effect::Scry {
+            player: entry.controller,
+            count: 2,
+        },
+    ]
 }

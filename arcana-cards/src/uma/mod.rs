@@ -15,3 +15,4 @@ pub mod blast_of_genius;
 pub mod countersquall;
 pub mod appetite_for_brains;
 pub mod miming_slime;
+pub mod grave_strength;

@@ -1,8 +1,7 @@
-//! Restock — `{3}{G}{G}` sorcery. "Return two target cards from your graveyard to your
-//! hand. Exile Restock."
-//!
-//! # GAP: self-exile of the spell itself ("Exile Restock") not expressible from within
-//! the spell's own resolver — no self-reference Effect variant.
+//! Restock — `{3}{G}{G}` sorcery. "Return two target cards from your
+//! graveyard to your hand. Exile Restock." The "exile Restock"
+//! self-exile-on-resolution has no primitive; the two-card return is
+//! modeled (partial).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,9 +9,11 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::zones::Zone;
+use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Restock");
@@ -24,34 +25,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return two target cards from your graveyard to your hand. Exile Restock.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new(),
-                    },
-                    count: TargetCount::Exactly(2),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return two target cards from your graveyard to your hand. Exile Restock.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::default(),
+                },
+                count: TargetCount::Exactly(2),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: self-exile of Restock itself not expressible
-    let mut effects = Vec::new();
-    for t in &entry.targets.targets {
-        if let TargetChoice::Object(id) = t {
-            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
-        }
-    }
-    effects
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "Exile Restock" (self-exile instead of going to graveyard)
+    // has no primitive; the two-card graveyard return is modeled.
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => {
+                Some(Effect::ReturnFromGraveyardToHand { target: *id })
+            }
+            _ => None,
+        })
+        .collect()
 }

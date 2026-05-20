@@ -1,9 +1,7 @@
-//! Essence Filter — `{1}{G}{G}` sorcery, "Destroy all enchantments or all
-//! nonwhite enchantments." Modal: either wipe all enchantments or only
-//! nonwhite enchantments. Modal choices not supported by `SpellAbilityDef`;
-//! best effort destroys all enchantments.
-//!
-//! # GAP: modal destroy (choose between all enchantments or nonwhite enchantments)
+//! Essence Filter — `{1}{G}{G}` sorcery. "Destroy all enchantments
+//! or all nonwhite enchantments." Modal choice between the two
+//! enchantment sweeps is not modeled; we destroy all enchantments
+//! (the broader, non-conditional sweep).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,24 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all enchantments or all nonwhite enchantments.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all enchantments or all nonwhite enchantments.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: modal destroy (choose between all enchantments or nonwhite enchantments)
-    // Best effort: destroy all enchantments
-    let filter = ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into());
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // Modal between the two sweeps is not modeled; destroy all
+    // enchantments (the unconditional first mode).
+    let filter = ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into());
     let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,

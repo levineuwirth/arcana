@@ -1,10 +1,11 @@
-//! Liberating Combustion — `{4}{R}` sorcery. "Liberating Combustion deals 6 damage to target
-//! creature. You may search your library and/or graveyard for a card named Chandra, Torch of
-//! Defiance, reveal it, and put it into your hand. If you search your library this way, shuffle."
+//! Liberating Combustion — `{4}{R}` sorcery. "Liberating Combustion
+//! deals 6 damage to target creature. You may search your library
+//! and/or graveyard for a card named Chandra, Pyrogenius, reveal it,
+//! and put it into your hand."
 //!
-//! # GAP: Name-specific tutor (filter by exact card name) not in engine catalog.
-//! # GAP: Optional search of graveyard by name not in engine catalog.
-//! Partial: DealDamage 6 to target creature only.
+//! Searching by exact card name across library+graveyard isn't
+//! expressible (no name-filtered tutor); the 6 damage is emitted and
+//! the search is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,24 +27,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Liberating Combustion deals 6 damage to target creature. You may search your library and/or graveyard for a card named Chandra, Torch of Defiance, reveal it, and put it into your hand. If you search your library this way, shuffle.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Liberating Combustion deals 6 damage to target creature. You may search your library and/or graveyard for a card named Chandra, Pyrogenius, reveal it, and put it into your hand. If you search your library this way, shuffle.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: name-specific tutor from library/graveyard not in engine catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: name-filtered library/graveyard search is not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

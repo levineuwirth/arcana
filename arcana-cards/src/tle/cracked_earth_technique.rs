@@ -1,11 +1,7 @@
-//! Cracked Earth Technique — `{4}{G}` Sorcery — Lesson. "Earthbend 3, then
-//! earthbend 3. You gain 3 life."
-//!
-//! Keywords (Scryfall): Earthbend — NOT in the engine keyword surface.
-//!
-//! # GAP: Earthbend mechanic not in engine keyword/effect surface
-//! The `Earthbend` keyword ability is not available.  Best-effort: emit the
-//! life-gain only; both Earthbend activations are dropped.
+//! Cracked Earth Technique — `{4}{G}` sorcery (Lesson). "Earthbend
+//! 3, then earthbend 3. You gain 3 life." The earthbend mechanic
+//! (turn a land into a creature with counters and a return-on-death
+//! rider) is not modeled; we emit the "you gain 3 life" component.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,11 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Earthbend mechanic (land-animation with counters + death trigger) not supported
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: earthbend (land becomes a creature with +1/+1 counters and
+    // a return-on-death rider) is not modeled. Life gain emitted.
     vec![Effect::GainLife { player: entry.controller, amount: 3 }]
 }

@@ -1,9 +1,9 @@
-//! Ribbons of Night — `{4}{B}` sorcery, "Ribbons of Night deals 4 damage
-//! to target creature and you gain 4 life. If {U} was spent to cast this
-//! spell, draw a card."
+//! Ribbons of Night — `{4}{B}` sorcery, "Ribbons of Night deals 4
+//! damage to target creature and you gain 4 life. If {U} was spent
+//! to cast this spell, draw a card."
 //!
-//! GAP: conditional draw if {U} was spent to cast not expressible with
-//! catalog API; damage and life gain expressed.
+//! Damage + life are applied. GAP: "if {U} was spent to cast this
+//! spell" is not trackable, so the conditional draw is omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,24 +25,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Ribbons of Night deals 4 damage to target creature and you gain 4 life. If {U} was spent to cast this spell, draw a card.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Ribbons of Night deals 4 damage to target creature and you gain 4 life. If {U} was spent to cast this spell, draw a card.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: conditional draw (mana-spent tracking) omitted.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional draw if {U} was spent to cast
     vec![
         Effect::DealDamage {
             source: entry.source,

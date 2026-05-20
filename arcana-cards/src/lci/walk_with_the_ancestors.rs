@@ -1,9 +1,9 @@
-//! Walk with the Ancestors — `{4}{G}` sorcery, "Return up to one target
+//! Walk with the Ancestors — `{4}{G}` sorcery. "Return up to one target
 //! permanent card from your graveyard to your hand. Discover 4."
 //!
-//! # GAP
-//! * GAP: Discover mechanic (cascade-like: exile top cards until nonland MV ≤ 4, cast free or put in hand)
-//! * Note: "up to one" target uses TargetCount::UpTo(1); target may be 0
+//! GAP: Discover mechanic (exile top cards until nonland with MV ≤ 4, cast
+//! free or put to hand) is not expressible with any catalog Effect variant.
+//! The graveyard-to-hand portion is expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,10 +47,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
-    }
-    // GAP: Discover mechanic (no Effect variant)
-    effects
+    // GAP: Discover 4 mechanic not expressible
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

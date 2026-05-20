@@ -22,24 +22,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 1/1 red Goblin Scout creature tokens with mountainwalk.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 1/1 red Goblin Scout creature tokens with mountainwalk.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned during register()");
-    let scout = reg.interner().lookup("Scout").expect("Scout interned during register()");
-    let mountain = reg.interner().lookup("Mountain").expect("Mountain interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let goblin = reg.interner().lookup("Goblin").expect("interned");
+    let scout = reg.interner().lookup("Scout").expect("interned");
+    let mountain = reg.interner().lookup("Mountain").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(scout);

@@ -1,9 +1,9 @@
-//! Anguished Recollection — `{1}{R}` sorcery. "Discard a card. If you do, seek two cards
-//! that don't share a card type with the discarded card."
+//! Anguished Recollection — `{1}{R}` sorcery. "Discard a card. If
+//! you do, seek two cards that don't share a card type with the
+//! discarded card."
 //!
-//! # GAP: Seek mechanic (random card search filtered by type exclusion) not in engine catalog.
-//! # GAP: "if you do" conditional on a discard action not in engine catalog.
-//! Partial: Discard 1 card (controller chooses) only.
+//! "Seek" (and the type-exclusion clause) has no catalog Effect; the
+//! discard is emitted, the seek is GAP'd.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,23 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Discard a card. If you do, seek two cards that don't share a card type with the discarded card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Discard a card. If you do, seek two cards that don't share a card type with the discarded card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Seek mechanic not in engine catalog
-    // GAP: conditional on discard success not in engine catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "seek" mechanic has no catalog Effect.
     vec![Effect::Discard {
         player: entry.controller,
         count: 1,

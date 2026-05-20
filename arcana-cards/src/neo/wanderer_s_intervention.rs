@@ -1,9 +1,9 @@
-//! Wanderer's Intervention — `{1}{W}` instant, "Wanderer's Intervention
-//! deals 4 damage to target attacking or blocking creature."
+//! Wanderer's Intervention — `{1}{W}` instant. "Wanderer's
+//! Intervention deals 4 damage to target attacking or blocking
+//! creature."
 //!
-//! Note: "attacking or blocking" filter not expressible in TargetFilter;
-//! using target_creature() as best effort.
-//! GAP: attacking-or-blocking creature filter.
+//! Note: the attacking/blocking restriction is not expressible with
+//! the available target filters; modelled as a plain creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,24 +25,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Wanderer's Intervention deals 4 damage to target attacking or blocking creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Wanderer's Intervention deals 4 damage to target attacking or blocking creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: attacking-or-blocking creature filter not in TargetFilter
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

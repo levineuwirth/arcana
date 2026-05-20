@@ -1,8 +1,8 @@
-//! Pyrophobia — `{1}{R}` sorcery, "Pyrophobia deals 3 damage to target creature.
-//! Cowards can't block this turn."
+//! Pyrophobia — `{1}{R}` sorcery. "Pyrophobia deals 3 damage to
+//! target creature. Cowards can't block this turn."
 //!
-//! # GAP: cowards-cant-block — no Effect variant for applying a "Cowards can't
-//! block this turn" combat restriction.
+//! GAP: "Cowards can't block this turn" — no global block-restriction
+//! Effect by subtype. Only the damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,24 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Pyrophobia deals 3 damage to target creature. Cowards can't block this turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Pyrophobia deals 3 damage to target creature. Cowards can't block this turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: cowards-cant-block — no Effect variant for subtype-based blocking restriction.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: subtype-scoped block restriction.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

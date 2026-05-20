@@ -1,8 +1,6 @@
-//! Gimli's Fury — `{1}{R}` instant.
-//! "Target creature gets +3/+2 until end of turn. If it's legendary, it also gains trample until end of turn."
-//!
-//! # GAP: ConditionalKeywordIfLegendary — no `Effect::Conditional` condition variant for "if the
-//! target creature is legendary". The pump is expressed; the conditional trample grant is dropped.
+//! Gimli's Fury — `{1}{R}` instant. "Target creature gets +3/+2 until
+//! end of turn. If it's legendary, it also gains trample until end of
+//! turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -24,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+2 until end of turn. If it's legendary, it also gains trample until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+2 until end of turn. If it's legendary, it also gains trample until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,13 +38,14 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: ConditionalKeywordIfLegendary — cannot express "if it's legendary, grant trample"
-    // with the available Effect::Conditional conditions; the conditional trample grant is omitted.
+    // GAP: the conditional "if it's legendary" gains trample — no
+    // catalog predicate for a target's supertype at resolution; the
+    // unconditional pump is still applied.
     vec![Effect::Pump {
         target: *id,
         power: 3,
         toughness: 2,
         duration: Duration::EndOfTurn,
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Trample],
     }]
 }

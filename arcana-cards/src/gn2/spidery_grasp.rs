@@ -1,4 +1,4 @@
-//! Spidery Grasp — `{2}{G}` instant, "Untap target creature. It gets +2/+4
+//! Spidery Grasp — `{2}{G}` instant. "Untap target creature. It gets +2/+4
 //! and gains reach until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};

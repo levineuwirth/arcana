@@ -1,15 +1,15 @@
-//! Hibernation — `{2}{U}` instant. "Return all green permanents to their
-//! owners' hands."
+//! Hibernation — `{2}{U}` instant, "Return all green permanents to
+//! their owners' hands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hibernation");
@@ -36,8 +36,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::permanent().with_colors(ColorSet::green());
-    let ids = script::ids_matching(state, &filter, entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().with_colors(ColorSet::green()),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

@@ -1,9 +1,6 @@
-//! Interpret the Signs — `{5}{U}` sorcery. "Scry 3, then reveal the top card
-//! of your library. Draw cards equal to its mana value."
-//!
-//! GAP: draw count is variable (equals mana value of revealed card), which
-//! requires state inspection not available at resolve time in the catalog.
-//! Scry 3 is expressed; the variable draw is omitted.
+//! Interpret the Signs — `{5}{U}` sorcery. "Scry 3, then reveal the
+//! top card of your library. Draw cards equal to that card's mana
+//! value."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Scry 3, then reveal the top card of your library. Draw cards equal to its mana value.".into(),
+                text: "Scry 3, then reveal the top card of your library. Draw cards equal to that card's mana value.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -38,6 +35,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: draw X where X = mana value of revealed card — variable draw not expressible
+    // GAP: cannot read the revealed top library card's mana value to
+    // scale the draw count; "draw cards equal to that card's mana
+    // value" is dynamic and unexpressible with available helpers.
     vec![Effect::Scry { player: entry.controller, count: 3 }]
 }

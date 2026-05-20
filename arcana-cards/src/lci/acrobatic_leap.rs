@@ -1,4 +1,4 @@
-//! Acrobatic Leap — `{W}` instant, "Target creature gets +1/+3 and gains
+//! Acrobatic Leap — `{W}` instant. "Target creature gets +1/+3 and gains
 //! flying until end of turn. Untap it."
 
 use arcana_core::effects::{Effect, KeywordAbility};

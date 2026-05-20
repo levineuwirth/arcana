@@ -1,18 +1,17 @@
-//! Cosmic Hunger — `{1}{G}` instant.
-//! "Target creature you control deals damage equal to its power to another
-//! target creature, planeswalker, or battle."
-//!
-//! GAP: TargetFilter has no "creature, planeswalker, or battle" composite.
-//! Battle type not modeled. Best-effort: target creature fights target creature.
+//! Cosmic Hunger — `{1}{G}` instant. "Target creature you control deals damage
+//! equal to its power to another target creature, planeswalker, or battle."
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,8 +28,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Target creature you control deals damage equal to its power to another target creature, planeswalker, or battle.".into(),
                 target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Creature,
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
                 ],
                 modal: None,
                 effect: resolve,
@@ -43,15 +52,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let (TargetChoice::Object(a), TargetChoice::Object(b)) = (t0, t1) else { return Vec::new(); };
-    let power = script::power_of(state, *a).max(0) as u32;
-    use arcana_core::events::DamageTarget;
-    // GAP: "planeswalker or battle" target type not available; using creature fight as best-effort
+    let mut it = entry.targets.targets.iter();
+    let Some(TargetChoice::Object(src)) = it.next() else { return Vec::new(); };
+    let Some(TargetChoice::Object(dst)) = it.next() else { return Vec::new(); };
+    let amount = script::power_of(state, *src).max(0) as u32;
     vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*b),
-        amount: power,
+        source: *src,
+        target: DamageTarget::Object(*dst),
+        amount,
     }]
 }

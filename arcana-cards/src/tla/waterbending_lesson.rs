@@ -1,11 +1,8 @@
-//! Waterbending Lesson — `{3}{U}` sorcery (Lesson). "Draw three cards. Then
-//! discard a card unless you waterbend {2}."
+//! Waterbending Lesson — `{3}{U}` sorcery — Lesson. "Draw three
+//! cards. Then discard a card unless you waterbend {2}."
 //!
-//! # GAP: Waterbend cost mechanic — no Effect or keyword variant for waterbend
-//! (tapping artifacts/creatures to help pay costs). Modeled as draw 3 then
-//! discard 1 (worst-case path).
-//! # GAP: Lesson subtype — TypeLine has no LESSON constant; subtype intern
-//! would be needed but no SubtypeSet on a sorcery is shown in the API.
+//! The waterbend alternative cost is not expressible; we model the
+//! draw and the (unconditional) discard.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -25,24 +22,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards. Then discard a card unless you waterbend {2}.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards. Then discard a card unless you waterbend {2}.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "unless you waterbend {2}" alternative cost is not
+    // expressible; discard applied unconditionally.
     vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
-        // GAP: "unless you waterbend {2}" optional cost — modeled as unconditional discard
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 3,
+        },
         Effect::Discard {
             player: entry.controller,
             count: 1,

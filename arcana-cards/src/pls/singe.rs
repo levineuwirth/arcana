@@ -1,8 +1,8 @@
-//! Singe — `{R}` instant.
-//! "Singe deals 1 damage to target creature. That creature becomes black until
-//! end of turn."
-//! GAP: 'becomes black until end of turn' — no Effect variant for changing a
-//! permanent's color temporarily.
+//! Singe — `{R}` instant. "Singe deals 1 damage to target creature.
+//! That creature becomes black until end of turn."
+//!
+//! "becomes black until end of turn" has no catalog Effect; only the
+//! damage is expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,24 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Singe deals 1 damage to target creature. That creature becomes black until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Singe deals 1 damage to target creature. That creature becomes black until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: color change to black until end of turn
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "becomes black until end of turn" has no catalog Effect.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

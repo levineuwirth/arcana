@@ -1,9 +1,10 @@
-//! Late to Dinner — `{3}{W}` sorcery, "Return target creature card from your
-//! graveyard to the battlefield. Create a Food token."
+//! Late to Dinner — `{3}{W}` sorcery.
+//! "Return target creature card from your graveyard to the battlefield.
+//! Create a Food token."
 //!
-//! GAP: Food token has a "{2}, {T}, Sacrifice this token: You gain 3 life."
-//! activated ability not expressible via TokenDefinition. Token is created
-//! as a plain artifact without that ability.
+//! GAP: Food token activated ability "{2}, {T}, Sacrifice this token: You gain
+//! 3 life." is not expressible via TokenDefinition abilities field.
+//! The token is created with empty abilities.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -11,11 +12,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::targets::ObjectFilter;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Late to Dinner");
@@ -32,10 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Return target creature card from your graveyard to the battlefield. Create a Food token.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
-                    },
+                    filter: TargetFilter::Card { zone: Zone::Graveyard(0), filter: ObjectFilter::creature() },
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -56,7 +53,7 @@ fn resolve(
     let food = reg.interner().lookup("Food").expect("Food interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
-    let token = TokenDefinition {
+    let food_token = TokenDefinition {
         name: food,
         colors: ColorSet::new(),
         types: TypeLine::ARTIFACT.into(),
@@ -65,10 +62,11 @@ fn resolve(
         toughness: None,
         keywords: vec![],
         abilities: vec![],
+        // GAP: Food activated ability not expressible in TokenDefinition
     };
+
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        // GAP: Food token sacrifice ability not expressible in TokenDefinition
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken { controller: entry.controller, token: food_token },
     ]
 }

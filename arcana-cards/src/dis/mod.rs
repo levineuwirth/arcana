@@ -2,3 +2,4 @@
 pub mod assault_zeppelid;
 pub mod stomp_and_howl;
 pub mod weight_of_spires;
+pub mod brain_pry;

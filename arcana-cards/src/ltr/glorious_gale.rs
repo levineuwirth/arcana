@@ -1,8 +1,8 @@
-//! Glorious Gale — `{1}{U}` instant. "Counter target creature spell. If that spell was
-//! legendary, the Ring tempts you."
+//! Glorious Gale — `{1}{U}` instant. "Counter target creature spell.
+//! If it was a legendary spell, the Ring tempts you."
 //!
-//! # GAP: The Ring tempts you mechanic not in engine catalog.
-//! Partial: Counter target creature spell only.
+//! "The Ring tempts you" has no catalog Effect (GAP'd); the hard
+//! counter of a creature spell is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,27 +25,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target creature spell. If that spell was legendary, the Ring tempts you.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::new().with_types(TypeLine::CREATURE.into())),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target creature spell. If it was a legendary spell, the Ring tempts you.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(
+                    ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: The Ring tempts you mechanic not in engine catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "the Ring tempts you" has no catalog Effect.
     vec![Effect::Counter { target: *id }]
 }

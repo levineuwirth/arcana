@@ -1,4 +1,5 @@
-//! Nature's Spiral — `{1}{G}` sorcery, "Return target permanent card from your graveyard to your hand."
+//! Nature's Spiral — `{1}{G}` sorcery. "Return target permanent card from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

@@ -1,9 +1,10 @@
-//! Jump Scare — `{W}` instant, "Target creature becomes a Horror in addition
-//! to its other types and gains flying and +1/+3 until end of turn."
+//! Jump Scare — `{W}` instant, "Until end of turn, target creature gets
+//! +2/+2, gains flying, and becomes a Horror enchantment creature in
+//! addition to its other types."
 //!
-//! GAP: "becomes a Horror in addition to its other types" — adding a subtype
-//! to an existing permanent not expressible (no Effect::AddSubtype or type-line
-//! modification effect in catalog).
+//! The pump and flying grant are expressible. GAP: type-line modification
+//! ("becomes Horror enchantment creature in addition to") is not in the
+//! Effect catalog.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -27,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature becomes a Horror in addition to its other types and gains flying and +1/+3 until end of turn.".into(),
+                text: "Until end of turn, target creature gets +2/+2, gains flying, and becomes a Horror enchantment creature in addition to its other types.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -42,11 +43,11 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: add Horror subtype to target creature (no subtype-adding effect)
+    // GAP: type-line modification ("becomes Horror enchantment creature") not in Effect catalog.
     vec![Effect::Pump {
         target: *id,
-        power: 1,
-        toughness: 3,
+        power: 2,
+        toughness: 2,
         duration: Duration::EndOfTurn,
         keywords: vec![KeywordAbility::Flying],
     }]

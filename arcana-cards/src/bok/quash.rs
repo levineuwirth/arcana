@@ -1,9 +1,10 @@
-//! Quash — `{2}{U}{U}` instant, "Counter target instant or sorcery spell.
+//! Quash — `{2}{U}{U}` instant. "Counter target instant or sorcery spell.
 //! Search its controller's graveyard, hand, and library for all cards with
 //! the same name as that spell and exile them. Then that player shuffles."
 //!
-//! # GAP
-//! * GAP: multi-zone name-based card search and exile (no Effect variant)
+//! GAP: no Effect variant to search graveyard+hand+library for cards sharing
+//! a name with a targeted spell and exile them all. Only the counter is
+//! expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,8 +48,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
-    // GAP: multi-zone name-based card search and exile (no Effect variant)
-    // Emit counter; the name-search clause is inexpressible.
-    vec![Effect::Counter { target: *stack_id }]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    // GAP: no Effect variant to search all zones for cards with the same name and exile them
+    vec![Effect::Counter { target: stack_id }]
 }

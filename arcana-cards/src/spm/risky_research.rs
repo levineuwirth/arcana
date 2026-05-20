@@ -1,4 +1,4 @@
-//! Risky Research — `{2}{B}` sorcery. "Surveil 2, then draw 2 cards.
+//! Risky Research — `{2}{B}` sorcery. "Surveil 2, then draw two cards.
 //! You lose 2 life."
 
 use arcana_core::effects::Effect;
@@ -19,13 +19,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Surveil 2, then draw 2 cards. You lose 2 life.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Surveil 2, then draw two cards. You lose 2 life.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

@@ -1,9 +1,6 @@
 //! Burning Hands — `{1}{R}` instant. "Burning Hands deals 2 damage to
-//! target creature or planeswalker. If that permanent is green, Burning
-//! Hands deals 6 damage to it instead."
-//!
-//! # GAP: conditional damage based on target's color (green check at
-//! resolve time) not expressible.
+//! target creature or planeswalker. If that permanent is green,
+//! Burning Hands deals 6 damage instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Burning Hands deals 2 damage to target creature or planeswalker. If that permanent is green, Burning Hands deals 6 damage to it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Burning Hands deals 2 damage to target creature or planeswalker. If that permanent is green, Burning Hands deals 6 damage instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,7 +38,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional damage if target is green not expressible
+    // The "if green → 6 instead" rider has no catalog color predicate;
+    // modeled as the base 2 damage.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

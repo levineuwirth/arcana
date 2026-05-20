@@ -1,5 +1,5 @@
-//! Rise of Eagles — `{4}{U}{U}` sorcery. "Create two 2/2 blue Bird enchantment creature
-//! tokens with flying. Scry 1."
+//! Rise of Eagles — `{4}{U}{U}` sorcery. "Create two 2/2 blue Bird
+//! enchantment creature tokens with flying. Scry 1."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,22 +20,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 2/2 blue Bird enchantment creature tokens with flying. Scry 1.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 2/2 blue Bird enchantment creature tokens with flying. Scry 1.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let bird = reg.interner().lookup("Bird").expect("Bird interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let bird = reg.interner().lookup("Bird").expect("Bird interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(bird);
     let token = TokenDefinition {

@@ -53,3 +53,6 @@ pub mod involuntary_employment;
 pub mod brass_s_bounty;
 pub mod joraga_invocation;
 pub mod aetherize;
+pub mod hidetsugu_s_second_rite;
+pub mod boltwave;
+pub mod felling_blow;

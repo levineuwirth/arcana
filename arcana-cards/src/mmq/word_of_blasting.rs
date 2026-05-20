@@ -1,10 +1,12 @@
-//! Word of Blasting — `{1}{R}` instant.
-//! "Destroy target Wall. It can't be regenerated. Word of Blasting deals damage equal to
-//! that Wall's mana value to the Wall's controller."
-//! GAP: targeting creatures of a specific subtype (Wall) via TargetFilter
-//! (subtype filtering in TargetFilter not available — only ObjectFilter::creature() shown);
-//! GAP: computing target permanent's mana value at resolution (script helpers don't expose mana value);
-//! GAP: "can't be regenerated" flag on DestroyPermanent.
+//! Word of Blasting — `{1}{R}` instant. "Destroy target Wall. It can't be
+//! regenerated. Word of Blasting deals damage equal to that Wall's mana
+//! value to the Wall's controller."
+//!
+//! GAP: target subtype "Wall" must be a register-time filter, but
+//! `script::subtype_filter` requires a runtime `&CardRegistry`; the
+//! catalog has no register-time subtype constructor. Damage equal to a
+//! target's CMC and a can't-be-regenerated rider also have no Effect
+//! variants. Falling back to plain creature target + destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,10 +42,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: subtype-filtered targeting (Wall subtype not expressible in TargetFilter)
-    // GAP: mana value of the targeted permanent not available via script helpers
-    // GAP: "can't be regenerated" modifier on DestroyPermanent
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no CMC-of-target / controller-of-target accessor for the
+    // damage rider; no can't-be-regenerated effect. Destroy only.
     vec![Effect::DestroyPermanent { target: *id }]
 }

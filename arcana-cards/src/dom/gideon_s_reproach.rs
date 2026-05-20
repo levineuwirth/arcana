@@ -1,8 +1,8 @@
-//! Gideon's Reproach — `{1}{W}` instant.
-//! "Gideon's Reproach deals 4 damage to target attacking or blocking creature."
+//! Gideon's Reproach — `{1}{W}` instant. "Gideon's Reproach deals 4
+//! damage to target attacking or blocking creature."
 //!
-//! GAP: no TargetFilter variant for "attacking or blocking creature"; using
-//! TargetRequirement::target_creature() as best-effort approximation.
+//! No target filter for "attacking or blocking" exists in the
+//! catalog; the closest expressible requirement is target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,26 +24,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Gideon's Reproach deals 4 damage to target attacking or blocking creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Gideon's Reproach deals 4 damage to target attacking or blocking creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {
         source: entry.source,
-        target: arcana_core::events::DamageTarget::Object(*id),
+        target: DamageTarget::Object(*id),
         amount: 4,
     }]
 }

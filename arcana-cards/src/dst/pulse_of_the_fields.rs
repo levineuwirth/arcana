@@ -1,10 +1,9 @@
-//! Pulse of the Fields — `{1}{W}{W}` instant. "You gain 4 life. Then if an
-//! opponent has more life than you, return Pulse of the Fields to its owner's
-//! hand."
+//! Pulse of the Fields — `{1}{W}{W}` instant. "You gain 4 life. Then
+//! if an opponent has more life than you, return Pulse of the Fields
+//! to its owner's hand."
 //!
-//! GAP: conditional return-to-hand based on life-total comparison not
-//! expressible (Conditional requires a pre-defined condition type).
-//! Partial: GainLife expressed.
+//! The life gain is expressed; the conditional self-return (a
+//! resolving spell returning itself to hand) has no primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,21 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "You gain 4 life. Then if an opponent has more life than you, return Pulse of the Fields to its owner's hand.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "You gain 4 life. Then if an opponent has more life than you, return Pulse of the Fields to its owner's hand.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional return-to-hand based on life-total comparison not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: conditional self-return-to-hand of the resolving spell.
     vec![Effect::GainLife { player: entry.controller, amount: 4 }]
 }

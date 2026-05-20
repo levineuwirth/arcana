@@ -1,9 +1,11 @@
-//! Huatli's Spurring — `{R}` instant. "Target creature gets +2/+0 until end
-//! of turn. If you control a Huatli planeswalker, that creature gets +4/+0
-//! until end of turn instead."
+//! Huatli's Spurring — `{R}` instant.
+//! "Target creature gets +2/+0 until end of turn. If you control a Huatli
+//! planeswalker, that creature gets +4/+0 until end of turn instead."
 //!
-//! GAP: "if you control a Huatli planeswalker" — no ObjectFilter or script
-//! helper for planeswalker subtype check. Best-effort: apply the base +2/+0.
+//! GAP: Checking if you control a planeswalker with a specific subtype
+//! (Huatli) requires a planeswalker TypeLine and subtype filter — there is no
+//! TypeLine::PLANESWALKER shown in the API. The base +2/+0 pump is expressible;
+//! the conditional +4 branch is GAPped.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -40,9 +42,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you control a Huatli planeswalker" — no planeswalker subtype filter
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: conditional +4 branch requires checking for Huatli planeswalker subtype —
+    //      TypeLine::PLANESWALKER not in API; always emits base +2.
     vec![Effect::Pump {
         target: *id,
         power: 2,

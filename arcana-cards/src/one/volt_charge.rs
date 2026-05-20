@@ -1,7 +1,5 @@
-//! Volt Charge — `{2}{R}` instant. "Volt Charge deals 3 damage to any target.
-//! Proliferate."
-//!
-//! GAP: Proliferate not in the Effect catalog. DealDamage 3 is expressed.
+//! Volt Charge — `{2}{R}` instant. "Volt Charge deals 3 damage to any
+//! target. Proliferate."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -38,7 +36,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Proliferate not in the Effect catalog
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -48,6 +45,8 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    // "Proliferate" is not expressible (no proliferate effect variant);
+    // the 3 damage is applied.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

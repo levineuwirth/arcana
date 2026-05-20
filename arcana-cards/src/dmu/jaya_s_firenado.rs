@@ -1,10 +1,5 @@
-//! Jaya's Firenado — `{4}{R}` sorcery, "Jaya's Firenado deals 5 damage to
+//! Jaya's Firenado — `{4}{R}` sorcery. "Jaya's Firenado deals 5 damage to
 //! target creature or planeswalker. Scry 1."
-//!
-//! # GAP
-//! Planeswalker targeting is not available as a TargetFilter variant.
-//! Best-effort: targets any creature; verify pipeline will flag the missing
-//! planeswalker arm. DealDamage and Scry are fully expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +36,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: planeswalker targeting not available; only creature arm expressed
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![

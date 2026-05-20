@@ -1,6 +1,6 @@
-//! Battlefield Promotion — `{1}{W}` instant.
-//! "Put a +1/+1 counter on target creature. That creature gains first strike
-//! until end of turn. You gain 2 life."
+//! Battlefield Promotion — `{1}{W}` instant. "Put a +1/+1 counter on
+//! target creature. That creature gains first strike until end of
+//! turn. You gain 2 life."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -22,26 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature. That creature gains first strike until end of turn. You gain 2 life.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on target creature. That creature gains first strike until end of turn. You gain 2 life.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
-        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::FirstStrike, duration: Duration::EndOfTurn },
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::FirstStrike,
+            duration: Duration::EndOfTurn,
+        },
         Effect::GainLife { player: entry.controller, amount: 2 },
     ]
 }

@@ -1,7 +1,7 @@
-//! Deal Gone Bad — `{3}{B}` instant, "Target creature gets -3/-3 until end of
-//! turn. Target player mills 3 cards."
+//! Deal Gone Bad — `{3}{B}` instant. "Target creature gets -3/-3 until
+//! end of turn. Target player mills 3."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -23,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -3/-3 until end of turn. Target player mills 3 cards.".into(),
+                text: "Target creature gets -3/-3 until end of turn. Target player mills 3.".into(),
                 target_requirements: vec![
                     TargetRequirement::target_creature(),
                     TargetRequirement::target_player(),
@@ -39,22 +39,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(t0) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = t0 {
-            effects.push(Effect::Pump {
-                target: *id,
-                power: -3,
-                toughness: -3,
-                duration: Duration::EndOfTurn,
-                keywords: vec![],
-            });
-        }
-    }
-    if let Some(t1) = entry.targets.targets.get(1) {
-        if let TargetChoice::Player(p) = t1 {
-            effects.push(Effect::Mill { player: *p, count: 3 });
-        }
-    }
-    effects
+    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(creature_id) = t0 else { return Vec::new(); };
+    let TargetChoice::Player(player) = t1 else { return Vec::new(); };
+    vec![
+        Effect::Pump {
+            target: *creature_id,
+            power: -3,
+            toughness: -3,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+        Effect::Mill { player: *player, count: 3 },
+    ]
 }

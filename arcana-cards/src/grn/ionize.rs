@@ -1,7 +1,8 @@
-//! Ionize — `{1}{U}{R}` instant, "Counter target spell. Ionize deals 2 damage to that spell's controller."
+//! Ionize — `{1}{U}{R}` instant. "Counter target spell. Ionize deals
+//! 2 damage to that spell's controller."
 //!
-//! # GAP
-//! No exposed GameState API to look up the controller of the target stack object; damage-to-spell-controller not expressible.
+//! The counter is emitted; the spell's controller is not readable
+//! from the effect surface, so the 2 damage is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,17 +25,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. Ionize deals 2 damage to that spell's controller.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell. Ionize deals 2 damage to that spell's controller.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,9 +43,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // Counter is expressible; damage to target spell's controller requires GameState lookup not in catalog.
-    // GAP: no exposed API to get controller of target stack object for the damage effect
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: spell's controller not readable, so the 2 damage is
+    // omitted.
     vec![Effect::Counter { target: *id }]
 }

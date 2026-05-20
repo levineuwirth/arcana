@@ -1,5 +1,6 @@
-//! Rookie Mistake — `{U}` instant, "Target creature gets +0/+2 until end of
-//! turn. Another target creature gets -2/-0 until end of turn."
+//! Rookie Mistake — `{U}` instant. "Until end of turn, target creature gets
+//! +0/+2 and another target creature gets -2/-0." Two creature targets; two
+//! `Effect::Pump`s with the matching deltas.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -8,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,49 +22,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +0/+2 until end of turn. Another target creature gets -2/-0 until end of turn.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, target creature gets +0/+2 and another target creature gets -2/-0.".into(),
+            target_requirements: vec![
+                TargetRequirement::target_creature(),
+                TargetRequirement::target_creature(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut iter = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(id0)) = iter.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(id1)) = iter.next() else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id0,
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(a)) = entry.targets.targets.first() {
+        out.push(Effect::Pump {
+            target: *a,
             power: 0,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        },
-        Effect::Pump {
-            target: *id1,
+        });
+    }
+    if let Some(TargetChoice::Object(b)) = entry.targets.targets.get(1) {
+        out.push(Effect::Pump {
+            target: *b,
             power: -2,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        },
-    ]
+        });
+    }
+    out
 }

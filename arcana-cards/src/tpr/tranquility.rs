@@ -7,7 +7,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ObjectFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -35,13 +35,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let all_enchantments = script::ids_matching(
+    let ids = script::ids_matching(
         state,
         &ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
         entry.controller,
     );
     vec![Effect::ForEach {
-        targets: all_enchantments,
+        targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

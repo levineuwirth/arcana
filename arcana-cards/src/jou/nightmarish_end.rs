@@ -1,7 +1,7 @@
-//! Nightmarish End — `{2}{B}` instant. "Target creature gets -X/-X until
-//! end of turn, where X is the number of cards in your hand."
+//! Nightmarish End — `{2}{B}` instant. "Target creature gets -X/-X
+//! until end of turn, where X is the number of cards in your hand."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -22,13 +22,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -X/-X until end of turn, where X is the number of cards in your hand.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -X/-X until end of turn, where X is \
+                   the number of cards in your hand."
+                .into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,10 +38,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let x = script::hand_size(state, entry.controller) as i32;
-    if x == 0 { return Vec::new(); }
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: -x,

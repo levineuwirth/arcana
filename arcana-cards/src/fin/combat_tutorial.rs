@@ -1,5 +1,5 @@
-//! Combat Tutorial — `{2}{U}` sorcery, "Target player draws two cards. Put a +1/+1 counter
-//! on up to one target creature you control."
+//! Combat Tutorial — `{2}{U}` sorcery. "Target player draws two cards. Put a
+//! +1/+1 counter on up to one target creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![
                     TargetRequirement::target_player(),
                     TargetRequirement {
-                        filter: TargetFilter::Creature,
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
                         count: TargetCount::UpTo(1),
                         controller: None,
                     },
@@ -42,15 +46,23 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(first) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = first else { return Vec::new(); };
-    let mut effects = vec![Effect::DrawCards { player: *p, count: 2 }];
-    if let Some(TargetChoice::Object(creature_id)) = entry.targets.targets.get(1) {
-        effects.push(Effect::AddCounters {
-            target: *creature_id,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        });
+    let Some(player_t) = entry.targets.targets.first() else { return Vec::new(); };
+    let player = match player_t {
+        TargetChoice::Player(p) => *p,
+        _ => return Vec::new(),
+    };
+
+    let mut effects = vec![Effect::DrawCards { player, count: 2 }];
+
+    if let Some(creature_t) = entry.targets.targets.get(1) {
+        if let TargetChoice::Object(id) = creature_t {
+            effects.push(Effect::AddCounters {
+                target: *id,
+                kind: CounterKind::PlusOnePlusOne,
+                count: 1,
+            });
+        }
     }
+
     effects
 }

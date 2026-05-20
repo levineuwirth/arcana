@@ -1,11 +1,17 @@
-//! Sunfall — `{3}{W}{W}` sorcery, "Exile all creatures. Incubate X, where
-//! X is the number of creatures exiled this way."
-//! GAP: Incubate mechanic (create Incubator token with X +1/+1 counters
-//! and transform ability) is not in the Effect catalog.
+//! Sunfall — `{3}{W}{W}` sorcery. "Exile all creatures. Incubate X,
+//! where X is the number of creatures exiled this way."
+//!
+//! "Exile all creatures" is a board-wide exile via ForEach over every
+//! creature. The Incubate X rider creates an Incubator token with X
+//! +1/+1 counters and a transform ability — no Incubate primitive and
+//! no way to size it from the just-exiled count.
+//!
+//! GAP: Incubate X is not expressible (no Incubate primitive / dynamic
+//! token-counter sizing); only the board exile is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -23,27 +29,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile all creatures. Incubate X, where X is the number of creatures exiled this way.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile all creatures. Incubate X, where X is the number of creatures exiled this way.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: Incubate X (create Incubator token with X counters)
+    // GAP: Incubate X rider not expressible.
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::ExilePermanent {
-            target: arcana_core::objects::NULL_OBJECT_ID,
-        }),
+        effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
     }]
 }

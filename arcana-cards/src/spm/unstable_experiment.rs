@@ -1,9 +1,10 @@
-//! Unstable Experiment — `{1}{U}` instant, "Target player draws a card, then
-//! up to one target creature you control connives."
+//! Unstable Experiment — `{1}{U}` instant.
+//! "Target player draws a card, then up to one target creature you control connives."
 //!
-//! GAP: Connive mechanic (draw, discard, conditional +1/+1 counter if nonland
-//! discarded) not expressible as a single Effect variant. Best effort: draw a
-//! card for the target player only.
+//! GAP: "connives" mechanic (draw, discard, conditional +1/+1 counter if nonland
+//! discarded) is not a single Effect variant; connive requires interactive discard
+//! choice with conditional counter which is not expressible in the catalog.
+//! Partial: emit the draw for the target player only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,9 +41,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(target_player) = target else { return Vec::new(); };
-    vec![
-        Effect::DrawCards { player: *target_player, count: 1 },
-        // GAP: connive mechanic not expressible (draw, discard, conditional counter)
-    ]
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: connive mechanic (draw+discard+conditional counter) not in catalog
+    vec![Effect::DrawCards { player: *p, count: 1 }]
 }

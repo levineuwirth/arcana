@@ -1,8 +1,8 @@
-//! Time to Reflect — `{W}` instant.
-//! "Exile target creature that blocked or was blocked by a Zombie this turn."
+//! Time to Reflect — `{W}` instant. "Exile target creature that
+//! blocked or was blocked by a Zombie this turn."
 //!
-//! GAP: no TargetFilter for "creature that blocked or was blocked by a Zombie this turn";
-//! using target_creature() as best-effort approximation.
+//! The combat-history target restriction is not expressible;
+//! approximated as target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,22 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature that blocked or was blocked by a Zombie this turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature that blocked or was blocked by a Zombie this turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "blocked or was blocked by a Zombie this turn" combat-
+    // history target filter is not expressible.
     vec![Effect::ExilePermanent { target: *id }]
 }

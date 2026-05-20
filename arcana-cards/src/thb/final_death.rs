@@ -1,4 +1,4 @@
-//! Final Death — `{4}{B}` instant, "Exile target creature."
+//! Final Death — `{4}{B}` instant. "Exile target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

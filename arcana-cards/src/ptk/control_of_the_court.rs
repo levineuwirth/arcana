@@ -1,5 +1,5 @@
-//! Control of the Court — `{1}{R}` sorcery, "Draw four cards, then discard
-//! three cards at random."
+//! Control of the Court — `{1}{R}` sorcery. "Draw four cards, then
+//! discard three cards at random."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,6 +36,10 @@ fn resolve(
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: entry.controller, count: 4 },
-        Effect::Discard { player: entry.controller, count: 3, choice: DiscardChoice::Random },
+        Effect::Discard {
+            player: entry.controller,
+            count: 3,
+            choice: DiscardChoice::Random,
+        },
     ]
 }

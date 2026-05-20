@@ -1,7 +1,10 @@
-//! Roots of Wisdom — `{1}{G}` sorcery. "Mill three cards, then return a land card or Elf card from
-//! your graveyard to your hand. If you can't, draw a card."
-//! GAP: conditional "return land OR Elf card from graveyard, else draw" not expressible.
-//! Best effort: mill 3; graveyard-return and fallback-draw are GAP.
+//! Roots of Wisdom — `{1}{G}` sorcery. "Mill three cards, then return
+//! a land card or Elf card from your graveyard to your hand. If you
+//! can't, draw a card."
+//!
+//! The mill is emitted; the non-targeted conditional graveyard-return
+//! (land-or-Elf) with the can't-then-draw fallback is not modeled —
+//! GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,13 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Mill three cards, then return a land card or Elf card from your graveyard to your hand. If you can't, draw a card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Mill three cards, then return a land card or Elf card from your graveyard to your hand. If you can't, draw a card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,6 +38,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional return of land-or-Elf from graveyard; fallback draw if none found
+    // GAP: non-targeted conditional graveyard-return with can't-draw
+    // fallback is not modeled.
     vec![Effect::Mill { player: entry.controller, count: 3 }]
 }

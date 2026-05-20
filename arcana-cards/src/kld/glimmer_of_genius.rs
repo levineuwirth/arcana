@@ -1,8 +1,6 @@
-//! Glimmer of Genius — `{3}{U}` instant. "Scry 2, then draw two cards.
-//! You get {E}{E} (two energy counters)."
-//!
-//! GAP: Energy counters ({E}) are not in the engine Effect catalog.
-//! The Scry and DrawCards effects are rendered; the energy gain is not expressible.
+//! Glimmer of Genius — `{3}{U}` instant. "Scry 2, then draw two
+//! cards. You get {E}{E} (two energy counters)." Energy counters have
+//! no primitive; the scry and draw are emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,22 +20,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Scry 2, then draw two cards. You get {E}{E}.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Scry 2, then draw two cards. You get {E}{E} (two energy counters).".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Effect::GainEnergy (energy counters) is not in the catalog.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: energy counters ({E}{E}) have no primitive.
     vec![
         Effect::Scry { player: entry.controller, count: 2 },
         Effect::DrawCards { player: entry.controller, count: 2 },

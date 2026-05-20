@@ -1,11 +1,6 @@
-//! Environmental Sciences — `{2}` sorcery — Lesson. "Search your library for
-//! a basic land card, put it onto the battlefield tapped, then shuffle. You
-//! gain 2 life."
-//!
-//! GAP: basic land (supertype Basic) filter not available in ObjectFilter;
-//! `.with_types(TypeLine::LAND.into())` gets all lands but not specifically
-//! basic lands. TutorToBattlefield with generic land filter and GainLife 2 are
-//! expressed; the "basic" restriction is lost.
+//! Environmental Sciences — `{2}` sorcery (Lesson). "Search your
+//! library for a basic land card, reveal it, put it into your hand,
+//! then shuffle. You gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. You gain 2 life.".into(),
+                text: "Search your library for a basic land card, reveal it, put it into your hand, then shuffle. You gain 2 life.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -41,12 +36,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: basic land supertype filter not available; using generic land filter
+    // "basic" supertype constraint not expressible in ObjectFilter;
+    // search for a land card.
     vec![
-        Effect::TutorToBattlefield {
+        Effect::TutorToHand {
             player: entry.controller,
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: true,
+            reveal: true,
         },
         Effect::GainLife { player: entry.controller, amount: 2 },
     ]

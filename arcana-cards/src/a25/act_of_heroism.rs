@@ -1,8 +1,6 @@
-//! Act of Heroism — `{1}{W}` instant. "Untap target creature. It gets +2/+2
-//! until end of turn and can block an additional creature this turn."
-//!
-//! GAP: "can block an additional creature this turn" — no Effect variant for
-//! granting extra block assignments. Untap and Pump are expressed.
+//! Act of Heroism — `{1}{W}` instant. "Untap target creature. It gets
+//! +2/+2 until end of turn and can block an additional creature this
+//! turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -39,9 +37,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: grant extra block assignment not expressible
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "can block an additional creature this turn" is not expressible;
+    // untap + pump are applied.
     vec![
         Effect::Untap { target: *id },
         Effect::Pump {

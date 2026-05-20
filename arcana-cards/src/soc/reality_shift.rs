@@ -1,9 +1,5 @@
-//! Reality Shift — `{1}{U}` instant. "Exile target creature. Its controller
-//! manifests the top card of their library."
-//!
-//! GAP: Manifest (put top card of library onto battlefield face down as a
-//! 2/2 creature) is not in the Effect catalog. Emitting the exile; manifest
-//! is omitted.
+//! Reality Shift — `{1}{U}` instant. "Exile target creature. Its
+//! controller manifests the top card of their library."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,23 +20,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. Its controller manifests the top card of their library.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. Its controller manifests the top card of their library.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: manifest top card of target creature's controller's library
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "manifest the top card" (face-down 2/2) has no Effect
+    // variant; only the exile is emitted.
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,9 +1,8 @@
-//! Dual-Sun Technique — `{1}{W}` instant, "Target creature you control gains
-//! double strike until end of turn. If it has a +1/+1 counter on it, draw
-//! a card."
+//! Dual-Sun Technique — `{1}{W}` instant. "Target creature you control gains
+//! double strike until end of turn. If it has a +1/+1 counter on it, draw a card."
 //!
-//! # GAP
-//! * GAP: conditional draw based on whether target has a +1/+1 counter
+//! GAP: no Effect variant or script helper to check whether a specific permanent
+//! has a +1/+1 counter on it for the conditional draw. The draw is omitted.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -12,7 +11,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +27,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Target creature you control gains double strike until end of turn. If it has a +1/+1 counter on it, draw a card.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -42,12 +47,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::DoubleStrike,
-            duration: Duration::EndOfTurn,
-        },
-        // GAP: conditional draw based on whether target has a +1/+1 counter
-    ]
+    // GAP: no script helper to check if a permanent has a +1/+1 counter; conditional draw omitted
+    vec![Effect::GrantKeyword {
+        target: *id,
+        keyword: KeywordAbility::DoubleStrike,
+        duration: Duration::EndOfTurn,
+    }]
 }

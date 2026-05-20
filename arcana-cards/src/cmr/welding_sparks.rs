@@ -1,5 +1,6 @@
-//! Welding Sparks — `{2}{R}` instant. "Welding Sparks deals X damage to target
-//! creature, where X is 3 plus the number of artifacts you control."
+//! Welding Sparks — `{2}{R}` instant. "Welding Sparks deals X damage
+//! to target creature, where X is 3 plus the number of artifacts you
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Welding Sparks deals X damage to target creature, where X is 3 plus the number of artifacts you control.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Welding Sparks deals X damage to target creature, where X is 3 plus the number of artifacts you control.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -43,7 +43,7 @@ fn resolve(
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let artifacts = script::count_matching(
         state,
-        &ObjectFilter::new()
+        &ObjectFilter::permanent()
             .with_types(TypeLine::ARTIFACT.into())
             .controlled_by(ControllerConstraint::You),
         entry.controller,

@@ -1,8 +1,6 @@
-//! Ral's Outburst — `{2}{U}{R}` instant. "Ral's Outburst deals 3 damage to any target.
-//! Look at the top two cards of your library. Put one into your hand and the other into
-//! your graveyard."
-//! GAP: "look at top 2, put one in hand and one in graveyard" not expressible as Surveil
-//! (Surveil only puts on top/bottom, not to hand/graveyard).
+//! Ral's Outburst — `{2}{U}{R}` instant. "Ral's Outburst deals 3
+//! damage to any target. Look at the top two cards of your library.
+//! Put one of them into your hand and the other into your graveyard."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,21 +22,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Ral's Outburst deals 3 damage to any target. Look at the top two cards of your library. Put one into your hand and the other into your graveyard.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Ral's Outburst deals 3 damage to any target. Look at the top two cards of your library. Put one of them into your hand and the other into your graveyard.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -48,7 +41,9 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: "look at top 2, put one in hand one in graveyard" not expressible (not Surveil)
+    // The "look at top two, one to hand / one to graveyard" dig is
+    // not expressible with the available card-flow effects; emit the
+    // damage portion.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

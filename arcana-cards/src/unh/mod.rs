@@ -3,3 +3,5 @@ pub mod land_aid_04;
 pub mod supersize;
 pub mod wet_willie_of_the_damned;
 pub mod saut;
+pub mod flaccify;
+pub mod ass_whuppin;

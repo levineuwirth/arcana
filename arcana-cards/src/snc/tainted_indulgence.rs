@@ -1,11 +1,12 @@
-//! Tainted Indulgence — `{U}{B}` instant. "Draw two cards. Then discard a card unless
-//! there are five or more mana values among cards in your graveyard."
+//! Tainted Indulgence — `{U}{B}` instant. "Draw two cards. Then
+//! discard a card unless there are five or more mana values among
+//! cards in your graveyard."
 //!
-//! GAP: conditional discard based on counting distinct mana values in graveyard is not
-//! in the catalog. Draw two is expressible; the conditional discard is omitted.
+//! GAP: 'number of distinct mana values among graveyard cards' is not
+//! a script helper; conditional discard is dropped. Only the
+//! unconditional draw is modeled.
 
 use arcana_core::effects::Effect;
-use arcana_core::effects::DiscardChoice;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -23,24 +24,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards. Then discard a card unless there are five or more mana values among cards in your graveyard.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards. Then discard a card unless there are five or more mana values among cards in your graveyard.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional discard based on count of distinct mana values in graveyard not in catalog
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: 'five or more distinct mana values in your graveyard' has no script helper.
+    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
 }

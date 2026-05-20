@@ -1,11 +1,9 @@
-//! Flip the Switch — `{2}{U}` instant.
-//! "Counter target spell unless its controller pays {4}. Create a 2/2
-//! black Zombie creature token with decayed."
-//
-// GAP: "counter unless pays {4}" (Mana Leak variant) is not expressible
-//      with Effect::Counter (no conditional payment). Best effort: hard
-//      counter + token.
-// GAP: decayed keyword is not in the supported keyword surface.
+//! Flip the Switch — `{2}{U}` instant. "Counter target spell unless its
+//! controller pays {4}. Create a 2/2 black Zombie creature token with
+//! decayed."
+//!
+//! GAP: no KeywordAbility::Decayed; token is created without the decayed
+//! ability.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -13,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -51,7 +51,7 @@ fn resolve(
         TargetChoice::Object(id) => *id,
         _ => return Vec::new(),
     };
-    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned during register()");
+    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
     let token = TokenDefinition {
@@ -64,10 +64,11 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "counter unless pays {4}" modeled as hard counter
-    // GAP: decayed keyword not in supported surface
     vec![
-        Effect::Counter { target: stack_id },
+        Effect::CounterUnlessPays {
+            target: stack_id,
+            cost: ManaCost::parse("{4}").expect("valid cost"),
+        },
         Effect::CreateToken { controller: entry.controller, token },
     ]
 }

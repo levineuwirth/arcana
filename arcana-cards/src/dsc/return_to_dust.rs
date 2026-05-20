@@ -1,9 +1,9 @@
-//! Return to Dust — `{2}{W}{W}` instant, "Exile target artifact or
-//! enchantment. If you cast this spell during your main phase, you may exile
-//! up to one other target artifact or enchantment."
-//!
-//! GAP: conditional second target based on phase (main phase check) is not
-//! expressible.
+//! Return to Dust — `{2}{W}{W}` instant. "Exile target artifact or
+//! enchantment. If you cast this spell during your main phase, you may
+//! exile up to one other target artifact or enchantment." We model the
+//! optional second target as a second TargetRequirement (engine offers it as
+//! up-to-one). No phase-check helper — GAP the main-phase condition (we
+//! always allow the second exile).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,6 +16,14 @@ use arcana_core::targets::{
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
+fn artifact_or_enchantment_filter() -> TargetFilter {
+    TargetFilter::Permanent(
+        ObjectFilter::new()
+            .with_types(TypeLine::ARTIFACT.into())
+            .with_types_any(TypeLine::ENCHANTMENT.into()),
+    )
+}
+
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Return to Dust");
     let chars = Characteristics {
@@ -26,31 +34,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target artifact or enchantment. If you cast this spell during your main phase, you may exile up to one other target artifact or enchantment.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
-                            .with_types_any(TypeLine::ARTIFACT.into())
-                            .with_types_any(TypeLine::ENCHANTMENT.into()),
-                    ),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target artifact or enchantment. If you cast this spell during your main phase, you may exile up to one other target artifact or enchantment.".into(),
+            // GAP: no helper for "cast during your main phase" gating; second target is always offered.
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: artifact_or_enchantment_filter(),
                     count: TargetCount::Exactly(1),
                     controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+                },
+                TargetRequirement {
+                    filter: artifact_or_enchantment_filter(),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional second target based on main-phase check not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::ExilePermanent { target: *id }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::ExilePermanent { target: *id });
+        }
+    }
+    out
 }

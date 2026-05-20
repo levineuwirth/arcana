@@ -1,8 +1,5 @@
-//! Acidic Soil — `{2}{R}` sorcery, "Acidic Soil deals damage to each player equal to
-//! the number of lands they control."
-//!
-//! GAP: per-player damage where amount differs by player (each player's own land count)
-//! is not expressible with ForEach over players using script helpers.
+//! Acidic Soil — `{2}{R}` sorcery, "Acidic Soil deals damage to each
+//! player equal to the number of lands they control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -12,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,13 +22,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Acidic Soil deals damage to each player equal to the number of lands they control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Acidic Soil deals damage to each player equal to the \
+                   number of lands they control."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,12 +38,21 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
-    let my_lands = script::count_matching(state, &land_filter.clone().controlled_by(ControllerConstraint::You), entry.controller);
-    let opp_lands = script::count_matching(state, &land_filter.controlled_by(ControllerConstraint::Opponent), entry.controller);
-    // GAP: no API to enumerate all player IDs; using entry.controller for self and approximating opponent
-    vec![
-        Effect::DealDamage { source: entry.source, target: DamageTarget::Player(entry.controller), amount: my_lands },
-        // GAP: opponent player ID not derivable; opponent damage approximated at 0
-    ]
+    script::all_players(state)
+        .into_iter()
+        .map(|p| {
+            let lands = script::count_matching(
+                state,
+                &ObjectFilter::new()
+                    .with_types(TypeLine::LAND.into())
+                    .controlled_by(ControllerConstraint::You),
+                p,
+            );
+            Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Player(p),
+                amount: lands,
+            }
+        })
+        .collect()
 }

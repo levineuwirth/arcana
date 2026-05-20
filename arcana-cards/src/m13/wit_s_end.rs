@@ -1,5 +1,4 @@
-//! Wit's End — `{5}{B}{B}` sorcery.
-//! "Target player discards their hand."
+//! Wit's End — `{5}{B}{B}` sorcery, "Target player discards their hand."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -37,10 +36,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let p = match target {
-        TargetChoice::Player(p) => *p,
-        _ => return Vec::new(),
-    };
-    let hand = script::hand_size(state, p);
-    vec![Effect::Discard { player: p, count: hand, choice: DiscardChoice::ControllerChooses }]
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let count = script::hand_size(state, *p);
+    if count == 0 {
+        return Vec::new();
+    }
+    vec![Effect::Discard { player: *p, count, choice: DiscardChoice::ControllerChooses }]
 }

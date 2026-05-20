@@ -1,8 +1,10 @@
-//! Brainsurge — `{2}{U}` instant. "Draw four cards, then put two cards from
-//! your hand on top of your library in any order."
+//! Brainsurge — `{2}{U}` instant.
+//! "Draw four cards, then put two cards from your hand on top of your library
+//! in any order."
 //!
 //! GAP: "put two cards from your hand on top of your library in any order" —
-//! no Effect variant for choosing cards from hand to put on library top.
+//! there is no Effect variant for the player choosing cards from hand to place
+//! on top of library. The draw-four portion is expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +39,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put two cards from your hand on top of your library in any order" — no Effect variant for hand-to-library-top choice
+    // GAP: no Effect variant to choose cards from hand and put them on top of library.
     vec![
         Effect::DrawCards { player: entry.controller, count: 4 },
     ]

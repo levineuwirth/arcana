@@ -1,21 +1,16 @@
-//! Fire Tempest — `{5}{R}{R}` sorcery, "Fire Tempest deals 6 damage to
-//! each creature and each player."
-//!
-//! GAP: no player-set iteration in Effect catalog to deal damage to each
-//! player; ForEach only iterates ObjectIds (permanents), not PlayerIds.
-//! Emitting ForEach for creatures only.
+//! Fire Tempest — `{5}{R}{R}` sorcery. "Fire Tempest deals 6 damage
+//! to each creature and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
-use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 use arcana_core::targets::ObjectFilter;
+use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Fire Tempest");
@@ -27,29 +22,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Fire Tempest deals 6 damage to each creature and each player.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Fire Tempest deals 6 damage to each creature and each player.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let all_creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: no player-set iteration to deal 6 damage to each player
-    vec![Effect::ForEach {
-        targets: all_creatures,
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = vec![Effect::ForEach {
+        targets: script::ids_matching(state, &ObjectFilter::creature(), entry.controller),
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 6,
         }),
-    }]
+    }];
+    for p in script::all_players(state) {
+        out.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 6,
+        });
+    }
+    out
 }

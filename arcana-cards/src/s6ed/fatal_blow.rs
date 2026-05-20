@@ -1,8 +1,9 @@
-//! Fatal Blow — `{B}` instant.
-//! "Destroy target creature that was dealt damage this turn. It can't be
-//! regenerated."
-//! GAP: target restriction 'was dealt damage this turn'; 'can't be regenerated'
-//! modifier on DestroyPermanent.
+//! Fatal Blow — `{B}` instant. "Destroy target creature that was
+//! dealt damage this turn. It can't be regenerated."
+//!
+//! No catalog filter for "was dealt damage this turn"; we target a
+//! creature and destroy it (the can't-be-regenerated rider is not
+//! separately expressible).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,23 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature that was dealt damage this turn. It can't be regenerated.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature that was dealt damage this turn. It can't be regenerated.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'was dealt damage this turn' target filter; 'can't be regenerated' modifier
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: no "dealt damage this turn" target filter; can't-be-
+    // regenerated rider not separately expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

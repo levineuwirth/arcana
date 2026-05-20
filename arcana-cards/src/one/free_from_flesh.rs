@@ -1,6 +1,8 @@
-//! Free from Flesh — `{R}` instant, "Target creature gets +2/+2 until end of
-//! turn. Put two oil counters on it."
-//! GAP: CounterKind::Oil not in catalog; +2/+2 pump expressed without counter.
+//! Free from Flesh — `{R}` instant. "Target creature gets +2/+2
+//! until end of turn. Put two oil counters on it."
+//!
+//! GAP: CounterKind::Oil isn't in the catalog (only PlusOnePlusOne).
+//! Only the pump is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,24 +24,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. Put two oil counters on it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. Put two oil counters on it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: CounterKind::Oil not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: oil counters (only PlusOnePlusOne kind exists).
     vec![Effect::Pump {
         target: *id,
         power: 2,

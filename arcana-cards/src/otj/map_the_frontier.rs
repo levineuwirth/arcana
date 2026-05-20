@@ -1,10 +1,9 @@
-//! Map the Frontier — `{3}{G}` sorcery, "Search your library for up to two
-//! basic land cards and/or Desert cards, put them onto the battlefield tapped,
-//! then shuffle."
+//! Map the Frontier — `{3}{G}` sorcery. "Search your library for up
+//! to two basic land cards and/or Desert cards, put them onto the
+//! battlefield tapped, then shuffle."
 //!
-//! # GAP
-//! No subtype filter for "Desert" in ObjectFilter; only basic land expressible.
-//! Repeating TutorToBattlefield twice for basic lands as best-effort.
+//! No "up to N" multi-card tutor in catalog; model as a single
+//! land tutor. The Desert subtype alternative is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,32 +24,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for up to two basic land cards and/or Desert cards, put them onto the battlefield tapped, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for up to two basic land cards and/or Desert cards, put them onto the battlefield tapped, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no Desert subtype filter; modeling as up to two basic lands
-    vec![
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: true,
-        },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: up-to-2 multi-card tutor and the "or Desert" subtype alternative not in catalog.
+    // Single basic-land tutor as best-effort.
+    vec![Effect::TutorToBattlefield {
+        player: entry.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: true,
+    }]
 }

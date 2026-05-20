@@ -1,4 +1,5 @@
-//! Catalog — `{2}{U}` instant. "Draw two cards, then discard a card."
+//! Catalog — `{2}{U}` instant. "Draw two cards, then discard a
+//! card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -18,13 +19,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards, then discard a card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards, then discard a card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,6 +35,10 @@ fn resolve(
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

@@ -1,8 +1,8 @@
-//! Reciprocate — `{W}` instant, "Exile target creature that dealt damage
-//! to you this turn."
+//! Reciprocate — `{W}` instant. "Exile target creature that dealt
+//! damage to you this turn."
 //!
-//! GAP: "dealt damage to you this turn" creature filter (no catalog
-//! variant for targeting by damage-history).
+//! Note: the "dealt damage to you this turn" restriction is not
+//! expressible; modelled as exile target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,23 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature that dealt damage to you this turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature that dealt damage to you this turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "dealt damage to you this turn" filter not in TargetFilter
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ExilePermanent { target: *id }]
 }

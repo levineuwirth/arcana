@@ -1,8 +1,8 @@
-//! Tune the Narrative — `{U}` instant, "Draw a card. You get {E}{E}."
+//! Tune the Narrative — `{U}` instant. "Draw a card. You get {E}{E} (two
+//! energy counters)."
 //!
-//! # GAP
-//! Energy counters ({E}) are not in the effect catalog. The draw is emitted;
-//! energy gain is omitted.
+//! GAP: no energy-counters Effect (CounterKind only has PlusOnePlusOne).
+//! Draw stays honest.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Draw a card. You get {E}{E}.".into(),
+                text: "Draw a card. You get {E}{E} (two energy counters).".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -37,6 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: energy counters ({E}) not in catalog
+    // GAP: no energy-counter primitive.
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

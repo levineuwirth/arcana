@@ -1,5 +1,5 @@
-//! Chain to Memory — `{U}` instant. "Target creature gets -4/-0 until end of turn.
-//! Scry 2."
+//! Chain to Memory — `{U}` instant. "Target creature gets -4/-0 until end
+//! of turn. Scry 2."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

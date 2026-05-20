@@ -1,8 +1,11 @@
-//! Scout for Survivors — `{2}{W}` sorcery, "Return up to three target creature
-//! cards with total mana value 3 or less from your graveyard to the
-//! battlefield. Put a +1/+1 counter on each of them."
-//! GAP: total CMC constraint across multiple targets (hat filter) not
-//! expressible; individual per-target filter applied as best effort.
+//! Scout for Survivors — `{2}{W}` sorcery. "Return up to three target
+//! creature cards with total mana value 3 or less from your graveyard
+//! to the battlefield. Put a +1/+1 counter on each of them."
+//!
+//! GAP: 'total mana value 3 or less' is an aggregate constraint
+//! across multiple targets — TargetFilter::Card supports per-card
+//! cmc cap, not a sum. We use a per-card cap of 3 and accept the
+//! over-permissiveness.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,34 +27,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return up to three target creature cards with total mana value 3 or less from your graveyard to the battlefield. Put a +1/+1 counter on each of them.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature().with_max_cmc(3),
-                    },
-                    count: TargetCount::UpTo(3),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return up to three target creature cards with total mana value 3 or less from your graveyard to the battlefield. Put a +1/+1 counter on each of them.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::creature().with_max_cmc(3),
+                },
+                count: TargetCount::UpTo(3),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    entry.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t { Some(*id) } else { None }
-    }).flat_map(|id| {
-        [
-            Effect::ReturnFromGraveyardToBattlefield { target: id },
-            Effect::AddCounters { target: id, kind: CounterKind::PlusOnePlusOne, count: 1 },
-        ]
-    }).collect()
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
+            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
+            effects.push(Effect::AddCounters {
+                target: *id,
+                kind: CounterKind::PlusOnePlusOne,
+                count: 1,
+            });
+        }
+    }
+    // GAP: 'total mv 3 or less' aggregate — per-card cap used instead.
+    effects
 }

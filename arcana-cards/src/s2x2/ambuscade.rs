@@ -1,18 +1,25 @@
-//! Ambuscade — `{2}{G}` instant, "Target creature you control gets +1/+0
-//! until end of turn. Then it deals damage equal to its power to target
+//! Ambuscade — `{2}{G}` instant. "Target creature you control gets +1/+0
+//! until end of turn. It deals damage equal to its power to target
 //! creature an opponent controls."
+//!
+//! Use `script::power_of` AFTER the pump (i.e. read first to compute the
+//! damage; pump applies first and engine resolution will see the pumped
+//! value). Damage amount must be dynamic — power_of(a)+1 since +1/+0.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ambuscade");
@@ -26,10 +33,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature you control gets +1/+0 until end of turn. Then it deals damage equal to its power to target creature an opponent controls.".into(),
+                text: "Target creature you control gets +1/+0 until end of turn. It deals damage equal to its power to target creature an opponent controls.".into(),
                 target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
                 ],
                 modal: None,
                 effect: resolve,
@@ -42,24 +61,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(id_a) = t0 else { return Vec::new(); };
-    let TargetChoice::Object(id_b) = t1 else { return Vec::new(); };
-    // Pump applies first, then read power for the damage
-    let power_after_pump = script::power_of(state, *id_a) + 1;
+    let mut it = entry.targets.targets.iter();
+    let (Some(a_tc), Some(b_tc)) = (it.next(), it.next()) else { return Vec::new(); };
+    let (TargetChoice::Object(a), TargetChoice::Object(b)) = (a_tc, b_tc) else { return Vec::new(); };
+    let post_pump_power = (script::power_of(state, *a) + 1).max(0) as u32;
     vec![
         Effect::Pump {
-            target: *id_a,
+            target: *a,
             power: 1,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
         Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id_b),
-            amount: power_after_pump.max(0) as u32,
+            source: *a,
+            target: DamageTarget::Object(*b),
+            amount: post_pump_power,
         },
     ]
 }

@@ -1,4 +1,4 @@
-//! Naturalize — `{1}{G}` instant. "Destroy target artifact or enchantment."
+//! Naturalize — `{1}{G}` instant, "Destroy target artifact or enchantment."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

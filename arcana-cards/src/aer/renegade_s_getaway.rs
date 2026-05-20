@@ -1,4 +1,4 @@
-//! Renegade's Getaway — `{2}{B}` instant, "Target permanent gains
+//! Renegade's Getaway — `{2}{B}` instant. "Target permanent gains
 //! indestructible until end of turn. Create a 1/1 colorless Servo
 //! artifact creature token."
 
@@ -25,29 +25,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target permanent gains indestructible until end of turn. Create a 1/1 colorless Servo artifact creature token.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target permanent gains indestructible until end of turn. Create a 1/1 colorless Servo artifact creature token.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let servo = reg.interner().lookup("Servo")
-        .expect("Servo interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        });
+    }
+    let servo = reg.interner().lookup("Servo").expect("Servo interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(servo);
     let token = TokenDefinition {
@@ -60,12 +60,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    vec![
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Indestructible,
-            duration: Duration::EndOfTurn,
-        },
-        Effect::CreateToken { controller: entry.controller, token },
-    ]
+    out.push(Effect::CreateToken { controller: entry.controller, token });
+    out
 }

@@ -1,10 +1,8 @@
 //! Second Breakfast — `{2}{W}` instant. "Up to two target creatures
 //! each get +2/+1 until end of turn. Create a Food token."
 //!
-//! GAP: Food token has an activated ability ({2},{T}, Sacrifice: gain 3
-//! life) which is not expressible via TokenDefinition.abilities. Token
-//! is created without the ability.
-//! Two target creatures require two separate Pump effects.
+//! GAP: Food token activated ability '{2}, {T}, Sacrifice: gain 3
+//! life' isn't modeled; the token is created with the Food subtype.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -13,9 +11,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,32 +25,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Up to two target creatures each get +2/+1 until end of turn. Create a Food token.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
-                    count: TargetCount::UpTo(2),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Up to two target creatures each get +2/+1 until end of turn. Create a Food token.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                count: TargetCount::UpTo(2),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let food = reg.interner().lookup("Food")
-        .expect("Food interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(food);
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let mut effects = Vec::new();
-    for target in &entry.targets.targets {
-        if let TargetChoice::Object(id) = target {
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
             effects.push(Effect::Pump {
                 target: *id,
                 power: 2,
@@ -64,7 +51,9 @@ fn resolve(
             });
         }
     }
-    // GAP: Food token activated ability ({2},{T}, Sacrifice: gain 3 life)
+    let food = reg.interner().lookup("Food").expect("interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(food);
     let token = TokenDefinition {
         name: food,
         colors: ColorSet::new(),
@@ -75,6 +64,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: Food '{2}, {T}, Sacrifice: gain 3 life' activated ability.
     effects.push(Effect::CreateToken { controller: entry.controller, token });
     effects
 }

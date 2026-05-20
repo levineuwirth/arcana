@@ -1,12 +1,8 @@
-//! Ray of Enfeeblement — `{B}` instant.
-//! "Target creature gets -4/-1 until end of turn. If that creature is white,
-//! it gets -4/-4 until end of turn instead."
-//!
-//! # GAP: conditional pump based on target's color — Effect::Conditional
-//! requires a `condition` type not shown in the catalog; falling back to
-//! the base -4/-1 pump.
+//! Ray of Enfeeblement — `{B}` instant. "Target creature gets -4/-1
+//! until end of turn. If that creature is white, it gets -4/-4 until
+//! end of turn instead."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -26,24 +22,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -4/-1 until end of turn. If that creature is white, it gets -4/-4 until end of turn instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -4/-1 until end of turn. If that creature is white, it gets -4/-4 until end of turn instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional pump based on target creature's color (white check)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // The "if white -> -4/-4 instead" branch requires reading the
+    // target's color (no such script helper); emit the base -4/-1.
     vec![Effect::Pump {
         target: *id,
         power: -4,

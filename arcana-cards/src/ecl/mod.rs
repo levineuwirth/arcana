@@ -16,3 +16,4 @@ pub mod feed_the_flames;
 pub mod spry_and_mighty;
 pub mod scarblade_s_malice;
 pub mod thirst_for_identity;
+pub mod assert_perfection;

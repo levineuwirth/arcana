@@ -1,13 +1,14 @@
-//! Infectious Inquiry — `{2}{B}` sorcery. "You draw two cards and you lose 2
-//! life. Each opponent gets a poison counter."
+//! Infectious Inquiry — `{2}{B}` sorcery.
+//! "You draw two cards and you lose 2 life. Each opponent gets a poison counter."
 //!
-//! GAP: "each opponent gets a poison counter" — no Effect variant for distributing
-//! poison counters to players. Draw and life loss are expressible.
+//! GAP: Effect::AddPoisonCounter (or equivalent) is not in the Effect catalog.
+//! The draw-two + lose-2-life portion is expressible; the poison counter is GAPped.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
@@ -33,13 +34,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each opponent gets a poison counter" — no Effect variant for player poison counters
-    vec![
+    // GAP: no Effect variant to give a player a poison counter.
+    let mut effects = vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
         Effect::LoseLife { player: entry.controller, amount: 2 },
-    ]
+    ];
+    // Emit opponent effects (poison GAP noted; discard placeholder omitted — GAP only)
+    let _ = script::opponents(state, entry.controller); // referenced to satisfy dynamic usage
+    effects
 }

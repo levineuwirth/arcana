@@ -1,6 +1,5 @@
-//! Cateran Summons — `{B}` sorcery.
-//! "Search your library for a Mercenary card, reveal that card, put it into
-//! your hand, then shuffle."
+//! Cateran Summons — `{B}` sorcery. "Search your library for a Mercenary card,
+//! reveal that card, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +12,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cateran Summons");
-    let _mercenary = reg.interner_mut().intern("Mercenary");
+    let _merc = reg.interner_mut().intern("Mercenary");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{B}").expect("valid cost")),

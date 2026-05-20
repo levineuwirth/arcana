@@ -1,6 +1,5 @@
-//! Regenesis — `{3}{G}{G}` instant.
-//! "Return up to two target permanent cards from your graveyard to your
-//! hand."
+//! Regenesis — `{3}{G}{G}` instant. "Return up to two target permanent cards
+//! from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -44,16 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| {
-            if let TargetChoice::Object(id) = t {
-                Some(Effect::ReturnFromGraveyardToHand { target: *id })
-            } else {
-                None
-            }
-        })
-        .collect()
+    entry.targets.targets.iter().filter_map(|t| match t {
+        TargetChoice::Object(id) => Some(Effect::ReturnFromGraveyardToHand { target: *id }),
+        _ => None,
+    }).collect()
 }

@@ -1,8 +1,11 @@
-//! Urge to Feed — `{B}{B}` instant, "Target creature gets -3/-3 until end of
-//! turn. You may tap any number of untapped Vampires you control. If you do,
-//! put a +1/+1 counter on each of those Vampires."
+//! Urge to Feed — `{B}{B}` instant.
+//! "Target creature gets -3/-3 until end of turn. You may tap any number of
+//! untapped Vampire creatures you control. If you do, put a +1/+1 counter on
+//! each of those Vampires."
 //!
-//! GAP: optional tap-untapped-Vampires-for-counters mechanic not expressible.
+//! GAP: "You may tap any number of untapped Vampires you control. If you do,
+//! put a +1/+1 counter on each" — optional multi-tap with conditional counters
+//! requires interactive choice not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -3/-3 until end of turn. You may tap any number of untapped Vampires you control. If you do, put a +1/+1 counter on each of those Vampires.".into(),
+                text: "Target creature gets -3/-3 until end of turn. You may tap any number of untapped Vampire creatures you control. If you do, put a +1/+1 counter on each of those Vampires.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,14 +44,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: -3,
-            toughness: -3,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        // GAP: optional tap untapped Vampires for +1/+1 counters mechanic
-    ]
+    // GAP: optional tap-vampires-for-counters interactive choice not in catalog
+    vec![Effect::Pump {
+        target: *id,
+        power: -3,
+        toughness: -3,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

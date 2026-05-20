@@ -16,3 +16,4 @@ pub mod anarchy;
 pub mod dry_spell;
 pub mod essence_filter;
 pub mod righteous_fury;
+pub mod broken_visage;

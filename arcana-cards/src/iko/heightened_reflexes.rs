@@ -1,10 +1,9 @@
-//! Heightened Reflexes — `{R}` instant.
-//! "Target creature gets +1/+0 until end of turn. Put a first strike
-//! counter on it."
-//
-// GAP: "first strike counter" is a specific counter kind not in the
-//      CounterKind catalog (only PlusOnePlusOne shown). Best effort:
-//      pump +1/+0 and grant first strike keyword for end of turn.
+//! Heightened Reflexes — `{R}` instant. "Target creature gets +1/+0 until end
+//! of turn. Put a first strike counter on it."
+//!
+//! GAP: no CounterKind for first strike. Best effort: pump +1/+0 and grant
+//! first strike until end of turn (semantically close, though counter form is
+//! lost).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -43,7 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: first strike counter (permanent) modeled as temporary keyword grant
+    // GAP: first-strike counter not modeled; granting keyword instead
     vec![Effect::Pump {
         target: *id,
         power: 1,

@@ -1,18 +1,19 @@
 //! Spoils of Evil — `{2}{B}` instant. "For each artifact or creature card in
 //! target opponent's graveyard, add {C} and you gain 1 life."
 //!
-//! GAP: adding mana ({C} per card) — no Effect variant for mana production (AddMana).
-//! The life gain is computable via graveyard_matching.
+//! GAP: no Effect variant to add mana (floating mana production). The life
+//! gain is computable dynamically but the mana production is inexpressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
-use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement, TargetChoice};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::script;
+use arcana_core::targets::ObjectFilter;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Spoils of Evil");
@@ -44,15 +45,12 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
+    let TargetChoice::Player(opp) = target else { return Vec::new(); };
     let artifact_filter = ObjectFilter::new().with_types(TypeLine::ARTIFACT.into());
     let creature_filter = ObjectFilter::creature();
-    let artifacts = script::graveyard_matching(state, &artifact_filter, *opponent, entry.controller);
-    let creatures = script::graveyard_matching(state, &creature_filter, *opponent, entry.controller);
-    let count = artifacts + creatures;
-    // GAP: add {C} for each card — no AddMana Effect variant
-    if count == 0 {
-        return Vec::new();
-    }
-    vec![Effect::GainLife { player: entry.controller, amount: count }]
+    let n_artifacts = script::graveyard_matching(state, &artifact_filter, *opp, entry.controller);
+    let n_creatures = script::graveyard_matching(state, &creature_filter, *opp, entry.controller);
+    let n = n_artifacts + n_creatures;
+    // GAP: no Effect variant to add floating mana (add {C} per card)
+    vec![Effect::GainLife { player: entry.controller, amount: n }]
 }

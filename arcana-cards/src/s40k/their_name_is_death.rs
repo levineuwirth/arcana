@@ -1,15 +1,18 @@
-//! Their Name Is Death — `{3}{B}{B}{B}` sorcery, "Destroy all nonartifact
+//! Their Name Is Death — `{3}{B}{B}{B}` sorcery. "Destroy all nonartifact
 //! creatures."
+//!
+//! `ObjectFilter::creature().without_types(ARTIFACT)` keeps only the
+//! non-artifact subset.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Their Name Is Death");
@@ -41,13 +44,8 @@ fn resolve(
         &ObjectFilter::creature().without_types(TypeLine::ARTIFACT.into()),
         entry.controller,
     );
-    if ids.is_empty() {
-        return Vec::new();
-    }
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: arcana_core::objects::NULL_OBJECT_ID,
-        }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

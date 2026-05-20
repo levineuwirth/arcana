@@ -2,10 +2,10 @@
 //! Then that player discards another card at random unless they pay
 //! {1}."
 //!
-//! # GAP: optional payment to avoid a second discard
-//! The first random discard is expressible. The "unless they pay {1}"
-//! optional-cost conditional on the second discard is not available
-//! in the Effect catalog. Emitting first discard only.
+//! Models the first random discard. The 'unless they pay {1}' tax on
+//! the second discard has no direct catalog primitive (it's not a
+//! spell counter cost), so it's GAP'd; we just resolve a second random
+//! discard.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -26,23 +26,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player discards a card at random. Then that player discards another card at random unless they pay {1}.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player discards a card at random. Then that player discards another card at random unless they pay {1}.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: optional payment {1} to prevent second random discard
-    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::Random }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'unless they pay {1}' tax on the second discard.
+    vec![
+        Effect::Discard {
+            player: *p,
+            count: 1,
+            choice: DiscardChoice::Random,
+        },
+        Effect::Discard {
+            player: *p,
+            count: 1,
+            choice: DiscardChoice::Random,
+        },
+    ]
 }

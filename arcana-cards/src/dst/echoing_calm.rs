@@ -1,11 +1,8 @@
-//! Echoing Calm — `{1}{W}` instant, "Destroy target enchantment and all
-//! other enchantments with the same name."
+//! Echoing Calm — `{1}{W}` instant. "Destroy target enchantment and all
+//! other enchantments with the same name as that enchantment."
 //!
-//! # GAP
-//! Destroying "all other enchantments with the same name as the target"
-//! requires a name-matching filter at resolution time which is not available
-//! in the catalog. Only the primary `DestroyPermanent` on the target is
-//! emitted; the cascade destruction of same-named enchantments is omitted.
+//! GAP: no "with the same name as that enchantment" filter; falling back
+//! to destroying just the target enchantment.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target enchantment and all other enchantments with the same name.".into(),
+                text: "Destroy target enchantment and all other enchantments with the same name as that enchantment.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
@@ -49,6 +48,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: name-matching batch destroy (all enchantments with same name) not in catalog
+    // GAP: no "same-name as target" filter.
     vec![Effect::DestroyPermanent { target: *id }]
 }

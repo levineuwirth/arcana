@@ -1,21 +1,20 @@
-//! Tunnel — `{R}` instant. "Destroy target Wall. It can't be regenerated."
-//!
-//! Targeting a Wall (creature subtype). The "can't be regenerated" rider is
-//! not a distinct Effect variant — DestroyPermanent already skips regeneration
-//! as the engine has no Regenerate shield here to override; noted for clarity.
+//! Tunnel — `{R}` instant, "Destroy target Wall. It can't be
+//! regenerated." (The can't-be-regenerated rider has no catalog
+//! primitive; the destroy is emitted.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tunnel");
-    let _wall = reg.interner_mut().intern("Wall");
+    let wall_filter = script::subtype_filter(reg, "Wall");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{R}").expect("valid cost")),
@@ -24,17 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target Wall. It can't be regenerated.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target Wall. It can't be regenerated.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(wall_filter),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -45,5 +43,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "It can't be regenerated" has no catalog primitive.
     vec![Effect::DestroyPermanent { target: *id }]
 }

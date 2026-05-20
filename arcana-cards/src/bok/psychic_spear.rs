@@ -2,11 +2,9 @@
 //! You choose a Spirit or Arcane card from it. That player discards
 //! that card."
 //!
-//! GAP: choosing a specific subtype (Spirit or Arcane) from a revealed
-//! hand is not expressible — no ChooseFromHand / RevealHand effect
-//! variant exists. Best-effort: target player discards a card of
-//! controller's choice (OpponentChooses approximation dropped to
-//! ControllerChooses to represent the caster choosing).
+//! Modeled as a discard where the controller chooses (you pick the
+//! card). GAP: the Spirit-or-Arcane filter on the chosen card is not
+//! expressible — the engine's Discard effect has no card-filter knob.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -27,28 +25,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player reveals their hand. You choose a Spirit or Arcane card from it. That player discards that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player reveals their hand. You choose a Spirit or Arcane card from it. That player discards that card.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: RevealHand + choose Spirit/Arcane card from hand; using discard
-    // ControllerChooses as best-effort (caster picks the card).
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "Spirit or Arcane" subtype filter on the chosen discarded card.
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::ControllerChooses,
+        choice: DiscardChoice::OpponentChooses,
     }]
 }

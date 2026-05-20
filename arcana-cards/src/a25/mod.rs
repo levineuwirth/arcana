@@ -10,3 +10,4 @@ pub mod borrowing_100_000_arrows;
 pub mod plague_wind;
 pub mod path_of_peace;
 pub mod armageddon;
+pub mod doomsday;

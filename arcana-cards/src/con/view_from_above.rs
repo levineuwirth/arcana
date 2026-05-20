@@ -1,10 +1,8 @@
-//! View from Above — `{1}{U}` instant. "Target creature gains flying until
-//! end of turn. If you control a white permanent, return View from Above to
-//! its owner's hand."
-//! The conditional self-return clause is not expressible without an
-//! Effect::ReturnToHand applied to the spell itself (no self-reference id
-//! available) conditioned on controlling a white permanent.
-//! GAP: conditional self-return based on controlling a white permanent.
+//! View from Above — `{1}{U}` instant. "Target creature gains flying
+//! until end of turn. If you control a white permanent, return View
+//! from Above to its owner's hand." The self-return rider is
+//! conditional on board state and not expressible (no
+//! return-this-spell effect); we grant flying.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -26,24 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gains flying until end of turn. If you control a white permanent, return View from Above to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gains flying until end of turn. If you control a white permanent, return View from Above to its owner's hand.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional self-return based on controlling a white permanent
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "if you control a white permanent, return this spell to
+    // hand" — no effect to return the resolving spell to its owner's
+    // hand. Flying grant is emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Flying,

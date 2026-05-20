@@ -1,9 +1,9 @@
-//! Ob Nixilis's Cruelty — `{2}{B}` instant. "Target creature gets -5/-5
-//! until end of turn. If that creature would die this turn, exile it instead."
+//! Ob Nixilis's Cruelty — `{2}{B}` instant. "Target creature gets
+//! -5/-5 until end of turn. If that creature would die this turn,
+//! exile it instead."
 //!
-//! GAP: replacement effect "if that creature would die this turn, exile it
-//! instead" conditioned on a specific permanent is not expressible with
-//! the current Effect catalog.
+//! The replacement "exile instead of dies" rider is not expressible;
+//! only the -5/-5 is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -5/-5 until end of turn. If that creature would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -5/-5 until end of turn. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,9 +39,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: per-permanent replacement effect "dies → exile instead" this turn
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it would die this turn, exile it instead" replacement
+    // rider is not expressible.
     vec![Effect::Pump {
         target: *id,
         power: -5,

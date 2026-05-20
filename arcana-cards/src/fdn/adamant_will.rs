@@ -1,5 +1,5 @@
-//! Adamant Will — `{1}{W}` instant. "Target creature gets +2/+2 and gains
-//! indestructible until end of turn."
+//! Adamant Will — `{1}{W}` instant. "Target creature gets +2/+2 and
+//! gains indestructible until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -23,8 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 and gains indestructible until end of turn."
-                    .into(),
+                text: "Target creature gets +2/+2 and gains indestructible until end of turn.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

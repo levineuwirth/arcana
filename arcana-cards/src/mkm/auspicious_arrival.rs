@@ -1,9 +1,5 @@
-//! Auspicious Arrival — `{1}{W}` instant. "Target creature gets +2/+2 until
-//! end of turn. Investigate."
-//!
-//! GAP: Investigate (create a Clue token with "{2}, Sacrifice this token: Draw
-//! a card") is not in the Effect catalog as a named effect. A Clue token has
-//! an activated ability which TokenDefinition.abilities does not support.
+//! Auspicious Arrival — `{1}{W}` instant. "Target creature gets +2/+2
+//! until end of turn. Investigate."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. Investigate.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. Investigate.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,7 +37,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Investigate (create Clue token with activated sacrifice ability)
+    // Investigate creates a Clue token with an activated ability not
+    // expressible via TokenDefinition; only the pump is implemented.
     vec![Effect::Pump {
         target: *id,
         power: 2,

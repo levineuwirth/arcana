@@ -1,8 +1,10 @@
-//! Sami's Curiosity — `{G}` sorcery. "You gain 2 life. Create a Lander token. (It's an artifact
-//! with '{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto
-//! the battlefield tapped, then shuffle.')"
-//! GAP: Lander token has an activated ability (sacrifice + tutor) — token abilities not in
-//!      TokenDefinition. Best effort: create a colorless artifact Lander token without the ability.
+//! Sami's Curiosity — `{G}` sorcery. "You gain 2 life. Create a
+//! Lander token. (It's an artifact with '{2}, {T}, Sacrifice this
+//! token: Search your library for a basic land card, put it onto the
+//! battlefield tapped, then shuffle.')"
+//!
+//! The life gain and a colorless artifact Lander token are emitted;
+//! the token's tutor activated ability is not expressible — GAP.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -23,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "You gain 2 life. Create a Lander token.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "You gain 2 life. Create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,7 +39,10 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let lander = reg.interner().lookup("Lander").expect("Lander interned during register()");
+    let lander = reg
+        .interner()
+        .lookup("Lander")
+        .expect("Lander interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(lander);
     let token = TokenDefinition {
@@ -49,9 +53,10 @@ fn resolve(
         power: None,
         toughness: None,
         keywords: vec![],
-        // GAP: Lander token activated ability ("{2},{T}, Sacrifice: tutor basic land") not modeled
         abilities: vec![],
     };
+    // GAP: the token's sacrifice-to-tutor activated ability is not
+    // expressible.
     vec![
         Effect::GainLife { player: entry.controller, amount: 2 },
         Effect::CreateToken { controller: entry.controller, token },

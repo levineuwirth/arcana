@@ -1,9 +1,9 @@
-//! Release to the Wind — `{2}{U}` instant.
-//! "Exile target nonland permanent. For as long as that card remains exiled,
-//! its owner may cast it without paying its mana cost."
+//! Release to the Wind — `{2}{U}` instant. "Exile target nonland permanent.
+//! For as long as that card remains exiled, its owner may cast it without
+//! paying its mana cost."
 //!
-//! GAP: "may cast from exile without paying mana cost" duration effect not
-//! in catalog. Best-effort: exile target nonland permanent.
+//! GAP: the "owner may cast it from exile for free" rider is not expressible.
+//! Only the exile is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,6 +47,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "may cast from exile without paying mana cost" ongoing effect not in catalog
+    // GAP: "owner may cast it from exile without paying its mana cost"
     vec![Effect::ExilePermanent { target: *id }]
 }

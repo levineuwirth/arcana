@@ -1,5 +1,5 @@
-//! Agonizing Syphon — `{3}{B}` sorcery, "Agonizing Syphon deals 3 damage to
-//! any target and you gain 3 life."
+//! Agonizing Syphon — `{3}{B}` sorcery.
+//! "Agonizing Syphon deals 3 damage to any target and you gain 3 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -46,7 +46,11 @@ fn resolve(
         },
     };
     vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
+        Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 3,
+        },
         Effect::GainLife { player: entry.controller, amount: 3 },
     ]
 }

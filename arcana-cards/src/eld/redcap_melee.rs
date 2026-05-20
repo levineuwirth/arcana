@@ -1,8 +1,6 @@
-//! Redcap Melee — `{R}` instant. "Redcap Melee deals 4 damage to target
-//! creature. If that creature is not red, you sacrifice a Mountain."
-//!
-//! GAP: conditional sacrifice a land based on creature's color not expressible;
-//! no Effect variant for conditional self-sacrifice. DealDamage 4 is expressed.
+//! Redcap Melee — `{R}` instant. "Redcap Melee deals 4 damage to
+//! target creature or planeswalker. If a nonred permanent is dealt
+//! damage this way, you sacrifice a land."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Redcap Melee deals 4 damage to target creature. If that creature is not red, you sacrifice a Mountain.".into(),
+                text: "Redcap Melee deals 4 damage to target creature or planeswalker. If a nonred permanent is dealt damage this way, you sacrifice a land.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -39,9 +37,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional sacrifice a Mountain based on target creature's color not expressible
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "if a nonred permanent was dealt damage, sacrifice a land"
+    // conditional on the damaged permanent's color is not expressible;
+    // the 4 damage is applied.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

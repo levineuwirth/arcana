@@ -36,9 +36,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard {
-        player: *p,
-        count: 2,
-        choice: DiscardChoice::ControllerChooses,
-    }]
+    vec![Effect::Discard { player: *p, count: 2, choice: DiscardChoice::ControllerChooses }]
 }

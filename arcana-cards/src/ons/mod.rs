@@ -16,3 +16,5 @@ pub mod chain_of_acid;
 pub mod thunder_of_hooves;
 pub mod profane_prayers;
 pub mod strongarm_tactics;
+pub mod unified_strike;
+pub mod ixidor_s_will;

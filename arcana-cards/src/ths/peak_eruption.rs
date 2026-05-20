@@ -1,10 +1,5 @@
-//! Peak Eruption — `{2}{R}` sorcery, "Destroy target Mountain. Peak Eruption
-//! deals 3 damage to that land's controller."
-//!
-//! GAP: targeting a specific subtype (Mountain) within TargetFilter::Permanent
-//! is not directly expressible; using a plain land filter as best-effort.
-//! GAP: "deals damage to that land's controller" requires tracking the controller
-//! of the destroyed object after resolution — not expressible with catalog effects.
+//! Peak Eruption — `{2}{R}` sorcery. "Destroy target Mountain. Peak
+//! Eruption deals 3 damage to that land's controller."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,17 +22,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target Mountain. Peak Eruption deals 3 damage to that land's controller.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::LAND.into())),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target Mountain. Peak Eruption deals 3 damage to that land's controller.".into(),
+            // GAP: ObjectFilter cannot constrain to the "Mountain"
+            // land subtype; restricted to lands.
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,6 +46,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: deals 3 damage to that land's controller (requires post-destroy controller lookup)
+    // GAP: cannot resolve "that land's controller" to a player for the
+    // damage clause; only the destroy is modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

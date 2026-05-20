@@ -1,13 +1,12 @@
 //! Built to Smash — `{R}` instant. "Target attacking creature gets
-//! +3/+3 until end of turn. If it's an artifact, it gains trample
-//! until end of turn."
+//! +3/+3 until end of turn. If it's an artifact creature, it gains
+//! trample until end of turn."
 //!
-//! # GAP: conditional keyword grant based on card type (artifact check)
-//! The Pump effect can express +3/+3; the trample conditional on being
-//! an artifact is not expressible (no Effect::Conditional with a
-//! type-check predicate). Emitting the unconditional Pump only.
+//! GAP: 'attacking creature' filter not in TargetFilter::Creature
+//! helper — accept any creature. GAP: 'if it's an artifact creature'
+//! conditional on the target's type is not expressible.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -27,29 +26,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target attacking creature gets +3/+3 until end of turn. If it's an artifact, it gains trample until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target attacking creature gets +3/+3 until end of turn. If it's an artifact creature, it gains trample until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional trample grant if creature is an artifact (type-check predicate not available)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: conditional 'if it's an artifact creature' trample rider.
     vec![Effect::Pump {
         target: *id,
         power: 3,
         toughness: 3,
         duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Trample],
+        keywords: vec![],
     }]
 }

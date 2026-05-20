@@ -1,5 +1,5 @@
-//! Withering Torment — `{2}{B}` instant. "Destroy target creature or
-//! enchantment. You lose 2 life."
+//! Withering Torment — `{2}{B}` instant.
+//! "Destroy target creature or enchantment. You lose 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

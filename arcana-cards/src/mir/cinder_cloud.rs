@@ -1,11 +1,9 @@
-//! Cinder Cloud — `{3}{R}{R}` instant, "Destroy target creature. If a white
-//! creature is destroyed this way, Cinder Cloud deals damage to that
-//! creature's controller equal to that creature's power."
+//! Cinder Cloud — `{3}{R}{R}` instant. "Destroy target creature. If a
+//! white creature dies this way, Cinder Cloud deals damage to that
+//! creature's controller equal to the creature's power."
 //!
-//! # GAP
-//! Conditional color check on the destroyed permanent (is it white?) and
-//! power-based damage to its controller are not expressible with the current
-//! Effect catalog.
+//! GAP: no color-of-target / power-of-target accessor for the rider; no
+//! controller-of-target accessor.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. If a white creature is destroyed this way, Cinder Cloud deals damage to that creature's controller equal to that creature's power.".into(),
+                text: "Destroy target creature. If a white creature dies this way, Cinder Cloud deals damage to that creature's controller equal to the creature's power.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,8 +39,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional color check + power-based damage to target's controller not in catalog
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no color-of-target / controller-of-target / power-at-time-of-
+    // death accessor for the rider.
     vec![Effect::DestroyPermanent { target: *id }]
 }

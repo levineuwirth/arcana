@@ -28,3 +28,5 @@ pub mod isolate;
 pub mod lich_s_caress;
 pub mod radiating_lightning;
 pub mod naturalize;
+pub mod infernal_reckoning;
+pub mod fraying_omnipotence;

@@ -1,5 +1,5 @@
-//! Soul's Fire — `{2}{R}` instant. "Target creature you control deals damage
-//! equal to its power to any target."
+//! Soul's Fire — `{2}{R}` instant. "Target creature you control deals
+//! damage equal to its power to any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +9,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, ObjectOrPlayer, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice,
+    TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,20 +25,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature you control deals damage equal to its power to any target.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement::any_target(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature you control deals damage equal to its power to any target.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement::any_target(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,12 +49,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(src_target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(src_id) = src_target else { return Vec::new(); };
-    let power = script::power_of(state, *src_id);
-    let amount = power.max(0) as u32;
-    let Some(dst_target) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let dt = match dst_target {
+    let mut it = entry.targets.targets.iter();
+    let Some(TargetChoice::Object(src)) = it.next() else { return Vec::new(); };
+    let Some(second) = it.next() else { return Vec::new(); };
+    let dt = match second {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
@@ -57,9 +60,10 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    let pow = script::power_of(state, *src).max(0) as u32;
     vec![Effect::DealDamage {
-        source: entry.source,
+        source: *src,
         target: dt,
-        amount,
+        amount: pow,
     }]
 }

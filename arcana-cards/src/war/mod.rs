@@ -30,3 +30,7 @@ pub mod solar_blaze;
 pub mod heartwarming_redemption;
 pub mod jace_s_ruse;
 pub mod jace_s_triumph;
+pub mod chandra_s_pyrohelix;
+pub mod liliana_s_triumph;
+pub mod domri_s_ambush;
+pub mod ignite_the_beacon;

@@ -3,3 +3,4 @@ pub mod misthios_s_fury;
 pub mod battlefield_improvisation;
 pub mod tranquilize;
 pub mod become_anonymous;
+pub mod desynchronization;

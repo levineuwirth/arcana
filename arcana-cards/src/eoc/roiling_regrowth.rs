@@ -1,10 +1,6 @@
-//! Roiling Regrowth — `{2}{G}` instant.
-//! "Sacrifice a land. Search your library for up to two basic land cards,
-//! put them onto the battlefield tapped, then shuffle."
-//!
-//! GAP: "sacrifice a land" cost/effect and tapped:true flag on
-//! TutorToBattlefield not available. Best-effort: tutor one basic land to
-//! battlefield untapped.
+//! Roiling Regrowth — `{2}{G}` instant. "Sacrifice a land. Search your library
+//! for up to two basic land cards, put them onto the battlefield tapped, then
+//! shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,19 +36,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: sacrifice-a-land as part of resolution effect not in catalog
-    // GAP: tapped:true for TutorToBattlefield not available
-    // GAP: "up to two" — repeating TutorToBattlefield twice as best-effort
+    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
     vec![
-        Effect::TutorToBattlefield {
+        Effect::Sacrifice {
             player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: false,
+            filter: land.clone(),
+            count: 1,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: false,
+            filter: land.clone(),
+            tapped: true,
+        },
+        Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: land,
+            tapped: true,
         },
     ]
 }

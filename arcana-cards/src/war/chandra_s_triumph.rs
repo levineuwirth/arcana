@@ -1,12 +1,7 @@
-//! Chandra's Triumph — `{1}{R}` instant.
-//! "Chandra's Triumph deals 3 damage to target creature or planeswalker an
-//! opponent controls. Chandra's Triumph deals 5 damage instead if you control
-//! a Chandra planeswalker."
-//!
-//! # GAP: target creature or planeswalker — no planeswalker TargetFilter
-//! variant in the catalog.
-//! # GAP: conditional damage based on controlling a named planeswalker.
-//! Modelled as 3 damage to target creature.
+//! Chandra's Triumph — `{1}{R}` instant. "Chandra's Triumph deals 3
+//! damage to target creature or planeswalker an opponent controls.
+//! Chandra's Triumph deals 5 damage instead if you control a Chandra
+//! planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,25 +23,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Chandra's Triumph deals 3 damage to target creature or planeswalker an opponent controls. Chandra's Triumph deals 5 damage instead if you control a Chandra planeswalker.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Chandra's Triumph deals 3 damage to target creature or planeswalker an opponent controls. Chandra's Triumph deals 5 damage instead if you control a Chandra planeswalker.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: target planeswalker option
-    // GAP: conditional +2 damage if controller has a Chandra planeswalker
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // The "5 instead if you control a Chandra planeswalker" upgrade
+    // needs a named-planeswalker predicate; not expressible. Emit the
+    // base 3 damage.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

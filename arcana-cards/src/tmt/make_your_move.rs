@@ -1,5 +1,9 @@
-//! Make Your Move — `{2}{W}` instant, "Destroy target artifact, enchantment,
-//! or creature with power 4 or greater."
+//! Make Your Move — `{2}{W}` instant. "Destroy target artifact,
+//! enchantment, or creature with power 4 or greater."
+//!
+//! "Artifact, enchantment, or creature with power 4+" is a disjunctive
+//! target the demonstrated ObjectFilter can't express precisely; the
+//! target is constrained to a permanent (the union's superset).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -20,24 +26,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact, enchantment, or creature with power 4 or greater.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
-                            .with_types_any(TypeLine::ARTIFACT.into())
-                            // creature with power >= 4 OR enchantment is not
-                            // a single filter; enchantment is included via
-                            // types_any, creature with_min_power(4) is separate
-                            // GAP: disjunction of artifact|enchantment|creature(p>=4) not in single ObjectFilter
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact, enchantment, or creature with power 4 or greater.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,7 +44,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

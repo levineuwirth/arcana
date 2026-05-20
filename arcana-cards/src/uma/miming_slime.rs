@@ -1,7 +1,6 @@
-//! Miming Slime — `{2}{G}` sorcery. "Create an X/X green Ooze creature token,
-//! where X is the greatest power among creatures you control."
-//!
-//! Uses script::ids_matching to find your creatures, then iterates to get max power.
+//! Miming Slime — `{2}{G}` sorcery.
+//! "Create an X/X green Ooze creature token, where X is the greatest power
+//! among creatures you control."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,13 +38,14 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(arcana_core::targets::ControllerConstraint::You);
+    let filter = ObjectFilter::creature();
     let ids = script::ids_matching(state, &filter, entry.controller);
-    let max_power = ids.iter()
-        .map(|&id| script::power_of(state, id))
+    let x = ids
+        .iter()
+        .map(|&id| script::power_of(state, id).max(0))
         .max()
-        .unwrap_or(0)
-        .max(0) as u32;
+        .unwrap_or(0) as i32;
+
     let ooze = reg.interner().lookup("Ooze").expect("Ooze interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(ooze);
@@ -54,8 +54,8 @@ fn resolve(
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        power: Some(PtValue::Fixed(max_power as i32)),
-        toughness: Some(PtValue::Fixed(max_power as i32)),
+        power: Some(PtValue::Fixed(x)),
+        toughness: Some(PtValue::Fixed(x)),
         keywords: vec![],
         abilities: vec![],
     };

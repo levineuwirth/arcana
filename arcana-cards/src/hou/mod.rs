@@ -23,3 +23,4 @@ pub mod bontu_s_last_reckoning;
 pub mod blur_of_blades;
 pub mod chandra_s_defeat;
 pub mod hour_of_devastation;
+pub mod torment_of_venom;

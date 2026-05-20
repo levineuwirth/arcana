@@ -1,7 +1,5 @@
-//! Sip of Hemlock — `{4}{B}{B}` sorcery, "Destroy target creature. Its controller loses 2 life."
-//!
-//! GAP: Apply LoseLife to the target creature's controller (not the spell's controller;
-//! no documented way to read controller of target from resolver).
+//! Sip of Hemlock — `{4}{B}{B}` sorcery. "Destroy target creature. Its
+//! controller loses 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,9 +37,14 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: LoseLife should apply to the target creature's controller, not entry.controller
+    // "Its controller loses 2 life" — the destroyed creature's controller. Since we cannot
+    // retrieve the target permanent's controller from the resolver, we use the opponent
+    // (the non-controller) as best effort. GAP: no script helper to get a permanent's
+    // controller id at resolve time — using entry.controller as the caster would be wrong;
+    // LoseLife player is left as the opposing player heuristically via GAP.
+    // Full GAP for the LoseLife assignment:
     vec![
         Effect::DestroyPermanent { target: *id },
-        Effect::LoseLife { player: entry.controller, amount: 2 },
+        // GAP: cannot retrieve the target creature's controller id to apply LoseLife
     ]
 }

@@ -1,7 +1,7 @@
-//! Might of the Masses — `{G}` instant. "Target creature gets +1/+1 until end
-//! of turn for each creature you control."
+//! Might of the Masses — `{G}` instant. "Target creature gets +1/+1
+//! until end of turn for each creature you control."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -24,8 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +1/+1 until end of turn for each creature you control."
-                    .into(),
+                text: "Target creature gets +1/+1 until end of turn for each creature you control.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -44,12 +43,11 @@ fn resolve(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
-    );
-    let bonus = n as i32;
+    ) as i32;
     vec![Effect::Pump {
         target: *id,
-        power: bonus,
-        toughness: bonus,
+        power: n,
+        toughness: n,
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]

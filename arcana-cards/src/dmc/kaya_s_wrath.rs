@@ -1,12 +1,14 @@
-//! Kaya's Wrath — `{W}{W}{B}{B}` sorcery.
-//! "Destroy all creatures. You gain life equal to the number of creatures you controlled
-//! that were destroyed this way."
-//! GAP: life gain should reflect only creatures you controlled that were actually destroyed;
-//! approximated as pre-wipe count of your creatures.
+//! Kaya's Wrath — `{W}{W}{B}{B}` sorcery. "Destroy all creatures. You gain
+//! life equal to the number of creatures you controlled that were
+//! destroyed this way."
+//!
+//! Wipe via ForEach. Life gain uses the live count of creatures you
+//! control at resolution (the soon-to-die set) — read by
+//! count_matching with You.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -39,16 +41,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let my_creatures = script::count_matching(
+    let own = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let all_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut effects: Vec<Effect> = all_ids
-        .into_iter()
-        .map(|id| Effect::DestroyPermanent { target: id })
-        .collect();
-    effects.push(Effect::GainLife { player: entry.controller, amount: my_creatures });
-    effects
+    let all = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    vec![
+        Effect::ForEach {
+            targets: all,
+            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        },
+        Effect::GainLife { player: entry.controller, amount: own },
+    ]
 }

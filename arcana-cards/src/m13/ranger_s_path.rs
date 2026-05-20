@@ -1,17 +1,19 @@
-//! Ranger's Path — `{3}{G}` sorcery. "Search your library for up to two Forest
-//! cards, put them onto the battlefield tapped, then shuffle."
+//! Ranger's Path — `{3}{G}` sorcery. "Search your library for up to
+//! two Forest cards, put them onto the battlefield tapped, then
+//! shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ranger's Path");
+    let _forest = reg.interner_mut().intern("Forest");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
@@ -33,18 +35,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     _state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    let forest = script::subtype_filter(reg, "Forest");
     vec![
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: land_filter.clone(),
+            filter: forest.clone(),
             tapped: true,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: land_filter,
+            filter: forest,
             tapped: true,
         },
     ]

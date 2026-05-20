@@ -5,3 +5,4 @@ pub mod fiery_temper;
 pub mod churning_eddy;
 pub mod liquify;
 pub mod false_memories;
+pub mod skullscorch;

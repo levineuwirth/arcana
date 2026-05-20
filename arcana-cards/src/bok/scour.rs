@@ -1,8 +1,7 @@
-//! Scour — `{2}{W}{W}` instant, "Exile target enchantment. Search its controller's graveyard,
-//! hand, and library for all cards with the same name as that enchantment and exile them.
-//! Then that player shuffles."
-//!
-//! GAP: No engine effect for searching multiple zones for all cards with the same name as the target.
+//! Scour — `{2}{W}{W}` instant, "Exile target enchantment. Search its
+//! controller's graveyard, hand, and library for all cards with the
+//! same name as that enchantment and exile them. Then that player
+//! shuffles." The name-matching multi-zone purge is not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,17 +24,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target enchantment. Search its controller's graveyard, hand, and library for all cards with the same name as that enchantment and exile them. Then that player shuffles.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into())),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target enchantment. Search its controller's \
+                   graveyard, hand, and library for all cards with the same \
+                   name as that enchantment and exile them. Then that \
+                   player shuffles."
+                .into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types(TypeLine::ENCHANTMENT.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,8 +49,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: No engine effect for searching multiple zones for all same-named cards and exiling them
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: searching every zone for cards sharing the target's name and
+    // exiling them is not expressible with the catalog.
     vec![Effect::ExilePermanent { target: *id }]
 }

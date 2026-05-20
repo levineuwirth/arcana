@@ -1,5 +1,5 @@
-//! Steam Blast — `{2}{R}` sorcery. "Steam Blast deals 2 damage to each creature
-//! and each player."
+//! Steam Blast — `{2}{R}` sorcery. "Steam Blast deals 2 damage to each
+//! creature and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -38,19 +38,23 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut effects = vec![Effect::ForEach {
+    let creature_damage = Effect::ForEach {
         targets: creature_ids,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 2,
         }),
-    }];
-    // GAP: "each player" — no script helper to enumerate all player IDs; emit damage to controller only as partial
-    effects.push(Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Player(entry.controller),
-        amount: 2,
-    });
-    effects
+    };
+    let player_damage = Effect::Sequence(
+        script::all_players(state)
+            .into_iter()
+            .map(|p| Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Player(p),
+                amount: 2,
+            })
+            .collect(),
+    );
+    vec![creature_damage, player_damage]
 }

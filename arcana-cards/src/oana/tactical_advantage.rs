@@ -1,17 +1,17 @@
-//! Tactical Advantage — `{W}` instant.
-//! "Target blocking or blocked creature you control gets +2/+2 until end of turn."
-//!
-//! # GAP: BlockingOrBlockedCreatureFilter — no ObjectFilter predicate for "currently blocking or
-//! blocked"; using plain creature target requirement as best effort.
+//! Tactical Advantage — `{W}` instant. "Target blocking or blocked
+//! creature you control gets +2/+2 until end of turn."
 
-use arcana_core::effects::{Effect};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,13 +24,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target blocking or blocked creature you control gets +2/+2 until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target blocking or blocked creature you control gets +2/+2 until end of turn.".into(),
+            // "blocking or blocked" restriction is not expressible in
+            // the ObjectFilter builders; restricted to a creature you
+            // control.
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,7 +50,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: BlockingOrBlockedCreatureFilter — no ObjectFilter for combat-state blocking/blocked predicate.
     vec![Effect::Pump {
         target: *id,
         power: 2,

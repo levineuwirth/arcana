@@ -1,12 +1,6 @@
-//! Roast — `{1}{R}` sorcery. "Roast deals 5 damage to target creature
-//! without flying."
-//!
-//! Note: "without flying" constrains the legal targets. ObjectFilter does not
-//! expose a .without_keywords() builder in the catalog, so we use a plain
-//! target_creature() requirement and note the gap.
-//!
-//! GAP: TargetRequirement cannot express "creature without flying" — no
-//! ObjectFilter method for excluding keywords.
+//! Roast — `{1}{R}` sorcery. "Roast deals 5 damage to target
+//! creature without flying." The "without flying" predicate has no
+//! ObjectFilter support; a creature target is used.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,23 +22,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Roast deals 5 damage to target creature without flying.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Roast deals 5 damage to target creature without flying.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "without flying" target restriction not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

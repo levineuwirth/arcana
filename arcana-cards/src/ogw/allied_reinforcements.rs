@@ -36,15 +36,15 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let knight = reg.interner().lookup("Knight").expect("Knight interned during register()");
-    let ally = reg.interner().lookup("Ally").expect("Ally interned during register()");
+    let knight = reg.interner().lookup("Knight").expect("Knight interned");
+    let ally = reg.interner().lookup("Ally").expect("Ally interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(knight);
     subtypes.0.insert(ally);
     let token = TokenDefinition {
         name: knight,
         colors: ColorSet::white(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),

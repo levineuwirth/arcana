@@ -1,5 +1,5 @@
-//! Fall of the Gavel — `{3}{W}{U}` instant, "Counter target spell. You gain
-//! 5 life."
+//! Fall of the Gavel — `{3}{W}{U}` instant. "Counter target spell. You gain 5
+//! life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,32 +22,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. You gain 5 life.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell. You gain 5 life.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    vec![
-        Effect::Counter { target: stack_id },
-        Effect::GainLife { player: entry.controller, amount: 5 },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::Counter { target: *id });
+    }
+    out.push(Effect::GainLife {
+        player: entry.controller,
+        amount: 5,
+    });
+    out
 }

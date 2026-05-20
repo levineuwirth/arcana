@@ -1,7 +1,7 @@
-//! Reduce to Ashes — `{4}{R}` sorcery. "Reduce to Ashes deals 5 damage to target
-//! creature. If that creature would die this turn, exile it instead."
-//!
-//! # GAP: "exile instead of dying" replacement effect not expressible.
+//! Reduce to Ashes — `{4}{R}` sorcery. "Reduce to Ashes deals 5
+//! damage to target creature. If that creature would die this turn,
+//! exile it instead." The die-replacement rider has no primitive;
+//! the 5 damage is modeled (partial).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,22 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Reduce to Ashes deals 5 damage to target creature. If that creature would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Reduce to Ashes deals 5 damage to target creature. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: exile-instead-of-die replacement effect not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "if that creature would die this turn, exile it instead" —
+    // no die-replacement primitive; the 5 damage is modeled.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

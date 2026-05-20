@@ -1,5 +1,5 @@
-//! Rush of Blood — `{2}{R}` instant. "Target creature gets +X/+0 until end of
-//! turn, where X is its power."
+//! Rush of Blood — `{2}{R}` instant.
+//! "Target creature gets +X/+0 until end of turn, where X is its power."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -39,10 +39,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id);
+    let x = script::power_of(state, *id);
     vec![Effect::Pump {
         target: *id,
-        power,
+        power: x,
         toughness: 0,
         duration: Duration::EndOfTurn,
         keywords: vec![],

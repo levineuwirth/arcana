@@ -1,8 +1,9 @@
-//! Whirlpool Whelm — `{1}{U}` instant, "Return target creature to its owner's
-//! hand. Clash with an opponent. If you win, you may cast that card this turn
-//! without paying its mana cost."
+//! Whirlpool Whelm — `{1}{U}` instant. "Clash with an opponent, then return
+//! target creature to its owner's hand. If you win, you may put that creature
+//! on top of its owner's library instead."
 //!
-//! # GAP: Clash mechanic not in Effect catalog
+//! GAP: Clash and the win-conditional "put on top of library instead" are not
+//! expressible. Only the unconditional bounce is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature to its owner's hand. Clash with an opponent. If you win, you may cast that card this turn without paying its mana cost.".into(),
+                text: "Clash with an opponent, then return target creature to its owner's hand. If you win, you may put that creature on top of its owner's library instead.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -40,6 +41,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Clash mechanic and conditional cast-for-free not in Effect catalog
+    // GAP: Clash + win-conditional put-on-top-of-library
     vec![Effect::ReturnToHand { target: *id }]
 }

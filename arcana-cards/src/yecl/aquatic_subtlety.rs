@@ -1,9 +1,10 @@
-//! Aquatic Subtlety — `{U}{U}{U}` sorcery. "Draw two cards, then discard two
-//! cards. Blue creature cards in your hand perpetually gain
-//! \"Evoke—Exile a blue card from your hand.\""
-//
-// GAP: "perpetually gain [ability]" on cards in hand is not expressible with
-// any Effect variant. The draw/discard is expressible.
+//! Aquatic Subtlety — `{U}{U}{U}` sorcery. "Draw two cards, then
+//! discard two cards. Blue creature cards in your hand perpetually
+//! gain 'Evoke—Exile a blue card from your hand.'"
+//!
+//! GAP: perpetual hand-modification ('blue creature cards in your
+//! hand perpetually gain Evoke …') has no catalog Effect. Only the
+//! loot half is emitted.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,24 +24,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards, then discard two cards. Blue creature cards in your hand perpetually gain \"Evoke—Exile a blue card from your hand.\"".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards, then discard two cards. Blue creature cards in your hand perpetually gain \"Evoke—Exile a blue card from your hand.\"".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: perpetual "Evoke—Exile a blue card" grant on cards in hand.
     vec![
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
-        // GAP: perpetually grant Evoke ability to blue creature cards in hand not expressible
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::Discard {
+            player: entry.controller,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

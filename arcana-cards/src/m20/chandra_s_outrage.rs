@@ -1,8 +1,10 @@
-//! Chandra's Outrage — `{2}{R}{R}` instant. "Chandra's Outrage deals 4 damage
-//! to target creature and 2 damage to that creature's controller."
-//! GAP: dealing damage to the target creature's controller (reading a permanent's
-//! controller at resolution without it being an explicit target) is not available
-//! via script helpers. Only the 4 damage to the creature is implemented.
+//! Chandra's Outrage — `{2}{R}{R}` instant. "Chandra's Outrage deals
+//! 4 damage to target creature and 2 damage to that creature's
+//! controller."
+//!
+//! GAP: 'that creature's controller' has no script helper to extract
+//! a controller PlayerId from an ObjectId. Only the 4-to-creature
+//! half is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,24 +26,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Chandra's Outrage deals 4 damage to target creature and 2 damage to that creature's controller.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Chandra's Outrage deals 4 damage to target creature and 2 damage to that creature's controller.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 2 damage to "that creature's controller" (permanent's controller not accessible)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'that creature's controller' — no script helper for a permanent's controller.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,8 +1,8 @@
-//! Intimidation Bolt — `{1}{R}{W}` instant, "Intimidation Bolt deals 3 damage
-//! to target creature. Other creatures can't attack this turn."
+//! Intimidation Bolt — `{1}{R}{W}` instant, "Intimidation Bolt deals 3
+//! damage to target creature. Other creatures can't attack this turn."
 //!
 //! GAP: "other creatures can't attack this turn" — no Effect variant for
-//! restricting attack declarations.
+//! restricting attack declarations for a turn. Only the damage is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +41,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: other creatures can't attack this turn (no attack-restriction effect)
+    // GAP: "other creatures can't attack this turn" not in Effect catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

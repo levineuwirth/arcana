@@ -1,4 +1,4 @@
-//! Ancestral Reminiscence — `{3}{U}` sorcery, "Draw three cards, then discard
+//! Ancestral Reminiscence — `{3}{U}` sorcery. "Draw three cards, then discard
 //! a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
@@ -19,23 +19,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards, then discard a card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards, then discard a card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 3,
+        },
         Effect::Discard {
             player: entry.controller,
             count: 1,

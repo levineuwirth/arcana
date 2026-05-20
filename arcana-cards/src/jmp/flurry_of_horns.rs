@@ -1,5 +1,5 @@
-//! Flurry of Horns — `{4}{R}` sorcery. "Create two 2/3 red Minotaur creature
-//! tokens with haste."
+//! Flurry of Horns — `{4}{R}` sorcery. "Create two 2/3 red Minotaur
+//! creature tokens with haste."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,31 +20,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 2/3 red Minotaur creature tokens with haste.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 2/3 red Minotaur creature tokens with haste.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let minotaur = reg.interner().lookup("Minotaur")
-        .expect("Minotaur interned during register()");
-    let token_name = reg.interner().lookup("Minotaur")
-        .expect("Minotaur interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let minotaur = reg.interner().lookup("Minotaur").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(minotaur);
     let token = TokenDefinition {
-        name: token_name,
+        name: minotaur,
         colors: ColorSet::red(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
@@ -52,7 +44,13 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

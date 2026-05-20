@@ -1,7 +1,13 @@
-//! Park Re-Entry — `{3}{W}{W}` sorcery, "Return up to two target creature
-//! cards with mana value 3 or less from your graveyard to the battlefield."
-//! GAP: hat filter (total CMC constraint across two targets) not expressible;
-//! individual CMC filter applied per target as best effort.
+//! Park Re-Entry — `{3}{W}{W}` sorcery. "Return up to two target
+//! creature cards that each have a hat and/or mana value 3 or less
+//! from your graveyard to the battlefield."
+//!
+//! GAP: 'has a hat' is flavor-only and 'mv 3 or less' restriction on
+//! a TargetFilter::Card isn't expressible (with_max_cmc applies to
+//! battlefield ObjectFilter, not Card-zone targets — its semantics on
+//! graveyard cards aren't guaranteed in spec). We model two
+//! up-to-two creature-graveyard reanimates with the cmc cap applied
+//! via the filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,33 +29,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return up to two target creature cards with mana value 3 or less from your graveyard to the battlefield.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature().with_max_cmc(3),
-                    },
-                    count: TargetCount::UpTo(2),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return up to two target creature cards that each have a hat and/or mana value 3 or less from your graveyard to the battlefield.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::creature().with_max_cmc(3),
+                },
+                count: TargetCount::UpTo(2),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    entry.targets.targets.iter().filter_map(|t| {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for t in entry.targets.targets.iter() {
         if let TargetChoice::Object(id) = t {
-            Some(Effect::ReturnFromGraveyardToBattlefield { target: *id })
-        } else {
-            None
+            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
         }
-    }).collect()
+    }
+    // GAP: 'has a hat' flavor union with the mv-3-or-less restriction.
+    effects
 }

@@ -1,10 +1,10 @@
-//! Vraska's Scorn — `{2}{B}{B}` sorcery.
-//! "Target opponent loses 4 life. You may search your library and/or
-//! graveyard for a card named Vraska, Scheming Gorgon, reveal it, and
-//! put it into your hand. If you search your library this way, shuffle."
-//
-// GAP: searching library/graveyard for a card by specific name is not
-//      expressible (TutorToHand uses ObjectFilter which cannot match by name).
+//! Vraska's Scorn — `{2}{B}{B}` sorcery. "Target opponent loses 4 life. You
+//! may search your library and/or graveyard for a card named Vraska, Scheming
+//! Gorgon, reveal it, and put it into your hand. If you search your library
+//! this way, shuffle."
+//!
+//! GAP: no Effect variant for tutoring a specific named card from library
+//! AND/OR graveyard; only the life-loss is expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,6 +42,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: search library/graveyard for a card by specific name
+    // GAP: no Effect for tutoring a named card from library and/or graveyard
     vec![Effect::LoseLife { player: *p, amount: 4 }]
 }

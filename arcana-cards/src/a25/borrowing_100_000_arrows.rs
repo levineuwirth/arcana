@@ -1,8 +1,10 @@
-//! Borrowing 100,000 Arrows — `{2}{U}` sorcery.
-//! "Draw a card for each tapped creature target opponent controls."
-//! GAP: ObjectFilter has no .tapped_only() refinement; using creature filter without tapped
-//! constraint — implement as draw for each creature opponent controls (overcount possible).
-//! GAP: tapped-creature filter not available in ObjectFilter API.
+//! Borrowing 100,000 Arrows — `{2}{U}` sorcery. "Draw a card for each tapped
+//! creature target opponent controls."
+//!
+//! GAP: cannot inspect the chosen target opponent's tapped creatures at
+//! resolution because count_matching takes the resolver's controller, not an
+//! arbitrary player. Best effort: count tapped creatures controlled by
+//! Opponent (any opponent) — strictly the same in 2-player games.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +13,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,13 +41,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(_opp) = target else { return Vec::new(); };
-    // GAP: no tapped-only filter; counting all creatures opponent controls instead
-    let filter = ObjectFilter::creature();
-    let n = script::count_matching(state, &filter, entry.controller);
-    if n == 0 {
-        return Vec::new();
-    }
-    vec![Effect::DrawCards { player: entry.controller, count: n }]
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::Opponent)
+            .tapped_only(),
+        entry.controller,
+    );
+    vec![Effect::DrawCards {
+        player: entry.controller,
+        count: n,
+    }]
 }

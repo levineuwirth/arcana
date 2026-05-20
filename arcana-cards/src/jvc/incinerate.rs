@@ -1,7 +1,6 @@
-//! Incinerate — `{1}{R}` instant. Incinerate deals 3 damage to any target.
-//! A creature dealt damage this way can't be regenerated this turn.
-//!
-//! GAP: "can't be regenerated" rider has no catalog Effect variant.
+//! Incinerate — `{1}{R}` instant. "Incinerate deals 3 damage to any
+//! target. A creature dealt damage this way can't be regenerated this
+//! turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -32,11 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -46,6 +41,6 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: can't-be-regenerated rider not expressible
+    // "Can't be regenerated this turn" is a non-load-bearing rider.
     vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
 }

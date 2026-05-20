@@ -1,5 +1,5 @@
-//! Psychic Strike — `{1}{U}{B}` instant. Counter target spell. Its controller
-//! mills two cards.
+//! Psychic Strike — `{1}{U}{B}` instant. "Counter target spell. Its
+//! controller mills two cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -33,22 +35,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // The spell's controller (target player) mills 2. We don't have their PlayerId
-    // easily accessible here, so we mill the caster's opponent — approximated as
-    // a GAP for multi-player; single-opponent game uses entry.controller opponent.
-    // GAP: "its controller" (the countered spell's controller, not entry.controller)
-    vec![
-        Effect::Counter { target: stack_id },
-        Effect::Mill { player: entry.controller, count: 2 },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "its controller mills two cards" — the countered spell's
+    // controller PlayerId is not derivable from the target id.
+    vec![Effect::Counter { target: *id }]
 }

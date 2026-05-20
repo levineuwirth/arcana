@@ -1,8 +1,5 @@
-//! Improvised Weaponry — `{2}{R}` sorcery. Improvised Weaponry deals 2 damage
-//! to any target. Create a Treasure token.
-//!
-//! GAP: Treasure token has an activated ability ("{T}, Sacrifice: Add one mana
-//! of any color"); TokenDefinition has no activated_abilities field.
+//! Improvised Weaponry — `{2}{R}` sorcery. "Improvised Weaponry deals
+//! 2 damage to any target. Create a Treasure token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
@@ -16,7 +13,7 @@ use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Improvised Weaponry");
-    let _treasure = reg.interner_mut().intern("Treasure");
+    let _t = reg.interner_mut().intern("Treasure");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}").expect("valid cost")),
@@ -34,11 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -61,7 +54,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Treasure activated ability ("{T}, Sacrifice: Add one mana of any color") not expressible
+    // GAP: Treasure's "{T}, Sacrifice: add one mana of any color"
+    // activated ability is not expressible.
     vec![
         Effect::DealDamage { source: entry.source, target: dt, amount: 2 },
         Effect::CreateToken { controller: entry.controller, token },

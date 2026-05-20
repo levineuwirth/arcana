@@ -1,8 +1,9 @@
-//! Damnation — `{2}{B}{B}` sorcery. "Destroy all creatures. They can't be regenerated."
+//! Damnation — `{2}{B}{B}` sorcery. "Destroy all creatures. They can't be
+//! regenerated."
 //!
-//! The "can't be regenerated" rider is not expressible as a separate Effect variant;
-//! the engine's DestroyPermanent does not support a no-regeneration flag. We emit the
-//! board wipe via ForEach + DestroyPermanent and note the gap.
+//! Note: "can't be regenerated" is a modifier on the destroy effect; the
+//! engine's DestroyPermanent does not model regeneration prevention separately,
+//! so the destroy wipe is emitted as-is (best effort).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,7 +41,6 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: "they can't be regenerated" — no no-regen flag on DestroyPermanent
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

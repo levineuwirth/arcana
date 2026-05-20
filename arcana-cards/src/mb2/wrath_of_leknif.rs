@@ -1,13 +1,13 @@
-//! Wrath of Leknif — `{1}{W}{W}{U}` sorcery, "Destroy all creatures. They
-//! can't be regenerated. Untap up to four lands you control."
+//! Wrath of Leknif — `{1}{W}{W}{U}` sorcery. "Destroy all creatures.
+//! They can't be regenerated. Untap up to four lands you control."
 //!
-//! GAP: 'up to four target lands you control' (UpTo(4) untap of own lands)
-//! requires a multi-target untap which is not directly expressible. The board
-//! wipe is expressed; the untap-lands rider is a GAP.
+//! The "untap up to four lands you control" rider has no targets and
+//! no per-id Effect to choose four lands; only the board wipe is
+//! expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -25,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures. They can't be regenerated. Untap up to four lands you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures. They can't be regenerated. Untap up to four lands you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,9 +40,9 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: untap up to four lands you control (multi-target untap not in catalog)
+    // GAP: "untap up to four lands you control" rider not expressible.
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: arcana_core::objects::NULL_OBJECT_ID }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

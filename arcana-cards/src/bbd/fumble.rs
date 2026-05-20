@@ -1,9 +1,7 @@
-//! Fumble — `{1}{U}` instant, "Return target creature to its owner's hand.
+//! Fumble — `{1}{U}` instant. "Return target creature to its owner's hand.
 //! Gain control of all Auras and Equipment that were attached to it, then
-//! attach them to another creature."
-//!
-//! GAP: gaining control of attached Auras/Equipment and re-attaching them
-//! is not expressible with the current Effect catalog.
+//! attach them to another creature." We emit the bounce; no Effect variant
+//! for "gain control of attached Auras/Equipment and re-attach". GAP that.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,23 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature to its owner's hand. Gain control of all Auras and Equipment that were attached to it, then attach them to another creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target creature to its owner's hand. Gain control of all Auras and Equipment that were attached to it, then attach them to another creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: gaining control of attached enchantments/equipment and re-attaching not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: no Effect for "steal attached Auras/Equipment and re-attach them to another creature".
     vec![Effect::ReturnToHand { target: *id }]
 }

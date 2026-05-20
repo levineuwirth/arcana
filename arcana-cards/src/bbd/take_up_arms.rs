@@ -1,4 +1,5 @@
-//! Take Up Arms — `{4}{W}` instant. "Create three 1/1 white Warrior creature tokens."
+//! Take Up Arms — `{4}{W}` instant. "Create three 1/1 white Warrior
+//! creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,7 +35,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned during register()");
+    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(warrior);
     let token = TokenDefinition {

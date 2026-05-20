@@ -1,5 +1,5 @@
-//! Captain's Call — `{3}{W}` sorcery.
-//! "Create three 1/1 white Soldier creature tokens."
+//! Captain's Call — `{3}{W}` sorcery. "Create three 1/1 white Soldier
+//! creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,22 +20,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 1/1 white Soldier creature tokens.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 1/1 white Soldier creature tokens.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let soldier = reg.interner().lookup("Soldier").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {
@@ -49,8 +44,17 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

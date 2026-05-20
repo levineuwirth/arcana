@@ -7,3 +7,4 @@ pub mod lapse_of_certainty;
 pub mod shard_convergence;
 pub mod view_from_above;
 pub mod quenchable_fire;
+pub mod wretched_banquet;

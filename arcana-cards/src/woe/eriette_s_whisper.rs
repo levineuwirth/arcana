@@ -1,8 +1,9 @@
-//! Eriette's Whisper — `{3}{B}` sorcery. "Target opponent discards two cards.
-//! Create a Wicked Role token attached to up to one target creature you control."
+//! Eriette's Whisper — `{3}{B}` sorcery. "Target opponent discards
+//! two cards. Create a Wicked Role token attached to up to one target
+//! creature you control."
 //!
-//! GAP: Wicked Role token (enchantment aura attached to a creature) not supported
-//! in TokenDefinition. Partial: opponent discard expressed.
+//! The discard is expressed; Role-token creation/attachment has no
+//! catalog primitive.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,27 +24,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target opponent discards two cards. Create a Wicked Role token attached to up to one target creature you control.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target opponent discards two cards. Create a Wicked Role token attached to up to one target creature you control.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Wicked Role token creation not supported
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "Create a Wicked Role token attached to a creature" — no
+    // Role/Aura-token attach primitive.
     vec![Effect::Discard {
         player: *p,
         count: 2,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

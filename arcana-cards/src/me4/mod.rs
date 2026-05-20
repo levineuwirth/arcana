@@ -33,3 +33,4 @@ pub mod rain_of_daggers;
 pub mod fire_tempest;
 pub mod devastation;
 pub mod tsunami;
+pub mod dakmor_plague;

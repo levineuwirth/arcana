@@ -1,9 +1,9 @@
-//! Dissipate — `{1}{U}{U}` instant.
-//! "Counter target spell. If that spell is countered this way, exile it
-//! instead of putting it into its owner's graveyard."
+//! Dissipate — `{1}{U}{U}` instant, "Counter target spell. If that
+//! spell is countered this way, exile it instead of putting it into its
+//! owner's graveyard."
 //!
-//! # GAP: counter-to-exile rider
-//! `Effect::Counter` sends to graveyard. No variant redirects to exile.
+//! GAP: the "exile instead of graveyard" replacement on the countered
+//! spell has no corresponding Effect. Only the counter is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -44,10 +46,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: counter-to-exile; Effect::Counter sends to graveyard, no exile variant
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: exile-instead-of-graveyard replacement not expressible.
+    vec![Effect::Counter { target: *id }]
 }

@@ -1,9 +1,12 @@
-//! Ray of Ruin — `{4}{B}` sorcery. "Exile target creature, Vehicle, or
-//! nonbasic land. Scry 1."
+//! Ray of Ruin — `{4}{B}` sorcery. "Exile target creature, Vehicle,
+//! or nonbasic land. Scry 1."
 //!
-//! Targeting "creature, Vehicle, or nonbasic land" requires an OR-of-types
-//! filter that includes a Vehicle subtype check and nonbasic qualifier.
-//! Best-effort: target any permanent (creature or land).
+//! Target is a creature or land (Vehicle is an artifact subtype not
+//! modeled; the nonbasic restriction on lands is also not a filter
+//! predicate). Exile the target, then Scry 1.
+//!
+//! GAP: "Vehicle" subtype and "nonbasic" land restriction not
+//! expressible in the target filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,28 +29,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature, Vehicle, or nonbasic land. Scry 1.".into(),
-                target_requirements: vec![TargetRequirement {
-                    // GAP: OR-of-types (creature | Vehicle subtype | nonbasic land) not supported
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature, Vehicle, or nonbasic land. Scry 1.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new().with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::LAND)),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "Vehicle" subtype / "nonbasic" land restriction not expressible.
     vec![
         Effect::ExilePermanent { target: *id },
         Effect::Scry { player: entry.controller, count: 1 },

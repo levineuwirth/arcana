@@ -1,12 +1,7 @@
-//! Peregrination — `{3}{G}` sorcery. "Search your library for up to two basic
-//! land cards with different names, reveal them, put one onto the battlefield
-//! tapped and the other into your hand, then shuffle. Scry 1."
-//!
-//! GAP: TutorToBattlefield does not support `tapped: true` per the catalog
-//! shown (wait — the catalog does show `tapped: false` implying tapped is a
-//! field, but `tapped: true` would be needed here); also, split two-land
-//! search with different names and separate destinations (battlefield vs. hand)
-//! is not expressible. Scry 1 alone is insufficient.
+//! Peregrination — `{3}{G}` sorcery. "Search your library for up to
+//! two basic land cards, reveal those cards, and put one onto the
+//! battlefield tapped and the other into your hand. Shuffle, then
+//! scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,6 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for up to two basic land cards with different names, reveal them, put one onto the battlefield tapped and the other into your hand, then shuffle. Scry 1.".into(),
+                text: "Search your library for up to two basic land cards, reveal those cards, and put one onto the battlefield tapped and the other into your hand. Shuffle, then scry 1.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -41,6 +37,19 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: split dual-land-search with different destinations + different-names constraint not expressible
-    vec![Effect::Scry { player: entry.controller, count: 1 }]
+    // "basic" supertype not expressible in ObjectFilter; one land to
+    // battlefield tapped, one to hand, then scry 1.
+    vec![
+        Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: true,
+        },
+        Effect::TutorToHand {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            reveal: true,
+        },
+        Effect::Scry { player: entry.controller, count: 1 },
+    ]
 }

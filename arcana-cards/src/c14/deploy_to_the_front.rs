@@ -1,5 +1,6 @@
-//! Deploy to the Front — `{5}{W}{W}` sorcery. "Create X 1/1 white Soldier
-//! creature tokens, where X is the number of creatures on the battlefield."
+//! Deploy to the Front — `{5}{W}{W}` sorcery. "Create X 1/1 white
+//! Soldier creature tokens, where X is the number of creatures on the
+//! battlefield."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -22,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create X 1/1 white Soldier creature tokens, where X is the number of creatures on the battlefield.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create X 1/1 white Soldier creature tokens, where X is the number of creatures on the battlefield.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,10 +37,9 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
-    let n = script::count_matching(state, &ObjectFilter::creature(), entry.controller);
     let token = TokenDefinition {
         name: soldier,
         colors: ColorSet::white(),
@@ -51,8 +50,15 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    (0..n).map(|_| Effect::CreateToken {
-        controller: entry.controller,
-        token: token.clone(),
-    }).collect()
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
+    (0..n)
+        .map(|_| Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        })
+        .collect()
 }

@@ -1,4 +1,4 @@
-//! Pillar Launch — `{G}` instant, "Target creature gets +2/+2 and gains
+//! Pillar Launch — `{G}` instant. "Target creature gets +2/+2 and gains
 //! reach until end of turn. Untap it."
 
 use arcana_core::effects::{Effect, KeywordAbility};

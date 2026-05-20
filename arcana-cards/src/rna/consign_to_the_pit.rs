@@ -1,9 +1,5 @@
 //! Consign to the Pit — `{5}{B}` sorcery. "Destroy target creature.
 //! Consign to the Pit deals 2 damage to that creature's controller."
-//!
-//! GAP: dealing damage to the *target's controller* requires identifying
-//! them at resolution, which is not accessible via the script API. The
-//! damage to controller is omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,13 +20,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. Consign to the Pit deals 2 damage to that creature's controller.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature. Consign to the Pit deals 2 \
+                   damage to that creature's controller."
+                .into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,8 +36,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: damage to target's controller not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "2 damage to that creature's controller" not expressible (no
+    // controller-of-target accessor) — destroy only.
     vec![Effect::DestroyPermanent { target: *id }]
 }

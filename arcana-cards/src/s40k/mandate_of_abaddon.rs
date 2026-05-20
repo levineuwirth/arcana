@@ -1,14 +1,17 @@
-//! Mandate of Abaddon — `{3}{B}` sorcery. "Choose target creature you control.
-//! Destroy all creatures with power less than that creature's power."
+//! Mandate of Abaddon — `{3}{B}` sorcery. "Choose target creature you
+//! control. Destroy all creatures with power less than that
+//! creature's power."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,23 +45,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(chosen_id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let power = script::power_of(state, *chosen_id);
-    if power <= 0 {
-        return Vec::new();
-    }
-    // .with_max_power(n) matches power <= n; we want power < chosen, so max = power - 1.
-    let filter = ObjectFilter::creature().with_max_power(power - 1);
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(chosen) = target else { return Vec::new(); };
+    let p = script::power_of(state, *chosen);
+    // "power less than that creature's power" = max power of p-1.
+    let max_p = (p - 1).max(0);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_max_power(max_p),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: arcana_core::objects::NULL_OBJECT_ID,
-        }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

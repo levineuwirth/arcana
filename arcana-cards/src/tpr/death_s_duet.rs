@@ -1,5 +1,5 @@
-//! Death's Duet — `{2}{B}` sorcery. "Return two target creature cards from your graveyard
-//! to your hand."
+//! Death's Duet — `{2}{B}` sorcery. "Return two target creature cards
+//! from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,43 +23,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return two target creature cards from your graveyard to your hand.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::creature(),
-                        },
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::creature(),
-                        },
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return two target creature cards from your graveyard to your hand.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::creature(),
+                },
+                count: TargetCount::Exactly(2),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    for target in &entry.targets.targets {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
-        }
-    }
-    effects
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => {
+                Some(Effect::ReturnFromGraveyardToHand { target: *id })
+            }
+            _ => None,
+        })
+        .collect()
 }

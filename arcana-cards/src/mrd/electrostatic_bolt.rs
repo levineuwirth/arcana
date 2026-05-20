@@ -1,9 +1,10 @@
-//! Electrostatic Bolt — `{R}` instant, "Electrostatic Bolt deals 2 damage to
+//! Electrostatic Bolt — `{R}` instant. "Electrostatic Bolt deals 2 damage to
 //! target creature. If it's an artifact creature, Electrostatic Bolt deals 4
 //! damage to it instead."
 //!
-//! # GAP: conditional damage based on artifact subtype not expressible
-//! Best-effort: DealDamage 2 to target creature (artifact conditional elided)
+//! GAP: no script helper exposes whether the target is an artifact creature,
+//! and there is no Conditional predicate for target-type, so the
+//! damage-doubling branch is dropped; the base 2 damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -42,7 +43,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional damage (4 if artifact creature, else 2) not in Effect catalog
+    // GAP: "if it's an artifact creature, 4 damage instead" — no type predicate
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

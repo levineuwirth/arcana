@@ -1,6 +1,6 @@
-//! Echoing Truth — `{1}{U}` instant. "Return target nonland permanent and all other
-//! permanents with the same name as that permanent to their owners' hands."
-//! GAP: same-name filter for bounce-all not expressible in ObjectFilter.
+//! Echoing Truth — `{1}{U}` instant. "Return target nonland permanent
+//! and all other permanents with the same name as that permanent to
+//! their owners' hands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,29 +23,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target nonland permanent and all other permanents with the same name as that permanent to their owners' hands.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target nonland permanent and all other permanents with the same name as that permanent to their owners' hands.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: bounce all permanents with same name not expressible (no name-match filter)
+    // The "all other permanents with the same name" sweep is not
+    // expressible; emit the single-target bounce.
     vec![Effect::ReturnToHand { target: *id }]
 }

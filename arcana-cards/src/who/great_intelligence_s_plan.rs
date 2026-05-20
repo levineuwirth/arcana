@@ -1,17 +1,18 @@
-//! Great Intelligence's Plan — `{4}{U}{B}` sorcery. "Draw three cards. Then
-//! target opponent faces a villainous choice — They discard three cards, or
-//! you may cast a spell from your hand without paying its mana cost."
+//! Great Intelligence's Plan — `{4}{U}{B}` sorcery. "Draw three cards.
+//! Then target opponent faces a villainous choice — They discard three
+//! cards, or you may cast a spell from your hand without paying its mana
+//! cost."
 //!
-//! # GAP: VillainousChoice — no Effect variant for opponent-chosen modal
-//!   (discard three OR let you cast free from hand)
+//! GAP: no villainous-choice (opponent picks one of two outcomes) nor
+//! cast-from-hand-for-free machinery; the draw three is emitted.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,12 +40,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: VillainousChoice — no Effect variant for opponent-chosen modal
-    // Partial: draw three cards for the controller; opponent discard not fully expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard { player: *opponent, count: 3, choice: DiscardChoice::ControllerChooses },
-    ]
+    // GAP: villainous choice / cast-for-free branch not modeled.
+    vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

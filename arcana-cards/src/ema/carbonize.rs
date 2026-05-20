@@ -1,7 +1,7 @@
-//! Carbonize — `{2}{R}` instant. "Carbonize deals 3 damage to any target. If it's a creature,
-//! it can't be regenerated this turn, and if it would die this turn, exile it instead."
-//! GAP: prevent regeneration this turn and exile-instead-of-die replacement effect on a creature
-//! — no Effect variants for those two riders; damage portion is expressible.
+//! Carbonize — `{2}{R}` instant. "Carbonize deals 3 damage to any
+//! target. If it's a creature, it can't be regenerated this turn, and
+//! if it would die this turn, exile it instead." The replacement
+//! riders have no primitive; the damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,21 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Carbonize deals 3 damage to any target. If it's a creature, it can't be regenerated this turn, and if it would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Carbonize deals 3 damage to any target. If it's a creature, it can't be regenerated this turn, and if it would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -47,9 +42,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
-        // GAP: prevent regeneration this turn on the damaged creature — no Effect variant
-        // GAP: exile-instead-of-die replacement effect — no Effect variant
-    ]
+    // GAP: "can't be regenerated" + "if it would die, exile instead"
+    // replacement riders have no primitive.
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
 }

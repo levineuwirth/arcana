@@ -1,10 +1,10 @@
-//! Give No Ground — `{3}{W}` instant, "Target creature gets +2/+6 until end
+//! Give No Ground — `{3}{W}` instant. "Target creature gets +2/+6 until end
 //! of turn and can block any number of creatures this turn."
 //!
-//! # GAP
-//! * GAP: "can block any number of creatures" continuous restriction modifier (no GrantKeyword variant)
+//! GAP: no Effect variant to grant "can block any number of creatures";
+//! the pump portion is expressible but the blocking grant is not.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -41,14 +41,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: 2,
-            toughness: 6,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        // GAP: "can block any number of creatures" continuous restriction modifier
-    ]
+    // GAP: no Effect variant to grant "can block any number of creatures"
+    vec![Effect::Pump {
+        target: *id,
+        power: 2,
+        toughness: 6,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

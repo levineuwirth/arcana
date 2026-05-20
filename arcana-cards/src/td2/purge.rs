@@ -1,10 +1,8 @@
-//! Purge — `{1}{W}` instant. "Destroy target artifact creature or black creature.
-//! It can't be regenerated."
-//!
-//! # GAP: filter for "artifact creature or black creature" requires combined
-//! type+color predicates not expressible in a single ObjectFilter. Using a
-//! plain creature target as approximation; the can't-regenerate rider has no
-//! distinct Effect variant.
+//! Purge — `{1}{W}` instant. "Destroy target artifact creature or
+//! black creature. It can't be regenerated." The "artifact or black"
+//! disjunction is not a single ObjectFilter, and the
+//! can't-be-regenerated rider has no catalog primitive; the target is
+//! a creature and the destroy is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact creature or black creature. It can't be regenerated.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact creature or black creature. It can't be regenerated.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,6 +39,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: artifact-creature-or-black-creature filter not expressible; can't-regenerate has no Effect variant
+    // GAP: "artifact creature or black creature" disjunctive target
+    // and "can't be regenerated" have no catalog primitive.
     vec![Effect::DestroyPermanent { target: *id }]
 }

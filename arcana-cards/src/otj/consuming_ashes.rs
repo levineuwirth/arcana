@@ -1,7 +1,9 @@
-//! Consuming Ashes — `{2}{B}{B}` instant.
-//! "Exile target creature. If it had mana value 3 or less, surveil 2."
+//! Consuming Ashes — `{2}{B}{B}` instant. "Exile target creature. If
+//! it had mana value 3 or less, surveil 2."
 //!
-//! GAP: conditional surveil based on exiled creature's mana value.
+//! The post-exile mana-value conditional on the surveil is not
+//! expressible (no condition reading a now-gone object's CMC); only
+//! the exile is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,25 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. If it had mana value 3 or less, surveil 2.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. If it had mana value 3 or less, surveil 2.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::ExilePermanent { target: *id },
-        // GAP: conditional Surveil { count: 2 } based on exiled creature's mana value <= 3.
-    ]
+    // GAP: conditional "if it had mana value 3 or less, surveil 2"
+    // requires reading the exiled object's CMC after it left the
+    // battlefield — not expressible.
+    vec![Effect::ExilePermanent { target: *id }]
 }

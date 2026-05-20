@@ -1,9 +1,8 @@
-//! Ride Down — `{R}{W}` instant. "Destroy target blocking creature. Creatures
-//! that were blocked by that creature this combat gain trample until end of turn."
-//!
-//! # GAP: tracking which creatures were blocked by the destroyed creature this
-//! combat and granting them trample is not expressible. The destroy is
-//! implemented; the trample-grant rider is omitted.
+//! Ride Down — `{R}{W}` instant. "Destroy target blocking creature.
+//! Creatures that were blocked by that creature this combat gain
+//! trample until end of turn." The blocking-creature target
+//! restriction and the trample rider have no catalog primitive; the
+//! target is a creature and the destroy is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target blocking creature. Creatures that were blocked by that creature this combat gain trample until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target blocking creature. Creatures that were blocked by that creature this combat gain trample until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,6 +39,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: granting trample to creatures that were blocked by the target this combat not expressible
+    // GAP: "blocking creature" target restriction and granting
+    // trample to creatures it blocked have no catalog primitive.
     vec![Effect::DestroyPermanent { target: *id }]
 }

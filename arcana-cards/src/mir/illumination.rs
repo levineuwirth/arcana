@@ -1,8 +1,10 @@
-//! Illumination — `{W}{W}` instant, "Counter target artifact or enchantment
-//! spell. Its controller gains life equal to that spell's mana value."
+//! Illumination — `{W}{W}` instant.
+//! "Counter target artifact or enchantment spell. Its controller gains life
+//! equal to its mana value."
 //!
-//! GAP: "gain life equal to the spell's mana value" requires mana value lookup
-//! on a stack object, not expressible.
+//! GAP: "gains life equal to its mana value" — requires reading the target
+//! spell's CMC at resolution time; no script helper exposes the CMC of a
+//! stack object. Partial: emit the counter; omit the life gain.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,9 +12,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,12 +27,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Counter target artifact or enchantment spell. Its controller gains life equal to that spell's mana value.".into(),
+                text: "Counter target artifact or enchantment spell. Its controller gains life equal to its mana value.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Spell(
-                        ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT),
-                        ),
+                        ObjectFilter::new().with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT))
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -49,12 +47,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    vec![
-        Effect::Counter { target: stack_id },
-        // GAP: gain life equal to the countered spell's mana value
-    ]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: life gain equal to target spell's mana value — CMC of stack object not accessible
+    vec![Effect::Counter { target: *id }]
 }

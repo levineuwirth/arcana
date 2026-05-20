@@ -1,10 +1,5 @@
-//! Vex — `{2}{U}` instant. "Counter target spell. That spell's controller
-//! may draw a card."
-//!
-//! # GAP: drawing a card for the spell's original controller (not the
-//! caster of Vex) after countering is not expressible — the engine has
-//! no way to query "controller of the countered spell" post-counter.
-//! The counter effect is emitted; the draw rider is omitted.
+//! Vex — `{2}{U}` instant. "Counter target spell. That spell's
+//! controller may draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,17 +22,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. That spell's controller may draw a card.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell. That spell's controller may draw a card.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,6 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: draw a card for the countered spell's controller (not accessible post-counter)
+    // GAP: cannot grant the countered spell's controller an optional
+    // draw; only the counter is modeled.
     vec![Effect::Counter { target: *id }]
 }

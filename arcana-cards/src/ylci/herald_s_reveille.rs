@@ -1,7 +1,7 @@
-//! Herald's Reveille — `{U}` sorcery. "Draw a card. If a permanent you
-//! controlled explored this turn, seek a Merfolk card instead."
-//! GAP: 'seek' effect and 'if a permanent you controlled explored this turn'
-//! conditional not in the catalog.
+//! Herald's Reveille — `{U}` sorcery. "Draw a card. If a permanent
+//! you controlled explored this turn, seek a Merfolk card instead."
+//! The explore-history condition and the seek mechanic are not
+//! modeled; we draw a card (the base, non-conditional effect).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,21 +21,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw a card. If a permanent you controlled explored this turn, seek a Merfolk card instead.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw a card. If a permanent you controlled explored this turn, seek a Merfolk card instead.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: seek effect and explore-this-turn conditional not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: explore-history condition and the seek mechanic are not
+    // modeled. The base "draw a card" is emitted.
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

@@ -1,14 +1,14 @@
-//! Storm Herd — `{8}{W}{W}` sorcery. "Create X 1/1 white Pegasus creature
-//! tokens with flying, where X is your life total."
+//! Storm Herd — `{8}{W}{W}` sorcery. "Create X 1/1 white Pegasus
+//! creature tokens with flying, where X is your life total."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Storm Herd");
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create X 1/1 white Pegasus creature tokens with flying, where X is your life total.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create X 1/1 white Pegasus creature tokens with flying, where X is your life total.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,8 +35,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let x = script::life(state, entry.controller).max(0) as u32;
-    let pegasus = reg.interner().lookup("Pegasus").expect("Pegasus interned during register()");
+    let pegasus = reg.interner().lookup("Pegasus").expect("Pegasus interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(pegasus);
     let token = TokenDefinition {
@@ -50,5 +48,11 @@ fn resolve(
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    (0..x).map(|_| Effect::CreateToken { controller: entry.controller, token: token.clone() }).collect()
+    let x = script::life(state, entry.controller).max(0) as u32;
+    (0..x)
+        .map(|_| Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        })
+        .collect()
 }

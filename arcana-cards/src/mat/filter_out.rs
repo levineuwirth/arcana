@@ -1,7 +1,7 @@
-//! Filter Out — `{1}{U}{U}` instant, "Return all noncreature, nonland
-//! permanents to their owners' hands." Board bounce for artifacts and
-//! enchantments (noncreature, nonland = artifacts + enchantments + other
-//! non-creature non-land permanents).
+//! Filter Out — `{1}{U}{U}` instant. "Return all noncreature,
+//! nonland permanents to their owners' hands." Board-wide bounce of
+//! permanents that are neither creature nor land, via ForEach over
+//! script::ids_matching.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,21 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return all noncreature, nonland permanents to their owners' hands.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return all noncreature, nonland permanents to their owners' hands.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let filter = ObjectFilter::permanent()
         .without_types(TypeLine::CREATURE.into())
         .without_types(TypeLine::LAND.into());

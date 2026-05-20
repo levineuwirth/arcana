@@ -1,17 +1,19 @@
-//! Pirate's Prize — `{3}{U}` sorcery. "Draw two cards. Create a Treasure token."
-//! GAP: Treasure token (artifact with tap-sacrifice for any-color mana) is not
-//! in the TokenDefinition primitives — no activated ability on tokens.
+//! Pirate's Prize — `{3}{U}` sorcery. "Draw two cards. Create a
+//! Treasure token." The Treasure token's tap-sacrifice mana ability
+//! is not modeled; we draw two cards and create a vanilla Treasure
+//! artifact token as a best effort.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Pirate's Prize");
+    let _treasure = reg.interner_mut().intern("Treasure");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{U}").expect("valid cost")),
@@ -20,21 +22,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards. Create a Treasure token.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards. Create a Treasure token.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Treasure token (activated ability on token) not expressible
-    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let treasure = reg.interner().lookup("Treasure").expect("Treasure interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(treasure);
+    let token = TokenDefinition {
+        name: treasure,
+        colors: ColorSet::new(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
+    vec![
+        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

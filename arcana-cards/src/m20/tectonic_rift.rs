@@ -1,7 +1,7 @@
-//! Tectonic Rift — `{3}{R}` sorcery, "Destroy target land. Creatures without
-//! flying can't block this turn."
-//!
-//! GAP: "creatures without flying can't block this turn" restriction.
+//! Tectonic Rift — `{3}{R}` sorcery. "Destroy target land. Creatures
+//! without flying can't block this turn."
+//! GAP: "creatures without flying can't block this turn" effect not in catalog.
+//! Emits DestroyPermanent on target land only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,6 +45,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: creatures without flying can't block this turn
+    // GAP: "creatures without flying can't block this turn" not in catalog
     vec![Effect::DestroyPermanent { target: *id }]
 }

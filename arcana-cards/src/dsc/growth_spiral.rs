@@ -1,9 +1,8 @@
-//! Growth Spiral — `{G}{U}` instant. "Draw a card. You may put a land card from
-//! your hand onto the battlefield."
+//! Growth Spiral — `{G}{U}` instant. "Draw a card. You may put a land
+//! card from your hand onto the battlefield."
 //!
-//! GAP: "you may put a land card from your hand onto the battlefield" (optional
-//! hand-to-battlefield for land cards) is not expressible with the catalog's
-//! Effect variants (no Effect::PutLandFromHandOntoBattlefield).
+//! Draw is expressible; "put a land card from your hand onto the
+//! battlefield" has no catalog primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,13 +22,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw a card. You may put a land card from your hand onto the battlefield.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw a card. You may put a land card from your hand \
+                   onto the battlefield."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,8 +38,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 1 },
-        // GAP: optional put land from hand onto battlefield not expressible
-    ]
+    // GAP: "put a land card from your hand onto the battlefield" has no
+    // catalog primitive; emitting the card draw only.
+    vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

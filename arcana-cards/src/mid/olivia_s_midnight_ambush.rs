@@ -1,9 +1,6 @@
-//! Olivia's Midnight Ambush — `{1}{B}` instant. "Target creature gets -2/-2
-//! until end of turn. If it's night, that creature gets -13/-13 until end of
-//! turn instead."
-//!
-//! # GAP: day/night state query not available via script helpers
-//! Best-effort: apply -2/-2 (the non-night side).
+//! Olivia's Midnight Ambush — `{1}{B}` instant. "Target creature gets
+//! -2/-2 until end of turn. If it's night, that creature gets -13/-13
+//! until end of turn instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,22 +22,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -2/-2 until end of turn. If it's night, that creature gets -13/-13 until end of turn instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -2/-2 until end of turn. If it's night, that creature gets -13/-13 until end of turn instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: day/night state query not in script helpers — using -2/-2 (non-night side)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: day/night state is not queryable; emitting the default
+    // (non-night) -2/-2 mode.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Pump {

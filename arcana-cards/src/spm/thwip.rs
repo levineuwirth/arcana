@@ -1,9 +1,7 @@
-//! Thwip! — `{W}` instant. "Target creature gets +2/+2 and gains flying until
-//! end of turn. If it's a Spider, you gain 2 life."
-//!
-//! # GAP: conditional life gain based on target's creature subtype (Spider) is
-//! not expressible. The Pump+flying is implemented; the Spider life-gain rider
-//! is omitted.
+//! Thwip! — `{W}` instant. "Target creature gets +2/+2 and gains
+//! flying until end of turn. If it's a Spider, you gain 2 life." The
+//! conditional Spider life-gain has no catalog primitive; the pump +
+//! flying is emitted.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -25,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 and gains flying until end of turn. If it's a Spider, you gain 2 life.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 and gains flying until end of turn. If it's a Spider, you gain 2 life.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,7 +39,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional "if it's a Spider, gain 2 life" not expressible
+    // GAP: "If it's a Spider, you gain 2 life" — a per-target subtype
+    // test has no catalog primitive.
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -1,8 +1,6 @@
-//! Turn to Slag — `{3}{R}{R}` sorcery, "Turn to Slag deals 5 damage to target
-//! creature. Destroy all Equipment attached to that creature."
-//!
-//! GAP: "destroy all Equipment attached to that creature" requires filtering
-//! attached Equipment objects from game state — not expressible with catalog effects.
+//! Turn to Slag — `{3}{R}{R}` sorcery. "Turn to Slag deals 5 damage
+//! to target creature. Destroy all Equipment attached to that
+//! creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Turn to Slag deals 5 damage to target creature. Destroy all Equipment attached to that creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Turn to Slag deals 5 damage to target creature. Destroy all Equipment attached to that creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,7 +38,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: destroy all Equipment attached to target creature
+    // GAP: cannot enumerate "Equipment attached to that creature";
+    // only the damage is modeled.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

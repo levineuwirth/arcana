@@ -1,9 +1,10 @@
-//! Spin Out — `{1}{B}{B}` instant, "Destroy target creature or Vehicle."
+//! Spin Out — `{1}{B}{B}` instant. "Destroy target creature or Vehicle."
 //!
-//! Note: "Vehicle" is an artifact subtype, not a type-line const. The
-//! closest filter is creature-or-artifact; a subtype-based filter is not
-//! available in the catalog, so this uses a permanent filter matching either
-//! creature or artifact types as the best approximation.
+//! Note: Vehicle is an artifact subtype; TargetFilter::Permanent with
+//! creature OR vehicle. Vehicle subtypes are expressible via with_types_any
+//! combining creature and artifact (vehicles are artifact creatures when
+//! crewed, but as a card type they are artifacts). Best-effort: target
+//! creature or artifact permanent.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target creature or Vehicle.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
+                        ObjectFilter::permanent()
                             .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::ARTIFACT)),
                     ),
                     count: TargetCount::Exactly(1),

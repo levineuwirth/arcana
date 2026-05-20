@@ -1,8 +1,7 @@
-//! Burning Cloak — `{R}` sorcery.
-//! "Target creature gets +2/+0 until end of turn. Burning Cloak deals 2
-//! damage to that creature."
+//! Burning Cloak — `{R}` sorcery. "Target creature gets +2/+0 until end of
+//! turn. Burning Cloak deals 2 damage to that creature."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;

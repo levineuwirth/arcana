@@ -26,3 +26,4 @@ pub mod ruinous_ultimatum;
 pub mod blitz_of_the_thunder_raptor;
 pub mod convolute;
 pub mod zenith_flare;
+pub mod blazing_volley;

@@ -1,11 +1,9 @@
-//! Kami's Flare — `{1}{R}` instant, "Kami's Flare deals 3 damage to target
-//! creature or planeswalker. If you control a modified creature, Kami's
-//! Flare also deals 2 damage to that permanent's controller."
+//! Kami's Flare — `{1}{R}` instant. "Kami's Flare deals 3 damage to target
+//! creature or planeswalker. Kami's Flare also deals 2 damage to that
+//! permanent's controller if you control a modified creature."
 //!
-//! # GAP
-//! - Conditional additional damage based on whether controller has a modified
-//!   creature (modified = has counters, is equipped, or is enchanted) not
-//!   expressible in Effect catalog.
+//! GAP: no controller-of-target accessor for the 2-damage rider; also
+//! no "modified" predicate. Only the 3 to target stays honest.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -14,7 +12,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,12 +27,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Kami's Flare deals 3 damage to target creature or planeswalker. If you control a modified creature, Kami's Flare also deals 2 damage to that permanent's controller.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                text: "Kami's Flare deals 3 damage to target creature or planeswalker. Kami's Flare also deals 2 damage to that permanent's controller if you control a modified creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
             }),
@@ -48,7 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional additional damage based on "you control a modified creature" not expressible
+    // GAP: no controller-of-target nor modified-creature predicate.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

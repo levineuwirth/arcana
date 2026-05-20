@@ -1,19 +1,18 @@
-//! Walk the Plank — `{B}{B}` sorcery, "Destroy target non-Merfolk creature."
-//!
-//! # GAP
-//! * GAP: "non-Merfolk" subtype exclusion filter (ObjectFilter has no without_subtypes method)
+//! Walk the Plank — `{B}{B}` sorcery. "Destroy target non-Merfolk creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Walk the Plank");
+    let _merfolk = reg.interner_mut().intern("Merfolk");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{B}{B}").expect("valid cost")),
@@ -25,8 +24,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target non-Merfolk creature.".into(),
-                // Using generic creature target; GAP: no "non-Merfolk" subtype exclusion filter
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -34,12 +36,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "non-Merfolk" subtype exclusion filter not enforced in resolver
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // Verify target is not a Merfolk via subtype filter
+    let merfolk_filter = script::subtype_filter(reg, "Merfolk");
+    let merfolk_ids = script::ids_matching(state, &merfolk_filter, entry.controller);
+    if merfolk_ids.contains(id) {
+        return Vec::new();
+    }
     vec![Effect::DestroyPermanent { target: *id }]
 }

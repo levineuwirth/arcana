@@ -1,5 +1,5 @@
-//! Revel of the Fallen God — `{3}{R}{R}{G}{G}` sorcery.
-//! "Create four 2/2 red and green Satyr creature tokens with haste."
+//! Revel of the Fallen God — `{3}{R}{R}{G}{G}` sorcery. "Create four
+//! 2/2 red and green Satyr creature tokens with haste."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,21 +20,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create four 2/2 red and green Satyr creature tokens with haste.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create four 2/2 red and green Satyr creature tokens with haste.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let satyr = reg.interner().lookup("Satyr").expect("Satyr interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(satyr);

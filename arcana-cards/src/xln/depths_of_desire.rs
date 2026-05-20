@@ -1,11 +1,5 @@
 //! Depths of Desire — `{2}{U}` instant. "Return target creature to its
 //! owner's hand. Create a Treasure token."
-//!
-//! GAP: Treasure token (artifact token with "{T}, Sacrifice this: Add one
-//! mana of any color") has an activated ability that cannot be expressed
-//! with the TokenDefinition.abilities field (no activated ability type shown
-//! in the API). Creating a plain colorless artifact token as best effort;
-//! the mana-producing activated ability is omitted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -27,24 +21,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature to its owner's hand. Create a Treasure token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target creature to its owner's hand. Create a Treasure token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let treasure = reg.interner().lookup("Treasure")
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    let treasure = reg
+        .interner()
+        .lookup("Treasure")
         .expect("Treasure interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
@@ -58,10 +53,11 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Treasure token's "{T}, Sacrifice: Add one mana of any color"
-    // activated ability cannot be expressed with the current TokenDefinition API.
     vec![
         Effect::ReturnToHand { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

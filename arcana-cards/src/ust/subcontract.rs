@@ -1,12 +1,12 @@
-//! Subcontract — `{B}` sorcery.
-//! "A person outside the game looks at target opponent's hand and chooses a nonland
-//! card from it. That player discards that card."
+//! Subcontract — `{B}` sorcery. "A person outside the game looks at
+//! target opponent's hand and chooses a nonland card from it. That
+//! player discards that card."
 //!
-//! GAP: "a person outside the game" look at hand and choose — no external-player
-//! choice variant in Effect catalog. Approximated as OpponentChooses discard of 1
-//! from a targeted opponent. "Nonland" filter on hand cards not directly expressible.
+//! Modelled as: target player discards one card (the
+//! outside-the-game chooser and nonland filter are not expressible;
+//! using opponent-chooses as the closest available choice mode).
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -25,25 +25,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "A person outside the game looks at target opponent's hand and chooses a nonland card from it. That player discards that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "A person outside the game looks at target opponent's hand and chooses a nonland card from it. That player discards that card.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "person outside the game" choice — not expressible; approximated as
-    // OpponentChooses (closest available).
-    // GAP: "nonland" card filter on discard — DiscardChoice has no filter variant.
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::OpponentChooses }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: outside-the-game chooser and nonland filter not
+    // expressible; modelled as a single opponent-chosen discard.
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::OpponentChooses,
+    }]
 }

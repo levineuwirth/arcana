@@ -1,7 +1,8 @@
-//! Thirst for Meaning — `{2}{U}` instant, "Draw three cards, then discard two
-//! cards unless you discard an enchantment card."
-//! GAP: conditional discard (discard fewer if you discard an enchantment) not
-//! expressible; best effort draws 3 and discards 2.
+//! Thirst for Meaning — `{2}{U}` instant. "Draw three cards. Then
+//! discard two cards unless you discard an enchantment card."
+//!
+//! GAP: 'discard an enchantment to skip the discard tax' isn't a
+//! catalog primitive. We model the draw + base discard-of-2.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -21,24 +22,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards, then discard two cards unless you discard an enchantment card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards. Then discard two cards unless you discard an enchantment card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional discard type (unless enchantment) not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: 'discard an enchantment to skip the tax' branch.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

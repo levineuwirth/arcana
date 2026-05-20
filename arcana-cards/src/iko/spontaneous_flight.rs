@@ -1,8 +1,8 @@
-//! Spontaneous Flight — `{2}{W}` instant, "Target creature gets +2/+2 and gains flying until
-//! end of turn."
+//! Spontaneous Flight — `{2}{W}` instant. "Target creature gets +2/+2
+//! until end of turn. Put a flying counter on it."
 //!
-//! GAP: "put a flying counter" form is not expressible; however the +2/+2 + flying until EOT
-//! is fully expressible via Effect::Pump with keywords.
+//! GAP: CounterKind::Flying (only PlusOnePlusOne exists). Modeled as
+//! +2/+2 with Flying granted for the turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -24,23 +24,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 and gains flying until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. Put a flying counter on it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'flying counter' (only PlusOnePlusOne exists).
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -1,8 +1,8 @@
-//! Cut the Earthly Bond — `{U}` instant (Arcane), "Return enchanted permanent
-//! to its owner's hand."
-//! GAP: targeting "enchanted permanent" (the permanent enchanted by an Aura
-//! this card is spliced onto, or a general enchanted-permanent filter) is not
-//! expressible; best effort returns any permanent target.
+//! Cut the Earthly Bond — `{U}` instant — Arcane. "Return target
+//! enchanted permanent to its owner's hand."
+//!
+//! GAP: 'enchanted' permanent filter — no script ObjectFilter for
+//! 'permanent enchanted by an Aura'. Modeled as any-permanent bounce.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,6 +15,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cut the Earthly Bond");
+    let _arcane = reg.interner_mut().intern("Arcane");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{U}").expect("valid cost")),
@@ -23,27 +24,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return enchanted permanent to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target enchanted permanent to its owner's hand.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: filter to only enchanted permanents not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'enchanted' filter on the target permanent.
     vec![Effect::ReturnToHand { target: *id }]
 }

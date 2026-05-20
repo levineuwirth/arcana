@@ -1,10 +1,10 @@
-//! Heated Argument — `{4}{R}` instant, "Heated Argument deals 6 damage to
+//! Heated Argument — `{4}{R}` instant. "Heated Argument deals 6 damage to
 //! target creature. You may exile a card from your graveyard. If you do,
 //! Heated Argument also deals 2 damage to that creature's controller."
 //!
-//! # GAP
-//! * GAP: optional self-exile of own graveyard card as cost/mode selector
-//! * GAP: conditional rider damage to controller based on above choice
+//! GAP: no Effect variant for optional-cost (exile a card from graveyard) with
+//! a bonus damage rider on the controller. The primary damage is expressible;
+//! the optional rider is not.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -43,13 +43,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id),
-            amount: 6,
-        },
-        // GAP: optional self-exile of own graveyard card as cost/mode selector
-        // GAP: conditional rider damage (2) to creature's controller based on above choice
-    ]
+    // GAP: no Effect variant for optional graveyard-exile with bonus controller damage
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Object(*id),
+        amount: 6,
+    }]
 }

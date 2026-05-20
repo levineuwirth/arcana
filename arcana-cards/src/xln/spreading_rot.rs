@@ -1,11 +1,7 @@
-//! Spreading Rot — `{4}{B}` sorcery, "Destroy target land. Its controller
+//! Spreading Rot — `{4}{B}` sorcery. "Destroy target land. Its controller
 //! loses 2 life."
 //!
-//! # GAP
-//! Reading the controller of a targeted permanent at resolution time is not
-//! accessible via the StackEntry API demonstrated in the references. The
-//! DestroyPermanent is fully expressible; the LoseLife on the target's
-//! controller is not.
+//! GAP: no controller-of-target accessor for the life-loss rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,8 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: target permanent's controller not accessible for LoseLife
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no controller-of-target accessor for the life-loss rider.
     vec![Effect::DestroyPermanent { target: *id }]
 }

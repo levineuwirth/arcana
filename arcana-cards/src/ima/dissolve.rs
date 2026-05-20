@@ -1,4 +1,4 @@
-//! Dissolve — `{1}{U}{U}` instant, "Counter target spell. Scry 1."
+//! Dissolve — `{1}{U}{U}` instant. "Counter target spell. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

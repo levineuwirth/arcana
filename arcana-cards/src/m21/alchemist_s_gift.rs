@@ -1,10 +1,8 @@
-//! Alchemist's Gift — `{B}` instant.
-//! "Target creature gets +1/+1 and gains your choice of deathtouch or
-//! lifelink until end of turn."
-//
-// GAP: modal keyword choice (deathtouch or lifelink) — SpellAbilityDef
-//      has `modal: None` and no mechanism for a runtime two-option choice
-//      within a single-ability resolve. Best effort: grant both keywords.
+//! Alchemist's Gift — `{B}` instant. "Target creature gets +1/+1 and gains
+//! your choice of deathtouch or lifelink until end of turn."
+//!
+//! GAP: no modal choice between two keywords. Best effort: grant deathtouch
+//! (one of the two listed options).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -43,12 +41,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: player choice of deathtouch vs lifelink — granting both as best effort
+    // GAP: choice between deathtouch and lifelink not modeled; using deathtouch
     vec![Effect::Pump {
         target: *id,
         power: 1,
         toughness: 1,
         duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Deathtouch, KeywordAbility::Lifelink],
+        keywords: vec![KeywordAbility::Deathtouch],
     }]
 }

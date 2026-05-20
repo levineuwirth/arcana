@@ -1,15 +1,7 @@
-//! End the Festivities — `{R}` sorcery. "End the Festivities deals 1 damage
-//! to each opponent and each creature and planeswalker they control."
-//!
-//! Deals 1 damage to each opponent and each permanent (creature or planeswalker)
-//! controlled by opponents.  Uses `ForEach` for the permanents and a direct
-//! `DealDamage` to each opponent player.
-//!
-//! # GAP: targeting opponent players for damage when there may be multiple opponents
-//! The catalog has no multi-player iteration; best-effort uses entry.controller
-//! to infer a single opponent.  Planeswalker subtype filtering is also not
-//! available — `TypeLine::ENCHANTMENT` is used as proxy but planeswalker is
-//! not modeled.
+//! End the Festivities — `{R}` sorcery. "End the Festivities deals 1
+//! damage to each opponent and each creature and planeswalker they
+//! control." 1 damage to each opponent, and 1 damage to each creature
+//! they control via ForEach over opponent-controlled creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,25 +33,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // Damage each opponent's creatures
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let creature_ids = script::ids_matching(state, &filter, entry.controller);
-    let mut effects = Vec::new();
-    if !creature_ids.is_empty() {
-        effects.push(Effect::ForEach {
-            targets: creature_ids,
-            effect: Box::new(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(NULL_OBJECT_ID),
-                amount: 1,
-            }),
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    for p in script::opponents(state, entry.controller) {
+        out.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 1,
         });
     }
-    // GAP: no multi-opponent iteration or planeswalker type for damage to each opponent player
-    effects
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
+    let ids = script::ids_matching(state, &filter, entry.controller);
+    out.push(Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(NULL_OBJECT_ID),
+            amount: 1,
+        }),
+    });
+    out
 }

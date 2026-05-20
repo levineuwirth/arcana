@@ -1,9 +1,6 @@
-//! Pulse of the Tangle — `{1}{G}{G}` sorcery.
-//! "Create a 3/3 green Beast creature token. Then if an opponent controls more creatures than you,
-//! return Pulse of the Tangle to its owner's hand."
-//!
-//! # GAP: ConditionalSelfBounce — no Effect variant for returning the spell itself to hand
-//! conditioned on a battlefield creature count comparison between players.
+//! Pulse of the Tangle — `{1}{G}{G}` sorcery. "Create a 3/3 green
+//! Beast creature token. Then if an opponent controls more creatures
+//! than you, return Pulse of the Tangle to its owner's hand."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -24,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create a 3/3 green Beast creature token. Then if an opponent controls more creatures than you, return Pulse of the Tangle to its owner's hand.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create a 3/3 green Beast creature token. Then if an opponent controls more creatures than you, return Pulse of the Tangle to its owner's hand.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,7 +35,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let beast = reg.interner().lookup("Beast").expect("Beast interned during register()");
+    let beast = reg.interner().lookup("Beast").expect("Beast interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(beast);
     let token = TokenDefinition {
@@ -52,7 +48,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: ConditionalSelfBounce — no Effect for returning this spell to hand if an opponent
-    // controls more creatures than you.
+    // The conditional self-return clause is not expressible; only the
+    // token creation is implemented.
     vec![Effect::CreateToken { controller: entry.controller, token }]
 }

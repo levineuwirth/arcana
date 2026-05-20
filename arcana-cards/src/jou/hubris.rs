@@ -1,10 +1,8 @@
 //! Hubris — `{1}{U}` instant. "Return target creature and all Auras
 //! attached to it to their owners' hands."
 //!
-//! # GAP
-//! "All Auras attached to it" requires querying the Aura-attachment
-//! state of the target at resolution, which is not accessible in the
-//! resolver. The creature bounce is modeled; the Aura bounce is noted.
+//! "All Auras attached to it" requires per-attachment enumeration not
+//! exposed in script::*; only the creature's bounce is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature and all Auras attached to it to their owners' hands.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target creature and all Auras attached to it to their owners' hands.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: bouncing all attached Auras requires Aura-attachment state query not available in resolver
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: per-attachment enumeration of Auras on the target not in script::*.
     vec![Effect::ReturnToHand { target: *id }]
 }

@@ -1,8 +1,6 @@
-//! Chill to the Bone — `{3}{B}` instant.
-//! "Destroy target nonsnow creature."
-//
-// NOTE: The "nonsnow" restriction is not expressible in ObjectFilter.
-//       Treated as destroy target creature (best effort).
+//! Chill to the Bone — `{3}{B}` instant. "Destroy target nonsnow creature."
+//!
+//! GAP: no ObjectFilter refinement for nonsnow; using plain creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

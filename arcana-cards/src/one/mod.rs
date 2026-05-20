@@ -20,3 +20,4 @@ pub mod vat_emergence;
 pub mod hazardous_blast;
 pub mod infectious_inquiry;
 pub mod free_from_flesh;
+pub mod infectious_bite;

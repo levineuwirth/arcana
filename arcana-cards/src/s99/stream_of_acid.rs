@@ -1,9 +1,9 @@
-//! Stream of Acid — `{2}{B}{B}` sorcery, "Destroy target land or nonblack
-//! creature."
+//! Stream of Acid — `{2}{B}{B}` sorcery. "Destroy target land or
+//! nonblack creature."
 //!
-//! # GAP
-//! No "or" union filter spanning land and creature permanents; no "nonblack"
-//! color-exclusion predicate. Falling back to destroy any creature.
+//! No disjunctive "land OR nonblack creature" target filter; the
+//! permanent filter unions land and creature types, and the "nonblack"
+//! constraint on the creature disjunct is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,23 +26,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target land or nonblack creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target land or nonblack creature.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types_any(TypeLine::LAND.into())
+                        .with_types_any(TypeLine::CREATURE.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no land-or-creature union filter; no "nonblack" predicate
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: per-disjunct constraints ("nonblack" only on the creature side) not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

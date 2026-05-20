@@ -1,4 +1,4 @@
-//! Fugue — `{3}{B}{B}` sorcery, "Target player discards three cards."
+//! Fugue — `{3}{B}{B}` sorcery. "Target player discards three cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

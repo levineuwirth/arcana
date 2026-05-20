@@ -1,7 +1,9 @@
-//! Fully Grown — `{2}{G}` instant, "Target creature gets +3/+3 and gains trample until end of turn."
+//! Fully Grown — `{2}{G}` instant. "Target creature gets +3/+3 until
+//! end of turn. Put a trample counter on it."
 //!
-//! GAP: "put a trample counter" form not expressible, but the +3/+3 + trample until end of turn
-//! is fully expressible via Effect::Pump with keywords.
+//! GAP: CounterKind::Trample (only PlusOnePlusOne is catalogued).
+//! Modeled as the pump + permanent-feeling trample grant for the
+//! turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -23,23 +25,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+3 and gains trample until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+3 until end of turn. Put a trample counter on it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'trample counter' (only PlusOnePlusOne kind exists).
     vec![Effect::Pump {
         target: *id,
         power: 3,

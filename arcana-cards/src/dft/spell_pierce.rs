@@ -1,9 +1,5 @@
-//! Spell Pierce — `{U}` instant, "Counter target noncreature spell unless its
-//! controller pays {2}."
-//!
-//! GAP: soft counter ("unless its controller pays {2}") — no conditional payment
-//! variant of Effect::Counter in catalog; "noncreature spell" filter not in
-//! TargetFilter variants.
+//! Spell Pierce — `{U}` instant, "Counter target noncreature spell unless
+//! its controller pays {2}."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Counter target noncreature spell unless its controller pays {2}.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    filter: TargetFilter::Spell(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -43,8 +39,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: soft counter unless controller pays {2}; noncreature-spell filter
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Counter { target: *id }]
+    vec![Effect::CounterUnlessPays {
+        target: *id,
+        cost: ManaCost::parse("{2}").expect("valid cost"),
+    }]
 }

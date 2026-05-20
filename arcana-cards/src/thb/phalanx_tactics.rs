@@ -1,19 +1,19 @@
-//! Phalanx Tactics — `{1}{W}` instant.
-//! "Target creature you control gets +2/+1 until end of turn. Each other
-//! creature you control gets +1/+1 until end of turn."
-//!
-//! # GAP: pump all other creatures you control — ForEach requires a
-//! pre-enumerated Vec<ObjectId>; no demonstrated API to enumerate controller's
-//! creatures at resolve time. The single-target pump is modelled.
+//! Phalanx Tactics — `{1}{W}` instant. "Target creature you control
+//! gets +2/+1 until end of turn. Each other creature you control gets
+//! +1/+1 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,29 +26,47 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature you control gets +2/+1 until end of turn. Each other creature you control gets +1/+1 until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature you control gets +2/+1 until end of turn. Each other creature you control gets +1/+1 until end of turn.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Creature,
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: pump each other creature you control (ForEach enumeration not demonstrated)
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Pump {
-        target: *id,
-        power: 2,
-        toughness: 1,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    let TargetChoice::Object(tid) = target else { return Vec::new(); };
+    let others: Vec<_> = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    )
+    .into_iter()
+    .filter(|id| id != tid)
+    .collect();
+    vec![
+        Effect::Pump {
+            target: *tid,
+            power: 2,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+        Effect::ForEach {
+            targets: others,
+            effect: Box::new(Effect::Pump {
+                target: NULL_OBJECT_ID,
+                power: 1,
+                toughness: 1,
+                duration: Duration::EndOfTurn,
+                keywords: vec![],
+            }),
+        },
+    ]
 }

@@ -1,19 +1,18 @@
 //! Feat of Resistance — `{1}{W}` instant. "Put a +1/+1 counter on
 //! target creature you control. It gains protection from the color of
 //! your choice until end of turn."
-//!
-//! # GAP: "protection from the color of your choice" — player choice of
-//! color + Protection keyword not in API keyword surface.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::types::CounterKind;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
+    TargetFilter, TargetRequirement,
+};
+use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Feat of Resistance");
@@ -25,13 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature you control. It gains protection from the color of your choice until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on target creature you control. It gains protection from the color of your choice until end of turn.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,7 +47,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: protection from chosen color not expressible (Protection keyword not in API)
+    // Protection is not in the usable keyword surface; only the
+    // +1/+1 counter is implemented.
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,

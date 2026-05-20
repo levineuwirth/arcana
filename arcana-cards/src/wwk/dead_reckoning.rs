@@ -1,19 +1,20 @@
 //! Dead Reckoning — `{1}{B}{B}` sorcery. "You may put target creature card
-//! from your graveyard on top of your library. If you do, Dead Reckoning deals
-//! damage equal to that card's power to target creature."
-//!
-//! GAP: the "may" optional clause, conditional damage based on the topped
-//! card's power, and multi-target interaction (one GY card + one creature) are
-//! not expressible with the catalog. Best effort: put the graveyard card on
-//! top of library; the damage clause is omitted.
+//! from your graveyard on top of your library. If you do, Dead Reckoning
+//! deals damage equal to that card's power to target creature." Two targets:
+//! graveyard card + creature. We emit `PutOnTopOfLibrary` then a DealDamage
+//! sized by `script::power_of` of the graveyard id.
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -27,30 +28,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "You may put target creature card from your graveyard on top of your library. If you do, Dead Reckoning deals damage equal to that card's power to target creature.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Card { zone: Zone::Graveyard(0), filter: ObjectFilter::creature() },
-                        count: TargetCount::Exactly(1),
-                        controller: None,
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "You may put target creature card from your graveyard on top of your library. If you do, Dead Reckoning deals damage equal to that card's power to target creature.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
                     },
-                    TargetRequirement::target_creature(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement::target_creature(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(first) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(gy_id) = first else { return Vec::new(); };
-    // GAP: "may" optional clause and conditional damage equal to card's power not supported
-    vec![Effect::PutOnTopOfLibrary { target: *gy_id }]
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(grave)) = entry.targets.targets.first() else { return Vec::new(); };
+    let power = script::power_of(state, *grave).max(0) as u32;
+    let mut out = vec![Effect::PutOnTopOfLibrary { target: *grave }];
+    if let Some(TargetChoice::Object(creature)) = entry.targets.targets.get(1) {
+        out.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*creature),
+            amount: power,
+        });
+    }
+    out
 }

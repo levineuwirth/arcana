@@ -1,6 +1,6 @@
-//! Get a Leg Up — `{G}` instant.
-//! "Until end of turn, target creature gets +1/+1 for each creature you
-//! control and gains reach."
+//! Get a Leg Up — `{G}` instant. "Until end of turn, target creature
+//! gets +1/+1 for each creature you control and gains reach." The
+//! pump amount is dynamic (number of creatures you control).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -23,21 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Until end of turn, target creature gets +1/+1 for each creature you control and gains reach.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, target creature gets +1/+1 for each creature you control and gains reach.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let n = script::count_matching(

@@ -1,5 +1,5 @@
-//! Moment of Heroism — `{1}{W}` instant, "Target creature gets +2/+2 and gains
-//! lifelink until end of turn."
+//! Moment of Heroism — `{1}{W}` instant. "Target creature gets +2/+2 and
+//! gains lifelink until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

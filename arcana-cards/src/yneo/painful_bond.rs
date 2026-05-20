@@ -1,9 +1,9 @@
-//! Painful Bond — `{1}{B}` instant.
-//! "Draw two cards, then cards in your hand with mana value 3 or greater
-//! perpetually gain "When you cast this spell, you lose 1 life.""
+//! Painful Bond — `{1}{B}` instant, "Draw two cards, then cards in your
+//! hand with mana value 3 or greater perpetually gain \"When you cast
+//! this spell, you lose 1 life.\""
 //!
-//! # GAP: perpetual modification of cards in hand (Arena-only mechanic)
-//! No Effect variant for adding perpetual triggered abilities to cards in hand.
+//! GAP: the perpetual grant of a triggered ability to cards in hand has
+//! no corresponding Effect. Only the draw is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,6 +38,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: perpetual grant of triggered ability to cards in hand
+    // GAP: perpetual ability grant to hand cards not expressible.
     vec![Effect::DrawCards { player: entry.controller, count: 2 }]
 }

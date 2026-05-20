@@ -12,3 +12,4 @@ pub mod leeching_bite;
 pub mod scrapyard_salvo;
 pub mod victorious_destruction;
 pub mod life_s_finale;
+pub mod corrupted_resolve;

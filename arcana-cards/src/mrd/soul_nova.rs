@@ -1,8 +1,8 @@
-//! Soul Nova — `{3}{W}{W}` instant.
-//! "Exile target attacking creature and all Equipment attached to it."
-//
-// GAP: exiling attached Equipment along with the creature is not expressible
-//      (no effect for 'exile all permanents attached to target').
+//! Soul Nova — `{3}{W}{W}` instant. "Exile target attacking creature and all
+//! Equipment attached to it."
+//!
+//! GAP: no ObjectFilter for 'attacking', and no way to enumerate equipment
+//! attached to a specific permanent. Emitting the target-exile as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +40,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: exile all Equipment attached to the creature
+    // GAP: cannot enumerate Equipment attached to *id
     vec![Effect::ExilePermanent { target: *id }]
 }

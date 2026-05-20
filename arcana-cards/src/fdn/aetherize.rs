@@ -1,8 +1,8 @@
 //! Aetherize — `{3}{U}` instant. "Return all attacking creatures to
 //! their owner's hand."
 //!
-//! GAP: no "attacking" filter on ObjectFilter. Best-effort: return all
-//! creatures on the battlefield to hand (over-broad).
+//! GAP: no 'attacking' creature filter — bounce all creatures as the
+//! closest sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,26 +24,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return all attacking creatures to their owner's hand.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return all attacking creatures to their owner's hand.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no "attacking" filter — returning all creatures as over-broad best-effort
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: 'attacking' filter; sweep all creatures.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

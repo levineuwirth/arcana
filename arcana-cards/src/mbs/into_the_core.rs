@@ -1,4 +1,4 @@
-//! Into the Core — `{2}{R}{R}` instant, "Exile two target artifacts."
+//! Into the Core — `{2}{R}{R}` instant. "Exile two target artifacts."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

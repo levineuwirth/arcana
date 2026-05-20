@@ -1,7 +1,7 @@
-//! TL;DR — `{B}{B}` instant, "Exile target creature if it has any abilities other than keywords."
-//!
-//! GAP: Filter/condition on whether a creature has any non-keyword abilities (rules text check
-//! on the target not expressible in ObjectFilter or at resolve time with documented API).
+//! TL;DR — `{B}{B}` instant. "Exile target creature if it has any abilities
+//! other than keywords."
+//! GAP: no ObjectFilter or target predicate for "has non-keyword abilities"
+//! (requires inspecting a permanent's ability list at target time).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +39,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: condition on target creature having non-keyword abilities (no ability-type inspection in resolver)
+    // GAP: no way to check whether the target creature has non-keyword abilities;
+    // exile emitted unconditionally
     vec![Effect::ExilePermanent { target: *id }]
 }

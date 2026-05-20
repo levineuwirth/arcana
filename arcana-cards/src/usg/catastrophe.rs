@@ -1,13 +1,12 @@
-//! Catastrophe — `{4}{W}{W}` sorcery, "Destroy all lands or all creatures. Creatures destroyed
-//! this way can't be regenerated."
+//! Catastrophe — `{4}{W}{W}` sorcery. "Destroy all lands or all
+//! creatures. Creatures destroyed this way can't be regenerated."
 //!
-//! GAP: modal choice between destroying all lands or all creatures at resolution is not expressible
-//! via the catalog (no Effect::Modal or Effect::PlayerChooses). Partial: destroy all creatures
-//! as one branch.
+//! GAP: modal 'choose one' selection is not in catalog. We default to
+//! all-creatures wipe. GAP: 'can't be regenerated' rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -25,25 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all lands or all creatures. Creatures destroyed this way can't be regenerated.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all lands or all creatures. Creatures destroyed this way can't be regenerated.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: modal choice "all lands or all creatures" not expressible; emitting destroy-all-creatures branch
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: arcana_core::objects::NULL_OBJECT_ID }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

@@ -1,5 +1,5 @@
-//! Swift Justice — `{W}` instant.
-//! "Until end of turn, target creature gets +1/+0 and gains first strike and lifelink."
+//! Swift Justice — `{W}` instant. "Until end of turn, target creature
+//! gets +1/+0 and gains first strike and lifelink."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Until end of turn, target creature gets +1/+0 and gains first strike and lifelink.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, target creature gets +1/+0 and gains first strike and lifelink.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

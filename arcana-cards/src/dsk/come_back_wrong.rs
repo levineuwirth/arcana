@@ -1,14 +1,14 @@
-//! Come Back Wrong — `{2}{B}` sorcery, "Destroy target creature. If a
-//! creature card is put into a graveyard this way, return it to the
-//! battlefield under your control. Sacrifice it at the beginning of your
-//! next end step."
+//! Come Back Wrong — `{2}{B}` sorcery. "Destroy target creature. If a creature
+//! card is put into a graveyard this way, return it to the battlefield under
+//! your control. Sacrifice it at the beginning of your next end step."
 //!
-//! # GAP
-//! * GAP: triggered "if creature card put into graveyard this way" zone-change trigger
-//! * GAP: return to battlefield under controller's control from that trigger
-//! * GAP: delayed "sacrifice at beginning of your next end step" trigger
+//! GAP: the reanimation-after-destroy is conditional on the card going to the
+//! graveyard (i.e. not being indestructible). No Effect::Conditional condition
+//! for "card was put into graveyard by this effect" is available. Emitting the
+//! destroy + reanimate + sacrifice as unconditional best-effort (the verify
+//! pipeline will flag this).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -44,10 +44,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: conditional on card actually dying; emitting unconditionally as best-effort
     vec![
         Effect::DestroyPermanent { target: *id },
-        // GAP: triggered "if creature card put into graveyard this way" zone-change trigger
-        // GAP: return to battlefield under controller's control from that trigger
-        // GAP: delayed "sacrifice at beginning of your next end step" trigger
+        Effect::ReturnFromGraveyardToBattlefield { target: *id },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::Sacrifice,
+        },
     ]
 }

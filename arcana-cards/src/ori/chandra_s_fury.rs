@@ -1,10 +1,11 @@
-//! Chandra's Fury — `{4}{R}` instant, "Chandra's Fury deals 4 damage to
-//! target player or planeswalker and 1 damage to each creature that player
-//! or that planeswalker's controller controls."
+//! Chandra's Fury — `{4}{R}` instant, "Chandra's Fury deals 4 damage
+//! to target player or planeswalker and 1 damage to each creature
+//! that player or that planeswalker's controller controls."
 //!
-//! GAP: 1 damage to each creature of target player's side requires
-//! ForEach with player-filtered creature enumeration; 4 damage to
-//! player/planeswalker expressed, ForEach part is a gap.
+//! The 4 damage to the target is applied. GAP: the "1 damage to each
+//! creature that [arbitrary target] player controls" sweep cannot be
+//! expressed — script filters only scope to You/Opponent of the
+//! resolver's controller, not an arbitrary target player.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,21 +27,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Chandra's Fury deals 4 damage to target player or planeswalker and 1 damage to each creature that player or that planeswalker's controller controls.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Chandra's Fury deals 4 damage to target player or planeswalker and 1 damage to each creature that player or that planeswalker's controller controls.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: each-creature sweep tied to an arbitrary target player is
+    // not expressible; only the 4 damage to the target is applied.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -50,10 +48,5 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: 1 damage to each creature controlled by target player/planeswalker's controller
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 4,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 4 }]
 }

@@ -1,8 +1,11 @@
-//! Word of Undoing — `{U}` instant. "Return target creature and all white Auras
-//! you own attached to it to their owners' hands."
+//! Word of Undoing — `{U}` instant.
+//! "Return target creature and all white Auras you own attached to it to
+//! their owners' hands."
 //!
-//! GAP: "all white Auras you own attached to it" — no API to enumerate Auras
-//! attached to a specific permanent. Best-effort: bounce just the creature.
+//! GAP: Returning Auras attached to the target creature requires inspecting
+//! which Auras are attached, filtering by color and ownership — no script
+//! helper enumerates attached permanents by enchant-target. Only the
+//! creature bounce is expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,8 +41,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "all white Auras you own attached to it" — no API to enumerate attached Auras
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: returning attached Auras filtered by color+ownership not expressible via script::*.
     vec![Effect::ReturnToHand { target: *id }]
 }

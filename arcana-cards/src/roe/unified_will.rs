@@ -1,11 +1,9 @@
 //! Unified Will — `{1}{U}` instant. "Counter target spell if you
 //! control more creatures than that spell's controller."
 //!
-//! # GAP
-//! Conditional counter based on comparative creature counts between
-//! two players is not expressible: `Effect::Counter` is unconditional
-//! and the resolver has no `Effect::Conditional` with a creature-count
-//! predicate. The counter is emitted unconditionally.
+//! The "controller of target spell" accessor is not in the helper
+//! surface; the conditional cannot be computed. Best-effort:
+//! unconditional counter; the predicate is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,27 +26,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell if you control more creatures than that spell's controller.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell if you control more creatures than that spell's controller.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional counter ("if you control more creatures") not expressible; emitted unconditionally
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "you control more creatures than that spell's controller" predicate not
+    // computable from script::* (no controller-of-spell accessor).
     vec![Effect::Counter { target: *id }]
 }

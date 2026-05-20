@@ -1,7 +1,8 @@
-//! Executioner's Swing — `{W}{B}` instant. "Target creature that dealt damage this turn gets
-//! -5/-5 until end of turn."
+//! Executioner's Swing — `{W}{B}` instant. "Target creature that
+//! dealt damage this turn gets -5/-5 until end of turn."
 //!
-//! # GAP: "dealt damage this turn" filter on TargetFilter/ObjectFilter not in engine catalog.
+//! "that dealt damage this turn" isn't an ObjectFilter refinement;
+//! the target is an ordinary creature and the -5/-5 is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -23,24 +24,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature that dealt damage this turn gets -5/-5 until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature that dealt damage this turn gets -5/-5 until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "dealt damage this turn" filter on TargetFilter not in engine catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: -5,

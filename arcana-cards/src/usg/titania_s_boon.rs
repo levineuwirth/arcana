@@ -1,5 +1,5 @@
-//! Titania's Boon — `{3}{G}` sorcery.
-//! "Put a +1/+1 counter on each creature you control."
+//! Titania's Boon — `{3}{G}` sorcery. "Put a +1/+1 counter on each
+//! creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,23 +21,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on each creature you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on each creature you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let targets = script::ids_matching(state, &filter, entry.controller);
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets,
         effect: Box::new(Effect::AddCounters {

@@ -15,3 +15,4 @@ pub mod recalibrate;
 pub mod flame_rift;
 pub mod suspend;
 pub mod upheaval;
+pub mod blacksmith_s_skill;

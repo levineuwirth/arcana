@@ -1,8 +1,9 @@
-//! Tidal Wave — `{2}{U}` instant, "Create a 5/5 blue Wall creature token with
-//! defender. Sacrifice it at the beginning of the next end step."
+//! Tidal Wave — `{2}{U}` instant, "Create a 5/5 blue Wall creature token
+//! with defender. Sacrifice it at the beginning of the next end step."
 //!
-//! GAP: "sacrifice at the beginning of the next end step" — no delayed
-//! triggered sacrifice effect in catalog.
+//! GAP: DelayedAction requires a known ObjectId but token ids are not
+//! available at creation time. Only the CreateToken effect is modeled;
+//! the delayed sacrifice is omitted.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -38,8 +39,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let wall = reg.interner().lookup("Wall")
-        .expect("Wall interned during register()");
+    let wall = reg.interner().lookup("Wall").expect("Wall interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(wall);
     let token = TokenDefinition {
@@ -52,6 +52,7 @@ fn resolve(
         keywords: vec![KeywordAbility::Defender],
         abilities: vec![],
     };
-    // GAP: delayed "sacrifice at beginning of next end step" trigger
+    // GAP: cannot schedule DelayedAction::Sacrifice on a freshly-created token
+    // (token ObjectId unknown at resolve time).
     vec![Effect::CreateToken { controller: entry.controller, token }]
 }

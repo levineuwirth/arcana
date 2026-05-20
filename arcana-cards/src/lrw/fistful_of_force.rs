@@ -1,9 +1,10 @@
-//! Fistful of Force — `{1}{G}` instant. "Target creature gets +2/+2 until end
-//! of turn. Clash with an opponent. If you win, that creature gets an
-//! additional +2/+2 and gains trample until end of turn."
+//! Fistful of Force — `{1}{G}` instant. "Target creature gets +2/+2
+//! until end of turn. Clash with an opponent. If you win, that
+//! creature gets an additional +2/+2 and gains trample until end of
+//! turn."
 //!
-//! GAP: Clash mechanic (each player reveals top card of library, compares mana
-//! values) not expressible. Partial: base +2/+2 pump is expressed.
+//! Only the unconditional +2/+2 is expressed. Clash and its
+//! win-conditional rider have no catalog primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,24 +26,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. Clash with an opponent. If you win, that creature gets an additional +2/+2 and gains trample until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. Clash with an opponent. If you win, that creature gets an additional +2/+2 and gains trample until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Clash mechanic not expressible; only base +2/+2 pump applied
+    // GAP: "Clash with an opponent. If you win, +2/+2 and trample" —
+    // no Clash primitive or clash-win conditional.
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -1,8 +1,6 @@
-//! Tranquilize — `{1}{U}` sorcery. "Tap target creature an opponent controls
-//! and put three stun counters on it."
-//!
-//! # GAP: CounterKind::Stun is not listed in the catalog; stun counter
-//! placement is omitted. Tap is implemented.
+//! Tranquilize — `{1}{U}` sorcery. "Tap target creature an opponent
+//! controls and put three stun counters on it." Stun counters are not
+//! a catalog CounterKind; only the tap is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,13 +24,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Tap target creature an opponent controls and put three stun counters on it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Tap target creature an opponent controls and put three stun counters on it.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,6 +46,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: CounterKind::Stun is not available; stun counter placement omitted
+    // GAP: stun counters are not a catalog CounterKind.
     vec![Effect::Tap { target: *id }]
 }

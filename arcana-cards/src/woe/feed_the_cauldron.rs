@@ -1,7 +1,8 @@
-//! Feed the Cauldron — `{2}{B}` instant. "Destroy target creature with mana
-//! value 3 or less. If it's your turn, create a Food token."
-//! GAP: mana-value filter on TargetRequirement; Food token (activated ability
-//! on token); conditional 'if it's your turn'.
+//! Feed the Cauldron — `{2}{B}` instant. "Destroy target creature
+//! with mana value 3 or less. If it's your turn, create a Food
+//! token." The "if it's your turn" condition and the Food token's
+//! activated sac-for-life ability aren't modeled; we destroy the
+//! filtered creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,23 +25,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with mana value 3 or less. If it's your turn, create a Food token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with mana value 3 or less. If it's your turn, create a Food token.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature().with_max_cmc(3)),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: mana-value ≤3 filter; Food token; conditional on active turn player
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "if it's your turn, create a Food token" — no turn-owner
+    // condition and Food token's activated ability not modeled.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

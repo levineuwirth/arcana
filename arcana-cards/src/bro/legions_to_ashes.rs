@@ -1,9 +1,6 @@
-//! Legions to Ashes — `{1}{W}{B}` sorcery. "Exile target nonland permanent
-//! an opponent controls and all tokens that player controls with the same
-//! name as that permanent."
-//!
-//! GAP: ExileAllTokensWithSameName (no Effect variant to exile all tokens
-//! sharing a name with a targeted permanent).
+//! Legions to Ashes — `{1}{W}{B}` sorcery. "Exile target nonland
+//! permanent an opponent controls and all tokens that player controls
+//! with the same name as that permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +8,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,27 +24,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target nonland permanent an opponent controls and all tokens that player controls with the same name as that permanent.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent().without_types(TypeLine::LAND.into())),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target nonland permanent an opponent controls and all tokens that player controls with the same name as that permanent.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent()
+                        .without_types(TypeLine::LAND.into())
+                        .controlled_by(ControllerConstraint::Opponent),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: ExileAllTokensWithSameName (no variant to exile all tokens sharing a name)
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "all tokens that player controls with the same name as that
+    // permanent" — no name-equality filter for the secondary sweep.
     vec![Effect::ExilePermanent { target: *id }]
 }

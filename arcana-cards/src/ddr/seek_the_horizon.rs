@@ -1,9 +1,6 @@
-//! Seek the Horizon — `{3}{G}` sorcery. "Search your library for up to
-//! three basic land cards, reveal them, put them into your hand, then
-//! shuffle."
-//!
-//! # GAP: TutorToHand only fetches one card; "up to three" is not
-//! supported. Emitting three separate TutorToHand calls as approximation.
+//! Seek the Horizon — `{3}{G}` sorcery. "Search your library for up
+//! to three basic land cards, reveal them, put them into your hand,
+//! then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,11 +35,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
-    // GAP: multi-card tutor (up to three) not supported; emitting three separate TutorToHand
+    let land = || ObjectFilter::new().with_types(TypeLine::LAND.into());
     vec![
-        Effect::TutorToHand { player: entry.controller, filter: land_filter.clone(), reveal: true },
-        Effect::TutorToHand { player: entry.controller, filter: land_filter.clone(), reveal: true },
-        Effect::TutorToHand { player: entry.controller, filter: land_filter, reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: land(), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: land(), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: land(), reveal: true },
     ]
 }

@@ -1,5 +1,5 @@
-//! Call the Cavalry — `{3}{W}` sorcery, "Create two 2/2 white Knight creature
-//! tokens with vigilance."
+//! Call the Cavalry — `{3}{W}` sorcery. "Create two 2/2 white Knight
+//! creature tokens with vigilance."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,21 +20,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 2/2 white Knight creature tokens with vigilance.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 2/2 white Knight creature tokens with vigilance.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let knight = reg.interner().lookup("Knight").expect("Knight interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(knight);

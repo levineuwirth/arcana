@@ -1,7 +1,8 @@
-//! The Battle of Bywater — `{1}{W}{W}` sorcery. "Destroy all creatures with
-//! power 3 or greater. Then create a Food token for each creature you control."
-//! GAP: Food token (artifact with sacrifice ability) not in TokenDefinition
-//! catalog; creating generic artifact token as best effort.
+//! The Battle of Bywater — `{1}{W}{W}` sorcery. "Destroy all
+//! creatures with power 3 or greater. Then create a Food token for
+//! each creature you control." The Food token's activated sacrifice
+//! ability is not modeled; a plain Food artifact token is created per
+//! surviving creature you control.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -10,8 +11,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::targets::ObjectFilter;
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("The Battle of Bywater");
@@ -24,37 +25,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Food token's sacrifice-for-life activated ability not in TokenDefinition
-    let big_creatures = script::ids_matching(
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let food = reg.interner().lookup("Food").expect("Food interned");
+    let wipe_ids = script::ids_matching(
         state,
         &ObjectFilter::creature().with_min_power(3),
         entry.controller,
     );
-    let my_creatures_count = script::count_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(arcana_core::targets::ControllerConstraint::You),
-        entry.controller,
-    );
-    let food = reg.interner().lookup("Food")
-        .expect("Food interned during register()");
+    let mut effects = vec![Effect::ForEach {
+        targets: wipe_ids,
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+    }];
+    let n = script::count_matching(state, &ObjectFilter::creature(), entry.controller);
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
-    let food_token = TokenDefinition {
+    let token = TokenDefinition {
         name: food,
         colors: ColorSet::new(),
         types: TypeLine::ARTIFACT.into(),
@@ -64,14 +58,12 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    let mut effects = vec![Effect::ForEach {
-        targets: big_creatures,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }];
-    for _ in 0..my_creatures_count {
+    // GAP: Food token's "{2},{T},Sacrifice: gain 3 life" ability not
+    // modeled.
+    for _ in 0..n {
         effects.push(Effect::CreateToken {
             controller: entry.controller,
-            token: food_token.clone(),
+            token: token.clone(),
         });
     }
     effects

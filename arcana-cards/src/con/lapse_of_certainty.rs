@@ -1,9 +1,7 @@
-//! Lapse of Certainty — `{2}{W}` instant, "Counter target spell. If that spell
-//! is countered this way, put it on top of its owner's library instead of into
-//! their graveyard."
-//!
-//! GAP: replacement effect for where a countered spell goes (library instead
-//! of graveyard).
+//! Lapse of Certainty — `{2}{W}` instant. "Counter target spell. If that
+//! spell is countered this way, put it on top of its owner's library
+//! instead of into the graveyard."
+//! GAP: counter-to-library replacement not in catalog. Emits Counter only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. If that spell is countered this way, put it on top of its owner's library instead of into their graveyard.".into(),
+                text: "Counter target spell. If that spell is countered this way, put it on top of its owner's library instead of into the graveyard.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Spell(ObjectFilter::default()),
                     count: TargetCount::Exactly(1),
@@ -44,10 +42,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: replacement effect — countered spell goes to library top instead of graveyard
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: counter-to-library replacement not in catalog
+    vec![Effect::Counter { target: *id }]
 }

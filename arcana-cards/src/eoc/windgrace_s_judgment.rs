@@ -1,9 +1,8 @@
-//! Windgrace's Judgment — `{3}{B}{G}` instant, "For any number of opponents,
-//! destroy target nonland permanent that player controls."
+//! Windgrace's Judgment — `{3}{B}{G}` instant. "For any number of
+//! opponents, destroy target nonland permanent that player controls."
 //!
-//! GAP: 'for any number of opponents' (multi-player targeting, one permanent
-//! per opponent) is not expressible as a single TargetRequirement.
-//! Best-effort: destroy one target nonland permanent.
+//! Destroys up to one targeted nonland permanent per chosen opponent;
+//! modeled as up-to-many nonland-permanent targets that are destroyed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,18 +25,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "For any number of opponents, destroy target nonland permanent that player controls.".into(),
-                // GAP: 'for any number of opponents' multi-opponent targeting not expressible
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent().without_types(TypeLine::LAND.into())),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "For any number of opponents, destroy target nonland permanent that player controls.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Any,
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,7 +45,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: *id }]
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::DestroyPermanent { target: *id }),
+            _ => None,
+        })
+        .collect()
 }

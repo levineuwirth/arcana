@@ -1,5 +1,6 @@
-//! Aspirant's Ascent — `{U}` instant, "Until end of turn, target creature gets
-//! +1/+3 and gains flying and toxic 1."
+//! Aspirant's Ascent — `{U}` instant. "Until end of turn, target creature
+//! gets +1/+3 and gains flying and toxic 1."
+//! (Toxic 1 is a keyword ability on the creature until EOT.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

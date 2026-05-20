@@ -1,9 +1,6 @@
-//! Many Partings — `{G}` sorcery. Search your library for a basic land card,
-//! reveal it, put it into your hand, then shuffle. Create a Food token.
-//!
-//! GAP: Food token has a "sacrifice for 2 life" activated ability; the engine
-//! has no `activated_abilities` field on `TokenDefinition`, so the Food token
-//! is created as a bare artifact with Food subtype (reminder text not wired).
+//! Many Partings — `{G}` sorcery. "Search your library for a basic
+//! land card, reveal it, put it into your hand, then shuffle. Create a
+//! Food token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -11,7 +8,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetRequirement};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -34,11 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
     let food = reg.interner().lookup("Food").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
@@ -52,6 +45,9 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: Food token's "{2}, {T}, Sacrifice: gain 3 life" activated
+    // ability is not expressible. "Basic land" tutor approximated via
+    // a land-typed filter.
     vec![
         Effect::TutorToHand {
             player: entry.controller,

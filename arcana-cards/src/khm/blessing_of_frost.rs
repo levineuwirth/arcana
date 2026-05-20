@@ -1,12 +1,13 @@
-//! Blessing of Frost — `{3}{G}` snow sorcery. "Distribute X +1/+1 counters
-//! among any number of creatures you control, where X is the amount of {S}
-//! spent to cast this spell. Then draw a card for each creature you control
-//! with power 4 or greater."
+//! Blessing of Frost — `{3}{G}` Snow Sorcery.
+//! "Distribute X +1/+1 counters among any number of creatures you control,
+//! where X is the amount of {S} spent to cast this spell. Then draw a card
+//! for each creature you control with power 4 or greater."
 //!
-//! GAP: "Snow" supertype — TypeLine has no SNOW constant; TypeLine::SORCERY.into() used.
-//! GAP: "amount of {S} spent" — no API to query snow mana paid at cast time.
-//! GAP: "distribute X counters among any number" — no multi-target counter distribution Effect.
-//! Best-effort: emit the draw step (cards for creatures with power >=4).
+//! GAP: "X is the amount of {S} spent to cast this spell" — tracking snow mana
+//! spent is not available via script::* helpers.
+//! GAP: "distribute X counters among any number" — player-directed distribution
+//! targeting is not in the Effect catalog.
+//! The draw-for-each-creature-with-power-4-or-greater portion uses script::count_matching.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
         colors: ColorSet::green(),
-        // GAP: Snow supertype not representable in TypeLine constants
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
@@ -44,8 +44,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: amount of {S} spent — no API to query snow mana paid
-    // GAP: distribute counters among multiple targets — no multi-target counter Effect
+    // GAP: snow mana tracking not available via script::*.
+    // GAP: player-directed counter distribution not in Effect catalog.
     let n = script::count_matching(
         state,
         &ObjectFilter::creature()
@@ -53,9 +53,5 @@ fn resolve(
             .with_min_power(4),
         entry.controller,
     );
-    if n > 0 {
-        vec![Effect::DrawCards { player: entry.controller, count: n }]
-    } else {
-        Vec::new()
-    }
+    vec![Effect::DrawCards { player: entry.controller, count: n }]
 }

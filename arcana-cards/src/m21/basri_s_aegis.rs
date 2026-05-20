@@ -1,11 +1,13 @@
-//! Basri's Aegis — `{2}{W}{W}` sorcery. "Put a +1/+1 counter on each of up to
-//! two target creatures. You may search your library and/or graveyard for a card
-//! named Basri, Devoted Paladin, reveal it, and put it into your hand. If you
-//! search your library this way, shuffle."
+//! Basri's Aegis — `{2}{W}{W}` sorcery.
+//! "Put a +1/+1 counter on each of up to two target creatures. You may search
+//! your library and/or graveyard for a card named Basri, Devoted Paladin,
+//! reveal it, and put it into your hand. If you search your library this way,
+//! shuffle."
 //!
-//! GAP: "search library and/or graveyard for a card named X" — TutorToHand only
-//! supports ObjectFilter (type-based), not name-based search. Also "and/or graveyard"
-//! search combo is not expressible.
+//! GAP: Searching library AND/OR graveyard for a specifically named card is
+//! not in the Effect catalog (TutorToHand uses an ObjectFilter, not a name
+//! literal, and does not support combined library+graveyard search).
+//! The +1/+1 counters on up to two targets are expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +15,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Put a +1/+1 counter on each of up to two target creatures. You may search your library and/or graveyard for a card named Basri, Devoted Paladin, reveal it, and put it into your hand. If you search your library this way, shuffle.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: arcana_core::targets::TargetFilter::Creature,
                     count: TargetCount::UpTo(2),
                     controller: None,
                 }],
@@ -45,16 +47,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: name-based library/graveyard search not expressible
-    let mut effects = Vec::new();
-    for target in &entry.targets.targets {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::AddCounters {
+    // GAP: library+graveyard search for named card not in Effect catalog.
+    entry.targets.targets.iter().filter_map(|t| {
+        if let TargetChoice::Object(id) = t {
+            Some(Effect::AddCounters {
                 target: *id,
                 kind: CounterKind::PlusOnePlusOne,
                 count: 1,
-            });
+            })
+        } else {
+            None
         }
-    }
-    effects
+    }).collect()
 }

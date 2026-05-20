@@ -1,5 +1,6 @@
-//! Make a Stand — `{2}{W}` instant, "Creatures you control get +1/+0 and
-//! gain indestructible until end of turn."
+//! Make a Stand — `{2}{W}` instant. "Creatures you control get +1/+0
+//! and gain indestructible until end of turn." Board-wide buff of
+//! creatures you control via ForEach + Pump granting Indestructible.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -22,32 +23,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Creatures you control get +1/+0 and gain indestructible until end of turn.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Creatures you control get +1/+0 and gain indestructible until end of turn.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
     let ids = script::ids_matching(state, &filter, entry.controller);
-    let pump_effect = Effect::Pump {
-        target: NULL_OBJECT_ID,
-        power: 1,
-        toughness: 0,
-        duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Indestructible],
-    };
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(pump_effect),
+        effect: Box::new(Effect::Pump {
+            target: NULL_OBJECT_ID,
+            power: 1,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Indestructible],
+        }),
     }]
 }

@@ -1,9 +1,6 @@
-//! Puppet's Verdict — `{1}{R}{R}` instant. "Flip a coin. If you win the flip,
-//! destroy all creatures with power 2 or less. If you lose the flip, destroy
-//! all creatures with power 3 or greater."
-//!
-//! # GAP: coin-flip (randomized conditional) not in Effect catalog
-//! Best-effort: emit the board-wipe for power ≤ 2 side only (the winner side).
+//! Puppet's Verdict — `{1}{R}{R}` instant. "Flip a coin. If you win the
+//! flip, destroy all creatures with power 2 or less. If you lose the
+//! flip, destroy all creatures with power 3 or greater."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,30 +22,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Flip a coin. If you win the flip, destroy all creatures with power 2 or less. If you lose the flip, destroy all creatures with power 3 or greater.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Flip a coin. If you win the flip, destroy all creatures with power 2 or less. If you lose the flip, destroy all creatures with power 3 or greater.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: coin-flip conditional not in Effect catalog
-    // Best-effort: destroy creatures with power ≤ 2 (win side)
-    let targets = script::ids_matching(
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: no coin-flip primitive to branch the two board wipes;
+    // emitting the win-side wipe (destroy all creatures power 2 or less)
+    // as the best-effort deterministic shape.
+    let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().with_max_power(2),
         entry.controller,
     );
     vec![Effect::ForEach {
-        targets,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        targets: ids,
+        effect: Box::new(Effect::DestroyPermanent {
+            target: NULL_OBJECT_ID,
+        }),
     }]
 }

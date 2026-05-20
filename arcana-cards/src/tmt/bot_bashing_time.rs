@@ -1,9 +1,7 @@
-//! Bot Bashing Time — `{3}{R}` sorcery. "Bot Bashing Time deals 6 damage to
-//! target creature. If that creature would die this turn, exile it instead."
-//!
-//! # GAP: replacement effect (die-to-exile this turn)
-//! The engine has no variant for applying a die-to-exile replacement effect on
-//! a permanent for the rest of the turn.  Best-effort: emit only the damage.
+//! Bot Bashing Time — `{3}{R}` sorcery. "Bot Bashing Time deals 6
+//! damage to target creature. If that creature would die this turn,
+//! exile it instead." The replacement "exile instead of dying" rider
+//! is not expressible; we deal 6 damage to the target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -34,14 +32,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: die-to-exile replacement effect not expressible
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "if it would die this turn, exile instead" — no
+    // dies-replacement effect. 6 damage emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

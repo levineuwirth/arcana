@@ -1,9 +1,9 @@
-//! Pongify — `{U}` instant, "Destroy target creature. It can't be regenerated.
-//! That creature's controller creates a 3/3 green Ape creature token."
+//! Pongify — `{U}` instant, "Destroy target creature. It can't be
+//! regenerated. Its controller creates a 3/3 green Ape creature token."
 //!
-//! GAP: "it can't be regenerated" (no regeneration-prevention effect);
-//! target's controller creates the Ape token (no way to access target's
-//! controller as PlayerId).
+//! "It can't be regenerated" — no Prevent/Remove Regenerate effect in
+//! catalog; omitted. Token creation is assigned to entry.controller as
+//! a partial; GAP: "its controller" not accessible.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -27,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Ape creature token.".into(),
+                text: "Destroy target creature. It can't be regenerated. Its controller creates a 3/3 green Ape creature token.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -42,8 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let ape = reg.interner().lookup("Ape")
-        .expect("Ape interned during register()");
+    let ape = reg.interner().lookup("Ape").expect("Ape interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(ape);
     let token = TokenDefinition {
@@ -56,8 +55,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "can't be regenerated" prevention effect not in catalog;
-    // token should be created for target's controller (not entry.controller)
+    // GAP: token should go to "its controller" (the target's controller), not entry.controller.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::CreateToken { controller: entry.controller, token },

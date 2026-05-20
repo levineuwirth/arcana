@@ -1,8 +1,5 @@
-//! Beckon Apparition — `{W/B}` instant, "Exile target card from a graveyard.
+//! Beckon Apparition — `{W/B}` instant. "Exile target card from a graveyard.
 //! Create a 1/1 white and black Spirit creature token with flying."
-//!
-//! # Note: Zone::Graveyard(0) targets player-0's graveyard specifically;
-//!         "any graveyard" is best-effort (player-0 only)
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -31,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new(),
+                        filter: ObjectFilter::default(),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -49,7 +46,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned during register()");
+    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
     let token = TokenDefinition {

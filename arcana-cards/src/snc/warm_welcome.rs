@@ -1,8 +1,13 @@
-//! Warm Welcome — `{2}{G}` instant, "Look at the top five cards of your library. You may reveal a
-//! creature card from among them and put it into your hand. Put the rest on the bottom of your
-//! library in a random order. Create a 1/1 green and white Citizen creature token."
+//! Warm Welcome — `{2}{G}` instant. "Look at the top five cards of
+//! your library. You may reveal a creature card from among them and
+//! put it into your hand. Put the rest on the bottom of your library
+//! in a random order. Create a 1/1 green and white Citizen creature
+//! token."
 //!
-//! GAP: look-and-optionally-reveal top N; put rest on bottom in random order not expressible.
+//! Modeled as a creature tutor (closest catalog primitive for
+//! reveal-and-put-into-hand) plus the Citizen token. GAP: the 'look
+//! at the top five only' library restriction isn't expressible — the
+//! tutor lets you pick from the whole library.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -10,6 +15,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,24 +29,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Look at the top five cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in a random order. Create a 1/1 green and white Citizen creature token.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Look at the top five cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in a random order. Create a 1/1 green and white Citizen creature token.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: look-and-optionally-reveal top N from library not expressible
-    let citizen = reg.interner().lookup("Citizen")
-        .expect("Citizen interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let citizen = reg.interner().lookup("Citizen").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(citizen);
     let token = TokenDefinition {
@@ -53,5 +52,13 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    // GAP: 'look at top 5 only' restriction — TutorToHand searches whole library.
+    vec![
+        Effect::TutorToHand {
+            player: entry.controller,
+            filter: ObjectFilter::creature(),
+            reveal: true,
+        },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

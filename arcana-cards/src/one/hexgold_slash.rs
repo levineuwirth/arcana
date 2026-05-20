@@ -1,10 +1,9 @@
-//! Hexgold Slash — `{R}` instant. "Hexgold Slash deals 2 damage to target
-//! creature. If that creature has toxic, Hexgold Slash deals 4 damage to that
-//! creature instead."
+//! Hexgold Slash — `{R}` instant. "Hexgold Slash deals 2 damage to
+//! target creature. If that creature has toxic, Hexgold Slash deals 4
+//! damage to that creature instead."
 //!
-//! GAP: conditional damage amount based on whether the target has the Toxic
-//! keyword is not expressible with the catalog's Effect variants (no
-//! runtime keyword-check on target in Effect::DealDamage).
+//! Base 2 damage is expressible; the "has toxic → 4 instead"
+//! conditional has no catalog predicate for the Toxic keyword.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,13 +25,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Hexgold Slash deals 2 damage to target creature. If that creature has toxic, Hexgold Slash deals 4 damage to that creature instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Hexgold Slash deals 2 damage to target creature. If \
+                   that creature has toxic, Hexgold Slash deals 4 damage \
+                   to that creature instead."
+                .into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,9 +42,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional 4 damage if target has toxic; defaulting to base 2
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: cannot test whether the target has the Toxic keyword to deal
+    // 4 instead; emitting the base 2 damage.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

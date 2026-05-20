@@ -27,3 +27,4 @@ pub mod volcanic_hammer;
 pub mod inspirit;
 pub mod flashfires;
 pub mod boiling_seas;
+pub mod chastise;

@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -46,13 +48,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut targets = entry.targets.targets.iter();
-    let Some(t1) = targets.next() else { return Vec::new(); };
-    let Some(t2) = targets.next() else { return Vec::new(); };
-    let TargetChoice::Object(spell_id) = t1 else { return Vec::new(); };
-    let TargetChoice::Object(perm_id) = t2 else { return Vec::new(); };
+    let targets = &entry.targets.targets;
+    if targets.len() < 2 { return Vec::new(); }
+    let TargetChoice::Object(spell) = &targets[0] else { return Vec::new(); };
+    let TargetChoice::Object(perm) = &targets[1] else { return Vec::new(); };
     vec![
-        Effect::Counter { target: *spell_id },
-        Effect::ReturnToHand { target: *perm_id },
+        Effect::Counter { target: *spell },
+        Effect::ReturnToHand { target: *perm },
     ]
 }

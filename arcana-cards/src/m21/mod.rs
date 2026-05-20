@@ -36,3 +36,4 @@ pub mod basri_s_solidarity;
 pub mod secure_the_scene;
 pub mod basri_s_aegis;
 pub mod soul_sear;
+pub mod hunter_s_edge;

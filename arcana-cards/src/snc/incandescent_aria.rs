@@ -1,16 +1,16 @@
-//! Incandescent Aria — `{R}{G}{W}` sorcery, R/G/W multicolor. "Incandescent
-//! Aria deals 3 damage to each nontoken creature."
+//! Incandescent Aria — `{R}{G}{W}` sorcery. "Incandescent Aria deals 3
+//! damage to each nontoken creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Incandescent Aria");
@@ -42,14 +42,11 @@ fn resolve(
         &ObjectFilter::creature().nontoken(),
         entry.controller,
     );
-    if ids.is_empty() {
-        return Vec::new();
-    }
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(arcana_core::objects::NULL_OBJECT_ID),
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 3,
         }),
     }]

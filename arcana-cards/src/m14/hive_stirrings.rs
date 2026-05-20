@@ -1,5 +1,5 @@
-//! Hive Stirrings — `{2}{W}` sorcery. "Create two 1/1 colorless Sliver
-//! creature tokens."
+//! Hive Stirrings — `{2}{W}` sorcery. "Create two 1/1 colorless
+//! Sliver creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hive Stirrings");
-    let _sliver = reg.interner_mut().intern("Sliver");
+    let _sl = reg.interner_mut().intern("Sliver");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{W}").expect("valid cost")),
@@ -20,28 +20,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 1/1 colorless Sliver creature tokens.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 1/1 colorless Sliver creature tokens.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let sliver = reg.interner().lookup("Sliver").expect("Sliver interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let sl = reg.interner().lookup("Sliver").expect("Sliver interned");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(sliver);
+    subtypes.0.insert(sl);
     let token = TokenDefinition {
-        name: sliver,
+        name: sl,
         colors: ColorSet::new(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
@@ -49,7 +44,13 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

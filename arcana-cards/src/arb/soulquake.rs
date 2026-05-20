@@ -1,10 +1,10 @@
-//! Soulquake — `{3}{U}{U}{B}{B}` sorcery. "Return all creatures on the
-//! battlefield and all creature cards in graveyards to their owners'
-//! hands."
+//! Soulquake — `{3}{U}{U}{B}{B}` sorcery. "Return all creatures on
+//! the battlefield and all creature cards in graveyards to their
+//! owners' hands."
 //!
-//! Creatures on battlefield: ForEach over all creatures.
-//! Creature cards in graveyards: GAP — ReturnFromGraveyardToHand
-//! requires a single target id; no ForEach over graveyard cards exposed.
+//! GAP: graveyard-card ReturnToHand path is per-card-target only,
+//! and we cannot enumerate every graveyard's creature cards from
+//! the script helpers. The battlefield sweep is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,26 +26,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return all creatures on the battlefield and all creature cards in graveyards to their owners' hands.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return all creatures on the battlefield and all creature cards in graveyards to their owners' hands.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: return creature cards from graveyards (no ForEach over graveyard zone)
-    if ids.is_empty() {
-        return Vec::new();
-    }
+    // GAP: bouncing creature cards from every graveyard.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

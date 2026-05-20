@@ -1,8 +1,8 @@
-//! Dragon's Presence — `{2}{W}` instant, "Dragon's Presence deals 5 damage to
+//! Dragon's Presence — `{2}{W}` instant. "Dragon's Presence deals 5 damage to
 //! target attacking or blocking creature."
 //!
-//! # GAP: "attacking or blocking" creature filter not in ObjectFilter
-//! Best-effort: target creature (filter elided)
+//! GAP: ObjectFilter has no "attacking or blocking" refinement; the target is
+//! filtered only as a creature. Damage amount and shape are otherwise exact.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +41,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking or blocking" combat status filter not in ObjectFilter
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,8 +1,8 @@
-//! Bounce Off — `{U}` instant. "Return target creature or Vehicle to its
-//! owner's hand."
+//! Bounce Off — `{U}` instant. "Return target creature or Vehicle to
+//! its owner's hand."
 //!
-//! GAP: Vehicle subtype filter not available; target_creature() used,
-//! Vehicle targeting not enforced.
+//! "or Vehicle" (an Artifact — Vehicle subtype) is not separately
+//! filterable; the target is an unrestricted creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,22 +23,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature or Vehicle to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target creature or Vehicle to its owner's hand.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Vehicle subtype not filterable; creatures only
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]

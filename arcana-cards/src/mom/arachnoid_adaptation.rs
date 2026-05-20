@@ -1,4 +1,4 @@
-//! Arachnoid Adaptation — `{G}` instant, "Target creature gets +2/+2 and gains
+//! Arachnoid Adaptation — `{G}` instant. "Target creature gets +2/+2 and gains
 //! reach until end of turn. Untap it."
 
 use arcana_core::effects::{Effect, KeywordAbility};

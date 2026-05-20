@@ -1,7 +1,8 @@
-//! Turn Aside — `{U}` instant, "Counter target spell that targets a permanent
-//! you control."
-//! GAP: "targets a permanent you control" spell filter not expressible;
-//! best effort counters any spell.
+//! Turn Aside — `{U}` instant. "Counter target spell that targets a
+//! permanent you control."
+//!
+//! GAP: 'spell that targets a permanent you control' is not an
+//! ObjectFilter refinement on Spell — modeled as plain Counter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,30 +23,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell that targets a permanent you control.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell that targets a permanent you control.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: "targets a permanent you control" spell filter not expressible
-    vec![Effect::Counter { target: stack_id }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'targets a permanent you control' filter on the spell.
+    vec![Effect::Counter { target: *id }]
 }

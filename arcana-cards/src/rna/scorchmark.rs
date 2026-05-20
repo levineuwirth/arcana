@@ -1,9 +1,10 @@
-//! Scorchmark — `{1}{R}` instant, "Scorchmark deals 2 damage to target creature.
-//! That creature gains 'if this creature would die this turn, exile it instead.'"
+//! Scorchmark — `{1}{R}` instant. "Scorchmark deals 2 damage to
+//! target creature. If that creature would die this turn, exile it
+//! instead."
 //!
-//! GAP: "exile instead of die" replacement effect attached to the targeted
-//! creature — no Effect variant for granting a replacement-effect clause until
-//! end of turn. Best effort: DealDamage 2 to target creature.
+//! GAP: "if that creature would die this turn, exile it instead" is a
+//! turn-long replacement effect with no catalog Effect. The 2 damage
+//! is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,24 +26,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Scorchmark deals 2 damage to target creature. That creature gains 'if this creature would die this turn, exile it instead.'".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Scorchmark deals 2 damage to target creature. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: grant "exile instead of die" replacement effect to target creature
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "would die this turn, exile instead" replacement not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

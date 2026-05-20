@@ -1,9 +1,9 @@
-//! Lithomancer's Focus — `{W}` instant, "Target creature gets +2/+2 until
-//! end of turn. Prevent all damage that would be dealt to that creature
-//! this turn by colorless sources."
+//! Lithomancer's Focus — `{W}` instant. "Target creature gets +2/+2 until end
+//! of turn. Prevent all damage that would be dealt to that creature this turn
+//! by colorless sources."
 //!
-//! # GAP
-//! * GAP: damage prevention from colorless sources (no PreventDamage Effect variant)
+//! GAP: no Effect variant for damage prevention from colorless sources.
+//! Only the pump is expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -42,14 +42,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: 2,
-            toughness: 2,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        // GAP: damage prevention from colorless sources (no PreventDamage Effect variant)
-    ]
+    // GAP: no Effect variant for damage prevention from colorless sources
+    vec![Effect::Pump {
+        target: *id,
+        power: 2,
+        toughness: 2,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

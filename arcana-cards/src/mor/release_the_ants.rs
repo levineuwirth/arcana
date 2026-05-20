@@ -1,9 +1,6 @@
-//! Release the Ants — `{1}{R}` instant.
-//! "Release the Ants deals 1 damage to any target. Clash with an opponent. If you win, return
+//! Release the Ants — `{1}{R}` instant. "Release the Ants deals 1
+//! damage to any target. Clash with an opponent. If you win, return
 //! Release the Ants to its owner's hand."
-//!
-//! # GAP: Clash — no Effect variant for the Clash mechanic (reveal top cards, compare mana values,
-//! winner determined, conditional self-bounce to hand based on winning).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Release the Ants deals 1 damage to any target. Clash with an opponent. If you win, return Release the Ants to its owner's hand.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Release the Ants deals 1 damage to any target. Clash with an opponent. If you win, return Release the Ants to its owner's hand.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -49,7 +45,8 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: Clash — no Effect variant for the Clash mechanic or conditional self-bounce on clash win.
+    // GAP: Clash mechanic (reveal/win/return-to-hand) has no catalog
+    // effect; only the 1-damage portion is implemented.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

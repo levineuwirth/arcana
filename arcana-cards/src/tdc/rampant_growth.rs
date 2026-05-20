@@ -1,6 +1,6 @@
-//! Rampant Growth — `{1}{G}` sorcery, "Search your library for a basic
-//! land card and put that card onto the battlefield tapped. Then
-//! shuffle your library."
+//! Rampant Growth — `{1}{G}` sorcery. "Search your library for a
+//! basic land card, put that card onto the battlefield tapped, then
+//! shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,21 +21,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a basic land card and put that card onto the battlefield tapped. Then shuffle your library.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

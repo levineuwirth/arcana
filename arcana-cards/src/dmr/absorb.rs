@@ -1,4 +1,5 @@
-//! Absorb — `{W}{U}{U}` instant, "Counter target spell. You gain 3 life."
+//! Absorb — `{W}{U}{U}` instant. "Counter target spell. You gain 3
+//! life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,32 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. You gain 3 life.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target spell. You gain 3 life.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(ObjectFilter::default()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
-        Effect::Counter { target: stack_id },
+        Effect::Counter { target: *id },
         Effect::GainLife { player: entry.controller, amount: 3 },
     ]
 }

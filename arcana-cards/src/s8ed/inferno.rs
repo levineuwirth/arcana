@@ -1,5 +1,6 @@
-//! Inferno — `{5}{R}{R}` instant, "Inferno deals 6 damage to each creature
-//! and each player."
+//! Inferno — `{5}{R}{R}` instant. "Inferno deals 6 damage to each
+//! creature and each player." Sweep all creatures via ForEach, plus 6
+//! damage to each player.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,36 +23,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Inferno deals 6 damage to each creature and each player.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Inferno deals 6 damage to each creature and each player.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    vec![
-        Effect::ForEach {
-            targets: creature_ids,
-            effect: Box::new(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(NULL_OBJECT_ID),
-                amount: 6,
-            }),
-        },
-        // GAP: deal damage to each player (no Effect for "each player"; emitting for controller only as partial)
-        Effect::DealDamage {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut out = vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Player(entry.controller),
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 6,
-        },
-    ]
+        }),
+    }];
+    for p in script::all_players(state) {
+        out.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 6,
+        });
+    }
+    out
 }

@@ -1,21 +1,16 @@
 //! Revive the Shire — `{1}{G}` sorcery. "Return target permanent card
 //! from your graveyard to your hand. Create a Food token."
-//!
-//! GAP: ReturnFromGraveyardToHand requires a creature card target per
-//! catalog; "permanent card" (non-creature) is not a supported zone
-//! filter. The Food token activated ability ({2},{T}, Sacrifice: gain
-//! 3 life) is also not expressible as TokenDefinition abilities.
-//! Returning partial: the graveyard return uses creature filter as
-//! approximation; Food token GAP noted.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,27 +24,42 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target permanent card from your graveyard to your hand. Create a Food token.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card { zone: Zone::Graveyard(0), filter: ObjectFilter::permanent() },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target permanent card from your graveyard to your hand. Create a Food token.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::permanent(),
+                },
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Food token (TokenDefinition with activated ability: {2},{T}, Sacrifice: gain 3 life)
-    vec![Effect::ReturnFromGraveyardToHand { target: *id }]
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::ReturnFromGraveyardToHand { target: *id });
+    }
+    let food = reg.interner().lookup("Food").expect("interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(food);
+    let token = TokenDefinition {
+        name: food,
+        colors: ColorSet::new(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
+    // GAP: Food token's "{2}, {T}, Sacrifice: gain 3 life" activated
+    // ability is not expressible via TokenDefinition.
+    out.push(Effect::CreateToken { controller: entry.controller, token });
+    out
 }

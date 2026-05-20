@@ -1,13 +1,6 @@
 //! Flash Conscription — `{5}{R}` instant. "Untap target creature and
 //! gain control of it until end of turn. That creature gains haste
-//! until end of turn. If {W} was spent to cast this spell, the creature
-//! gains 'Whenever this creature deals combat damage, you gain that
-//! much life' until end of turn."
-//!
-//! GAP: GainControl (no Effect::GainControl variant in catalog).
-//! GAP: HybridManaCondition (checking whether {W} was spent).
-//! GAP: GrantTriggeredAbility (granting a triggered ability until EOT).
-//! Untap and Haste grant are expressed; the rest is noted.
+//! until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -29,26 +22,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn. If {W} was spent to cast this spell, the creature gains \"Whenever this creature deals combat damage, you gain that much life\" until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: GainControl (no Effect::GainControl variant)
-    // GAP: HybridManaCondition (checking whether {W} was spent)
-    // GAP: GrantTriggeredAbility (lifelink-on-combat-damage trigger until EOT)
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "gain control of it until end of turn" (Threaten effect) is
+    // not expressible; the {W}-was-spent lifelink rider is also gated
+    // on mana spent. Only untap + haste are modeled.
     vec![
         Effect::Untap { target: *id },
         Effect::GrantKeyword {

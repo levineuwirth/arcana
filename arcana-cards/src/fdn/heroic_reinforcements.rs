@@ -1,5 +1,6 @@
 //! Heroic Reinforcements — `{2}{R}{W}` sorcery. "Create two 1/1 white Soldier
-//! creature tokens. Until end of turn, creatures you control get +1/+1 and gain haste."
+//! creature tokens. Until end of turn, creatures you control get +1/+1 and
+//! gain haste."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -38,7 +39,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let soldier = reg.interner().lookup("Soldier")
+        .expect("Soldier interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {
@@ -51,13 +53,13 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     let mut effects = vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },
     ];
     effects.push(Effect::ForEach {
-        targets: ids,
+        targets: creature_ids,
         effect: Box::new(Effect::Pump {
             target: NULL_OBJECT_ID,
             power: 1,

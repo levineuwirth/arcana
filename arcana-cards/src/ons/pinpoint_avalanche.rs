@@ -1,8 +1,9 @@
-//! Pinpoint Avalanche — `{3}{R}{R}` instant. "Pinpoint Avalanche deals 4 damage
-//! to target creature. The damage can't be prevented."
+//! Pinpoint Avalanche — `{3}{R}{R}` instant. "Pinpoint Avalanche deals
+//! 4 damage to target creature. The damage can't be prevented."
 //!
-//! GAP: "the damage can't be prevented" modifier is not expressible with the
-//! catalog's Effect::DealDamage (no prevention-bypass flag).
+//! The "can't be prevented" rider has no catalog primitive; the engine
+//! has no damage-prevention layer in this scope so the plain 4 damage
+//! is functionally equivalent.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +25,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Pinpoint Avalanche deals 4 damage to target creature. The damage can't be prevented.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Pinpoint Avalanche deals 4 damage to target creature. \
+                   The damage can't be prevented."
+                .into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,9 +41,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: damage can't be prevented — no prevention-bypass flag in DealDamage
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

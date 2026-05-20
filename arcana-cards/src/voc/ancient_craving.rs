@@ -1,4 +1,5 @@
-//! Ancient Craving — `{3}{B}` sorcery, "You draw three cards and you lose 3 life."
+//! Ancient Craving — `{3}{B}` sorcery. "You draw three cards and you
+//! lose 3 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -18,13 +19,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "You draw three cards and you lose 3 life.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "You draw three cards and you lose 3 life.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

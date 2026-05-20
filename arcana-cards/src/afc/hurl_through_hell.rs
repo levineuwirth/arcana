@@ -1,10 +1,8 @@
-//! Hurl Through Hell — `{2}{B}{R}` instant. "Exile target creature. Until
-//! the end of your next turn, you may cast that card and you may spend mana
-//! as though it were mana of any color to cast that spell."
-//!
-//! GAP: "Exile and cast later with any-color mana" (exile with cast permission
-//! until next turn) is not in the Effect catalog. ExilePermanent is available
-//! but the cast-from-exile with any-color mana rider is not expressible.
+//! Hurl Through Hell — `{2}{B}{R}` instant. "Exile target creature.
+//! Until the end of your next turn, you may cast that card and you
+//! may spend mana as though it were mana of any color to cast that
+//! spell." The cast-from-exile grant has no primitive; the exile is
+//! emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. Until the end of your next turn, you may cast that card and you may spend mana as though it were mana of any color to cast that spell.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. Until the end of your next turn, you may cast that card and you may spend mana as though it were mana of any color to cast that spell.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Cast-from-exile permission with any-color mana until next turn not expressible.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: cast-from-exile permission grant has no primitive.
     vec![Effect::ExilePermanent { target: *id }]
 }

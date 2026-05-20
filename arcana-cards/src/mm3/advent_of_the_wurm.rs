@@ -35,13 +35,13 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let wurm = reg.interner().lookup("Wurm").expect("Wurm interned during register()");
+    let wurm = reg.interner().lookup("Wurm").expect("Wurm interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(wurm);
     let token = TokenDefinition {
         name: wurm,
         colors: ColorSet::green(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(5)),

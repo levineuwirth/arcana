@@ -1,10 +1,8 @@
-//! Haste Magic — `{1}{R}` instant, "Target creature gets +3/+1 and gains
-//! haste until end of turn. Exile the top card of your library. You may play
-//! it until your next end step."
+//! Haste Magic — `{1}{R}` instant. "Target creature gets +3/+1 and
+//! gains haste until end of turn. Exile the top card of your library.
+//! You may play it until your next end step."
 //!
-//! # GAP
-//! No effect for "exile top card of library and play it until next end step"
-//! (delayed play-from-exile). Partial: Pump with haste is expressible.
+//! Exile-and-play-from-exile has no catalog Effect (GAP'd).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -26,24 +24,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+1 and gains haste until end of turn. Exile the top card of your library. You may play it until your next end step.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+1 and gains haste until end of turn. Exile the top card of your library. You may play it until your next end step.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no effect for "exile top card of library and may play until next end step"
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "exile top of library; you may play it until end step" has no catalog Effect.
     vec![Effect::Pump {
         target: *id,
         power: 3,

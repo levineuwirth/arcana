@@ -17,3 +17,4 @@ pub mod waterbending_lesson;
 pub mod pillar_launch;
 pub mod rocky_rebuke;
 pub mod yip_yip;
+pub mod earth_rumble;

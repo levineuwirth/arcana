@@ -22,3 +22,4 @@ pub mod agonizing_remorse;
 pub mod final_death;
 pub mod underworld_fires;
 pub mod sea_god_s_scorn;
+pub mod flicker_of_fate;

@@ -1,4 +1,5 @@
-//! Stomp and Howl — `{2}{G}` sorcery. "Destroy target artifact and target enchantment."
+//! Stomp and Howl — `{2}{G}` sorcery. "Destroy target artifact and
+//! target enchantment."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -6,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -19,24 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact and target enchantment.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::ARTIFACT.into())),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into())),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact and target enchantment.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types(TypeLine::ARTIFACT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types(TypeLine::ENCHANTMENT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -45,11 +53,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    for target in &entry.targets.targets {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::DestroyPermanent { target: *id });
+    let mut out = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::DestroyPermanent { target: *id });
         }
     }
-    effects
+    out
 }

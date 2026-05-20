@@ -1,15 +1,14 @@
-//! Rocky Rebuke — `{1}{G}` instant. "Target creature you control deals damage equal
-//! to its power to target creature an opponent controls."
+//! Rocky Rebuke — `{1}{G}` instant. "Target creature you control deals damage
+//! equal to its power to target creature an opponent controls."
 
 use arcana_core::effects::Effect;
-use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,12 +26,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Target creature you control deals damage equal to its power to target creature an opponent controls.".into(),
                 target_requirements: vec![
                     TargetRequirement {
-                        filter: TargetFilter::Creature,
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
                     TargetRequirement {
-                        filter: TargetFilter::Creature,
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
@@ -49,15 +52,13 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut iter = entry.targets.targets.iter();
-    let Some(t1) = iter.next() else { return Vec::new(); };
-    let Some(t2) = iter.next() else { return Vec::new(); };
-    let TargetChoice::Object(dealer) = t1 else { return Vec::new(); };
-    let TargetChoice::Object(target) = t2 else { return Vec::new(); };
-    let pwr = script::power_of(state, *dealer);
-    let amount = pwr.max(0) as u32;
+    let (Some(t1), Some(t2)) = (iter.next(), iter.next()) else { return Vec::new(); };
+    let (TargetChoice::Object(attacker), TargetChoice::Object(defender)) = (t1, t2) else { return Vec::new(); };
+    let power = script::power_of(state, *attacker).max(0) as u32;
+    use arcana_core::events::DamageTarget;
     vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*target),
-        amount,
+        source: *attacker,
+        target: DamageTarget::Object(*defender),
+        amount: power,
     }]
 }

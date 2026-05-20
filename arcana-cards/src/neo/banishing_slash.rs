@@ -1,12 +1,10 @@
-//! Banishing Slash — `{W}{W}` sorcery, "Destroy up to one target artifact,
-//! enchantment, or tapped creature. If you controlled a Samurai or Warrior as
-//! you cast this spell, create a 2/2 white Samurai creature token with
-//! vigilance."
+//! Banishing Slash — `{W}{W}` sorcery. "Destroy up to one target
+//! artifact, enchantment, or tapped creature. Then if you control an
+//! artifact and an enchantment, create a 2/2 white Samurai creature
+//! token with vigilance."
 //!
-//! # GAP
-//! No "tapped creature" ObjectFilter predicate; no conditional token creation
-//! based on "controlled a Samurai or Warrior as you cast"; falling back to
-//! destroy any creature/artifact/enchantment.
+//! The conditional "if you control an artifact and an enchantment"
+//! token rider has no catalog Effect (GAP'd); models only the destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,6 +19,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Banishing Slash");
+    let _samurai = reg.interner_mut().intern("Samurai");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{W}{W}").expect("valid cost")),
@@ -29,31 +28,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy up to one target artifact, enchantment, or tapped creature. If you controlled a Samurai or Warrior as you cast this spell, create a 2/2 white Samurai creature token with vigilance.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::CREATURE),
-                        ),
-                    ),
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy up to one target artifact, enchantment, or tapped creature. Then if you control an artifact and an enchantment, create a 2/2 white Samurai creature token with vigilance.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types_any(TypeLine::ARTIFACT.into())
+                        .with_types_any(TypeLine::ENCHANTMENT.into())
+                        .with_types_any(TypeLine::CREATURE.into()),
+                ),
+                count: TargetCount::UpTo(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no "tapped creature" filter; no conditional Samurai token creation
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: *id }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: conditional token creation on "control artifact AND enchantment" not in catalog.
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DestroyPermanent { target: *id });
+    }
+    effects
 }

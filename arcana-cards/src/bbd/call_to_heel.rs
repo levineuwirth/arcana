@@ -1,10 +1,5 @@
-//! Call to Heel — `{1}{U}` instant. "Return target creature to its owner's
-//! hand. Its controller draws a card."
-//!
-//! GAP: draw goes to the bounced creature's controller, not the spell's
-//! controller. The engine has no way to look up a permanent's controller
-//! after it has left the battlefield; only `entry.controller` is available.
-//! The ReturnToHand effect is expressed; the draw is omitted.
+//! Call to Heel — `{1}{U}` instant. "Return target creature to its
+//! owner's hand. Its controller draws a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,8 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature to its owner's hand. Its controller draws a card."
-                    .into(),
+                text: "Return target creature to its owner's hand. Its controller draws a card.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,8 +35,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: draw a card goes to the bounced creature's controller, not castable here
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: cannot read the bounced creature's controller to draw for that
+    // specific player; "its controller draws a card" rider unexpressible.
     vec![Effect::ReturnToHand { target: *id }]
 }

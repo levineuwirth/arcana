@@ -10,3 +10,4 @@ pub mod molten_rain;
 pub mod traitorous_instinct;
 pub mod torrent_of_souls;
 pub mod night_terrors;
+pub mod delirium_skeins;

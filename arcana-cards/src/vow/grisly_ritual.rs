@@ -1,8 +1,5 @@
-//! Grisly Ritual — `{5}{B}` sorcery.
-//! "Destroy target creature or planeswalker. Create two Blood tokens."
-//!
-//! # GAP: BloodToken — no pre-built Blood token in the catalog and TokenDefinition cannot
-//! express the activated ability ("{1}, {T}, Discard a card, Sacrifice this token: Draw a card").
+//! Grisly Ritual — `{5}{B}` sorcery. "Destroy target creature or
+//! planeswalker. Create two Blood tokens."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature or planeswalker. Create two Blood tokens.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature or planeswalker. Create two Blood tokens.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,6 +36,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: BloodToken — TokenDefinition cannot express the Blood token's activated ability.
+    // The two Blood tokens carry an activated ability not expressible
+    // via TokenDefinition; only the destroy is implemented.
     vec![Effect::DestroyPermanent { target: *id }]
 }

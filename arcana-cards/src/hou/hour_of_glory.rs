@@ -1,11 +1,9 @@
-//! Hour of Glory — `{3}{B}` instant. "Exile target creature. If that creature
-//! was a God, its controller reveals their hand and exiles all cards from it
-//! with the same name as that creature."
+//! Hour of Glory — `{3}{B}` instant. "Exile target creature. If that
+//! creature was a God, its controller reveals their hand and exiles
+//! all cards from it with the same name as that creature."
 //!
-//! # GAP: conditional on creature subtype "God" — no way to check creature
-//! subtype at resolution time.
-//! # GAP: reveal hand and exile same-named cards from hand — no Effect variant
-//! for these operations.
+//! The God-conditional same-name hand exile is not expressible; only
+//! the exile is expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,26 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. If that creature was a God, its controller reveals their hand and exiles all cards from it with the same name as that creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. If that creature was a God, its controller reveals their hand and exiles all cards from it with the same name as that creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::ExilePermanent { target: *id },
-        // GAP: conditional "if that creature was a God" subtype check
-        // GAP: reveal hand and exile same-named cards from hand
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: God-conditional same-name hand exile is not expressible.
+    vec![Effect::ExilePermanent { target: *id }]
 }

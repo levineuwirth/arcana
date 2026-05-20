@@ -1,4 +1,5 @@
-//! Icatian Town — `{5}{W}` sorcery, "Create four 1/1 white Citizen creature tokens."
+//! Icatian Town — `{5}{W}` sorcery.
+//! "Create four 1/1 white Citizen creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -6,6 +7,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {

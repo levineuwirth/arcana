@@ -1,11 +1,9 @@
-//! Radiant Strike — `{3}{W}` instant, "Destroy target artifact or tapped
+//! Radiant Strike — `{3}{W}` instant. "Destroy target artifact or tapped
 //! creature. You gain 3 life."
 //!
-//! # GAP
-//! "Tapped creature" filter is not available in ObjectFilter. Best-effort:
-//! target artifact only (the artifact arm is fully expressible); verify
-//! pipeline will flag the missing tapped-creature arm. GainLife is fully
-//! expressed.
+//! GAP: "artifact OR tapped creature" needs a union filter the
+//! `ObjectFilter` builders cannot express; falling back to plain
+//! permanent target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,10 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target artifact or tapped creature. You gain 3 life.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
-                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into()),
-                    ),
+                    filter: TargetFilter::Permanent(ObjectFilter::new()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -50,11 +45,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: tapped-creature restriction not available in ObjectFilter
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        Effect::GainLife { player: entry.controller, amount: 3 },
-    ]
+    let mut effs = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effs.push(Effect::DestroyPermanent { target: *id });
+    }
+    effs.push(Effect::GainLife { player: entry.controller, amount: 3 });
+    effs
 }

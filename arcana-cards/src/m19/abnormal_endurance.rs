@@ -1,11 +1,10 @@
-//! Abnormal Endurance — `{1}{B}` instant, "Until end of turn, target
+//! Abnormal Endurance — `{1}{B}` instant. "Until end of turn, target
 //! creature gets +2/+0 and gains 'When this creature dies, return it
-//! to the battlefield tapped under its owner's control.'"
-//! Partial: Pump expressed; triggered return-to-battlefield on death not in catalog.
-//!
-//! # GAP: grant "when this creature dies, return it to battlefield tapped" triggered ability not in catalog.
+//! to the battlefield tapped under its owner's control.'" The granted
+//! dies-trigger reanimation rider is not expressible; we emit the
+//! +2/+0 pump.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -25,24 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Until end of turn, target creature gets +2/+0 and gains 'When this creature dies, return it to the battlefield tapped under its owner's control.'".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, target creature gets +2/+0 and gains \"When this creature dies, return it to the battlefield tapped under its owner's control.\"".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: grant "when this creature dies, return it to battlefield tapped" triggered ability not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: granted dies-triggered reanimation rider not expressible.
+    // +2/+0 pump emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: 2,

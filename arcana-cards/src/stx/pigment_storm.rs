@@ -2,8 +2,8 @@
 //! target creature. Excess damage is dealt to that creature's controller
 //! instead."
 //!
-//! GAP: excess damage overflow to controller (trample-style for spells)
-//! not expressible in Effect catalog; emitting the 5-damage to creature.
+//! GAP: no 'excess damage to controller' replacement; emitting 5 damage to
+//! the targeted creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -42,7 +42,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: excess damage redirection to creature's controller not in catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,21 +1,21 @@
-//! Tempt with Glory — `{5}{W}` sorcery.
-//! "Tempting offer — Put a +1/+1 counter on each creature you control. Each opponent may
-//!  put a +1/+1 counter on each creature they control. For each opponent who does, put a
-//!  +1/+1 counter on each creature you control."
+//! Tempt with Glory — `{5}{W}` sorcery. "Tempting offer — Put a +1/+1
+//! counter on each creature you control. Each opponent may put a +1/+1
+//! counter on each creature they control. For each opponent who does,
+//! put a +1/+1 counter on each creature you control."
 //!
-//! GAP: "Tempting offer" group decision by opponents with conditional additional counters
-//! for each accepting opponent is not expressible with catalog Effect variants.
+//! Only the first clause (a +1/+1 counter on each creature you
+//! control) is expressible; the tempting-offer opponent choice and the
+//! per-accepting-opponent rider are not.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
-use arcana_core::objects::NULL_OBJECT_ID;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tempt with Glory");
@@ -27,13 +27,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Tempting offer — Put a +1/+1 counter on each creature you control. Each opponent may put a +1/+1 counter on each creature they control. For each opponent who does, put a +1/+1 counter on each creature you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Tempting offer — Put a +1/+1 counter on each creature \
+                   you control. Each opponent may put a +1/+1 counter on \
+                   each creature they control. For each opponent who does, \
+                   put a +1/+1 counter on each creature you control."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,10 +45,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(arcana_core::targets::ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    // GAP: tempting offer group decision with conditional bonus counters not expressible
-    // Best effort: put one +1/+1 counter on each creature you control
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    // GAP: tempting-offer opponent choice and per-accepting-opponent
+    // extra counters are not expressible; only the first clause stands.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::AddCounters {

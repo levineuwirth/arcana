@@ -1,7 +1,11 @@
-//! Glissa's Scorn — `{1}{G}` instant, "Destroy target artifact. Its controller
-//! loses 1 life."
-//!
-//! GAP: determine the artifact's controller at resolution to apply LoseLife.
+//! Glissa's Scorn — `{1}{G}` instant. "Destroy target artifact. Its
+//! controller loses 1 life."
+//! GAP: "its controller loses 1 life" requires knowing the controller of
+//! the destroyed artifact. This can be approximated by targeting a player
+//! as a second target, but the spec has one target. Best-effort: destroy
+//! the artifact and emit a LoseLife for the target's controller via a
+//! separate player target is not in the spec. Emitting just DestroyPermanent.
+//! GAP: target's controller LoseLife not expressible with single target shape.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,6 +49,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: look up artifact's controller to apply LoseLife { amount: 1 }
+    // GAP: "its controller loses 1 life" — no API to look up the controller
+    // of a permanent from a single-target shape at resolution time
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,6 +1,10 @@
-//! Topple — `{2}{W}` sorcery.
-//! "Exile target creature with the greatest power among creatures on the
-//! battlefield."
+//! Topple — `{2}{W}` sorcery, "Exile target creature with the greatest
+//! power among creatures on the battlefield."
+//!
+//! GAP: the "with the greatest power among creatures on the
+//! battlefield" targeting restriction cannot be expressed as an
+//! ObjectFilter (no relative-max-power constraint); modeled as exiling
+//! a target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

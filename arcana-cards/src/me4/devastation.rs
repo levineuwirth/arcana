@@ -1,4 +1,5 @@
-//! Devastation — `{5}{R}{R}` sorcery. "Destroy all creatures and lands."
+//! Devastation — `{5}{R}{R}` sorcery. "Destroy all creatures and
+//! lands." A board wipe over both creatures and lands.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures and lands.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures and lands.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,24 +35,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let land_ids = script::ids_matching(
+    let mut ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
+    ids.extend(script::ids_matching(
         state,
         &ObjectFilter::new().with_types(TypeLine::LAND.into()),
         entry.controller,
-    );
-    let mut effects = Vec::new();
-    if !creature_ids.is_empty() {
-        effects.push(Effect::ForEach {
-            targets: creature_ids,
-            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-        });
-    }
-    if !land_ids.is_empty() {
-        effects.push(Effect::ForEach {
-            targets: land_ids,
-            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-        });
-    }
-    effects
+    ));
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+    }]
 }

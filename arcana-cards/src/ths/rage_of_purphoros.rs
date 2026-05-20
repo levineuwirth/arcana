@@ -1,10 +1,7 @@
-//! Rage of Purphoros — `{4}{R}` sorcery, "Rage of Purphoros deals 4 damage
-//! to target creature. That creature can't be regenerated this turn."
+//! Rage of Purphoros — `{4}{R}` sorcery. "Rage of Purphoros deals 4 damage
+//! to target creature. It can't be regenerated this turn. Scry 1."
 //!
-//! # GAP
-//! "Can't be regenerated this turn" is not expressible with the current
-//! Effect catalog — there is no Effect for suppressing regeneration. The
-//! DealDamage portion is fully expressed.
+//! GAP: no can't-be-regenerated rider; damage + scry are honest.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Rage of Purphoros deals 4 damage to target creature. That creature can't be regenerated this turn.".into(),
+                text: "Rage of Purphoros deals 4 damage to target creature. It can't be regenerated this turn. Scry 1.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -43,10 +40,13 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "can't be regenerated this turn" suppression not in Effect catalog
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 4,
-    }]
+    // GAP: no can't-be-regenerated this turn rider.
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 4,
+        },
+        Effect::Scry { player: entry.controller, count: 1 },
+    ]
 }

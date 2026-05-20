@@ -1,7 +1,8 @@
-//! Hero's Demise — `{1}{B}` instant. "Destroy target legendary creature."
+//! Hero's Demise — `{1}{B}` instant. "Destroy target legendary
+//! creature."
 //!
-//! GAP: ObjectFilter has no demonstrated supertype filter (Legendary); targeting any
-//! creature as approximation.
+//! GAP: ObjectFilter has no 'legendary supertype' refinement; the
+//! target is a creature with the legendary restriction unenforced.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,23 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target legendary creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target legendary creature.".into(),
+            // GAP: no 'legendary' supertype refinement on ObjectFilter.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: legendary supertype filter not in ObjectFilter API
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

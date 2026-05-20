@@ -1,8 +1,5 @@
-//! Flames of the Blood Hand — `{2}{R}` instant. Deals 4 damage to target
-//! player or planeswalker. The damage can't be prevented. If that source would
-//! deal damage to that player this turn, it deals that much damage plus 4.
-//!
-//! GAP: damage-prevention lock; life-gain suppression for the turn.
+//! Flames of the Blood Hand — `{2}{R}` instant. "Flames of the Blood
+//! Hand deals 4 damage to target player or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,29 +22,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Flames of the Blood Hand deals 4 damage to target player or planeswalker. The damage can't be prevented. If that player would gain life this turn, they gain no life instead.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
+            text: "Flames of the Blood Hand deals 4 damage to target player or planeswalker. The damage can't be prevented. If that player or that planeswalker's controller would gain life this turn, that player gains no life instead.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let dt = match target {
-        TargetChoice::Object(id) => DamageTarget::Object(*id),
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
-        TargetChoice::ObjectOrPlayer(o) => match o {
-            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
-        },
+    let p = match target {
+        TargetChoice::Player(p) => *p,
+        TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)) => *p,
+        _ => return Vec::new(),
     };
-    // GAP: damage-prevention lock not expressible
-    // GAP: life-gain suppression for the turn not expressible
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 4 }]
+    // GAP: "damage can't be prevented" and the can't-gain-life
+    // replacement effect are not expressible; the 4 damage is modeled.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Player(p),
+        amount: 4,
+    }]
 }

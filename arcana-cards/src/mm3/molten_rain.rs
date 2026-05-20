@@ -1,9 +1,10 @@
-//! Molten Rain — `{1}{R}{R}` sorcery, "Destroy target land. If that land was
-//! nonbasic, Molten Rain deals 2 damage to that land's controller."
+//! Molten Rain — `{1}{R}{R}` sorcery. "Destroy target land. If that
+//! land was nonbasic, Molten Rain deals 2 damage to the land's
+//! controller."
 //!
-//! GAP: (1) "nonbasic" filter on target; (2) damage to the targeted land's
-//! controller (controller lookup from targeted object) — best effort:
-//! DestroyPermanent (land target, no nonbasic filter).
+//! GAP: "if that land was nonbasic" plus "2 damage to the land's
+//! controller" requires a supertype check and a controller-of-target
+//! resolver, neither available. The destroy is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +12,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,30 +27,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target land. If that land was nonbasic, Molten Rain deals 2 damage to that land's controller.".into(),
-                target_requirements: vec![TargetRequirement {
-                    // GAP: nonbasic filter not available on ObjectFilter
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target land. If that land was nonbasic, Molten Rain deals 2 damage to the land's controller.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::LAND.into())),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: conditional 2 damage to land's controller if land was nonbasic
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: nonbasic check + "2 damage to the land's controller" not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

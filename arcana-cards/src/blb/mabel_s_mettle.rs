@@ -1,4 +1,4 @@
-//! Mabel's Mettle — `{1}{W}` instant, "Target creature gets +2/+2 until
+//! Mabel's Mettle — `{1}{W}` instant. "Target creature gets +2/+2 until
 //! end of turn. Up to one other target creature gets +1/+1 until end of
 //! turn."
 
@@ -9,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![
                     TargetRequirement::target_creature(),
                     TargetRequirement {
-                        filter: arcana_core::targets::TargetFilter::Creature,
+                        filter: TargetFilter::Permanent(ObjectFilter::creature()),
                         count: TargetCount::UpTo(1),
                         controller: None,
                     },
@@ -44,25 +46,23 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(first) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id_a) = first else { return Vec::new(); };
-    let mut effects = vec![Effect::Pump {
-        target: *id_a,
+    let mut it = entry.targets.targets.iter();
+    let Some(TargetChoice::Object(a)) = it.next() else { return Vec::new(); };
+    let mut effs = vec![Effect::Pump {
+        target: *a,
         power: 2,
         toughness: 2,
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }];
-    if let Some(second) = entry.targets.targets.get(1) {
-        if let TargetChoice::Object(id_b) = second {
-            effects.push(Effect::Pump {
-                target: *id_b,
-                power: 1,
-                toughness: 1,
-                duration: Duration::EndOfTurn,
-                keywords: vec![],
-            });
-        }
+    if let Some(TargetChoice::Object(b)) = it.next() {
+        effs.push(Effect::Pump {
+            target: *b,
+            power: 1,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
     }
-    effects
+    effs
 }

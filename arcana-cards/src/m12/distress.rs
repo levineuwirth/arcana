@@ -1,13 +1,6 @@
 //! Distress — `{B}{B}` sorcery. "Target player reveals their hand.
-//! You choose a nonland card from it. That player discards that card."
-//!
-//! # GAP
-//! "Reveal hand, controller chooses a specific nonland card to
-//! discard" is a targeted discard with selection by the casting
-//! player — not the target player. `DiscardChoice::OpponentChooses`
-//! is the opposite direction; no "caster chooses" variant for a
-//! targeted discard exists. Best effort: `DiscardChoice::ControllerChooses`
-//! with count 1.
+//! You choose a nonland card from it. That player discards that
+//! card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -28,27 +21,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player reveals their hand. You choose a nonland card from it. That player discards that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player reveals their hand. You choose a nonland card from it. That player discards that card.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: "you choose a nonland card" (caster-chosen targeted discard) not expressible; using ControllerChooses as best effort
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: "nonland card" pick from revealed hand — controller-chooses discard models
+    // the "you choose" intent without the nonland constraint.
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::ControllerChooses,
+        choice: DiscardChoice::OpponentChooses,
     }]
 }

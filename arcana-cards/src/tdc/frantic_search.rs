@@ -1,8 +1,9 @@
-//! Frantic Search — `{2}{U}` instant, "Draw two cards, then discard two cards.
-//! Untap up to three lands."
+//! Frantic Search — `{2}{U}` instant. "Draw two cards, then discard
+//! two cards. Untap up to three lands."
 //!
-//! # GAP: untap-up-to-N-lands — no Effect variant for untapping up to N lands of
-//! the controller's choice. The draw/discard portion is fully expressible.
+//! GAP: "untap up to three lands" needs interactive multi-permanent
+//! choice (no target requirement maps that to plural untap). The
+//! draw/discard loot is emitted; the untap rider is dropped.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,25 +23,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards, then discard two cards. Untap up to three lands.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards, then discard two cards. Untap up to three lands.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: untap-up-to-N-lands — no Effect variant for untapping up to N
-    // controller-chosen lands.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: untap-up-to-three-lands (no target requirements bound).
     vec![
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::Discard {
+            player: entry.controller,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

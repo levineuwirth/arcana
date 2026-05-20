@@ -24,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target enchantment.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into())
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

@@ -1,10 +1,11 @@
-//! Lost in the Spirit World — `{2}{U}` sorcery. "Return up to one target
-//! creature to its owner's hand. Create a 1/1 colorless Spirit creature token
-//! with 'This token can't block or be blocked by non-Spirit creatures.'"
+//! Lost in the Spirit World — `{2}{U}` sorcery.
+//! "Return up to one target creature to its owner's hand. Create a 1/1 colorless
+//! Spirit creature token with 'This token can't block or be blocked by
+//! non-Spirit creatures.'"
 //!
-//! GAP: token ability "can't block or be blocked by non-Spirit creatures" —
-//! no Effect variant for granting custom static abilities to tokens.
-//! Token is created without that restriction.
+//! GAP: The Spirit token's special blocking restriction ability ("can't block
+//! or be blocked by non-Spirit creatures") cannot be expressed in TokenDefinition.abilities
+//! via the current API.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +13,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,9 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Return up to one target creature to its owner's hand. Create a 1/1 colorless Spirit creature token with 'This token can't block or be blocked by non-Spirit creatures.'".into(),
+                text: "Return up to one target creature to its owner's hand. Create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: arcana_core::targets::TargetFilter::Creature,
                     count: TargetCount::UpTo(1),
                     controller: None,
                 }],
@@ -57,7 +58,7 @@ fn resolve(
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
-        // GAP: "can't block or be blocked by non-Spirit creatures" static ability not expressible
+        // GAP: "can't block or be blocked by non-Spirit creatures" ability not expressible.
     };
     let mut effects = Vec::new();
     if let Some(target) = entry.targets.targets.first() {

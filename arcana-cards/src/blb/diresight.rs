@@ -1,4 +1,4 @@
-//! Diresight — `{2}{B}` sorcery, "Surveil 2, then draw two cards. You lose
+//! Diresight — `{2}{B}` sorcery. "Surveil 2, then draw two cards. You lose
 //! 2 life."
 
 use arcana_core::effects::Effect;

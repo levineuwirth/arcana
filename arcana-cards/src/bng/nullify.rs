@@ -1,6 +1,6 @@
-//! Nullify — `{U}{U}` instant, "Counter target creature or Aura spell."
-//!
-//! GAP: filtering the spell target to creature spells or Aura spells only.
+//! Nullify — `{U}{U}` instant. "Counter target creature or Aura spell."
+//! Best-effort: TargetFilter::Spell cannot filter for "creature or Aura"
+//! subtypes independently, so uses unfiltered Spell target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +24,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Counter target creature or Aura spell.".into(),
-                // GAP: filter to creature-type spells or Aura-type spells
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Spell(ObjectFilter::default()),
                     count: TargetCount::Exactly(1),
@@ -42,9 +41,6 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::Counter { target: *id }]
 }

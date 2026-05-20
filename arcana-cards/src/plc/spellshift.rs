@@ -1,12 +1,10 @@
 //! Spellshift — `{3}{U}` instant, "Counter target instant or sorcery spell.
-//! Its controller may reveal cards from the top of their library until they
-//! reveal an instant or sorcery card. They may cast that card without paying
-//! its mana cost. Then they put the rest on the bottom of their library in any
-//! order."
+//! Its controller reveals cards from the top of their library until they
+//! reveal an instant or sorcery card. That player may cast that card without
+//! paying its mana cost. Then the player shuffles."
 //!
-//! GAP: counter target instant-or-sorcery (instant/sorcery type filter on
-//! TargetFilter::Spell not supported); reveal-until-then-cast-for-free mechanic
-//! not in catalog.
+//! GAP: "reveal until find" library iteration and "cast without paying mana
+//! cost" are not in the Effect catalog. Only the Counter effect is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,9 +27,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Counter target instant or sorcery spell. Its controller may reveal cards from the top of their library until they reveal an instant or sorcery card. They may cast that card without paying its mana cost. Then they put the rest on the bottom of their library in any order.".into(),
+                text: "Counter target instant or sorcery spell. Its controller reveals cards from the top of their library until they reveal an instant or sorcery card. That player may cast that card without paying its mana cost. Then the player shuffles.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new()
+                            .without_types(TypeLine::CREATURE.into())
+                            .without_types(TypeLine::ARTIFACT.into())
+                            .without_types(TypeLine::ENCHANTMENT.into())
+                            .without_types(TypeLine::LAND.into())
+                            .without_types(TypeLine::PLANESWALKER.into())
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -46,8 +51,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: instant-or-sorcery type filter on spell target; reveal-until-cast-free mechanic
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "reveal until find instant/sorcery" + "cast without paying mana cost" not in catalog.
     vec![Effect::Counter { target: *id }]
 }

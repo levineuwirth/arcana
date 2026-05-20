@@ -20,22 +20,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 1/1 white Spirit creature tokens with flying. You gain 2 life.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 1/1 white Spirit creature tokens with flying. You gain 2 life.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
     let token = TokenDefinition {

@@ -1,5 +1,8 @@
-//! Beast Within — `{2}{G}` instant, "Destroy target permanent. Its controller
+//! Beast Within — `{2}{G}` instant. "Destroy target permanent. Its controller
 //! creates a 3/3 green Beast creature token."
+//! GAP: "its controller creates a token" — the controller of the destroyed
+//! permanent cannot be looked up from a single-target shape at resolution time.
+//! Partial: emit DestroyPermanent; token creation for caster is best-effort.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -55,8 +58,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: token should be created under the destroyed permanent's controller,
-    // not the spell's controller; using spell controller as best effort.
+    // GAP: token should be created for target's controller, not entry.controller;
+    // no API to look up the controller of a permanent from a single-target shape.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::CreateToken { controller: entry.controller, token },

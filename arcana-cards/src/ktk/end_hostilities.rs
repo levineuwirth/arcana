@@ -1,13 +1,9 @@
-//! End Hostilities — `{3}{W}{W}` sorcery. "Destroy all creatures and all
-//! permanents attached to creatures."
-//!
-//! GAP: 'all permanents attached to creatures' (Auras/Equipment on
-//! creatures) is a relational filter not expressible. Destroys all
-//! creatures only.
+//! End Hostilities — `{3}{W}{W}` sorcery. "Destroy all creatures and
+//! all permanents attached to creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -25,13 +21,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures and all permanents attached to creatures.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures and all permanents attached to \
+                   creatures."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,11 +37,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: permanents attached to creatures not expressible
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    if ids.is_empty() { return Vec::new(); }
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }]
+    // "permanents attached to creatures" (auras/equipment) is not an
+    // ObjectFilter refinement — best-effort destroys all creatures.
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
+    ids.into_iter()
+        .map(|id| Effect::DestroyPermanent { target: id })
+        .collect()
 }

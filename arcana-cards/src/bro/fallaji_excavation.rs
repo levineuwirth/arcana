@@ -1,12 +1,8 @@
-//! Fallaji Excavation — `{3}{G}{G}` sorcery.
-//! "Create three tapped Powerstone tokens. You gain 3 life."
-//
-// GAP: Powerstone token is an artifact with a special mana ability
-//      ("{T}: Add {C}. This mana can't be spent to cast a nonartifact
-//      spell."). The TokenDefinition has no field for activated abilities
-//      beyond `abilities: vec![]`, so the Powerstone's tap ability is lost.
-//      Best effort: create three artifact tokens + gain 3 life.
-// GAP: tokens enter tapped (no `tapped` field on TokenDefinition).
+//! Fallaji Excavation — `{3}{G}{G}` sorcery. "Create three tapped Powerstone
+//! tokens. You gain 3 life."
+//!
+//! GAP: cannot create tokens with the Powerstone tapped-add-{C} ability
+//! intrinsic; emitting plain Powerstone artifact tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -14,7 +10,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Fallaji Excavation");
@@ -42,11 +38,9 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    use arcana_core::types::SubtypeSet;
-    let powerstone = reg.interner().lookup("Powerstone").expect("Powerstone interned during register()");
+    let powerstone = reg.interner().lookup("Powerstone").expect("Powerstone interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(powerstone);
-    // GAP: Powerstone tap ability; GAP: tokens enter tapped
     let token = TokenDefinition {
         name: powerstone,
         colors: ColorSet::new(),
@@ -57,6 +51,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: tapped-entry and {T}: Add {C} for nonartifact-only intrinsic ability not supported
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token: token.clone() },

@@ -1,11 +1,6 @@
-//! At Least It's a Dry Heat — `{3}{R}` instant, "At Least It's a Dry Heat
-//! deals 1,000,000 damage to target creature. This damage can't be
-//! prevented, redirected, cause damage to be dealt to a player (sorry,
-//! Stuffy Doll), or be compared to damage dealt by sources on the east
-//! coast."
-//!
-//! GAP: unpreventable/unredirectable damage flags not supported; expressed
-//! as large DealDamage.
+//! At Least It's a Dry Heat — `{3}{R}` instant, "deals 1,000,000
+//! damage to target creature." (The damage-can't-be-prevented/etc.
+//! flavor riders are not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,24 +22,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "At Least It's a Dry Heat deals 1,000,000 damage to target creature. This damage can't be prevented, redirected, cause damage to be dealt to a player (sorry, Stuffy Doll), or be compared to damage dealt by sources on the east coast.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "At Least It's a Dry Heat deals 1,000,000 damage to target creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: unpreventable/unredirectable damage flags not modeled
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,8 +1,8 @@
-//! Joust Through — `{W}` instant, "Joust Through deals 3 damage to target
-//! attacking or blocking creature. You gain 1 life."
+//! Joust Through — `{W}` instant. "Joust Through deals 3 damage to
+//! target attacking or blocking creature. You gain 1 life."
 //!
-//! GAP: no filter for 'attacking or blocking creature'; using generic
-//! creature target as best approximation.
+//! No ObjectFilter refinement for attacking/blocking, so the target is
+//! a creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,14 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Joust Through deals 3 damage to target attacking or blocking creature. You gain 1 life.".into(),
-                // GAP: no attacking-or-blocking filter; using generic creature target
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Joust Through deals 3 damage to target attacking or blocking creature. You gain 1 life.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,8 +38,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![
         Effect::DealDamage {
             source: entry.source,

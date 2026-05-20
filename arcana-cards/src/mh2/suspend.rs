@@ -1,10 +1,7 @@
-//! Suspend — `{U}` instant. "Exile target creature and put two time counters
-//! on it. If it doesn't have suspend, it gains suspend."
-//!
-//! # GAP: exile with time counters and grant suspend keyword
-//! The engine has no `CounterKind::Time`, no exile-with-counters effect, and
-//! no mechanism to grant the suspend keyword to an exiled card.
-//! Best-effort: exile the creature.
+//! Suspend — `{U}` instant. "Exile target creature and put two time
+//! counters on it. If it doesn't have suspend, it gains suspend."
+//! Time counters on an exiled card and the suspend play-mechanic are
+//! not modeled; we exile the target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,13 +31,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no CounterKind::Time, no exile-with-suspend mechanic
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: time counters on an exiled card and the suspend
+    // play-from-exile mechanic are not modeled. Exile emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

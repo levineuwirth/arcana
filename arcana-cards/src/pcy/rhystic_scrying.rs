@@ -1,7 +1,7 @@
-//! Rhystic Scrying — `{2}{U}{U}` sorcery, "Draw three cards. Then if any
+//! Rhystic Scrying — `{2}{U}{U}` sorcery. "Draw three cards. Then if any
 //! player pays {2}, discard three cards."
-//!
-//! GAP: rhystic/optional payment by any player causing the caster to discard.
+//! GAP: "if any player pays {2}" is a priority-based optional payment
+//! conditional; the discard-on-payment branch is not in the Effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,6 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,6 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: rhystic payment trigger — any player may pay {2} to cause discard
+    // GAP: "if any player pays {2}" conditional discard not in Effect catalog
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

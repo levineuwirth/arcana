@@ -1,8 +1,9 @@
-//! Corpse Churn — `{1}{B}` instant.
-//! "Mill three cards, then you may return a creature card from your graveyard
-//! to your hand."
-//! GAP: optional return (player chooses whether to return); the mill-then-return
-//! sequence is partially expressible but the 'may' is not.
+//! Corpse Churn — `{1}{B}` instant. "Mill three cards, then you may
+//! return a creature card from your graveyard to your hand."
+//!
+//! The mill is expressed. The optional graveyard return is a
+//! resolution-time choice over an in-graveyard card without a target
+//! requirement; not expressible as a non-targeted "may" — gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,21 +23,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Mill three cards, then you may return a creature card from your graveyard to your hand.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Mill three cards, then you may return a creature card from your graveyard to your hand.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: optional graveyard return after mill (no 'may ReturnFromGraveyardToHand' effect)
-    vec![Effect::Mill { player: entry.controller, count: 3 }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: optional non-targeted "return a creature card from your
+    // graveyard to your hand" is not expressible.
+    vec![Effect::Mill {
+        player: entry.controller,
+        count: 3,
+    }]
 }

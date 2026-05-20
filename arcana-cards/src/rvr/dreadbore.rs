@@ -1,7 +1,8 @@
-//! Dreadbore — `{B}{R}` sorcery. "Destroy target creature or planeswalker."
+//! Dreadbore — `{B}{R}` sorcery. "Destroy target creature or
+//! planeswalker."
 //!
-//! # GAP: Planeswalker type in TargetFilter/ObjectFilter not in engine catalog.
-//! Partial: DestroyPermanent targeting creature only.
+//! No planeswalker TypeLine const is in the catalog surface; the
+//! target is restricted to a creature (planeswalker half GAP'd).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,23 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature or planeswalker.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature or planeswalker.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: planeswalker type in TargetFilter not in engine catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: planeswalker as an alternative target type (no PLANESWALKER
+    // TypeLine const in the catalog surface).
     vec![Effect::DestroyPermanent { target: *id }]
 }

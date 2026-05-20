@@ -1,19 +1,21 @@
-//! Entish Restoration — `{2}{G}` instant, "As an additional cost to cast this
-//! spell, sacrifice a land. Search your library for up to two basic land cards
-//! and put them onto the battlefield tapped. If you controlled seven or more
-//! lands as this spell resolved, search for up to three basic land cards
-//! instead. Then shuffle."
+//! Entish Restoration — `{2}{G}` instant, "Sacrifice a land. Search your
+//! library for up to two basic land cards, put them onto the battlefield
+//! tapped, then shuffle. If you control a creature with power 4 or greater,
+//! instead search your library for up to three basic land cards, put them
+//! onto the battlefield tapped, then shuffle."
 //!
-//! GAP: sacrifice a land as additional cost (no additional-cost payment effect);
-//! conditional "up to three vs two" based on land count at resolution.
+//! GAP: Sacrifice a land as part of cost not expressible (additional cost).
+//! GAP: "up to two/three" TutorToBattlefield — only one tutor call at a time.
+//! A single TutorToBattlefield is modeled as a partial.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "As an additional cost to cast this spell, sacrifice a land. Search your library for up to two basic land cards and put them onto the battlefield tapped. If you controlled seven or more lands as this spell resolved, search for up to three basic land cards instead.".into(),
+                text: "Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle. If you control a creature with power 4 or greater, instead search your library for up to three basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -37,22 +39,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: sacrifice a land as additional cost;
-    // conditional up-to-three vs up-to-two based on land count
-    vec![
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: true,
-        },
-    ]
+    // GAP: sacrifice-a-land additional cost not in cost model.
+    // GAP: "up to two/three" TutorToBattlefield — only one call expressible.
+    let _has_big_creature = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_min_power(4),
+        entry.controller,
+    ) > 0;
+    vec![Effect::TutorToBattlefield {
+        player: entry.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: true,
+    }]
 }

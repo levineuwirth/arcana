@@ -20,35 +20,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on each of up to three target creatures. Untap them.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(3),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on each of up to three target creatures. Untap them.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Creature,
+                count: TargetCount::UpTo(3),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = Vec::new();
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
     for t in &entry.targets.targets {
         if let TargetChoice::Object(id) = t {
-            effects.push(Effect::AddCounters {
+            out.push(Effect::AddCounters {
                 target: *id,
                 kind: CounterKind::PlusOnePlusOne,
                 count: 1,
             });
-            effects.push(Effect::Untap { target: *id });
         }
     }
-    effects
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::Untap { target: *id });
+        }
+    }
+    out
 }

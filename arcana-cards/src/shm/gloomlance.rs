@@ -1,8 +1,9 @@
-//! Gloomlance — `{3}{B}{B}` sorcery, "Destroy target creature. If that creature was
-//! green or white, its controller discards a card."
+//! Gloomlance — `{3}{B}{B}` sorcery. "Destroy target creature. If
+//! that creature was green or white, its controller discards a card."
 //!
-//! # GAP: conditional-discard-on-destroyed-color — no Effect::Conditional condition
-//! variant for checking the color of the just-destroyed creature.
+//! GAP: "if that creature was green or white" requires inspecting the
+//! pre-destruction colors and identifying its controller for a
+//! follow-up discard. Only the destroy is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,24 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. If that creature was green or white, its controller discards a card.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature. If that creature was green or white, its controller discards a card.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional-discard-on-destroyed-color — cannot check the color of
-    // the destroyed creature with the demonstrated API. Destroy only.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: color-conditional discard rider.
     vec![Effect::DestroyPermanent { target: *id }]
 }

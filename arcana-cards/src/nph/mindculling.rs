@@ -36,9 +36,13 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: *opponent, count: 2, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: *p,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

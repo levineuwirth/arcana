@@ -1,11 +1,9 @@
-//! Counterlash — `{4}{U}{U}` instant, "Counter target spell. You may cast a
-//! spell that shares a card type with it from your hand without paying its
-//! mana cost."
+//! Counterlash — `{4}{U}{U}` instant. "Counter target spell. You may cast
+//! a spell that shares a card type with it from your hand without paying
+//! its mana cost."
 //!
-//! # GAP
-//! - "Cast a spell from hand sharing a card type with countered spell without
-//!   paying its mana cost" not in Effect catalog; free-cast from hand not
-//!   expressible.
+//! Counter is honest; cast-from-hand-without-paying with a
+//! shared-card-type predicate is not in the catalog — GAP that rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -46,7 +46,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(spell_id) = target else { return Vec::new(); };
-    // GAP: free-cast from hand sharing card type with countered spell not in catalog
-    vec![Effect::Counter { target: *spell_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no cast-from-hand-without-paying-shared-type primitive.
+    vec![Effect::Counter { target: *id }]
 }

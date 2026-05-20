@@ -1,4 +1,4 @@
-//! Thoughtflare — `{3}{U}{R}` instant, "Draw four cards, then discard two
+//! Thoughtflare — `{3}{U}{R}` instant. "Draw four cards, then discard two
 //! cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
@@ -36,6 +36,10 @@ fn resolve(
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: entry.controller, count: 4 },
-        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

@@ -1,10 +1,13 @@
-//! Scarblade's Malice — `{B}` instant. "Target creature you control gains deathtouch and lifelink
-//! until end of turn. When that creature dies this turn, create a 2/2 black and green Elf creature token."
-//! GAP: conditional death trigger attached to target creature for this turn only is not expressible
-//! with the spell/trigger catalog (would need an until-end-of-turn triggered ability granted to the
-//! permanent, not modeled). Pump with keywords is expressed; token creation on death is GAP.
+//! Scarblade's Malice — `{B}` instant. "Target creature you control
+//! gains deathtouch and lifelink until end of turn. When that
+//! creature dies this turn, create a 2/2 black and green Elf creature
+//! token."
+//!
+//! The deathtouch+lifelink grant is emitted; the delayed dies-trigger
+//! token is not expressible from the spell-resolver surface — GAP.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -23,13 +26,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature you control gains deathtouch and lifelink until end of turn. When that creature dies this turn, create a 2/2 black and green Elf creature token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature you control gains deathtouch and lifelink until end of turn. When that creature dies this turn, create a 2/2 black and green Elf creature token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,17 +40,20 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "when that creature dies this turn, create a 2/2 black and green Elf token" —
-    //      granting a temporary triggered ability to a permanent is not modeled in the catalog.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: delayed dies-trigger token creation not expressible.
     vec![
-        Effect::Pump {
+        Effect::GrantKeyword {
             target: *id,
-            power: 0,
-            toughness: 0,
-            duration: arcana_core::layers::Duration::EndOfTurn,
-            keywords: vec![KeywordAbility::Deathtouch, KeywordAbility::Lifelink],
+            keyword: KeywordAbility::Deathtouch,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Lifelink,
+            duration: Duration::EndOfTurn,
         },
     ]
 }

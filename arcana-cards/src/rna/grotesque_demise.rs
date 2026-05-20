@@ -1,5 +1,5 @@
-//! Grotesque Demise — `{2}{B}` instant. "Exile target creature with power 3
-//! or less."
+//! Grotesque Demise — `{2}{B}` instant.
+//! "Exile target creature with power 3 or less."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

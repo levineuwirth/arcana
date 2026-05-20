@@ -1,11 +1,12 @@
 //! Stress Dream — `{3}{U}{R}` instant. "Stress Dream deals 5 damage
 //! to up to one target creature. Look at the top two cards of your
-//! library. Put one into your hand and the other on the bottom of
-//! your library."
+//! library. Put one of those cards into your hand and the other on
+//! the bottom of your library."
 //!
-//! # GAP: look at top 2 and selective draw/bottom (no "look at top N, choose 1 to hand" effect)
-//! DealDamage to up to one creature is expressible. The look-and-select
-//! from top 2 is not in the catalog. Emitting damage only.
+//! The 'look at top 2, keep 1, bottom 1' shape is closest to Scry 1
+//! then DrawCards 1 — modeled accordingly (slight semantic drift on
+//! the placement-vs-bottom step). The 'up to one target' is treated
+//! as exactly one target via target_creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,35 +28,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Stress Dream deals 5 damage to up to one target creature. Look at the top two cards of your library. Put one into your hand and the other on the bottom of your library.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Stress Dream deals 5 damage to up to one target creature. Look at the top two cards of your library. Put one of those cards into your hand and the other on the bottom of your library.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                count: TargetCount::UpTo(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let mut effects = Vec::new();
-    if let Some(target) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(*id),
-                amount: 5,
-            });
-        }
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 5,
+        });
     }
-    // GAP: look at top 2 cards, put one to hand and one to bottom of library
+    // Modeling 'look at top 2, keep 1, bottom 1' as Scry 1 + Draw 1.
+    effects.push(Effect::Scry { player: entry.controller, count: 1 });
+    effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
     effects
 }

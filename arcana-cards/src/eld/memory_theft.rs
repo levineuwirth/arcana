@@ -1,9 +1,11 @@
-//! Memory Theft — `{2}{B}` sorcery. "Target opponent reveals their hand. You choose a nonland
-//! card from it. That player discards that card. You may put a card that has an Adventure that
-//! player owns from exile into that player's graveyard."
-//! GAP: inspect opponent's hand and choose a specific card to discard (targeted discard) not in catalog.
-//! GAP: move exile card with Adventure to graveyard not in catalog.
-//! Best effort: opponent discards 1 (OpponentChooses).
+//! Memory Theft — `{2}{B}` sorcery. "Target opponent reveals their
+//! hand. You choose a nonland card from it. That player discards that
+//! card. You may put a card that has an Adventure that player owns
+//! from exile into that player's graveyard."
+//!
+//! Best-effort: the targeted player discards one card (chosen by you).
+//! Reveal-hand, the nonland constraint on the chosen card, and the
+//! Adventure-from-exile rider are not modeled — GAP.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -24,13 +26,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target opponent reveals their hand. You choose a nonland card from it. That player discards that card. You may put a card that has an Adventure that player owns from exile into that player's graveyard.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target opponent reveals their hand. You choose a nonland card from it. That player discards that card. You may put a card that has an Adventure that player owns from exile into that player's graveyard.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,10 +40,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: controller-chooses-which-card discard (not random / opponent's choice)
-    // GAP: exile-with-Adventure → graveyard
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: reveal-hand, nonland constraint, and the Adventure-exile
+    // rider are not modeled; modeled as a controller-chosen discard.
     vec![Effect::Discard {
         player: *p,
         count: 1,

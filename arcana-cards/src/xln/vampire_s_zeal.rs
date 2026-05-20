@@ -1,10 +1,6 @@
-//! Vampire's Zeal — `{W}` instant. "Target creature gets +2/+2 until end
-//! of turn. If it's a Vampire, it gains first strike until end of turn."
-//!
-//! GAP: "if it's a Vampire" subtype conditional at resolve time is not
-//! expressible with the current Effect::Conditional variants. Emitting
-//! the +2/+2 pump unconditionally; the conditional first-strike grant is
-//! omitted.
+//! Vampire's Zeal — `{W}` instant. "Target creature gets +2/+2 until
+//! end of turn. If it's a Vampire, it gains first strike until end of
+//! turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,24 +22,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it's a Vampire, it gains first strike until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. If it's a Vampire, it gains first strike until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional first-strike grant if target is a Vampire (subtype check)
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the "if it's a Vampire, gains first strike" rider needs a
+    // subtype check on the target at resolution, which no permitted
+    // script helper exposes; only the +2/+2 is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

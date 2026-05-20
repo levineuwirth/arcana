@@ -1,8 +1,5 @@
-//! Inundate — `{3}{U}{U}{U}` sorcery, "Return all nonblue creatures to their
-//! owners' hands."
-//!
-//! GAP: ObjectFilter has no `.without_colors()` method to express the nonblue
-//! filter. Best-effort: return all creatures to their owners' hands.
+//! Inundate — `{3}{U}{U}{U}` sorcery. "Return all nonblue creatures to
+//! their owners' hands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return all nonblue creatures to their owners' hands.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return all nonblue creatures to their owners' hands.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,9 +35,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no .without_colors() to exclude blue creatures
-    // Best-effort: bounce all creatures
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().without_colors(ColorSet::blue()),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

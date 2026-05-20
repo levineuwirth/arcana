@@ -1,5 +1,5 @@
-//! Cosmic Epiphany — `{4}{U}{U}` sorcery.
-//! "Draw cards equal to the number of instant and sorcery cards in your graveyard."
+//! Cosmic Epiphany — `{4}{U}{U}` sorcery, "Draw cards equal to the number
+//! of instant and sorcery cards in your graveyard."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,11 +36,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::new()
-        .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY));
-    let n = script::graveyard_matching(state, &filter, entry.controller, entry.controller);
-    if n == 0 {
+    let instant_filter = ObjectFilter::new().with_types(TypeLine::INSTANT.into());
+    let sorcery_filter = ObjectFilter::new().with_types(TypeLine::SORCERY.into());
+    let instants = script::graveyard_matching(state, &instant_filter, entry.controller, entry.controller);
+    let sorceries = script::graveyard_matching(state, &sorcery_filter, entry.controller, entry.controller);
+    let count = instants + sorceries;
+    if count == 0 {
         return Vec::new();
     }
-    vec![Effect::DrawCards { player: entry.controller, count: n }]
+    vec![Effect::DrawCards { player: entry.controller, count }]
 }

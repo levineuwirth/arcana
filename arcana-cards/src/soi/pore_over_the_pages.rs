@@ -1,10 +1,8 @@
-//! Pore Over the Pages — `{3}{U}{U}` sorcery, "Draw three cards, untap up to
-//! two lands, then discard a card."
+//! Pore Over the Pages — `{3}{U}{U}` sorcery. "Draw three cards, untap up
+//! to two lands, then discard a card."
 //!
-//! # GAP
-//! "Untap up to two lands" requires the player to choose which lands to
-//! untap; there is no Effect for player-choice multi-target untap. DrawCards
-//! and Discard are expressible.
+//! Untap-two-lands is a player choice over targets; lands are targeted
+//! here with TargetCount::UpTo(2).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -12,6 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +28,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Draw three cards, untap up to two lands, then discard a card.".into(),
-                target_requirements: vec![],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -39,9 +46,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: player-choice "untap up to two lands" not in Effect catalog
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-    ]
+    let mut effs = vec![Effect::DrawCards { player: entry.controller, count: 3 }];
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
+            effs.push(Effect::Untap { target: *id });
+        }
+    }
+    effs.push(Effect::Discard {
+        player: entry.controller,
+        count: 1,
+        choice: DiscardChoice::ControllerChooses,
+    });
+    effs
 }

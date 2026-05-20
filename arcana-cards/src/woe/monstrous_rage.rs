@@ -1,9 +1,11 @@
-//! Monstrous Rage — `{R}` instant. "Target creature gets +2/+0 until end of
-//! turn. Create a Monster Role token attached to it."
+//! Monstrous Rage — `{R}` instant. "Target creature gets +2/+0 until
+//! end of turn. Create a Monster Role token attached to it."
 //!
-//! # GAP: Role token mechanic (enchantment aura token with replacement rules)
-//! not expressible with TokenDefinition or any Effect variant. Best-effort:
-//! pump +2/+0 only.
+//! The +2/+0 until end of turn is emitted. The "Monster Role token
+//! attached to it" (an Aura-like Role token granting +1/+1 and
+//! trample) has no token-attachment / Role primitive.
+//!
+//! GAP: Role token creation and attachment not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,26 +27,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+0 until end of turn. Create a Monster Role \
-                       token attached to it."
-                    .into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+0 until end of turn. Create a Monster Role token attached to it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Monster Role token (aura enchantment token) not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: Monster Role token creation/attachment not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 2,

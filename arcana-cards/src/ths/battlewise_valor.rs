@@ -1,4 +1,5 @@
-//! Battlewise Valor — `{1}{W}` instant, "Target creature gets +2/+2 until end of turn. Scry 1."
+//! Battlewise Valor — `{1}{W}` instant. "Target creature gets +2/+2 until end
+//! of turn. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

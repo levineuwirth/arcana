@@ -1,9 +1,8 @@
-//! Lifecrafter's Gift — `{3}{G}` instant, "Put a +1/+1 counter on target
+//! Lifecrafter's Gift — `{3}{G}` instant. "Put a +1/+1 counter on target
 //! creature, then put a +1/+1 counter on each creature you control with a
-//! +1/+1 counter on it."
-//!
-//! GAP: conditional ForEach (only creatures you control that already have
-//! a +1/+1 counter) is not expressible with the current Effect catalog.
+//! +1/+1 counter on it." First half is direct; the second half needs a filter
+//! "creature you control with +1/+1 counter", which `ObjectFilter` doesn't
+//! expose. GAP that.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,24 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature, then put a +1/+1 counter on each creature you control with a +1/+1 counter on it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on target creature, then put a +1/+1 counter on each creature you control with a +1/+1 counter on it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: ForEach filtered by 'has a +1/+1 counter' not expressible
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: ObjectFilter has no "has counter" predicate, so we can't enumerate
+    // the second-half targets ("each creature you control with a +1/+1 counter").
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,

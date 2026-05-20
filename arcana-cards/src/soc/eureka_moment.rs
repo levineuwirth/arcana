@@ -1,8 +1,9 @@
-//! Eureka Moment — `{2}{G}{U}` instant, "Draw two cards. You may put a
-//! land card from your hand onto the battlefield."
+//! Eureka Moment — `{2}{G}{U}` instant. "Draw two cards. You may put
+//! a land card from your hand onto the battlefield."
 //!
-//! GAP: put land card from hand onto battlefield (no catalog variant for
-//! playing a card from hand without paying cost).
+//! Note: "put a land card from your hand onto the battlefield" is not
+//! expressible with the available effect catalog; only the two-card
+//! draw is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,21 +23,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards. You may put a land card from your hand onto the battlefield.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards. You may put a land card from your hand onto the battlefield.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: put land card from hand onto battlefield
-    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: putting a land from hand onto the battlefield is not
+    // expressible; only the draw is emitted.
+    vec![Effect::DrawCards {
+        player: entry.controller,
+        count: 2,
+    }]
 }

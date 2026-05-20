@@ -1,5 +1,5 @@
-//! Romantic Rendezvous — `{1}{R}` sorcery. "Discard a card, then
-//! draw two cards."
+//! Romantic Rendezvous — `{1}{R}` sorcery. "Discard a card, then draw
+//! two cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -19,23 +19,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Discard a card, then draw two cards.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Discard a card, then draw two cards.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
         Effect::DrawCards { player: entry.controller, count: 2 },
     ]
 }

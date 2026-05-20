@@ -2,3 +2,5 @@
 pub mod golgari_death_swarm;
 pub mod imaginary_friends;
 pub mod largepox;
+pub mod how_to_keep_an_izzet_mage_busy;
+pub mod the_grand_tour;

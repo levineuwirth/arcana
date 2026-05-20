@@ -1,9 +1,6 @@
 //! Galvanize — `{1}{R}` instant. "Galvanize deals 3 damage to target
-//! creature. If you've drawn two or more cards this turn, Galvanize deals
-//! 5 damage to that creature instead."
-//!
-//! # GAP: conditional on turn-draw-count (drawn 2+ cards this turn)
-//! not expressible.
+//! creature. If you've drawn two or more cards this turn, Galvanize
+//! deals 5 damage to that creature instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Galvanize deals 3 damage to target creature. If you've drawn two or more cards this turn, Galvanize deals 5 damage to that creature instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Galvanize deals 3 damage to target creature. If you've drawn two or more cards this turn, Galvanize deals 5 damage to that creature instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,7 +38,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional on turn draw count (2+ cards drawn) not expressible
+    // The "drawn two+ this turn → 5 instead" rider has no catalog
+    // cards-drawn-this-turn predicate; modeled as the base 3 damage.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

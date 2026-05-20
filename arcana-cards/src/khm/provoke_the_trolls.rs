@@ -1,12 +1,15 @@
-//! Provoke the Trolls — `{3}{R}` instant, "Provoke the Trolls deals 3 damage
-//! to any target. If a creature dealt damage this way, it gets +5/+0 until
-//! end of turn."
+//! Provoke the Trolls — `{3}{R}` instant.
+//! "Provoke the Trolls deals 3 damage to any target. If a creature is dealt
+//! damage this way, it gets +5/+0 until end of turn."
 //!
-//! GAP: conditional Pump(+5/+0) only if target was a creature is not
-//! expressible without an if-creature check post-damage.
+//! The conditional pump only applies if the target is a creature. We check
+//! the target choice: if it's an Object (creature or planeswalker), emit the
+//! pump as well. The spec says "if a creature is dealt damage this way" so
+//! we emit Pump only when targeting a creature object.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -27,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Provoke the Trolls deals 3 damage to any target. If a creature dealt damage this way, it gets +5/+0 until end of turn.".into(),
+                text: "Provoke the Trolls deals 3 damage to any target. If a creature is dealt damage this way, it gets +5/+0 until end of turn.".into(),
                 target_requirements: vec![TargetRequirement::any_target()],
                 modal: None,
                 effect: resolve,
@@ -41,16 +44,27 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let dt = match target {
-        TargetChoice::Object(id) => DamageTarget::Object(*id),
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
+    let (dt, obj_id) = match target {
+        TargetChoice::Object(id) => (DamageTarget::Object(*id), Some(*id)),
+        TargetChoice::Player(p) => (DamageTarget::Player(*p), None),
         TargetChoice::ObjectOrPlayer(o) => match o {
-            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+            ObjectOrPlayer::Object(id) => (DamageTarget::Object(*id), Some(*id)),
+            ObjectOrPlayer::Player(p) => (DamageTarget::Player(*p), None),
         },
     };
-    vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
-        // GAP: conditional Pump +5/+0 only if target is a creature
-    ]
+    let mut effects = vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }];
+    if let Some(id) = obj_id {
+        effects.push(Effect::Pump {
+            target: id,
+            power: 5,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
+    }
+    effects
 }

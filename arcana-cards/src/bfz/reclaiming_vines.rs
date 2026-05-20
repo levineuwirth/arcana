@@ -1,4 +1,4 @@
-//! Reclaiming Vines — `{2}{G}{G}` sorcery, "Destroy target artifact,
+//! Reclaiming Vines — `{2}{G}{G}` sorcery. "Destroy target artifact,
 //! enchantment, or land."
 
 use arcana_core::effects::Effect;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,9 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new()
-                            .with_types_any(TypeLine::ARTIFACT.into())
-                            .with_types_any(TypeLine::ENCHANTMENT.into())
-                            .with_types_any(TypeLine::LAND.into()),
+                            .with_types(TypeLine(
+                                TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::LAND,
+                            )),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

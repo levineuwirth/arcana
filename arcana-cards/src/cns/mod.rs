@@ -10,3 +10,6 @@ pub mod courier_hawk;
 pub mod sky_spirit;
 pub mod grenzo_s_rebuttal;
 pub mod ill_gotten_gains;
+pub mod syphon_soul;
+pub mod selvala_s_charge;
+pub mod rousing_of_souls;

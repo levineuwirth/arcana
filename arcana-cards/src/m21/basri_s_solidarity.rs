@@ -1,4 +1,5 @@
-//! Basri's Solidarity — `{1}{W}` sorcery. "Put a +1/+1 counter on each creature you control."
+//! Basri's Solidarity — `{1}{W}` sorcery. "Put a +1/+1 counter on
+//! each creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,9 +8,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
-use arcana_core::targets::ControllerConstraint;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Basri's Solidarity");
@@ -21,21 +21,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on each creature you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on each creature you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),

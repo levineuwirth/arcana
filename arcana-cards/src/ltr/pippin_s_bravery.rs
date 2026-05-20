@@ -1,9 +1,9 @@
-//! Pippin's Bravery — `{G}` instant. "You may sacrifice a Food. If you
-//! do, target creature gets +4/+4 until end of turn. Otherwise, that
-//! creature gets +2/+2 until end of turn."
+//! Pippin's Bravery — `{G}` instant. "You may sacrifice a Food. If you do,
+//! target creature gets +4/+4 until end of turn. Otherwise, that creature
+//! gets +2/+2 until end of turn."
 //!
-//! GAP: optional sacrifice-Food choice gating pump amount not in catalog.
-//! Emitting the +2/+2 (baseline, no Food sacrifice).
+//! GAP: optional sacrifice choice not modeled; defaulting to the non-sac
+//! +2/+2 branch.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -42,8 +42,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: optional sacrifice-Food choice to upgrade pump not in catalog;
-    // emitting baseline +2/+2.
+    // GAP: optional sac choice not modeled; using the non-sac branch
     vec![Effect::Pump {
         target: *id,
         power: 2,

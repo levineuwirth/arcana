@@ -1,6 +1,6 @@
-//! Emergency Weld — `{1}{B}` sorcery, "Return target artifact or creature card
-//! from your graveyard to your hand. Create a 1/1 colorless Soldier artifact
-//! creature token."
+//! Emergency Weld — `{1}{B}` sorcery. "Return target artifact or
+//! creature card from your graveyard to your hand. Create a 1/1
+//! colorless Soldier artifact creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -23,34 +23,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target artifact or creature card from your graveyard to your hand. Create a 1/1 colorless Soldier artifact creature token.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
-                        ),
-                    },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target artifact or creature card from your graveyard to your hand. Create a 1/1 colorless Soldier artifact creature token.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::new().with_types_any(
+                        TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+                    ),
+                },
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let soldier = reg.interner().lookup("Soldier")
-        .expect("Soldier interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let soldier = reg.interner().lookup("Soldier").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {

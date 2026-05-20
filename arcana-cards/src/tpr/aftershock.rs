@@ -1,5 +1,5 @@
-//! Aftershock — `{2}{R}{R}` sorcery. "Destroy target artifact, creature, or
-//! land. Aftershock deals 3 damage to you."
+//! Aftershock — `{2}{R}{R}` sorcery. "Destroy target artifact,
+//! creature, or land. Aftershock deals 3 damage to you."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,31 +23,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact, creature, or land. Aftershock deals 3 damage to you.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE | TypeLine::LAND),
-                        ),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact, creature, or land. Aftershock deals 3 damage to you.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types_any(TypeLine::ARTIFACT.into())
+                        .with_types_any(TypeLine::CREATURE.into())
+                        .with_types_any(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::DealDamage {

@@ -1,12 +1,11 @@
-//! Harsh Scrutiny — `{B}` sorcery.
-//! "Target opponent reveals their hand. You choose a creature card from it.
-//! That player discards that card. Scry 1."
+//! Harsh Scrutiny — `{B}` sorcery, "Target opponent reveals their hand.
+//! You choose a creature card from it. That player discards that card.
+//! Scry 1."
 //!
-//! # GAP: look at opponent's hand and choose a specific card for discard
-//! `Effect::Discard` with `DiscardChoice::ControllerChooses` discards from
-//! among the target player's hand but does not filter to creature cards or
-//! allow the caster to see and pick from the hand. No "reveal hand and choose
-//! a specific card type" variant exists.
+//! GAP: the discard is restricted to a creature card chosen by the
+//! spell's controller from the revealed hand; the catalog's Discard has
+//! no card-type filter, so it is modeled as a controller-chosen discard
+//! of one card (the reveal and creature-only restriction are lost).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -44,10 +43,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: reveal opponent's hand and choose a specific creature card to discard
-    // Best effort: generic controller-chooses discard + scry
     vec![
-        Effect::Discard { player: *p, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: *p,
+            count: 1,
+            choice: DiscardChoice::OpponentChooses,
+        },
         Effect::Scry { player: entry.controller, count: 1 },
     ]
 }

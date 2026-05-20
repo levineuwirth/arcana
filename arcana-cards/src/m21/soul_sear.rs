@@ -1,10 +1,11 @@
-//! Soul Sear — `{2}{R}` instant. "Soul Sear deals 5 damage to target creature
-//! or planeswalker. That permanent loses indestructible until end of turn."
+//! Soul Sear — `{2}{R}` instant.
+//! "Soul Sear deals 5 damage to target creature or planeswalker. That permanent
+//! loses indestructible until end of turn."
 //!
-//! GAP: "target creature or planeswalker" — no TargetFilter for planeswalkers;
-//! using target_creature() as best-effort.
-//! GAP: "loses indestructible until end of turn" — no Effect variant for
-//! removing a keyword from a permanent temporarily.
+//! GAP: Planeswalker is not in the TargetFilter / TypeLine surface (no TypeLine::PLANESWALKER
+//! shown in the API). Targeting creature only; the planeswalker arm is GAPped.
+//! GAP: "loses indestructible until end of turn" — no Effect variant removes a keyword
+//! for a duration (GrantKeyword adds, but no RemoveKeyword).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Soul Sear deals 5 damage to target creature or planeswalker. That permanent loses indestructible until end of turn.".into(),
-                // GAP: no TargetFilter for planeswalkers; using creature target
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -42,9 +42,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "loses indestructible until end of turn" — no Effect variant for removing keywords
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: planeswalker as target not supported in current TargetFilter API.
+    // GAP: "loses indestructible until end of turn" — no RemoveKeyword effect variant.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

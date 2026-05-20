@@ -1,11 +1,8 @@
-//! Journey for the Elixir — `{2}{G}` sorcery. "Search your library and
-//! graveyard for a basic land card and a card named Jiang Yanggu, reveal them,
-//! put them into your hand, then shuffle."
-//!
-//! # GAP: search graveyard simultaneously with library; named-card search
-//! The engine's `TutorToHand` only searches the library; there is no
-//! simultaneous graveyard search and no named-card filter.
-//! Best-effort: tutor a basic land to hand only.
+//! Journey for the Elixir — `{2}{G}` sorcery. "Search your library
+//! and graveyard for a basic land card and a card named Jiang Yanggu,
+//! reveal them, put them into your hand, then shuffle." We emit the
+//! basic-land tutor-to-hand; the simultaneous named-card search
+//! (including from graveyard) is not expressible and is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,12 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no graveyard search and no named-card filter; partial: land to hand
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: the named-card ("Jiang Yanggu") search and the graveyard
+    // search component are not expressible. Basic-land tutor emitted.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

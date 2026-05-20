@@ -1,8 +1,8 @@
-//! Smother — `{1}{B}` instant, "Destroy target creature with mana value 3 or
-//! less. It can't be regenerated."
-//!
-//! GAP: filter target creature to mana value 3 or less; "can't be regenerated"
-//! replacement effect on destroy.
+//! Smother — `{1}{B}` instant. "Destroy target creature with mana value
+//! 3 or less. It can't be regenerated."
+//! The "can't be regenerated" rider has no Effect variant; DestroyPermanent
+//! is the best-effort representation (the engine's regeneration prevention
+//! is not in the catalog).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +10,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,8 +26,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target creature with mana value 3 or less. It can't be regenerated.".into(),
-                // GAP: filter to creatures with mana value 3 or less
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_max_cmc(3),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -41,6 +46,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "can't be regenerated" flag on the destroy effect
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,7 +1,9 @@
 //! Hurkyl's Recall — `{1}{U}` instant. "Return all artifacts target
 //! player owns to their hand."
 //!
-//! Uses ForEach over all artifact permanents owned by the target player.
+//! GAP: 'owns' is not an ObjectFilter constraint — `controlled_by` is
+//! the closest available knob, so only artifacts that player controls
+//! are returned (ownership-vs-control nuance lost).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,28 +25,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return all artifacts target player owns to their hand.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return all artifacts target player owns to their hand.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(_p) = target else { return Vec::new(); };
-    let filter = ObjectFilter::new().with_types(TypeLine::ARTIFACT.into());
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    if ids.is_empty() {
-        return Vec::new();
-    }
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(_p)) = entry.targets.targets.first() else { return Vec::new(); };
+    // GAP: 'owns' nuance — using controller as proxy for ownership.
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().with_types(arcana_core::types::TypeLine::ARTIFACT.into()),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

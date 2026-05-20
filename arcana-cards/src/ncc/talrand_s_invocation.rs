@@ -1,5 +1,5 @@
-//! Talrand's Invocation — `{2}{U}{U}` sorcery, "Create two 2/2 blue Drake
-//! creature tokens with flying."
+//! Talrand's Invocation — `{2}{U}{U}` sorcery, "Create two 2/2 blue
+//! Drake creature tokens with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,22 +20,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 2/2 blue Drake creature tokens with flying.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 2/2 blue Drake creature tokens with flying.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let drake = reg.interner().lookup("Drake").expect("Drake interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let drake = reg.interner().lookup("Drake").expect("Drake interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(drake);
     let token = TokenDefinition {

@@ -1,9 +1,7 @@
-//! Lessons from Life — `{2}{G}{U}` sorcery, "Draw three cards. You may
-//! put a land card from your hand onto the battlefield." Partial:
-//! DrawCards expressed; optional land-from-hand-to-battlefield not in
-//! catalog.
-//!
-//! # GAP: optional put land card from hand onto battlefield not in catalog.
+//! Lessons from Life — `{2}{G}{U}` sorcery. "Draw three cards. You
+//! may put a land card from your hand onto the battlefield tapped."
+//! The optional play-a-land-from-hand rider is not expressible; we
+//! emit the draw.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,21 +21,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards. You may put a land card from your hand onto the battlefield.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards. You may put a land card from your hand onto the battlefield tapped.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: optional put land card from hand onto battlefield not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: optional "put a land from your hand onto the battlefield"
+    // is not expressible. Draw three emitted.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

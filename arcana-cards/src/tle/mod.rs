@@ -28,3 +28,4 @@ pub mod run_amok;
 pub mod explosive_shot;
 pub mod cracked_earth_technique;
 pub mod lost_in_the_spirit_world;
+pub mod hog_monkey_rampage;

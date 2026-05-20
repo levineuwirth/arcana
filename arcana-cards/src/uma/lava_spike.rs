@@ -1,9 +1,5 @@
-//! Lava Spike — `{R}` sorcery. "Lava Spike deals 3 damage to target
+//! Lava Spike — `{R}` sorcery — Arcane. "Lava Spike deals 3 damage to target
 //! player or planeswalker."
-//!
-//! Type line includes "Arcane" subtype; engine TypeLine has no Arcane
-//! subtype constant — omitted from types, recorded here for the verify
-//! pipeline.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,6 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Lava Spike deals 3 damage to target player or planeswalker.".into(),
+                // GAP: no 'player or planeswalker' filter; using any_target
                 target_requirements: vec![TargetRequirement::any_target()],
                 modal: None,
                 effect: resolve,

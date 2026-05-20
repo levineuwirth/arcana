@@ -1,9 +1,7 @@
-//! Necrotic Wound — `{B}` instant, "Undergrowth — Target creature gets
-//! -X/-X until end of turn, where X is the number of creature cards in your
-//! graveyard. If that creature would die this turn, exile it instead."
-//!
-//! GAP: exile-instead-of-dying replacement effect is not expressible.
-//! Partial: -X/-X pump only, where X = creature cards in graveyard.
+//! Necrotic Wound — `{B}` instant, "Undergrowth — Target creature
+//! gets -X/-X until end of turn, where X is the number of creature
+//! cards in your graveyard. If that creature would die this turn, exile
+//! it instead." The exile-replacement rider is not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,26 +24,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Undergrowth — Target creature gets -X/-X until end of turn, where X is the number of creature cards in your graveyard. If that creature would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Undergrowth — Target creature gets -X/-X until end of turn, where X is the number of creature cards in your graveyard. If that creature would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: exile-instead-of-dying replacement effect
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let filter = ObjectFilter::creature();
-    let x = script::graveyard_matching(state, &filter, entry.controller, entry.controller) as i32;
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let x = script::graveyard_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+        entry.controller,
+    ) as i32;
+    // GAP: "would die this turn, exile it instead" replacement not expressible.
     vec![Effect::Pump {
         target: *id,
         power: -x,

@@ -1,5 +1,9 @@
-//! Eyeblight's Ending — `{2}{B}` Kindred Instant — Elf.
-//! "Destroy target non-Elf creature."
+//! Eyeblight's Ending — `{2}{B}` Kindred Instant — Elf, "Destroy target
+//! non-Elf creature."
+//!
+//! GAP: the "non-Elf" targeting restriction cannot be expressed (no
+//! negative-subtype constraint on ObjectFilter); modeled as destroying
+//! a target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

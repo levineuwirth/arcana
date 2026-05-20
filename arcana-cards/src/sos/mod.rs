@@ -32,3 +32,4 @@ pub mod pox_plague;
 pub mod mana_sculpt;
 pub mod impractical_joke;
 pub mod harsh_annotation;
+pub mod burrog_barrage;

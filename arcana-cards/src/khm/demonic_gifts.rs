@@ -1,10 +1,8 @@
-//! Demonic Gifts — `{1}{B}` instant. "Until end of turn, target creature
-//! gets +2/+0 and gains 'When this creature dies, return it to the
-//! battlefield under its owner's control.'"
-//!
-//! GAP: Granting a temporary triggered ability ("when this creature dies…")
-//! to a target creature is not expressible with the current Effect catalog.
-//! The +2/+0 Pump is rendered; the dies-trigger grant is not.
+//! Demonic Gifts — `{1}{B}` instant. "Until end of turn, target
+//! creature gets +2/+0 and gains 'When this creature dies, return it
+//! to the battlefield under its owner's control.'" Granting an
+//! arbitrary triggered ability has no primitive; the +2/+0 is
+//! emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,24 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Until end of turn, target creature gets +2/+0 and gains \"When this creature dies, return it to the battlefield under its owner's control.\"".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, target creature gets +2/+0 and gains \"When this creature dies, return it to the battlefield under its owner's control.\"".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: Cannot grant a temporary dies-trigger to a creature.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: granting a "when this dies, return to battlefield" trigger
+    // has no primitive.
     vec![Effect::Pump {
         target: *id,
         power: 2,

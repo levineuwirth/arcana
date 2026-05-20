@@ -1,9 +1,5 @@
-//! Brainstorm — `{U}` instant.
-//! "Draw three cards, then put two cards from your hand on top of your
-//! library in any order."
-//!
-//! # GAP: 'put two cards from hand on top of library' — no Effect variant
-//! lets the player choose cards from their hand to place on the library.
+//! Brainstorm — `{U}` instant. "Draw three cards, then put two cards
+//! from your hand on top of your library in any order."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,21 +19,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards, then put two cards from your hand on top of your library in any order.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards, then put two cards from your hand on top of your library in any order.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: put two player-chosen cards from hand on top of library
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // "Put two cards from your hand on top of your library" has no
+    // expressible hand->library-top effect; emit the draw.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

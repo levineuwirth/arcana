@@ -1,5 +1,6 @@
 //! Forbidden Friendship — `{1}{R}` sorcery. "Create a 1/1 red Dinosaur
-//! creature token with haste and a 1/1 white Human Soldier creature token."
+//! creature token with haste and a 1/1 white Human Soldier creature
+//! token."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -11,7 +12,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Forbidden Friendship");
-    let _dinosaur = reg.interner_mut().intern("Dinosaur");
+    let _dino = reg.interner_mut().intern("Dinosaur");
     let _human = reg.interner_mut().intern("Human");
     let _soldier = reg.interner_mut().intern("Soldier");
     let chars = Characteristics {
@@ -37,37 +38,37 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let dinosaur = reg.interner().lookup("Dinosaur").expect("Dinosaur interned during register()");
-    let human = reg.interner().lookup("Human").expect("Human interned during register()");
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let dino = reg.interner().lookup("Dinosaur").expect("Dinosaur interned");
+    let human = reg.interner().lookup("Human").expect("Human interned");
+    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned");
 
-    let mut dino_subtypes = SubtypeSet::default();
-    dino_subtypes.0.insert(dinosaur);
-
-    let mut human_subtypes = SubtypeSet::default();
-    human_subtypes.0.insert(human);
-    human_subtypes.0.insert(soldier);
-
+    let mut dino_subs = SubtypeSet::default();
+    dino_subs.0.insert(dino);
     let dino_token = TokenDefinition {
-        name: dinosaur,
+        name: dino,
         colors: ColorSet::red(),
-        types: TypeLine(TypeLine::CREATURE),
-        subtypes: dino_subtypes,
+        types: TypeLine::CREATURE.into(),
+        subtypes: dino_subs,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Haste],
         abilities: vec![],
     };
+
+    let mut human_subs = SubtypeSet::default();
+    human_subs.0.insert(human);
+    human_subs.0.insert(soldier);
     let human_token = TokenDefinition {
         name: human,
         colors: ColorSet::white(),
-        types: TypeLine(TypeLine::CREATURE),
-        subtypes: human_subtypes,
+        types: TypeLine::CREATURE.into(),
+        subtypes: human_subs,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
     };
+
     vec![
         Effect::CreateToken { controller: entry.controller, token: dino_token },
         Effect::CreateToken { controller: entry.controller, token: human_token },

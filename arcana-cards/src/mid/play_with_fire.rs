@@ -1,9 +1,5 @@
-//! Play with Fire — `{R}` instant. "Play with Fire deals 2 damage to any
-//! target. If a player is dealt damage this way, scry 1."
-//!
-//! GAP: conditional Scry 1 only if a player was targeted — no Effect::Conditional
-//! variant that inspects the target type after damage. Damage is expressed;
-//! conditional scry is omitted.
+//! Play with Fire — `{R}` instant. "Play with Fire deals 2 damage to
+//! any target. If a player is dealt damage this way, scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,19 +36,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional Scry 1 when player is targeted not expressible
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let dt = match target {
-        TargetChoice::Object(id) => DamageTarget::Object(*id),
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
+    let (dt, is_player) = match target {
+        TargetChoice::Object(id) => (DamageTarget::Object(*id), false),
+        TargetChoice::Player(p) => (DamageTarget::Player(*p), true),
         TargetChoice::ObjectOrPlayer(o) => match o {
-            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+            ObjectOrPlayer::Object(id) => (DamageTarget::Object(*id), false),
+            ObjectOrPlayer::Player(p) => (DamageTarget::Player(*p), true),
         },
     };
-    vec![Effect::DealDamage {
+    let mut out = vec![Effect::DealDamage {
         source: entry.source,
         target: dt,
         amount: 2,
-    }]
+    }];
+    if is_player {
+        out.push(Effect::Scry { player: entry.controller, count: 1 });
+    }
+    out
 }

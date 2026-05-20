@@ -1,9 +1,6 @@
-//! Unagi's Spray — `{U}` instant, "Target creature gets -4/-0 until end of turn.
-//! If you control a Fish, Octopus, Otter, Seal, Serpent, or Whale, draw a card."
-//!
-//! GAP: conditional draw based on controlling a creature of specific subtypes
-//! (Fish/Octopus/Otter/Seal/Serpent/Whale) not expressible in Effect catalog;
-//! subtype filter for those creature types not in ObjectFilter.
+//! Unagi's Spray — `{U}` instant. "Target creature gets -4/-0 until
+//! end of turn. If you control a Fish, Octopus, Otter, Seal, Serpent,
+//! or Whale, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -4/-0 until end of turn. If you control a Fish, Octopus, Otter, Seal, Serpent, or Whale, draw a card.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -4/-0 until end of turn. If you control a Fish, Octopus, Otter, Seal, Serpent, or Whale, draw a card.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,9 +36,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional draw requiring control of sea-creature subtype not in catalog
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: the conditional draw depends on controlling one of several
+    // creature subtypes (an OR over subtypes); not expressible. Only
+    // the -4/-0 is modeled.
     vec![Effect::Pump {
         target: *id,
         power: -4,

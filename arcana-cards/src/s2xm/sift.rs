@@ -1,4 +1,4 @@
-//! Sift — `{3}{U}` sorcery, "Draw three cards, then discard a card."
+//! Sift — `{3}{U}` sorcery. "Draw three cards, then discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,10 +35,6 @@ fn resolve(
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard {
-            player: entry.controller,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
+        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
     ]
 }

@@ -1,8 +1,10 @@
-//! Seed Spark — `{3}{W}` instant. "Destroy target artifact or enchantment. If
-//! {G} was spent to cast this spell, create two 1/1 green Saproling creature tokens."
+//! Seed Spark — `{3}{W}` instant. "Destroy target artifact or
+//! enchantment. If {G} was spent to cast this spell, create two 1/1
+//! green Saproling creature tokens."
 //!
-//! # GAP: conditional "if {G} was spent" is not expressible via the catalog.
-//! We destroy the artifact/enchantment and note the conditional token gap.
+//! The destroy is expressible. "If {G} was spent to cast this spell"
+//! (mana-spent tracking) has no `script::*` helper, so the
+//! conditional Saproling tokens are GAPped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +12,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,19 +27,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact or enchantment. If {G} was spent to cast this spell, create two 1/1 green Saproling creature tokens.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT))
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact or enchantment. If {G} was spent to cast this spell, create two 1/1 green Saproling creature tokens.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new().with_types_any(
+                        TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT),
                     ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,6 +51,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional Saproling tokens if {G} was spent not expressible
-    vec![Effect::DestroyPermanent { target: *id }]
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        // GAP: "if {G} was spent" mana-spent condition not computable; Saproling tokens omitted.
+    ]
 }

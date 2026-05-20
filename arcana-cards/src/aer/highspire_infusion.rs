@@ -1,6 +1,6 @@
-//! Highspire Infusion — `{1}{G}` instant. "Target creature gets +3/+3 until end of turn. You get
-//! {E}{E} (two energy counters)."
-//! GAP: gain energy counters ({E}{E}) — no Effect::GainEnergy variant in the catalog.
+//! Highspire Infusion — `{1}{G}` instant. "Target creature gets
+//! +3/+3 until end of turn. You get {E}{E} (two energy counters)."
+//! Energy counters have no primitive; the pump is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,31 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+3 until end of turn. You get {E}{E} (two energy counters).".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+3 until end of turn. You get {E}{E} (two energy counters).".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: 3,
-            toughness: 3,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        // GAP: gain {E}{E} (two energy counters) — no Effect::GainEnergy variant
-    ]
+    // GAP: energy counters ({E}{E}) have no primitive.
+    vec![Effect::Pump {
+        target: *id,
+        power: 3,
+        toughness: 3,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

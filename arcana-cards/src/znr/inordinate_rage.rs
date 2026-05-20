@@ -1,5 +1,5 @@
-//! Inordinate Rage — `{1}{R}` instant, "Target creature gets +3/+2 until end
-//! of turn. Scry 1."
+//! Inordinate Rage — `{1}{R}` instant, "Target creature gets +3/+2 until
+//! end of turn. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

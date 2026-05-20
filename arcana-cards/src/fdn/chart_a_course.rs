@@ -1,10 +1,11 @@
-//! Chart a Course — `{1}{U}` sorcery, "Draw two cards. Then discard a card
-//! unless you attacked this turn."
+//! Chart a Course — `{1}{U}` sorcery. "Draw two cards. Then discard a
+//! card unless you attacked this turn."
 //!
-//! GAP: "unless you attacked this turn" conditional is not in the Effect
-//! catalog. Best-effort: draw 2 + discard 1 unconditionally.
+//! "Unless you attacked this turn" is not a queryable condition with
+//! the demonstrated script helpers; the discard rider is GAP'd while
+//! the draw is emitted faithfully.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -22,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards. Then discard a card unless you attacked this turn.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards. Then discard a card unless you attacked this turn.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,9 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you attacked this turn" conditional not in Effect catalog
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-    ]
+    // GAP: "unless you attacked this turn" condition not queryable; discard rider omitted.
+    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
 }

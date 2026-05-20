@@ -13,3 +13,4 @@ pub mod make_your_move;
 pub mod manhole_missile;
 pub mod bot_bashing_time;
 pub mod return_to_the_sewers;
+pub mod tenderize;

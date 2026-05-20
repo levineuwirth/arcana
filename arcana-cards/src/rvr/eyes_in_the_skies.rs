@@ -1,6 +1,7 @@
-//! Eyes in the Skies — `{3}{W}` instant. "Create a 1/1 white Bird creature token with flying,
-//! then populate. (Create a token that's a copy of a creature token you control.)"
-//! GAP: populate (create a copy of a creature token you control) — no Effect::Populate variant.
+//! Eyes in the Skies — `{3}{W}` instant. "Create a 1/1 white Bird
+//! creature token with flying, then populate." Populate (copy a
+//! creature token you control) has no primitive; the base token is
+//! emitted.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,36 +22,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create a 1/1 white Bird creature token with flying, then populate.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create a 1/1 white Bird creature token with flying, then populate.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let bird = reg.interner().lookup("Bird").expect("Bird interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let bird = reg.interner().lookup("Bird").expect("Bird interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(bird);
     let token = TokenDefinition {
         name: bird,
         colors: ColorSet::white(),
-        types: TypeLine(TypeLine::CREATURE),
+        types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    vec![
-        Effect::CreateToken { controller: entry.controller, token },
-        // GAP: populate — no Effect::Populate variant
-    ]
+    // GAP: populate (create a copy of a creature token you control)
+    // has no primitive.
+    vec![Effect::CreateToken { controller: entry.controller, token }]
 }

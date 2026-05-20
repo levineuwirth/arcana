@@ -1,12 +1,9 @@
-//! Spawning Breath — `{1}{R}` instant. "Spawning Breath deals 1 damage to any
-//! target. Create a 0/1 colorless Eldrazi Spawn creature token. It has
-//! 'Sacrifice this token: Add {C}.'"
-//!
-//! GAP: the token's activated ability ("Sacrifice this: Add {C}") cannot be
-//! expressed in TokenDefinition.abilities (no activated-ability primitives).
-//! The token is created without the mana ability.
+//! Spawning Breath — `{1}{R}` instant. "Spawning Breath deals 1 damage to
+//! any target. Create a 0/1 colorless Eldrazi Spawn creature token." Spawn's
+//! "Sacrifice this token: Add {C}" ability isn't expressible — emit token
+//! stub and GAP the activated ability.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -28,48 +25,50 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Spawning Breath deals 1 damage to any target. Create a 0/1 colorless Eldrazi Spawn creature token. It has \"Sacrifice this token: Add {C}.\"".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Spawning Breath deals 1 damage to any target. Create a 0/1 colorless Eldrazi Spawn creature token. It has \"Sacrifice this token: Add {C}.\"".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let dt = match target {
-        TargetChoice::Object(id) => DamageTarget::Object(*id),
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
-        TargetChoice::ObjectOrPlayer(o) => match o {
-            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
-        },
-    };
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let mut out = Vec::new();
+    if let Some(target) = entry.targets.targets.first() {
+        let dt = match target {
+            TargetChoice::Object(id) => DamageTarget::Object(*id),
+            TargetChoice::Player(p) => DamageTarget::Player(*p),
+            TargetChoice::ObjectOrPlayer(o) => match o {
+                ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+                ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+            },
+        };
+        out.push(Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 1,
+        });
+    }
     let eldrazi = reg.interner().lookup("Eldrazi").expect("Eldrazi interned during register()");
     let spawn = reg.interner().lookup("Spawn").expect("Spawn interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(eldrazi);
     subtypes.0.insert(spawn);
-    let token = TokenDefinition {
-        name: spawn,
-        colors: ColorSet::new(),
-        types: TypeLine::CREATURE.into(),
-        subtypes,
-        power: Some(PtValue::Fixed(0)),
-        toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
-        // GAP: "Sacrifice this: Add {C}" activated ability not expressible
-        abilities: vec![],
-    };
-    vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 1 },
-        Effect::CreateToken { controller: entry.controller, token },
-    ]
+    // GAP: token's "Sacrifice this token: Add {C}" activated ability not expressible.
+    out.push(Effect::CreateToken {
+        controller: entry.controller,
+        token: TokenDefinition {
+            name: spawn,
+            colors: ColorSet::new(),
+            types: TypeLine::CREATURE.into(),
+            subtypes,
+            power: Some(PtValue::Fixed(0)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![],
+            abilities: vec![],
+        },
+    });
+    out
 }

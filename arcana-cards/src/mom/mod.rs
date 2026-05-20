@@ -17,3 +17,5 @@ pub mod cosmic_hunger;
 pub mod assimilate_essence;
 pub mod sunfall;
 pub mod angelic_intervention;
+pub mod furnace_reins;
+pub mod unseal_the_necropolis;

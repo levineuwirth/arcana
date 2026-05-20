@@ -1,8 +1,9 @@
 //! Research the Deep — `{1}{U}` sorcery. "Draw a card. Clash with an
-//! opponent. If you win, return Research the Deep to its owner's hand."
+//! opponent. If you win, return Research the Deep to its owner's
+//! hand."
 //!
-//! GAP: Clash mechanic and conditional return to hand on win are not
-//! expressible with the current Effect catalog. Only the draw is modeled.
+//! The draw is emitted; Clash and the conditional self-return are not
+//! modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw a card. Clash with an opponent. If you win, return Research the Deep to its owner's hand.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw a card. Clash with an opponent. If you win, return Research the Deep to its owner's hand.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,6 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Clash mechanic and conditional return to hand
+    // GAP: Clash and conditional self-return are not modeled.
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

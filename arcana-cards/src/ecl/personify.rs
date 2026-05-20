@@ -1,24 +1,25 @@
-//! Personify — `{1}{W}` instant. "Exile target creature you control, then return it to the
-//! battlefield under its owner's control. Create a 1/1 colorless Shapeshifter creature token
-//! with changeling."
+//! Personify — `{1}{W}` instant. "Exile target creature you control,
+//! then return that card to the battlefield under its owner's
+//! control. Create a 1/1 colorless Shapeshifter creature token with
+//! changeling."
 //!
-//! # GAP: ExilePermanent + ReturnFromGraveyardToBattlefield doesn't cleanly model
-//! "exile then return the same permanent to the battlefield" (zone-identity preserved).
-//! Partial: ExilePermanent + CreateToken Shapeshifter with Changeling keyword.
-//! ReturnFromGraveyardToBattlefield is omitted since the card is exiled (not in graveyard).
+//! The blink (exile-then-return-to-battlefield) has no single catalog
+//! Effect (DelayedAction return targets hand, not battlefield); the
+//! token half is emitted, the flicker is GAP'd.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Personify");
-    let _shapeshifter = reg.interner_mut().intern("Shapeshifter");
+    let _shape = reg.interner_mut().intern("Shapeshifter");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
@@ -26,34 +27,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    let _t: Vec<TargetRequirement> = vec![];
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature you control, then return it to the battlefield under its owner's control. Create a 1/1 colorless Shapeshifter creature token with changeling.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature you control, then return that card to the battlefield under its owner's control. Create a 1/1 colorless Shapeshifter creature token with changeling.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let shapeshifter = reg.interner().lookup("Shapeshifter")
-        .expect("Shapeshifter interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: exile-then-return-to-battlefield flicker has no catalog Effect.
+    let shape = reg.interner().lookup("Shapeshifter").expect("interned");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(shapeshifter);
+    subtypes.0.insert(shape);
     let token = TokenDefinition {
-        name: shapeshifter,
+        name: shape,
         colors: ColorSet::new(),
         types: TypeLine::CREATURE.into(),
         subtypes,
@@ -62,9 +53,5 @@ fn resolve(
         keywords: vec![KeywordAbility::Changeling],
         abilities: vec![],
     };
-    // GAP: "exile then return same permanent to battlefield" (not via graveyard) not in engine catalog
-    vec![
-        Effect::ExilePermanent { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
-    ]
+    vec![Effect::CreateToken { controller: entry.controller, token }]
 }

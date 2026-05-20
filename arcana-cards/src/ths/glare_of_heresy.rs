@@ -6,7 +6,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Exile target white permanent.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_colors(ColorSet::white()),
+                        ObjectFilter::permanent().with_colors(ColorSet::white()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

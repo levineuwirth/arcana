@@ -1,16 +1,6 @@
-//! Pistus Strike — `{2}{G}` Instant. "Destroy target creature with
-//! flying. That creature's controller gets a poison counter."
-//!
-//! # Implementation note
-//! DestroyPermanent is expressible. Poison counters on a player are
-//! modeled via CounterKind but there is no Effect variant for giving a
-//! counter to a player (AddCounters targets an ObjectId, not a
-//! PlayerId).
-//!
-//! # GAP
-//! No Effect for adding poison counter to a player (AddCounters targets
-//! objects, not players); targeting filter restricted to flying
-//! creatures not available.
+//! Pistus Strike — `{2}{G}` instant.
+//! "Destroy target creature with flying. Its controller gets a poison
+//! counter."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,26 +21,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with flying. That creature's controller gets a poison counter.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with flying. Its controller gets a poison counter.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        // GAP: no Effect for giving poison counter to a player
-        // GAP: target filter for flying creatures not available
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "Its controller gets a poison counter" has no catalog effect;
+    // the destroy is performed.
+    vec![Effect::DestroyPermanent { target: *id }]
 }

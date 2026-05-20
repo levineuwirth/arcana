@@ -1,5 +1,5 @@
-//! Dark Nourishment — `{4}{B}` instant, "Dark Nourishment deals 3 damage to
-//! any target. You gain 3 life."
+//! Dark Nourishment — `{4}{B}` instant. "Dark Nourishment deals 3 damage
+//! to any target. You gain 3 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -36,7 +36,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(target) = entry.targets.targets.first() else {
+        return vec![Effect::GainLife { player: entry.controller, amount: 3 }];
+    };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -46,11 +48,7 @@ fn resolve(
         },
     };
     vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: dt,
-            amount: 3,
-        },
+        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
         Effect::GainLife { player: entry.controller, amount: 3 },
     ]
 }

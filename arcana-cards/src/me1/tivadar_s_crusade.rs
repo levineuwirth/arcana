@@ -12,7 +12,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tivadar's Crusade");
-    let _goblin = reg.interner_mut().intern("Goblin");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}{W}").expect("valid cost")),
@@ -21,19 +20,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all Goblins.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all Goblins.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Goblin");
-    let ids = script::ids_matching(state, &filter, entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &script::subtype_filter(reg, "Goblin"),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

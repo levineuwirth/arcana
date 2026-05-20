@@ -1,9 +1,8 @@
-//! Feed the Swarm — `{1}{B}` sorcery, "Destroy target creature or
+//! Feed the Swarm — `{1}{B}` sorcery. "Destroy target creature or
 //! enchantment an opponent controls. You lose life equal to that
-//! permanent's mana value." Partial: DestroyPermanent expressed; lose
-//! life equal to mana value not in catalog.
-//!
-//! # GAP: LoseLife amount equal to target permanent's mana value not in catalog.
+//! permanent's mana value." We destroy the targeted opponent-
+//! controlled permanent; the life-loss-equal-to-its-mana-value rider
+//! has no script helper for a single permanent's CMC, so it is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -26,31 +26,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT),
-                        ),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: LoseLife amount equal to target's mana value not in catalog
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "you lose life equal to that permanent's mana value" — no
+    // script helper for a single permanent's CMC. Destroy emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

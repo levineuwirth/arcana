@@ -1,9 +1,6 @@
-//! Feral Lightning — `{3}{R}{R}{R}` sorcery. "Create three 3/1 red Elemental creature tokens
-//! with haste. Exile them at the beginning of the next end step."
-//!
-//! # GAP
-//! - No support for exiling tokens at the beginning of the next end step (delayed trigger)
-//! - Token creation is partial (omits the end-step exile)
+//! Feral Lightning — `{3}{R}{R}{R}` sorcery. "Create three 3/1 red
+//! Elemental creature tokens with haste. Exile them at the beginning of
+//! the next end step."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -24,13 +21,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 3/1 red Elemental creature tokens with haste. Exile them at the beginning of the next end step.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 3/1 red Elemental creature tokens with haste. \
+                   Exile them at the beginning of the next end step."
+                .into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,7 +37,9 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let elemental = reg.interner().lookup("Elemental")
+    let elemental = reg
+        .interner()
+        .lookup("Elemental")
         .expect("Elemental interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elemental);
@@ -53,7 +53,8 @@ fn resolve(
         keywords: vec![KeywordAbility::Haste],
         abilities: vec![],
     };
-    // GAP: exile tokens at beginning of next end step (delayed exile trigger not in catalog)
+    // GAP: cannot schedule delayed exile of freshly created tokens (token
+    // ids are not available to a DelayedAction).
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token: token.clone() },

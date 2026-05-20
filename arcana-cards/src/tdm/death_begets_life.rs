@@ -1,15 +1,10 @@
-//! Death Begets Life — `{5}{B}{G}{U}` sorcery. "Destroy all creatures and
-//! enchantments. Draw a card for each permanent destroyed this way."
-//!
-//! GAP: drawing a card for each permanent destroyed requires tracking the
-//! count of successful destructions at resolution time, which is not
-//! expressible (ForEach executes effects but does not count surviving vs.
-//! indestructible permanents). Best effort: destroy all creatures and
-//! enchantments, then draw based on the pre-wipe count.
+//! Death Begets Life — `{5}{B}{G}{U}` sorcery. "Destroy all creatures
+//! and enchantments. Draw a card for each permanent destroyed this
+//! way."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -21,19 +16,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Death Begets Life");
     let chars = Characteristics {
         name,
-        mana_cost: Some(ManaCost::parse("{5}{B}{G}{U}").expect("valid cost")),
+        mana_cost: Some(
+            ManaCost::parse("{5}{B}{G}{U}").expect("valid cost"),
+        ),
         colors: ColorSet::black() | ColorSet::green() | ColorSet::blue(),
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures and enchantments. Draw a card for each permanent destroyed this way.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures and enchantments. Draw a card for each permanent destroyed this way.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,24 +38,26 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let enchantment_ids = script::ids_matching(
+    let creatures = script::ids_matching(
         state,
-        &ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+        &ObjectFilter::creature(),
         entry.controller,
     );
-    // Count before destruction for draw (best-effort; doesn't account for
-    // indestructible permanents surviving).
-    let total = (creature_ids.len() + enchantment_ids.len()) as u32;
-    let mut effects: Vec<Effect> = Vec::new();
-    for id in creature_ids {
-        effects.push(Effect::DestroyPermanent { target: id });
-    }
-    for id in enchantment_ids {
-        effects.push(Effect::DestroyPermanent { target: id });
-    }
-    if total > 0 {
-        effects.push(Effect::DrawCards { player: entry.controller, count: total });
-    }
-    effects
+    let enchantments = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
+        entry.controller,
+    );
+    let n = (creatures.len() + enchantments.len()) as u32;
+    let mut targets = creatures;
+    targets.extend(enchantments);
+    vec![
+        Effect::ForEach {
+            targets,
+            effect: Box::new(Effect::DestroyPermanent {
+                target: NULL_OBJECT_ID,
+            }),
+        },
+        Effect::DrawCards { player: entry.controller, count: n },
+    ]
 }

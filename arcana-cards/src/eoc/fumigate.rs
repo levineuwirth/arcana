@@ -1,10 +1,11 @@
-//! Fumigate — `{3}{W}{W}` sorcery. "Destroy all creatures. You gain 1 life for
-//! each creature destroyed this way."
+//! Fumigate — `{3}{W}{W}` sorcery.
+//! "Destroy all creatures. You gain 1 life for each creature destroyed this way."
 //!
-//! # GAP: "gain 1 life for each creature destroyed this way" — life total equal
-//! to number of permanents destroyed by this specific spell cannot be tracked
-//! mid-resolution. Best effort: count matching creatures pre-destroy with
-//! `script::count_matching`, then ForEach DestroyPermanent, then GainLife(count).
+//! GAP: "gain 1 life for each creature destroyed this way" — requires counting
+//! how many permanents were actually destroyed by this resolution step. The
+//! script helper script::count_matching can count current board creatures but
+//! we must count BEFORE the ForEach destroys them, then gain life.
+//! Approach: count creatures first, then destroy all, then gain life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +14,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ObjectFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,19 +42,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let all_creatures = script::ids_matching(
-        state,
-        &ObjectFilter::creature(),
-        entry.controller,
-    );
-    // GAP: life count approximated as pre-destroy creature count, not post-destroy
-    let count = all_creatures.len() as u32;
-    let mut effects: Vec<Effect> = vec![Effect::ForEach {
-        targets: all_creatures,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }];
-    if count > 0 {
-        effects.push(Effect::GainLife { player: entry.controller, amount: count });
-    }
-    effects
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let count = ids.len() as u32;
+    vec![
+        Effect::ForEach {
+            targets: ids,
+            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        },
+        Effect::GainLife { player: entry.controller, amount: count },
+    ]
 }

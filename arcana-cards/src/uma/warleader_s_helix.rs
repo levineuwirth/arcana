@@ -1,5 +1,5 @@
-//! Warleader's Helix — `{2}{R}{W}` instant.
-//! "Warleader's Helix deals 4 damage to any target and you gain 4 life."
+//! Warleader's Helix — `{2}{R}{W}` instant, "Warleader's Helix deals 4
+//! damage to any target and you gain 4 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -46,7 +46,11 @@ fn resolve(
         },
     };
     vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 4 },
+        Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 4,
+        },
         Effect::GainLife { player: entry.controller, amount: 4 },
     ]
 }

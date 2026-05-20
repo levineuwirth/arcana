@@ -1,8 +1,6 @@
-//! Cycle of Renewal — `{2}{G}` instant (Lesson).
-//! "Sacrifice a land. Search your library for up to two basic land cards, put
-//! them onto the battlefield tapped, then shuffle."
-//! GAP: sacrifice a land as additional cost; TutorToBattlefield with tapped=true
-//! and UpTo(2) basic lands; no Effect variant for 'enters tapped' on tutor.
+//! Cycle of Renewal — `{2}{G}` instant — Lesson. "Sacrifice a land.
+//! Search your library for up to two basic land cards, put them onto
+//! the battlefield tapped, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,28 +21,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: sacrifice a land as additional cost; fetch up to 2 basic lands tapped;
-    // TutorToBattlefield only supports single fetch and tapped=false for lands.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
+        Effect::Sacrifice {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            count: 1,
+        },
         Effect::TutorToBattlefield {
             player: entry.controller,
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: false,
+            tapped: true,
+        },
+        Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: true,
         },
     ]
 }

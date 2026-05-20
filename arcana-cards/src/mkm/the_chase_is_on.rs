@@ -1,8 +1,5 @@
-//! The Chase Is On — `{2}{R}` instant.
-//! "Target creature gets +3/+0 and gains first strike until end of turn. Investigate."
-//!
-//! # GAP: Investigate — no Effect variant for the Investigate mechanic (create a Clue artifact
-//! token with "{2}, Sacrifice this token: Draw a card").
+//! The Chase Is On — `{2}{R}` instant. "Target creature gets +3/+0 and
+//! gains first strike until end of turn. Investigate."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -24,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +3/+0 and gains first strike until end of turn. Investigate.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +3/+0 and gains first strike until end of turn. Investigate.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,7 +37,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Investigate — no Effect variant for creating a Clue token.
+    // GAP: Investigate (create a Clue token with an activated ability)
+    // — no catalog effect for tokens carrying abilities; only the pump
+    // is implemented.
     vec![Effect::Pump {
         target: *id,
         power: 3,

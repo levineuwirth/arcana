@@ -1,14 +1,6 @@
-//! Tragic Lesson — `{2}{U}` Instant. "Draw two cards. Then discard a
-//! card unless you return a land you control to its owner's hand."
-//!
-//! # Implementation note
-//! DrawCards 2 is expressible. The "unless return a land" conditional
-//! discard (player chooses to bounce a land or discard instead) is not
-//! expressible without a player-choice conditional.
-//!
-//! # GAP
-//! "Discard unless return a land to hand" (player-choice conditional)
-//! not in Effect catalog.
+//! Tragic Lesson — `{2}{U}` instant.
+//! "Draw two cards. Then discard a card unless you return a land you
+//! control to its owner's hand."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -28,23 +20,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw two cards. Then discard a card unless you return a land you control to its owner's hand.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw two cards. Then discard a card unless you return a land you control to its owner's hand.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // The "discard unless you bounce a land" choice has no catalog
+    // representation; the draw plus discard branch is applied.
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
-        // GAP: "discard unless return a land" player-choice conditional not expressible
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

@@ -1,5 +1,5 @@
-//! Alesha's Legacy — `{1}{B}` instant, "Target creature gains deathtouch and
-//! indestructible until end of turn."
+//! Alesha's Legacy — `{1}{B}` instant. "Target creature you control
+//! gains deathtouch and indestructible until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -23,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gains deathtouch and indestructible until end of turn.".into(),
+                text: "Target creature you control gains deathtouch and indestructible until end of turn.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

@@ -1,7 +1,8 @@
-//! Patriar's Humiliation — `{W}` instant.
-//! "Target creature perpetually loses all abilities, then Patriar's Humiliation
-//! deals damage to it equal to the number of creatures you control."
-//! GAP: perpetual loss of all abilities (permanent ability-stripping across zone changes)
+//! Patriar's Humiliation — `{W}` instant. "Target creature
+//! perpetually loses all abilities, then Patriar's Humiliation deals
+//! damage to it equal to the number of creatures you control." The
+//! perpetual ability-stripping has no catalog primitive; the dynamic
+//! damage (equal to creatures you control) is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature perpetually loses all abilities, then Patriar's Humiliation deals damage to it equal to the number of creatures you control.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature perpetually loses all abilities, then Patriar's Humiliation deals damage to it equal to the number of creatures you control.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,7 +46,9 @@ fn resolve(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    // GAP: perpetual loss of all abilities (not expressible with current engine)
+    // GAP: "perpetually loses all abilities" — perpetual ability
+    // removal has no catalog primitive; only the damage clause is
+    // emitted.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

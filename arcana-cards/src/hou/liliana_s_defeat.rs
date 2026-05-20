@@ -1,10 +1,9 @@
-//! Liliana's Defeat — `{B}` sorcery. "Destroy target black creature or black
-//! planeswalker. If that permanent was a Liliana planeswalker, her controller
-//! loses 3 life."
+//! Liliana's Defeat — `{B}` sorcery. "Destroy target black creature or
+//! black planeswalker. If that permanent was a Liliana planeswalker, her
+//! controller loses 3 life."
 //!
-//! # GAP: TargetBlackCreatureOrPlaneswalker — TargetFilter has no planeswalker variant
-//! # GAP: ConditionalLoseLife (if was a named planeswalker) — no Effect::Conditional
-//!   with subtype check
+//! GAP: target restricted to black creature (no planeswalker target
+//! filter); the Liliana life-loss rider is not modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +29,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target black creature or black planeswalker. If that permanent was a Liliana planeswalker, her controller loses 3 life.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_colors(ColorSet::black()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -40,9 +47,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: TargetBlackCreatureOrPlaneswalker — no TargetFilter for black creature-or-planeswalker
-    // GAP: ConditionalLoseLife (if was a Liliana planeswalker) — no Conditional subtype check
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: Liliana-planeswalker controller loses 3 life rider not modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

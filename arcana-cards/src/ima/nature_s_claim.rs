@@ -1,10 +1,5 @@
-//! Nature's Claim — `{G}` instant. "Destroy target artifact or enchantment.
-//! Its controller gains 4 life."
-//!
-//! GAP: "Its controller gains 4 life" — life gain goes to the target's
-//! controller, not the spell's controller. Controller-of-target lookup
-//! is not available via script helpers; life gain is emitted for
-//! entry.controller as best effort.
+//! Nature's Claim — `{G}` instant. "Destroy target artifact or
+//! enchantment. Its controller gains 4 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,32 +22,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact or enchantment. Its controller gains 4 life.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT))
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact or enchantment. Its controller gains 4 life.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::new().with_types_any(
+                    TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT).into(),
+                )),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: cannot resolve the destroyed permanent's controller into a
+    // PlayerId for the 4-life gain; emitting only the destroy.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: life gain goes to the target's controller, not entry.controller; controller lookup unavailable
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        Effect::GainLife { player: entry.controller, amount: 4 },
-    ]
+    vec![Effect::DestroyPermanent { target: *id }]
 }

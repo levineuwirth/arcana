@@ -1,5 +1,5 @@
-//! Ritual of Soot — `{2}{B}{B}` sorcery. "Destroy all creatures with mana
-//! value 3 or less."
+//! Ritual of Soot — `{2}{B}{B}` sorcery.
+//! "Destroy all creatures with mana value 3 or less."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

@@ -1,6 +1,5 @@
-//! Feeding Frenzy — `{2}{B}` instant.
-//! "Target creature gets -X/-X until end of turn, where X is the number of
-//! Zombies on the battlefield."
+//! Feeding Frenzy — `{2}{B}` instant. "Target creature gets -X/-X until end
+//! of turn, where X is the number of Zombies on the battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -15,7 +14,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Feeding Frenzy");
-    let _zombie = reg.interner_mut().intern("Zombie");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{B}").expect("valid cost")),
@@ -41,8 +39,11 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let zombie_filter = script::subtype_filter(reg, "Zombie");
-    let x = script::count_matching(state, &zombie_filter, entry.controller) as i32;
+    let x = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Zombie"),
+        entry.controller,
+    ) as i32;
     vec![Effect::Pump {
         target: *id,
         power: -x,

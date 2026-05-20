@@ -1,5 +1,5 @@
-//! Flame Lash — `{3}{R}` instant.
-//! "Flame Lash deals 4 damage to any target."
+//! Flame Lash — `{3}{R}` instant. "Flame Lash deals 4 damage to any
+//! target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Flame Lash deals 4 damage to any target.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Flame Lash deals 4 damage to any target.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
