@@ -1,10 +1,8 @@
-//! Ultimate Price — `{1}{B}` instant.
-//! "Destroy target monocolored creature."
+//! Ultimate Price — `{1}{B}` instant. "Destroy target monocolored
+//! creature."
 //!
-//! GAP: TargetFilter / ObjectFilter does not expose a "monocolored" predicate
-//! (exactly one color). The best approximation would be checking without_colors
-//! for each non-target color, which is not equivalent to monocolored. Emitted
-//! as an unfiltered creature target with a GAP note.
+//! "Monocolored" is not expressible as an ObjectFilter refinement —
+//! modeled as destroy target creature, with the restriction a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target monocolored creature.".into(),
-                // GAP: no ObjectFilter predicate for "monocolored" (exactly one color).
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target monocolored creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: the "monocolored" restriction on the target is not
+    // expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

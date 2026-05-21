@@ -1,10 +1,8 @@
 //! Addle — `{1}{B}` sorcery. "Choose a color. Target player reveals
-//! their hand and you choose a card of that color from it. That
-//! player discards that card."
-//!
-//! The color choice and the reveal-then-pick are not expressible;
-//! the closest catalog effect is a controller-chosen discard by the
-//! target player.
+//! their hand and you choose a card of that color from it. That player
+//! discards that card." Color choice + reveal + you-choose-a-card is
+//! not in the discard primitive; best effort is a controller-chooses
+//! discard of one card, and GAP the color-restricted you-choose part.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -25,23 +23,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Choose a color. Target player reveals their hand and you choose a card of that color from it. That player discards that card.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Choose a color. Target player reveals their hand and you choose a card of that color from it. That player discards that card.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: choose-color + reveal + spell-controller picks the card not modeled; using OpponentChooses fallback to "discard one card".
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: no "choose a color" + reveal-hand pick; approximated as a
-    // single controller-chosen discard by the target player.
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::ControllerChooses,
+        choice: DiscardChoice::OpponentChooses,
     }]
 }

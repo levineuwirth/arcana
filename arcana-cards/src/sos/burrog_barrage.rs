@@ -1,11 +1,10 @@
-//! Burrog Barrage — `{1}{G}` instant, "Target creature you control
-//! gets +1/+0 until end of turn if you've cast another instant or
-//! sorcery spell this turn. Then it deals damage equal to its power
-//! to up to one target creature an opponent controls."
+//! Burrog Barrage — `{1}{G}` instant. "Target creature you control gets +1/+0
+//! until end of turn if you've cast another instant or sorcery spell this
+//! turn. Then it deals damage equal to its power to up to one target creature
+//! an opponent controls."
 //!
-//! The "deals damage equal to its power" part is applied. GAP: "if
-//! you've cast another instant or sorcery this turn" cast-history
-//! condition is not scriptable, so the conditional +1/+0 is omitted.
+//! 'Cast another instant or sorcery this turn' history flag isn't in script::.
+//! GAP the conditional pump; emit the fight half (damage equal to power).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -31,39 +30,49 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control gets +1/+0 until end of turn if you've cast another instant or sorcery spell this turn. Then it deals damage equal to its power to up to one target creature an opponent controls.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature you control gets +1/+0 until end of turn if you've cast another instant or sorcery spell this turn. Then it deals damage equal to its power to up to one target creature an opponent controls.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::UpTo(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: conditional +1/+0 (cast-history condition) omitted.
-    let mut ts = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(src)) = ts.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(victim)) = ts.next() else { return Vec::new(); };
-    let amount = script::power_of(state, *src).max(0) as u32;
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*victim),
-        amount,
-    }]
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let targets = &entry.targets.targets;
+    let Some(t0) = targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(a) = t0 else { return Vec::new(); };
+    // GAP: 'have cast another instant/sorcery this turn' history flag → omit pump.
+    let mut effects: Vec<Effect> = Vec::new();
+    if let Some(TargetChoice::Object(b)) = targets.get(1) {
+        let dmg = script::power_of(state, *a).max(0) as u32;
+        effects.push(Effect::DealDamage {
+            source: *a,
+            target: DamageTarget::Object(*b),
+            amount: dmg,
+        });
+    }
+    effects
 }

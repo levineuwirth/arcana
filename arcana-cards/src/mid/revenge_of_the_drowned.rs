@@ -2,11 +2,6 @@
 //! owner puts it on their choice of the top or bottom of their
 //! library. You create a 2/2 black Zombie creature token with
 //! decayed."
-//!
-//! The owner's top-or-bottom choice is not expressible; we put the
-//! target on top of its owner's library. The decayed keyword is not
-//! in the catalog keyword surface, so the token is created without
-//! it.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -19,7 +14,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Revenge of the Drowned");
-    let _z = reg.interner_mut().intern("Zombie");
+    let _zombie = reg.interner_mut().intern("Zombie");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{U}").expect("valid cost")),
@@ -28,24 +23,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature's owner puts it on their choice of the top or bottom of their library. You create a 2/2 black Zombie creature token with decayed.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature's owner puts it on their choice of the \
+                       top or bottom of their library. You create a 2/2 \
+                       black Zombie creature token with decayed.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let z = reg.interner().lookup("Zombie").expect("Zombie interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(z);
+    subtypes.0.insert(zombie);
+    // GAP: "decayed" is not an expressible keyword; the token is made
+    // without it.
     let token = TokenDefinition {
-        name: z,
+        name: zombie,
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
@@ -54,13 +55,12 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: owner's top-or-bottom choice not expressible (top used);
-    // decayed keyword not in catalog surface.
-    vec![
-        Effect::PutOnTopOfLibrary { target: *id },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
-    ]
+    let mut effects = Vec::new();
+    // GAP: "owner's choice of top or bottom" — emit a fixed
+    // put-on-top-of-library instead.
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::PutOnTopOfLibrary { target: *id });
+    }
+    effects.push(Effect::CreateToken { controller: entry.controller, token });
+    effects
 }

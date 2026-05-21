@@ -1,6 +1,5 @@
-//! Hidetsugu's Second Rite — `{3}{R}` instant, "If target player has
-//! exactly 10 life, Hidetsugu's Second Rite deals 10 damage to that
-//! player."
+//! Hidetsugu's Second Rite — `{3}{R}` instant. If target player has exactly
+//! 10 life, deals 10 damage to that player.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,10 +39,11 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    if script::life(state, *p) == 10 {
+    let p = *p;
+    if script::life(state, p) == 10 {
         vec![Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Player(*p),
+            target: DamageTarget::Player(p),
             amount: 10,
         }]
     } else {

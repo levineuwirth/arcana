@@ -1,6 +1,6 @@
 //! Feedback Bolt — `{4}{R}` instant. "Feedback Bolt deals damage to
-//! target player or planeswalker equal to the number of artifacts you
-//! control."
+//! target player or planeswalker equal to the number of artifacts
+//! you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -11,8 +11,7 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice,
-    TargetRequirement,
+    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -28,28 +27,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Feedback Bolt deals damage to target player or planeswalker equal to the number of artifacts you control.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
+            // No "player or planeswalker" combined filter — use the
+            // any-target requirement which covers both.
+            target_requirements: vec![TargetRequirement::any_target()],
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let dt = match target {
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
             ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    let n = script::count_matching(
+    let amount = script::count_matching(
         state,
         &ObjectFilter::permanent()
             .with_types(TypeLine::ARTIFACT.into())
@@ -59,6 +58,6 @@ fn resolve(
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,
-        amount: n,
+        amount,
     }]
 }

@@ -1,5 +1,5 @@
-//! Spidery Grasp — `{2}{G}` instant. "Untap target creature. It gets +2/+4
-//! and gains reach until end of turn."
+//! Spidery Grasp — `{2}{G}` instant. "Untap target creature. It gets
+//! +2/+4 and gains reach until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Untap target creature. It gets +2/+4 and gains reach until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Untap target creature. It gets +2/+4 and gains reach until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

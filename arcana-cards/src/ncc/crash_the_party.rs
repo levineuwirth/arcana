@@ -1,5 +1,6 @@
 //! Crash the Party — `{5}{G}` instant. "Create a tapped 4/4 green
-//! Rhino Warrior creature token for each tapped creature you control."
+//! Rhino Warrior creature token for each tapped creature you
+//! control."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -32,9 +33,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let rhino = reg.interner().lookup("Rhino").expect("interned");
-    let warrior = reg.interner().lookup("Warrior").expect("interned");
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let n = script::count_matching(
         state,
         &ObjectFilter::creature()
@@ -42,6 +45,8 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
             .tapped_only(),
         entry.controller,
     );
+    let rhino = reg.interner().lookup("Rhino").expect("Rhino interned");
+    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(rhino);
     subtypes.0.insert(warrior);
@@ -55,12 +60,12 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
         keywords: vec![],
         abilities: vec![],
     };
-    // The created tokens should be tapped; TokenDefinition has no
-    // tapped flag, so they enter untapped.
     (0..n)
         .map(|_| Effect::CreateToken {
             controller: entry.controller,
             token: token.clone(),
         })
         .collect()
+    // GAP: "tapped" — TokenDefinition has no entered-tapped flag, so
+    // the created tokens enter untapped.
 }

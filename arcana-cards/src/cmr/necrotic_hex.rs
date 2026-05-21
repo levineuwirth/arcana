@@ -1,10 +1,5 @@
-//! Necrotic Hex — `{6}{B}` sorcery. "Each player sacrifices six
-//! creatures of their choice. You create six tapped 2/2 black Zombie
-//! creature tokens."
-//!
-//! TokenDefinition has no tapped flag; the tokens enter untapped
-//! (the "tapped" rider is a minor GAP). Per-player sacrifice and the
-//! six tokens are emitted.
+//! Necrotic Hex — `{6}{B}` sorcery. "Each player sacrifices six creatures of
+//! their choice. You create six tapped 2/2 black Zombie creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -18,7 +13,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Necrotic Hex");
-    let _z = reg.interner_mut().intern("Zombie");
+    let _zombie = reg.interner_mut().intern("Zombie");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{6}{B}").expect("valid cost")),
@@ -27,12 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player sacrifices six creatures of their choice. You create six tapped 2/2 black Zombie creature tokens.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player sacrifices six creatures of their choice. You create six tapped 2/2 black Zombie creature tokens.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -41,14 +37,16 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let z = reg
-        .interner()
-        .lookup("Zombie")
-        .expect("Zombie interned during register()");
+    let mut effects = Vec::new();
+    for p in script::all_players(state) {
+        effects.push(Effect::Sacrifice { player: p, filter: ObjectFilter::creature(), count: 6 });
+    }
+    let zombie = reg.interner().lookup("Zombie").expect("interned");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(z);
+    subtypes.0.insert(zombie);
+    // Note: tokens are created untapped — CreateToken has no "tapped" flag.
     let token = TokenDefinition {
-        name: z,
+        name: zombie,
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
@@ -57,20 +55,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    let mut out = Vec::new();
-    for p in script::all_players(state) {
-        out.push(Effect::Sacrifice {
-            player: p,
-            filter: ObjectFilter::creature(),
-            count: 6,
-        });
-    }
-    // GAP: TokenDefinition has no tapped flag; tokens enter untapped.
     for _ in 0..6 {
-        out.push(Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        });
+        effects.push(Effect::CreateToken { controller: entry.controller, token: token.clone() });
     }
-    out
+    effects
 }

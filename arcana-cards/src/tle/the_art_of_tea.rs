@@ -1,11 +1,9 @@
-//! The Art of Tea — `{1}{G}` instant. "Put a +1/+1 counter on up to
-//! one target creature you control. Create a Food token."
-//!
-//! The Food token's activated ability ("{2}, {T}, Sacrifice: gain 3
-//! life") is not modeled — the token is created as an artifact named
-//! Food with the Food subtype only.
+//! The Art of Tea — `{1}{G}` instant — Lesson. "Put a +1/+1 counter on
+//! up to one target creature you control. Create a Food token." The
+//! Food token's activated ability isn't expressible — token emitted
+//! without it.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -16,7 +14,6 @@ use arcana_core::targets::{
     TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
-use arcana_core::effects::TokenDefinition;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("The Art of Tea");
@@ -29,45 +26,52 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Put a +1/+1 counter on up to one target creature you control. Create a Food token.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                ),
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Put a +1/+1 counter on up to one target creature you control. Create a Food token.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let food = reg.interner().lookup("Food").expect("interned");
-    let mut out = Vec::new();
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let food = reg.interner().lookup("Food").expect("Food interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(food);
+    let token = TokenDefinition {
+        name: food,
+        colors: ColorSet::new(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
+    let mut effects = Vec::new();
     if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::AddCounters {
+        effects.push(Effect::AddCounters {
             target: *id,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         });
     }
-    let mut sub = SubtypeSet::default();
-    sub.0.insert(food);
-    out.push(Effect::CreateToken {
+    // GAP: Food token's tap-sac activated ability isn't expressible in TokenDefinition.
+    effects.push(Effect::CreateToken {
         controller: entry.controller,
-        token: TokenDefinition {
-            name: food,
-            colors: ColorSet::new(),
-            types: TypeLine::ARTIFACT.into(),
-            subtypes: sub,
-            power: None,
-            toughness: None,
-            keywords: vec![],
-            abilities: vec![],
-        },
+        token,
     });
-    out
+    effects
 }

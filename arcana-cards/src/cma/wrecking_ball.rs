@@ -26,7 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target creature or land.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types_any(TypeLine::LAND.into()),
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::LAND)),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,

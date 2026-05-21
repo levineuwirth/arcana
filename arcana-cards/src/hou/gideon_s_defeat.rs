@@ -1,10 +1,6 @@
 //! Gideon's Defeat — `{W}` instant. "Exile target white creature
-//! that's attacking or blocking. If it was a Gideon planeswalker, you
-//! gain 5 life."
-//!
-//! Note: the attacking/blocking restriction and the Gideon-
-//! planeswalker lifegain clause are not expressible; modelled as
-//! exile target white creature.
+//! that's attacking or blocking. If it was a Gideon planeswalker,
+//! you gain 5 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,6 +15,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Gideon's Defeat");
+    let _gideon = reg.interner_mut().intern("Gideon");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),
@@ -42,10 +39,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: Gideon-planeswalker lifegain clause not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "attacking or blocking" filter; "was a Gideon
+    // planeswalker" tribal-conditional life gain. Emit the exile.
     vec![Effect::ExilePermanent { target: *id }]
 }

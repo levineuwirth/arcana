@@ -1,8 +1,5 @@
 //! Befoul — `{2}{B}{B}` sorcery. "Destroy target land or nonblack
 //! creature. It can't be regenerated."
-//!
-//! The composite "land OR nonblack creature" filter is not
-//! expressible; we use the nonblack-creature portion.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,26 +22,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target land or nonblack creature. It can't be regenerated.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().without_colors(ColorSet::black()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target land or nonblack creature. It can't be \
+                       regenerated.".into(),
+                // GAP: cannot express the disjunctive "land OR nonblack
+                // creature" target; restrict the target to lands.
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "land OR nonblack creature" composite target not
-    // expressible; nonblack-creature portion used.
     vec![Effect::DestroyPermanent { target: *id }]
 }

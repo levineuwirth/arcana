@@ -1,10 +1,6 @@
 //! Blazing Salvo — `{R}` instant. "Blazing Salvo deals 3 damage to
 //! target creature unless that creature's controller has Blazing
 //! Salvo deal 5 damage to them."
-//!
-//! GAP note: the "unless that creature's controller has it deal 5 to
-//! them" player-choice redirection is not expressible; the
-//! straightforward 3-damage-to-creature half is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -35,12 +31,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "unless controller has it deal 5 to them instead" choice
-    // redirection not expressible; emitting the base 3-damage mode.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "unless that creature's controller chooses to redirect to
+    // themselves" — no player-elects-redirect primitive. Emit the
+    // primary damage branch.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

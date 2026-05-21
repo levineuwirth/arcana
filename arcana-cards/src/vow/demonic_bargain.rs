@@ -21,12 +21,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile the top thirteen cards of your library, then search your library for a card. Put that card into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "exile the top thirteen cards of your library" —
+                // no Effect variant exiles from the top of the library
+                // (Mill goes to graveyard, not exile). Only the tutor
+                // is emitted.
+                text: "Search your library for a card. Put that card into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -35,8 +40,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no "exile the top N cards of library" effect; only the
-    // tutor-to-hand is modeled.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::default(),

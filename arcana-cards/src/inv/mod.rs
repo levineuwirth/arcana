@@ -8,3 +8,4 @@ pub mod plague_spores;
 pub mod simoon;
 pub mod tsabo_s_decree;
 pub mod scouting_trek;
+pub mod backlash;

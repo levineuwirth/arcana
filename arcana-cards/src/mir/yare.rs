@@ -1,10 +1,7 @@
-//! Yare — `{2}{W}` instant. "Target creature defending player
-//! controls gets +3/+0 until end of turn. That creature can block up
-//! to two additional creatures this turn."
-//!
-//! No "defending player controls" target refinement; targets any
-//! creature for the pump. The extra-blockers rider has no catalog
-//! Effect (GAP'd).
+//! Yare — `{2}{W}` instant. "Target creature defending player controls
+//! gets +3/+0 until end of turn. That creature can block up to two
+//! additional creatures this turn." The defending-player target filter
+//! and the multi-block grant are not in the catalog; pump the bones.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,18 +23,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature defending player controls gets +3/+0 until end of turn. That creature can block up to two additional creatures this turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature defending player controls gets +3/+0 until end of turn. That creature can block up to two additional creatures this turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "can block up to two additional creatures" has no catalog Effect.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'defending player controls' target restriction;
+    // 'block up to N additional creatures' grant.
     vec![Effect::Pump {
         target: *id,
         power: 3,

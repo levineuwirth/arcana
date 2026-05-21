@@ -2,9 +2,9 @@
 //! the battlefield and all creature cards in graveyards to their
 //! owners' hands."
 //!
-//! GAP: graveyard-card ReturnToHand path is per-card-target only,
-//! and we cannot enumerate every graveyard's creature cards from
-//! the script helpers. The battlefield sweep is modeled.
+//! The board-wide creature bounce is expressed via ForEach. Returning
+//! creature cards from graveyards is not expressible as a board-wide
+//! effect — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,8 +36,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: returning creature cards from graveyards is not expressible.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: bouncing creature cards from every graveyard.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

@@ -1,10 +1,11 @@
 //! Bontu's Last Reckoning — `{1}{B}{B}` sorcery. "Destroy all
 //! creatures. Lands you control don't untap during your next untap
-//! step."
+//! step." The land-skip-untap rider isn't in the catalog; we emit the
+//! wipe and GAP the rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -22,21 +23,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all creatures. Lands you control don't untap during your next untap step.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all creatures. Lands you control don't untap during your next untap step.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "lands don't untap next untap step" delayed restriction is
-    // not expressible; emit the board wipe.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'lands you control don't untap next untap step' delayed
+    // restriction not in catalog.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }]
+    ids.into_iter().map(|id| Effect::DestroyPermanent { target: id }).collect()
 }

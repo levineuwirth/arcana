@@ -1,7 +1,7 @@
 //! Fumble — `{1}{U}` instant. "Return target creature to its owner's hand.
 //! Gain control of all Auras and Equipment that were attached to it, then
-//! attach them to another creature." We emit the bounce; no Effect variant
-//! for "gain control of attached Auras/Equipment and re-attach". GAP that.
+//! attach them to another creature." Only the creature bounce is
+//! expressible; the Aura/Equipment migration is gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +32,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: no Effect for "steal attached Auras/Equipment and re-attach them to another creature".
+    // GAP: gaining control of attached Auras/Equipment and re-attaching them is
+    // not expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ReturnToHand { target: *id }]
 }

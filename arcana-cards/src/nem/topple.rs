@@ -1,10 +1,5 @@
-//! Topple — `{2}{W}` sorcery, "Exile target creature with the greatest
-//! power among creatures on the battlefield."
-//!
-//! GAP: the "with the greatest power among creatures on the
-//! battlefield" targeting restriction cannot be expressed as an
-//! ObjectFilter (no relative-max-power constraint); modeled as exiling
-//! a target creature.
+//! Topple — `{2}{W}` sorcery. Exile target creature with the greatest power
+//! among creatures on the battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +35,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "greatest power" target restriction can't be expressed in
+    // ObjectFilter. Exile any creature.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]

@@ -20,27 +20,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw a card, then you gain life equal to the number of cards in your hand.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw a card, then you gain life equal to the number of cards in your hand.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The life gained counts the hand *after* the draw; resolver reads
-    // live state pre-effect, so add 1 for the card about to be drawn.
-    let after_draw = script::hand_size(state, entry.controller) + 1;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // Hand size is measured AFTER the draw; the catalog has no 'snapshot
+    // post-draw' helper but the resolver runs after sequencing in engine.
+    // We compute it pre-draw + 1 to model the post-draw count.
+    let hand = script::hand_size(state, entry.controller);
+    let post_draw_hand = hand + 1;
     vec![
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 1,
-        },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: after_draw,
-        },
+        Effect::DrawCards { player: entry.controller, count: 1 },
+        Effect::GainLife { player: entry.controller, amount: post_draw_hand },
     ]
 }

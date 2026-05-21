@@ -1,8 +1,8 @@
 //! String of Disappearances — `{U}` instant. "Return target creature
 //! to its owner's hand. Then that creature's controller may pay
 //! {U}{U}. If the player does, they may copy this spell and may
-//! choose a new target for that copy." The optional copy chain is not
-//! expressible; only the bounce is emitted.
+//! choose a new target for that copy." Optional copy on opponent
+//! payment is not in catalog; we emit the bounce.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +39,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: optional pay-{U}{U}-to-copy-this-spell chain is not
-    // expressible with the catalog.
+    // GAP: optional pay-{U}{U} copy-with-new-target chain not in catalog.
     vec![Effect::ReturnToHand { target: *id }]
 }

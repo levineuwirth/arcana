@@ -2,8 +2,7 @@
 //! starting with the next opponent in turn order, each opponent
 //! chooses a creature card in your graveyard that hasn't been chosen.
 //! Return each card chosen this way to the battlefield under your
-//! control." The opponent-chooses-from-your-graveyard reanimation has
-//! no primitive; the mill is emitted.
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,7 +32,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: opponent-chooses-card-from-your-graveyard reanimation has no
-    // primitive (no targeted card-in-graveyard chooser per opponent).
-    vec![Effect::Mill { player: entry.controller, count: 3 }]
+    // GAP: no Effect lets each opponent choose a creature card from your
+    // graveyard to return; only the mill is expressible.
+    vec![Effect::Mill {
+        player: entry.controller,
+        count: 3,
+    }]
 }

@@ -23,3 +23,5 @@ pub mod culling_ritual;
 pub mod ceaseless_conflict;
 pub mod swords_to_plowshares;
 pub mod deadly_brew;
+pub mod winds_of_rath;
+pub mod mana_geyser;

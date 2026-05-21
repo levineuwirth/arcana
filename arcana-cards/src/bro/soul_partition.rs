@@ -1,6 +1,6 @@
-//! Soul Partition — `{1}{W}` instant. "Exile target nonland permanent.
-//! For as long as that card remains exiled, its owner may play it. A
-//! spell cast by an opponent this way costs {2} more."
+//! Soul Partition — `{1}{W}` instant. "Exile target nonland
+//! permanent. For as long as that card remains exiled, its owner may
+//! play it. A spell cast by an opponent this way costs {2} more."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,8 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Exile target nonland permanent. For as long as that card remains exiled, its owner may play it. A spell cast by an opponent this way costs {2} more to cast.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .without_types(TypeLine::LAND.into()),
+                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -39,14 +38,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The play-from-exile permission with tax has no catalog effect;
-    // only the exile is implemented.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the "owner may play it from exile, with a {2} tax for
+    // opponents" rider has no catalog primitive — only the exile is
+    // emitted.
     vec![Effect::ExilePermanent { target: *id }]
 }

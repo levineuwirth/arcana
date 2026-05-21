@@ -1,8 +1,7 @@
 //! Midnight Tilling — `{1}{G}` instant. "Mill four cards, then you
 //! may return a permanent card from among them to your hand."
-//!
-//! The optional return of a permanent card from among the milled
-//! cards has no catalog effect; only the mill is emitted.
+//! Express the mill; GAP the 'return one from among' (no
+//! return-from-the-just-milled primitive).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,17 +21,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Mill four cards, then you may return a permanent card from among them to your hand.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Mill four cards, then you may return a permanent card from among them to your hand.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: optional return of a permanent card from among the milled
-    // cards is not in the effect catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'return one of the just-milled cards' rider.
     vec![Effect::Mill { player: entry.controller, count: 4 }]
 }

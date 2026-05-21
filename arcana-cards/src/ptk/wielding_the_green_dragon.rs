@@ -1,5 +1,5 @@
-//! Wielding the Green Dragon — `{1}{G}` sorcery. "Target creature gets +4/+4
-//! until end of turn."
+//! Wielding the Green Dragon — `{1}{G}` sorcery. "Target creature
+//! gets +4/+4 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

@@ -21,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create X 1/1 white Pegasus creature tokens with flying, where X is your life total.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create X 1/1 white Pegasus creature tokens with flying, where X is your life total.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -35,7 +36,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let pegasus = reg.interner().lookup("Pegasus").expect("Pegasus interned");
+    let pegasus = reg.interner().lookup("Pegasus")
+        .expect("Pegasus interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(pegasus);
     let token = TokenDefinition {
@@ -50,9 +52,6 @@ fn resolve(
     };
     let x = script::life(state, entry.controller).max(0) as u32;
     (0..x)
-        .map(|_| Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        })
+        .map(|_| Effect::CreateToken { controller: entry.controller, token: token.clone() })
         .collect()
 }

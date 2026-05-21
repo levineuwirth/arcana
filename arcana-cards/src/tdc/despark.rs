@@ -1,5 +1,5 @@
-//! Despark — `{W}{B}` instant.
-//! "Exile target permanent with mana value 4 or greater."
+//! Despark — `{W}{B}` instant. "Exile target permanent with mana
+//! value 4 or greater."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,9 +37,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

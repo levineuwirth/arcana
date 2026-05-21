@@ -1,6 +1,6 @@
-//! Fire and Brimstone — `{3}{W}{W}` instant. "Fire and Brimstone
-//! deals 4 damage to target player who attacked this turn and 4
-//! damage to you."
+//! Fire and Brimstone — `{3}{W}{W}` instant. Deals 4 damage to target
+//! player who attacked this turn and 4 damage to you. (Attacked-this-
+//! turn predicate not modeled; emit player damage + self damage.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Fire and Brimstone deals 4 damage to target player who attacked this turn and 4 damage to you.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Fire and Brimstone deals 4 damage to target player who attacked this turn and 4 damage to you.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,10 +36,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "who attacked this turn" predicate not expressible.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // "who attacked this turn" restriction not expressible in target
-    // filter; applied to target player.
     vec![
         Effect::DealDamage {
             source: entry.source,

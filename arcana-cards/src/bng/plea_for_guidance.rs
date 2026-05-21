@@ -1,6 +1,5 @@
-//! Plea for Guidance — `{5}{W}` sorcery. "Search your library for up to
-//! two enchantment cards, reveal them, put them into your hand, then
-//! shuffle."
+//! Plea for Guidance — `{5}{W}` sorcery. Search your library for up to
+//! two enchantment cards, put them into your hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,27 +20,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to two enchantment cards, reveal them, put them into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for up to two enchantment cards, reveal them, put them into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // "Up to two" enchantment cards — repeat the tutor twice.
-    let filter = ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into());
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // 'Up to two' — there is no count parameter on TutorToHand, so we
+    // repeat the tutor twice. GAP: only the first will actually find a
+    // distinct card when libraries are small.
     vec![
         Effect::TutorToHand {
             player: entry.controller,
-            filter: filter.clone(),
+            filter: ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
             reveal: true,
         },
         Effect::TutorToHand {
             player: entry.controller,
-            filter,
+            filter: ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
             reveal: true,
         },
     ]

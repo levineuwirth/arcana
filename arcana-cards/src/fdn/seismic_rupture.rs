@@ -1,6 +1,5 @@
 //! Seismic Rupture — `{2}{R}` sorcery. "Seismic Rupture deals 2
-//! damage to each creature without flying." The "without flying"
-//! exclusion has no filter; damage is dealt to each creature.
+//! damage to each creature without flying."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -33,9 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: no ObjectFilter predicate for "without flying"; this damages
+    // every creature, slightly wider than the printed text.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: "without flying" exclusion not expressible; damage hits all
-    // creatures.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

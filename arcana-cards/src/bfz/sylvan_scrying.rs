@@ -1,5 +1,5 @@
-//! Sylvan Scrying — `{1}{G}` sorcery. "Search your library for a land card,
-//! reveal it, put it into your hand, then shuffle."
+//! Sylvan Scrying — `{1}{G}` sorcery. "Search your library for a
+//! land card, reveal it, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

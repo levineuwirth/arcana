@@ -21,30 +21,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Sacrifice a land. Search your library for up to two \
+                       basic land cards, put them onto the battlefield \
+                       tapped, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
     vec![
         Effect::Sacrifice {
             player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            filter: land.clone(),
             count: 1,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            filter: land.clone(),
             tapped: true,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            filter: land,
             tapped: true,
         },
     ]

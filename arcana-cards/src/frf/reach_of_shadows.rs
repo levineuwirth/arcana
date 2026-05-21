@@ -1,7 +1,5 @@
 //! Reach of Shadows — `{4}{B}` instant. "Destroy target creature that's one
 //! or more colors."
-//! GAP: no ObjectFilter for "is colored" (has at least one color) — target
-//! widened to any creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +37,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no "is colored" filter in ObjectFilter — destroys any creature
+    // GAP: 'one or more colors' (i.e. colored, i.e. nonzero ColorSet) target filter —
+    // no positive `with_any_color` / `colored` ObjectFilter builder.
     vec![Effect::DestroyPermanent { target: *id }]
 }

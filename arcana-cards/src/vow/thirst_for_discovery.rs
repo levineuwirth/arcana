@@ -28,15 +28,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // The "unless you discard a basic land" alternative is not
-    // expressible; modeled as the default "discard two cards" clause.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // The "unless you discard a basic land" alternative cost cannot be
+    // modeled; emit the draw plus the baseline two-card discard.
     vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 3,
+        },
         Effect::Discard {
             player: entry.controller,
             count: 2,

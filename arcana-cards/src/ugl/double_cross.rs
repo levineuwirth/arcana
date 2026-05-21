@@ -1,12 +1,11 @@
 //! Double Cross — `{3}{B}{B}` sorcery. "Choose another player. Look
 //! at that player's hand and choose a card other than a basic land
 //! card from it. They discard that card. At the beginning of the
-//! first upkeep in your next game with that player, look at that
-//! player's hand and choose a card other than a basic land card from
-//! it. They discard that card."
+//! first upkeep in your next game with that player, ..."
 //!
-//! Modeled as a single targeted discard where you choose; the
-//! cross-game delayed trigger is not expressible.
+//! The immediate discard is modeled as a controller-chosen discard by
+//! the target player. The nonbasic-land restriction and the
+//! next-game delayed trigger are not expressible — GAP.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -37,13 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'other than a basic land' card filter on the discard; the
-    // delayed trigger 'in your next game with that player' is also
-    // unsupportable.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: nonbasic-land restriction on the choice, and the next-game
+    // delayed-trigger discard, are not expressible.
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

@@ -18,3 +18,4 @@ pub mod pillar_launch;
 pub mod rocky_rebuke;
 pub mod yip_yip;
 pub mod earth_rumble;
+pub mod gather_the_white_lotus;

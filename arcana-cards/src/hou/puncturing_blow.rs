@@ -1,8 +1,9 @@
 //! Puncturing Blow — `{2}{R}{R}` sorcery. "Puncturing Blow deals 5
 //! damage to target creature. If that creature would die this turn,
-//! exile it instead."
+//! exile it instead." The 'replace dies with exile' rider has no
+//! catalog primitive — emit the 5 damage and GAP the replacement.
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -22,28 +23,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Puncturing Blow deals 5 damage to target creature. If that creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Puncturing Blow deals 5 damage to target creature. If that creature would die this turn, exile it instead.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id),
-            amount: 5,
-        },
-        Effect::DelayedAction {
-            source: *id,
-            controller: entry.controller,
-            when: DelayedWhen::ThisDies,
-            action: DelayedAction::Exile,
-        },
-    ]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'would die this turn → exile instead' replacement effect.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Object(*id),
+        amount: 5,
+    }]
 }

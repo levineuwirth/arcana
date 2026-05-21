@@ -1,16 +1,15 @@
 //! Lifecrafter's Gift — `{3}{G}` instant. "Put a +1/+1 counter on target
 //! creature, then put a +1/+1 counter on each creature you control with a
-//! +1/+1 counter on it." First half is direct; the second half needs a filter
-//! "creature you control with +1/+1 counter", which `ObjectFilter` doesn't
-//! expose. GAP that.
+//! +1/+1 counter on it."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -32,13 +31,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: ObjectFilter has no "has counter" predicate, so we can't enumerate
-    // the second-half targets ("each creature you control with a +1/+1 counter").
-    vec![Effect::AddCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "each creature you control with a +1/+1 counter on it" — approximated as
+    // each creature you control (no counter-presence filter is available).
+    let counted = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    vec![
+        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
+        Effect::ForEach {
+            targets: counted,
+            effect: Box::new(Effect::AddCounters {
+                target: NULL_OBJECT_ID,
+                kind: CounterKind::PlusOnePlusOne,
+                count: 1,
+            }),
+        },
+    ]
 }

@@ -1,6 +1,6 @@
-//! Diplomatic Relations — `{2}{G}` instant. "Target creature you control
-//! gets +1/+0 and gains vigilance until end of turn. It deals damage equal
-//! to its power to target creature an opponent controls."
+//! Diplomatic Relations — `{2}{G}` instant. Target creature you
+//! control gets +1/+0 and gains vigilance until end of turn. It deals
+//! damage equal to its power to target creature an opponent controls.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
@@ -33,14 +33,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
                         ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
                         ),
                         count: TargetCount::Exactly(1),
                         controller: None,
@@ -58,22 +60,23 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let targets = &entry.targets.targets;
-    if targets.len() < 2 { return Vec::new(); }
-    let TargetChoice::Object(a) = &targets[0] else { return Vec::new(); };
-    let TargetChoice::Object(b) = &targets[1] else { return Vec::new(); };
-    let dmg = (script::power_of(state, *a) + 1).max(0) as u32;
+    let Some(TargetChoice::Object(my_id)) = targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(their_id)) = targets.get(1) else { return Vec::new(); };
+    let my_id = *my_id;
+    let their_id = *their_id;
+    let power_after = (script::power_of(state, my_id) + 1).max(0) as u32;
     vec![
         Effect::Pump {
-            target: *a,
+            target: my_id,
             power: 1,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::Vigilance],
         },
         Effect::DealDamage {
-            source: *a,
-            target: DamageTarget::Object(*b),
-            amount: dmg,
+            source: my_id,
+            target: DamageTarget::Object(their_id),
+            amount: power_after,
         },
     ]
 }

@@ -1,11 +1,11 @@
-//! Joraga Invocation — `{4}{G}{G}` sorcery. "Each creature you control
-//! gets +3/+3 until end of turn and must be blocked this turn if
-//! able."
+//! Joraga Invocation — `{4}{G}{G}` sorcery. "Each creature you
+//! control gets +3/+3 until end of turn and must be blocked this turn
+//! if able."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -23,12 +23,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each creature you control gets +3/+3 until end of turn and must be blocked this turn if able.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each creature you control gets +3/+3 until end of turn \
+                       and must be blocked this turn if able.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -37,21 +39,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // The "must be blocked if able" rider has no catalog effect; the
-    // +3/+3 to each creature you control is implemented.
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-        entry.controller,
-    );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
+    // GAP: no Effect for "must be blocked this turn if able"; emit the
+    // +3/+3 pump on each creature you control.
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    let ids = script::ids_matching(state, &filter, entry.controller);
+    ids.into_iter()
+        .map(|id| Effect::Pump {
+            target: id,
             power: 3,
             toughness: 3,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        }),
-    }]
+        })
+        .collect()
 }

@@ -1,5 +1,5 @@
-//! Samut's Sprint — `{R}` instant.
-//! "Target creature gets +2/+1 and gains haste until end of turn. Scry 1."
+//! Samut's Sprint — `{R}` instant. "Target creature gets +2/+1 and
+//! gains haste until end of turn. Scry 1."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

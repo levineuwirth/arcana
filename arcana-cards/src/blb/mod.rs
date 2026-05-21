@@ -22,3 +22,4 @@ pub mod dazzling_denial;
 pub mod cache_grab;
 pub mod rabid_bite;
 pub mod splash_portal;
+pub mod rabid_gnaw;

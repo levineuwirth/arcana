@@ -1,5 +1,5 @@
-//! Retract — `{U}` instant. "Return all artifacts you control to their owner's
-//! hand."
+//! Retract — `{U}` instant. Return all artifacts you control to their
+//! owners' hands.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,15 +36,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let targets = script::ids_matching(
+    let ids = script::ids_matching(
         state,
-        &ObjectFilter::new()
+        &ObjectFilter::permanent()
             .with_types(TypeLine::ARTIFACT.into())
             .controlled_by(ControllerConstraint::You),
         entry.controller,
     );
     vec![Effect::ForEach {
-        targets,
+        targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
     }]
 }

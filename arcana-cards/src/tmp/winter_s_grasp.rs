@@ -1,4 +1,4 @@
-//! Winter's Grasp — `{1}{G}{G}` sorcery, "Destroy target land."
+//! Winter's Grasp — `{1}{G}{G}` sorcery. "Destroy target land."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,8 +41,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

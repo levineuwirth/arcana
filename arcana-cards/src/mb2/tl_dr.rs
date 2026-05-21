@@ -1,7 +1,6 @@
-//! TL;DR — `{B}{B}` instant. "Exile target creature if it has any abilities
-//! other than keywords."
-//! GAP: no ObjectFilter or target predicate for "has non-keyword abilities"
-//! (requires inspecting a permanent's ability list at target time).
+//! TL;DR — `{B}{B}` instant. "Exile target creature if it has any
+//! abilities other than keywords." The ability/keyword-introspection
+//! predicate is not catalog; emit a plain exile and GAP the predicate.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,6 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
+                // GAP: cannot inspect "has non-keyword abilities" on the target.
                 text: "Exile target creature if it has any abilities other than keywords.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
@@ -39,7 +39,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no way to check whether the target creature has non-keyword abilities;
-    // exile emitted unconditionally
     vec![Effect::ExilePermanent { target: *id }]
 }

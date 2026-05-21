@@ -33,3 +33,4 @@ pub mod ringsight;
 pub mod breaking_of_the_fellowship;
 pub mod now_for_wrath_now_for_ruin;
 pub mod rise_of_the_witch_king;
+pub mod stew_the_coneys;

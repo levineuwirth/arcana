@@ -32,11 +32,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let power = script::power_of(state, *id).max(0) as u32;
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let amount = script::power_of(state, *id).max(0) as u32;
     vec![Effect::DealDamage {
         source: *id,
         target: DamageTarget::Object(*id),
-        amount: power,
+        amount,
     }]
 }

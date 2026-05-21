@@ -1,5 +1,5 @@
-//! Boomerang — `{U}{U}` instant. "Return target permanent to its
-//! owner's hand."
+//! Boomerang — `{U}{U}` instant. "Return target permanent to its owner's
+//! hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

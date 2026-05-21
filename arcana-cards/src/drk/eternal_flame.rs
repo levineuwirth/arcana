@@ -1,7 +1,6 @@
-//! Eternal Flame — `{2}{R}{R}` sorcery. "Eternal Flame deals X damage
-//! to target opponent or planeswalker and half X damage, rounded up,
-//! to you, where X is the number of Mountains you control." Dynamic X
-//! = number of Mountains you control.
+//! Eternal Flame — `{2}{R}{R}` sorcery. "Eternal Flame deals X damage to
+//! target opponent or planeswalker and half X damage, rounded up, to
+//! you, where X is the number of Mountains you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -11,11 +10,12 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectOrPlayer, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Eternal Flame");
+    let _mountain = reg.interner_mut().intern("Mountain");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}{R}").expect("valid cost")),
@@ -26,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Eternal Flame deals X damage to target opponent or planeswalker and half X damage, rounded up, to you, where X is the number of Mountains you control.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::any_target()],
             modal: None,
             effect: resolve,
         }),
@@ -34,24 +34,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let x = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Mountain"),
-        entry.controller,
-    );
-    let half = x.div_ceil(2);
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Player(p)) = entry.targets.targets.first() {
-        out.push(Effect::DealDamage {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let mountains = script::subtype_filter(reg, "Mountain");
+    let x = script::count_matching(state, &mountains, entry.controller);
+    let half = (x + 1) / 2;
+    let dt = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
+    };
+    vec![
+        Effect::DealDamage { source: entry.source, target: dt, amount: x },
+        Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Player(*p),
-            amount: x,
-        });
-    }
-    out.push(Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Player(entry.controller),
-        amount: half,
-    });
-    out
+            target: DamageTarget::Player(entry.controller),
+            amount: half,
+        },
+    ]
 }

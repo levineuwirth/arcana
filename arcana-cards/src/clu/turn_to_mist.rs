@@ -1,7 +1,6 @@
 //! Turn to Mist — `{1}{W/U}` instant. "Exile target creature. Return that
-//! card to the battlefield under its owner's control at the beginning of the
-//! next end step." Exile-now + `DelayedAction::ReturnToHand` on the same id is
-//! the closest catalog primitive; GAP for the literal return-to-battlefield.
+//! card to the battlefield under its owner's control at the beginning of
+//! the next end step."
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
@@ -32,17 +31,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: ReturnToHand is the closest available DelayedAction; engine has no
-    // ReturnToBattlefield delayed action variant.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![
         Effect::ExilePermanent { target: *id },
         Effect::DelayedAction {
             source: *id,
             controller: entry.controller,
             when: DelayedWhen::NextEndStep,
-            action: DelayedAction::ReturnToHand,
+            action: DelayedAction::ReturnFromExileToBattlefield,
         },
     ]
 }

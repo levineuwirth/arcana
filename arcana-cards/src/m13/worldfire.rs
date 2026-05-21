@@ -1,14 +1,12 @@
 //! Worldfire — `{6}{R}{R}{R}` sorcery. "Exile all permanents. Exile
 //! all cards from all hands and graveyards. Each player's life total
-//! becomes 1."
-//!
-//! Exile-all-permanents is modeled via ForEach. Exile-all-hands/
-//! graveyards is GAP'd (no zone-wide exile Effect). SetLifeTotal=1
-//! across all players is modeled.
+//! becomes 1." Hand/graveyard mass-exile isn't catalog-shaped (script
+//! helpers enumerate the battlefield only); emit the permanent
+//! exile-all and SetLifeTotal, GAP the hand/graveyard exile.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -26,24 +24,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile all permanents. Exile all cards from all hands and graveyards. Each player's life total becomes 1.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile all permanents. Exile all cards from all hands and graveyards. Each player's life total becomes 1.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::permanent(), entry.controller);
-    // GAP: zone-wide exile of all hands and all graveyards has no catalog Effect.
-    let mut effects = vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
-    }];
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for id in script::ids_matching(state, &ObjectFilter::permanent(), entry.controller) {
+        effects.push(Effect::ExilePermanent { target: id });
+    }
     for p in script::all_players(state) {
         effects.push(Effect::SetLifeTotal { player: p, amount: 1 });
     }
+    // GAP: exile all cards from all hands and graveyards (script
+    // helpers don't enumerate non-battlefield zones).
     effects
 }

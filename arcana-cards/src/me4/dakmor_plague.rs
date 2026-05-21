@@ -1,5 +1,5 @@
-//! Dakmor Plague — `{3}{B}{B}` sorcery. "Dakmor Plague deals 3 damage
-//! to each creature and each player."
+//! Dakmor Plague — `{3}{B}{B}` sorcery. "Dakmor Plague deals 3
+//! damage to each creature and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,19 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Dakmor Plague deals 3 damage to each creature and each player.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Dakmor Plague deals 3 damage to each creature and each player.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut effects: Vec<Effect> = vec![Effect::ForEach {
-        targets: creature_ids,
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut out = vec![Effect::ForEach {
+        targets: creatures,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),
@@ -42,11 +47,11 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
         }),
     }];
     for p in script::all_players(state) {
-        effects.push(Effect::DealDamage {
+        out.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Player(p),
             amount: 3,
         });
     }
-    effects
+    out
 }

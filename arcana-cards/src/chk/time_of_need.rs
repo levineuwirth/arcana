@@ -1,6 +1,6 @@
-//! Time of Need — `{1}{G}` sorcery, "Search your library for a
+//! Time of Need — `{1}{G}` sorcery. Search your library for a
 //! legendary creature card, reveal it, put it into your hand, then
-//! shuffle." Legendary refinement not expressible; tutor a creature.
+//! shuffle.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,17 +21,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a legendary creature card, reveal it, put it into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a legendary creature card, reveal it, put it into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // "legendary" refinement not expressible; tutor a creature card.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "legendary" supertype filter not in ObjectFilter builders. Best-
+    // effort: tutor any creature card.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::creature(),

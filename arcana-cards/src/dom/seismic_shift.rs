@@ -1,6 +1,6 @@
-//! Seismic Shift — `{3}{R}` sorcery.
-//! "Destroy target land. Up to two target creatures can't block this
-//! turn."
+//! Seismic Shift — `{3}{R}` sorcery. "Destroy target land. Up to two
+//! target creatures can't block this turn." Can't-block-this-turn
+//! grant is not in catalog; emit only the land destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     controller: None,
                 },
                 TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    filter: TargetFilter::Creature,
                     count: TargetCount::UpTo(2),
                     controller: None,
                 },
@@ -45,11 +45,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // "Can't block this turn" has no catalog Effect; the land
-    // destroy is performed.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "can't block this turn" grant on up to two creatures not in catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

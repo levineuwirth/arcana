@@ -1,14 +1,11 @@
-//! Price of Loyalty — `{2}{R}` sorcery, "Gain control of target creature
-//! until end of turn. Untap that creature. It gains haste until end of turn.
-//! If mana from a Treasure was spent to cast this spell, that creature gets
-//! +2/+0 until end of turn."
-//!
-//! GAP: "gain control of target creature until end of turn" — control-change
-//! effect is not in the Effect catalog.
-//! GAP: "if mana from a Treasure was spent" — mana source tracking not
-//! available.
+//! Price of Loyalty — `{2}{R}` sorcery. "Gain control of target
+//! creature until end of turn. Untap that creature. It gains haste
+//! until end of turn. If mana from a Treasure was spent to cast this
+//! spell, that creature gets +2/+0 until end of turn." GAP: temp
+//! gain-control + mana-source provenance. Express Untap + Haste.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -42,10 +39,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: temporary (EOT) gain-control and mana-source-Treasure
+    // detection both absent.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: control change until end of turn not in Effect catalog.
-    // GAP: Treasure mana source tracking not available.
-    // Partial: Untap is expressible.
-    vec![Effect::Untap { target: *id }]
+    vec![
+        Effect::Untap { target: *id },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }

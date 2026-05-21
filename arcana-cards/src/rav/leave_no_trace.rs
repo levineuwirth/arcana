@@ -27,8 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Radiance — Destroy target enchantment and each other enchantment that shares a color with it.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .with_types(TypeLine::ENCHANTMENT.into()),
+                    ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -39,15 +38,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The Radiance shares-a-color spread depends on the target's
-    // colors, not knowable from script helpers; only the targeted
-    // enchantment is destroyed.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: Radiance "each other enchantment that shares a color with
+    // it" depends on the target's runtime colors — no helper for
+    // shares-a-color. Only the targeted enchantment is destroyed.
     vec![Effect::DestroyPermanent { target: *id }]
 }

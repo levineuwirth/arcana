@@ -20,12 +20,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each opponent draws a card, then you draw a card for each opponent who drew a card this way.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each opponent draws a card, then you draw a card for each opponent who drew a card this way.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -34,12 +35,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opps = script::opponents(state, entry.controller);
-    let n = opps.len() as u32;
-    let mut effects: Vec<Effect> = opps
+    let opponents = script::opponents(state, entry.controller);
+    let count = opponents.len() as u32;
+    let mut effects: Vec<Effect> = opponents
         .into_iter()
         .map(|p| Effect::DrawCards { player: p, count: 1 })
         .collect();
-    effects.push(Effect::DrawCards { player: entry.controller, count: n });
+    effects.push(Effect::DrawCards { player: entry.controller, count });
     effects
 }

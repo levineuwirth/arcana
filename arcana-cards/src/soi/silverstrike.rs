@@ -1,7 +1,6 @@
-//! Silverstrike — `{3}{W}` instant. "Destroy target attacking creature. You
-//! gain 3 life."
-//!
-//! GAP: no ObjectFilter for 'attacking'; using plain creature target.
+//! Silverstrike — `{3}{W}` instant. "Destroy target attacking
+//! creature. You gain 3 life." GAP: 'attacking' filter not in
+//! ObjectFilter refinements.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +36,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'attacking' filter not in ObjectFilter refinements.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![

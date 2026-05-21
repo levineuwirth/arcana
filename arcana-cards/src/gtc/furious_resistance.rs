@@ -1,5 +1,7 @@
 //! Furious Resistance — `{R}` instant. "Target blocking creature gets
-//! +3/+0 and gains first strike until end of turn."
+//! +3/+0 and gains first strike until end of turn." The 'blocking'
+//! filter has no ObjectFilter refinement; we target any creature and
+//! GAP the blocking constraint.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,20 +23,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target blocking creature gets +3/+0 and gains first strike until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: 'blocking' creature filter is not expressible in
+                // ObjectFilter — target any creature.
+                text: "Target blocking creature gets +3/+0 and gains first strike until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "blocking creature" target restriction is not filterable;
-    // targets any creature.
     vec![Effect::Pump {
         target: *id,
         power: 3,

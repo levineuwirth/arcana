@@ -1,10 +1,6 @@
-//! Rhystic Lightning — `{2}{R}` instant. "Rhystic Lightning deals 4 damage
-//! to any target unless that permanent's controller or that player pays
-//! {2}. If they do, Rhystic Lightning deals 2 damage to the permanent or
-//! player."
-//!
-//! GAP: no "deal N damage unless a player pays {M}, else deal less" effect;
-//! the unconditional 4 damage is emitted as best-effort.
+//! Rhystic Lightning — `{2}{R}` instant. Deals 4 damage to any target
+//! unless that permanent's controller or that player pays {2}. If they
+//! do, deals 2 damage instead.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -50,6 +46,11 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: rhystic "unless pays {2}" tax-on-damage not modeled.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 4 }]
+    // GAP: "unless pays {2}" branch on a damage amount has no catalog primitive;
+    // emit the base 4-damage path.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 4,
+    }]
 }

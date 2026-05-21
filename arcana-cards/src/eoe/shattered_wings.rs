@@ -24,9 +24,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target artifact, enchantment, or creature with flying. Surveil 1.".into(),
+            // The "or creature with flying" branch of the target filter is
+            // not expressible (keyword-on-permanent filter); targets an
+            // artifact or enchantment.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types_any(TypeLine::ARTIFACT.into()),
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -38,10 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::DestroyPermanent { target: *id });
-    }
-    out.push(Effect::Surveil { player: entry.controller, count: 1 });
-    out
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::Surveil { player: entry.controller, count: 1 },
+    ]
 }

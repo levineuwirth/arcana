@@ -1,19 +1,18 @@
 //! Trapmaker's Snare — `{1}{U}` instant. "Search your library for a
-//! Trap card, reveal it, put it into your hand, then shuffle." The
-//! "Trap" subtype restriction has no ObjectFilter form; an
-//! unrestricted library search to hand is the closest primitive.
+//! Trap card, reveal it, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Trapmaker's Snare");
+    let _trap = reg.interner_mut().intern("Trap");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{U}").expect("valid cost")),
@@ -31,11 +30,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "Trap" subtype restriction not expressible in ObjectFilter.
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    // "Trap" is a card subtype; subtype_filter is the only catalog hook
+    // for a named subtype search.
     vec![Effect::TutorToHand {
         player: entry.controller,
-        filter: ObjectFilter::new(),
+        filter: script::subtype_filter(reg, "Trap"),
         reveal: true,
     }]
 }

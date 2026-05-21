@@ -1,5 +1,5 @@
-//! Leeching Bite — `{1}{G}` instant. "Target creature gets +1/+1 until
-//! end of turn. Another target creature gets -1/-1 until end of turn."
+//! Leeching Bite — `{1}{G}` instant. Target creature gets +1/+1;
+//! another target creature gets -1/-1 until end of turn.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -21,37 +21,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +1/+1 until end of turn. Another target creature gets -1/-1 until end of turn.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +1/+1 until end of turn. Another target creature gets -1/-1 until end of turn.".into(),
+                target_requirements: vec![
+                    TargetRequirement::target_creature(),
+                    TargetRequirement::target_creature(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effects.push(Effect::Pump {
-            target: *id,
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let targets = &entry.targets.targets;
+    let Some(TargetChoice::Object(a)) = targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(b)) = targets.get(1) else { return Vec::new(); };
+    // GAP: 'another target creature' (distinctness across slots) isn't
+    // enforced by the target filter.
+    vec![
+        Effect::Pump {
+            target: *a,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-    }
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.get(1) {
-        effects.push(Effect::Pump {
-            target: *id,
+        },
+        Effect::Pump {
+            target: *b,
             power: -1,
             toughness: -1,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-    }
-    effects
+        },
+    ]
 }

@@ -1,8 +1,7 @@
 //! Blast of Genius — `{4}{U}{R}` sorcery. "Choose any target. Draw
 //! three cards, then discard a card. Blast of Genius deals damage
 //! equal to the discarded card's mana value to that permanent or
-//! player." The damage amount (discarded card's mana value) is not
-//! computable; draw and discard are emitted.
+//! player."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -33,9 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: damage = discarded card's mana value is not computable.
+    // The damage amount equals the discarded card's mana value, which the
+    // catalog cannot read; only the draw and discard are emitted.
+    // GAP: damage equal to the discarded card's mana value.
     vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 3,
+        },
         Effect::Discard {
             player: entry.controller,
             count: 1,

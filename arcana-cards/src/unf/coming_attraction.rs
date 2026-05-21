@@ -1,7 +1,8 @@
 //! Coming Attraction — `{2}{G}` sorcery. "Search your library for a
 //! basic land card, put it onto the battlefield tapped, then shuffle.
-//! Open an Attraction." The Attraction-deck mechanic is not expressible
-//! with the demonstrated Effect catalog; the land-fetch portion is.
+//! Open an Attraction."
+//!
+//! GAP: Attractions deck mechanic isn't modeled; tutor the basic land.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,10 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a basic land card, put it onto \
-                   the battlefield tapped, then shuffle. Open an \
-                   Attraction."
-                .into(),
+            text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Open an Attraction.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -39,8 +37,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Open an Attraction" (the Attraction-deck zone/mechanic) is
-    // not modeled by any catalog Effect.
+    // GAP: Attractions deck mechanic isn't modeled.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

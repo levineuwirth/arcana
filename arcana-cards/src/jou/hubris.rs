@@ -1,8 +1,7 @@
 //! Hubris — `{1}{U}` instant. "Return target creature and all Auras
-//! attached to it to their owners' hands."
-//!
-//! "All Auras attached to it" requires per-attachment enumeration not
-//! exposed in script::*; only the creature's bounce is modeled.
+//! attached to it to their owners' hands." The 'attached Auras'
+//! follow-along isn't modeled; emit the creature bounce, GAP the
+//! Aura sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,17 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature and all Auras attached to it to their owners' hands.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target creature and all Auras attached to it to their owners' hands.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: per-attachment enumeration of Auras on the target not in script::*.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'and all Auras attached to it' — no per-permanent
+    // attachment enumeration in script helpers.
     vec![Effect::ReturnToHand { target: *id }]
 }

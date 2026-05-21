@@ -1,8 +1,5 @@
-//! Neutralizing Blast — `{1}{U}` instant. "Counter target multicolored
-//! spell."
-//!
-//! GAP: "multicolored" spell filter has no ObjectFilter predicate;
-//! the spell target is left unconstrained by color.
+//! Neutralizing Blast — `{1}{U}` instant. "Counter target
+//! multicolored spell."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,21 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target multicolored spell.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // NOTE: "multicolored" restriction is not expressible
+                // as an ObjectFilter refinement — using a plain spell
+                // target.
+                text: "Counter target multicolored spell.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "multicolored" spell restriction not expressible as a filter.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Counter { target: *id }]
 }

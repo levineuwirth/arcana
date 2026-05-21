@@ -1,5 +1,7 @@
-//! Safewright Quest — `{G/W}` sorcery, "Search your library for a Forest
-//! or Plains card, reveal it, put it into your hand, then shuffle."
+//! Safewright Quest — `{G/W}` sorcery. "Search your library for a
+//! Forest or Plains card, reveal it, put it into your hand, then
+//! shuffle." Two tutors (Forest OR Plains) isn't a single filter we
+//! can express precisely; emit a basic-land tutor as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,8 +14,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Safewright Quest");
-    let _forest = reg.interner_mut().intern("Forest");
-    let _plains = reg.interner_mut().intern("Plains");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{G/W}").expect("valid cost")),
@@ -37,8 +37,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: TutorToHand supports a single ObjectFilter but cannot express "Forest OR Plains"
-    // (two subtypes ORed). Using land filter as best approximation.
+    // GAP: subtype-OR-subtype filter (Forest OR Plains) not expressible; fall back to any land.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

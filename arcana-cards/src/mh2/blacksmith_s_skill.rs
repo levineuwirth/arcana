@@ -1,9 +1,6 @@
-//! Blacksmith's Skill — `{W}` instant. "Target permanent gains hexproof
-//! and indestructible until end of turn. If it's an artifact creature, it
-//! gets +2/+2 until end of turn."
-//!
-//! GAP: the target's artifact-creature status is not queryable at resolve;
-//! the conditional +2/+2 is omitted.
+//! Blacksmith's Skill — `{W}` instant. Target permanent gains hexproof
+//! and indestructible until end of turn. If it's an artifact creature,
+//! it gets +2/+2 until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -48,15 +45,17 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional +2/+2 if artifact creature not modeled.
+    let id = *id;
+    // GAP: cannot test artifact-creature condition on a permanent via
+    // script::*; emit the unconditional hexproof+indestructible.
     vec![
         Effect::GrantKeyword {
-            target: *id,
+            target: id,
             keyword: KeywordAbility::Hexproof,
             duration: Duration::EndOfTurn,
         },
         Effect::GrantKeyword {
-            target: *id,
+            target: id,
             keyword: KeywordAbility::Indestructible,
             duration: Duration::EndOfTurn,
         },

@@ -1,5 +1,6 @@
-//! Cosmic Hunger — `{1}{G}` instant. "Target creature you control deals damage
-//! equal to its power to another target creature, planeswalker, or battle."
+//! Cosmic Hunger — `{1}{G}` instant. "Target creature you control
+//! deals damage equal to its power to another target creature,
+//! planeswalker, or battle."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +11,8 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -24,26 +26,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature you control deals damage equal to its power to another target creature, planeswalker, or battle.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature you control deals damage equal to its power to another target creature, planeswalker, or battle.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                // GAP: no Battle TypeLine bit available in catalog;
+                // covering creature-or-planeswalker only.
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(TypeLine(
+                            TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -52,13 +59,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(src)) = it.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(dst)) = it.next() else { return Vec::new(); };
-    let amount = script::power_of(state, *src).max(0) as u32;
+    let mut iter = entry.targets.targets.iter();
+    let Some(src_t) = iter.next() else { return Vec::new(); };
+    let Some(dst_t) = iter.next() else { return Vec::new(); };
+    let TargetChoice::Object(src_id) = src_t else { return Vec::new(); };
+    let TargetChoice::Object(dst_id) = dst_t else { return Vec::new(); };
+    let amount = script::power_of(state, *src_id).max(0) as u32;
     vec![Effect::DealDamage {
-        source: *src,
-        target: DamageTarget::Object(*dst),
+        source: *src_id,
+        target: DamageTarget::Object(*dst_id),
         amount,
     }]
 }

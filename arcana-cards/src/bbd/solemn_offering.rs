@@ -1,5 +1,5 @@
-//! Solemn Offering — `{2}{W}` sorcery.
-//! "Destroy target artifact or enchantment. You gain 4 life."
+//! Solemn Offering — `{2}{W}` sorcery. "Destroy target artifact or
+//! enchantment. You gain 4 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,9 +26,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target artifact or enchantment. You gain 4 life.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into()),
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                    )),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -39,10 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::GainLife { player: entry.controller, amount: 4 },

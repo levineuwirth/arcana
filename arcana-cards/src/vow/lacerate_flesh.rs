@@ -1,10 +1,8 @@
-//! Lacerate Flesh — `{4}{R}` sorcery. "Lacerate Flesh deals 4 damage
-//! to target creature. Create a number of Blood tokens equal to the
-//! amount of excess damage dealt to that creature this way."
-//!
-//! "Excess damage dealt" is a dynamic quantity with no script helper;
-//! emitting a fixed token count would be materially wrong, so the
-//! token clause is GAP'd and only the 4 damage is emitted.
+//! Lacerate Flesh — `{4}{R}` sorcery. "Lacerate Flesh deals 4 damage to
+//! target creature. Create a number of Blood tokens equal to the amount
+//! of excess damage dealt to that creature this way." 'Excess damage'
+//! and Blood-token activated abilities aren't in the catalog — emit the
+//! 4-damage half and GAP the Blood-count rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,19 +24,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Lacerate Flesh deals 4 damage to target creature. Create a number of Blood tokens equal to the amount of excess damage dealt to that creature this way.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Lacerate Flesh deals 4 damage to target creature. Create a number of Blood tokens equal to the amount of excess damage dealt to that creature this way.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: Blood tokens equal to excess damage — not a computable
-    // script quantity.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: excess damage count + Blood token activated ability.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -22,12 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Choose any target. Scry 3, then reveal the top card of your library. Riddle of Lightning deals damage equal to that card's mana value to that permanent or player.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: damage equals the revealed top card's mana value
+                // — no script helper reads the mana value of a card in
+                // the library, so the dynamic amount cannot be computed.
+                // Only the Scry 3 is emitted.
+                text: "Choose any target. Scry 3.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -36,8 +41,5 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: damage amount is the mana value of the revealed top card —
-    // no helper exposes the top library card's mana value, so the
-    // dynamic damage cannot be computed. Only the Scry is modeled.
     vec![Effect::Scry { player: entry.controller, count: 3 }]
 }

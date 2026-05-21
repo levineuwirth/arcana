@@ -1,4 +1,4 @@
-//! Acidic Soil — `{2}{R}` sorcery, "Acidic Soil deals damage to each
+//! Acidic Soil — `{2}{R}` sorcery. "Acidic Soil deals damage to each
 //! player equal to the number of lands they control."
 
 use arcana_core::effects::Effect;
@@ -23,9 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Acidic Soil deals damage to each player equal to the \
-                   number of lands they control."
-                .into(),
+            text: "Acidic Soil deals damage to each player equal to the number of lands they control.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -38,21 +36,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    script::all_players(state)
-        .into_iter()
-        .map(|p| {
-            let lands = script::count_matching(
-                state,
-                &ObjectFilter::new()
-                    .with_types(TypeLine::LAND.into())
-                    .controlled_by(ControllerConstraint::You),
-                p,
-            );
-            Effect::DealDamage {
+    let mut out = Vec::new();
+    for p in script::all_players(state) {
+        let n = script::count_matching(
+            state,
+            &ObjectFilter::permanent()
+                .with_types(TypeLine::LAND.into())
+                .controlled_by(ControllerConstraint::You),
+            p,
+        );
+        if n > 0 {
+            out.push(Effect::DealDamage {
                 source: entry.source,
                 target: DamageTarget::Player(p),
-                amount: lands,
-            }
-        })
-        .collect()
+                amount: n,
+            });
+        }
+    }
+    out
 }

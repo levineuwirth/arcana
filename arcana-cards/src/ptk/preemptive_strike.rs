@@ -1,5 +1,4 @@
-//! Preemptive Strike — `{1}{U}` instant. "Counter target creature
-//! spell."
+//! Preemptive Strike — `{1}{U}` instant. Counter target creature spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,19 +21,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Counter target creature spell.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(
-                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Counter target creature spell.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Spell(
+                    ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

@@ -1,11 +1,6 @@
-//! Weight of Spires — `{R}` instant. "Weight of Spires deals damage to target
-//! creature equal to the number of nonbasic lands that creature's controller
-//! controls."
-//!
-//! GAP: "creature's controller" — cannot retrieve a permanent's controller PlayerId
-//! from the resolver without state field access; using entry.controller as approximation.
-//! GAP: "nonbasic lands" filter — ObjectFilter has no BasicLand exclusion; using
-//! script::count_matching with LAND type as best-effort.
+//! Weight of Spires — `{R}` instant. "Weight of Spires deals damage
+//! to target creature equal to the number of nonbasic lands that
+//! creature's controller controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -43,14 +38,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "creature's controller" — using opponent's land count as approximation
-    // GAP: "nonbasic lands" — no basic-land exclusion filter; counting all opponent lands
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let land_filter = ObjectFilter::new()
+    let controller = script::target_controller(state, *id, entry.controller);
+    let filter = ObjectFilter::new()
         .with_types(TypeLine::LAND.into())
-        .controlled_by(ControllerConstraint::Opponent);
-    let n = script::count_matching(state, &land_filter, entry.controller);
+        .nontoken();
+    let n = script::count_matching(state, &filter, controller);
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

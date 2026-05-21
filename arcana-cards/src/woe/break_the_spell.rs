@@ -1,9 +1,7 @@
 //! Break the Spell — `{W}` instant. "Destroy target enchantment. If
-//! a permanent you controlled or a token was destroyed this way, draw
-//! a card."
-//!
-//! Only the destruction is expressed; the post-destruction
-//! conditional draw cannot inspect what was destroyed.
+//! a permanent you controlled or a token was destroyed this way,
+//! draw a card." The post-destroy conditional draw isn't expressible
+//! — best effort: destroy the enchantment.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,25 +24,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target enchantment. If a permanent you controlled or a token was destroyed this way, draw a card.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target enchantment. If a permanent you controlled or a token was destroyed this way, draw a card.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if a permanent you controlled or a token was destroyed, draw" —
-    // cannot inspect destroyed object's controller/token status.
+    // GAP: post-destroy conditional draw based on controller/token state.
+    let _ = entry.controller;
     vec![Effect::DestroyPermanent { target: *id }]
 }

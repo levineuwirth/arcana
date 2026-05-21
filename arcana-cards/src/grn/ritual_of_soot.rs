@@ -1,5 +1,5 @@
-//! Ritual of Soot — `{2}{B}{B}` sorcery.
-//! "Destroy all creatures with mana value 3 or less."
+//! Ritual of Soot — `{2}{B}{B}` sorcery. "Destroy all creatures with mana
+//! value 3 or less."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,25 +21,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures with mana value 3 or less.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures with mana value 3 or less.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().with_max_cmc(3);
-    let ids = script::ids_matching(state, &filter, entry.controller);
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_max_cmc(3),
+        entry.controller,
+    );
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

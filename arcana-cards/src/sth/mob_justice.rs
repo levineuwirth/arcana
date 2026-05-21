@@ -1,9 +1,5 @@
-//! Mob Justice — `{1}{R}` sorcery. "Mob Justice deals damage to
-//! target player or planeswalker equal to the number of creatures
-//! you control."
-//!
-//! No planeswalker target filter exists; approximated as target
-//! player.
+//! Mob Justice — `{1}{R}` sorcery. "Deals damage to target player or
+//! planeswalker equal to the number of creatures you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -13,7 +9,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,18 +24,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Mob Justice deals damage to target player or planeswalker equal to the number of creatures you control.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: cannot constrain target to "player OR planeswalker"; uses any_target.
+                text: "Mob Justice deals damage to target player or planeswalker equal to the number of creatures you control.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let dt = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
+    };
     let n = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
@@ -45,7 +56,7 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
     );
     vec![Effect::DealDamage {
         source: entry.source,
-        target: DamageTarget::Player(*p),
+        target: dt,
         amount: n,
     }]
 }

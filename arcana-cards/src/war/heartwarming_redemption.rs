@@ -1,6 +1,6 @@
-//! Heartwarming Redemption — `{2}{R}{W}` instant, "Discard all the
-//! cards in your hand, then draw that many cards plus one. You gain
-//! life equal to the number of cards in your hand."
+//! Heartwarming Redemption — `{2}{R}{W}` instant. "Discard all the cards in
+//! your hand, then draw that many cards plus one. You gain life equal to the
+//! number of cards in your hand."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -21,25 +21,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Discard all the cards in your hand, then draw that many cards plus one. You gain life equal to the number of cards in your hand.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Discard all the cards in your hand, then draw that many cards plus one. You gain life equal to the number of cards in your hand.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let n = script::hand_size(state, entry.controller);
-    let drawn = n + 1;
-    vec![
-        Effect::Discard {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let h = script::hand_size(state, entry.controller);
+    let mut effects: Vec<Effect> = Vec::new();
+    if h > 0 {
+        effects.push(Effect::Discard {
             player: entry.controller,
-            count: n,
+            count: h,
             choice: DiscardChoice::ControllerChooses,
-        },
-        Effect::DrawCards { player: entry.controller, count: drawn },
-        Effect::GainLife { player: entry.controller, amount: drawn },
-    ]
+        });
+    }
+    effects.push(Effect::DrawCards {
+        player: entry.controller,
+        count: h + 1,
+    });
+    // Hand size after redraw equals h+1 (h discarded → 0 → draw h+1). Use that.
+    effects.push(Effect::GainLife {
+        player: entry.controller,
+        amount: h + 1,
+    });
+    effects
 }

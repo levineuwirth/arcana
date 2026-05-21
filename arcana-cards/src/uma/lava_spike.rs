@@ -1,5 +1,5 @@
-//! Lava Spike — `{R}` sorcery — Arcane. "Lava Spike deals 3 damage to target
-//! player or planeswalker."
+//! Lava Spike — `{R}` sorcery (Arcane). "Lava Spike deals 3 damage
+//! to target player or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,7 +24,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Lava Spike deals 3 damage to target player or planeswalker.".into(),
-                // GAP: no 'player or planeswalker' filter; using any_target
                 target_requirements: vec![TargetRequirement::any_target()],
                 modal: None,
                 effect: resolve,
@@ -46,9 +45,5 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 3,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
 }

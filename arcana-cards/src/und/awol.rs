@@ -1,7 +1,8 @@
-//! AWOL — `{2}{W}` instant, "Exile target attacking creature."
-//!
-//! GAP: no "attacking" creature filter in ObjectFilter; targeting is
-//! approximated as any creature target.
+//! AWOL — `{2}{W}` instant. "Exile target attacking creature. Then
+//! remove it from the game. Then put it into the
+//! absolutely-removed-from-the-freaking-game-forever zone." Mechanically
+//! this is just exile (the joke text doesn't add an effect). GAP: no
+//! 'attacking' filter on ObjectFilter; using a creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Exile target attacking creature.".into(),
-                // GAP: no attacking-creature filter; using generic creature target.
+                // GAP: ObjectFilter has no 'attacking' refinement.
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

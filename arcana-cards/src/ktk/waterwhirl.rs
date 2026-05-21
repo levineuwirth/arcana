@@ -8,7 +8,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -25,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Return up to two target creatures to their owners' hands.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                filter: TargetFilter::Creature,
                 count: TargetCount::UpTo(2),
                 controller: None,
             }],
@@ -35,18 +35,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::ReturnToHand { target: *id }),
-            _ => None,
-        })
-        .collect()
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for target in &entry.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::ReturnToHand { target: *id });
+        }
+    }
+    effects
 }

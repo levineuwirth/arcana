@@ -1,9 +1,7 @@
 //! Consuming Ashes — `{2}{B}{B}` instant. "Exile target creature. If
-//! it had mana value 3 or less, surveil 2."
-//!
-//! The post-exile mana-value conditional on the surveil is not
-//! expressible (no condition reading a now-gone object's CMC); only
-//! the exile is emitted.
+//! it had mana value 3 or less, surveil 2." The conditional read of the
+//! exiled card's CMC is not exposed by script::; emit the exile and the
+//! surveil unconditionally — note GAP for the gating.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,20 +22,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target creature. If it had mana value 3 or less, surveil 2.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target creature. If it had mana value 3 or less, surveil 2.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: cannot read the exiled card's prior mana value to gate the surveil; emitting both unconditionally.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional "if it had mana value 3 or less, surveil 2"
-    // requires reading the exiled object's CMC after it left the
-    // battlefield — not expressible.
-    vec![Effect::ExilePermanent { target: *id }]
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::Surveil { player: entry.controller, count: 2 },
+    ]
 }

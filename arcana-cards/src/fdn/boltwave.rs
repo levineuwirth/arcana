@@ -1,5 +1,4 @@
-//! Boltwave — `{R}` sorcery. "Boltwave deals 3 damage to each
-//! opponent."
+//! Boltwave — `{R}` sorcery. Deals 3 damage to each opponent.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -30,15 +29,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    vec![Effect::Sequence(
-        script::opponents(state, entry.controller)
-            .into_iter()
-            .map(|p| Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Player(p),
-                amount: 3,
-            })
-            .collect(),
-    )]
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    script::opponents(state, entry.controller)
+        .into_iter()
+        .map(|p| Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 3,
+        })
+        .collect()
 }

@@ -1,14 +1,10 @@
-//! Whelming Wave — `{2}{U}{U}` sorcery. "Return all creatures to their owners'
-//! hands except for Krakens, Leviathans, Octopuses, and Serpents."
-//!
-//! # GAP: Multi-subtype exclusion ("except Krakens, Leviathans, Octopuses, and
-//! Serpents") — `ObjectFilter` supports subtype_filter for one subtype at a
-//! time but no OR-combination of multiple excluded subtypes. Best effort:
-//! return all creatures (ignores the tribal exception).
+//! Whelming Wave — `{2}{U}{U}` sorcery. "Return all creatures to their
+//! owners' hands except for Krakens, Leviathans, Octopuses, and
+//! Serpents."
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::mana::ManaCost;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -28,7 +24,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Return all creatures to their owners' hands except for Krakens, Leviathans, Octopuses, and Serpents.".into(),
+                // GAP: "except for Krakens, Leviathans, Octopuses, and
+                // Serpents" — ObjectFilter cannot exclude a set of
+                // subtypes, so all creatures are returned.
+                text: "Return all creatures to their owners' hands.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -41,10 +40,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: multi-subtype exclusion (Kraken/Leviathan/Octopus/Serpent) not expressible
-    let targets = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     vec![Effect::ForEach {
-        targets,
+        targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
     }]
 }

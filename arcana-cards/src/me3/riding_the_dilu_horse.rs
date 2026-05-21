@@ -1,7 +1,5 @@
 //! Riding the Dilu Horse — `{2}{G}` sorcery. "Target creature gets
-//! +2/+2 and gains horsemanship." The effect lasts indefinitely;
-//! only an end-of-turn Duration is available, so the buff is emitted
-//! with that duration (the indefinite span is a GAP).
+//! +2/+2 and gains horsemanship."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -33,10 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: indefinite duration not available; +2/+2 + horsemanship
-    // applied with EndOfTurn duration instead.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // The bonus is permanent ("lasts indefinitely"), but the catalog's
+    // Pump/GrantKeyword durations are EndOfTurn only.
+    // GAP: indefinite (non-EOT) duration for the +2/+2 and horsemanship.
     vec![Effect::Pump {
         target: *id,
         power: 2,

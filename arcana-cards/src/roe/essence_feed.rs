@@ -1,10 +1,6 @@
-//! Essence Feed — `{5}{B}` sorcery.
-//! "Target player loses 3 life. You gain 3 life and create three 0/1 colorless
-//! Eldrazi Spawn creature tokens. They have 'Sacrifice this token: Add {C}.'"
-//!
-//! GAP: Token activated ability "Sacrifice this token: Add {C}" is not
-//! expressible via the TokenDefinition API (no abilities field for mana
-//! abilities). The token is created with empty abilities vec.
+//! Essence Feed — `{5}{B}` sorcery. "Target player loses 3 life. You
+//! gain 3 life and create three 0/1 colorless Eldrazi Spawn creature
+//! tokens. They have 'Sacrifice this token: Add {C}.'"
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -17,8 +13,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Essence Feed");
-    let _eldrazi = reg.interner_mut().intern("Eldrazi");
-    let _spawn = reg.interner_mut().intern("Spawn");
+    let _spawn = reg.interner_mut().intern("Eldrazi Spawn");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{5}{B}").expect("valid cost")),
@@ -43,12 +38,10 @@ fn resolve(
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(target_player) = target else { return Vec::new(); };
-
-    let eldrazi = reg.interner().lookup("Eldrazi").expect("Eldrazi interned during register()");
-    let spawn = reg.interner().lookup("Spawn").expect("Spawn interned during register()");
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let spawn = reg.interner().lookup("Eldrazi Spawn")
+        .expect("Eldrazi Spawn interned during register()");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(eldrazi);
     subtypes.0.insert(spawn);
     let token = TokenDefinition {
         name: spawn,
@@ -60,9 +53,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-
     vec![
-        Effect::LoseLife { player: *target_player, amount: 3 },
+        Effect::LoseLife { player: *p, amount: 3 },
         Effect::GainLife { player: entry.controller, amount: 3 },
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token: token.clone() },

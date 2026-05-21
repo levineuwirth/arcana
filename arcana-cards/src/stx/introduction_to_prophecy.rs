@@ -1,4 +1,4 @@
-//! Introduction to Prophecy — `{3}` Sorcery — Lesson. "Scry 2, then
+//! Introduction to Prophecy — `{3}` sorcery — Lesson. "Scry 2, then
 //! draw a card."
 
 use arcana_core::effects::Effect;
@@ -19,16 +19,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Scry 2, then draw a card.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Scry 2, then draw a card.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![
         Effect::Scry { player: entry.controller, count: 2 },
         Effect::DrawCards { player: entry.controller, count: 1 },

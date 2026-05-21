@@ -1,8 +1,9 @@
 //! Traumatic Prank — `{2}{R}` sorcery. "Gain control of target
 //! creature until end of turn. Untap that creature. It perpetually
-//! gains haste, ... and an upkeep self-damage trigger."
+//! gains haste, ..."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -30,15 +31,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "gain control until end of turn" and the perpetual granted
-    // text abilities have no catalog effect; only the untap is
-    // implemented.
-    vec![Effect::Untap { target: *id }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: temporary "gain control until end of turn" has no duration
+    // variant (only a permanent ChangeControl), and the perpetual
+    // can't-block / upkeep-damage abilities are not expressible.
+    // Emit the expressible parts: untap and grant haste.
+    vec![
+        Effect::Untap { target: *id },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }

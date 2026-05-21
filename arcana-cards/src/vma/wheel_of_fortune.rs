@@ -1,5 +1,8 @@
-//! Wheel of Fortune — `{2}{R}` sorcery. "Each player discards their
-//! hand, then draws seven cards."
+//! Wheel of Fortune — `{2}{R}` sorcery. "Each player discards their hand,
+//! then draws seven cards."
+//!
+//! Hand-sized discard is not a literal — use `script::hand_size` for each
+//! player's count, then push a draw-seven.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -20,27 +23,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player discards their hand, then draws seven cards.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player discards their hand, then draws seven cards.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
 fn resolve(
     state: &GameState,
-    _entry: &StackEntry,
+    entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
+    let mut effects: Vec<Effect> = Vec::new();
     for p in script::all_players(state) {
-        let hand = script::hand_size(state, p);
-        if hand > 0 {
+        let n = script::hand_size(state, p);
+        if n > 0 {
             effects.push(Effect::Discard {
                 player: p,
-                count: hand,
+                count: n,
                 choice: DiscardChoice::ControllerChooses,
             });
         }
@@ -48,5 +52,6 @@ fn resolve(
     for p in script::all_players(state) {
         effects.push(Effect::DrawCards { player: p, count: 7 });
     }
-    vec![Effect::Sequence(effects)]
+    let _ = entry;
+    effects
 }

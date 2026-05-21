@@ -1,7 +1,5 @@
-//! Reduce to Ashes — `{4}{R}` sorcery. "Reduce to Ashes deals 5
-//! damage to target creature. If that creature would die this turn,
-//! exile it instead." The die-replacement rider has no primitive;
-//! the 5 damage is modeled (partial).
+//! Reduce to Ashes — `{4}{R}` sorcery. Deals 5 damage to target
+//! creature. (Exile-instead-of-die replacement not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -32,11 +30,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "if that creature would die this turn, exile it instead" —
-    // no die-replacement primitive; the 5 damage is modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if that creature would die this turn, exile it instead" — no die-replacement Effect.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

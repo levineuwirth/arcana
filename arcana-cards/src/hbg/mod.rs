@@ -10,3 +10,4 @@ pub mod a_druidic_ritual;
 pub mod undersimplify;
 pub mod patriar_s_humiliation;
 pub mod flames_of_moradin;
+pub mod sewer_plague;

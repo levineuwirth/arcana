@@ -1,9 +1,6 @@
 //! Vendetta — `{B}` instant. "Destroy target nonblack creature. It
 //! can't be regenerated. You lose life equal to that creature's
 //! toughness."
-//!
-//! The targeted nonblack creature is destroyed; you lose life equal to
-//! its toughness (read via script::toughness_of BEFORE destruction).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,23 +24,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target nonblack creature. It can't be regenerated. You lose life equal to that creature's toughness.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().without_colors(ColorSet::black()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target nonblack creature. It can't be regenerated. You lose life equal to that creature's toughness.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_colors(ColorSet::black()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'can't be regenerated' rider on DestroyPermanent not in catalog.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     let tough = script::toughness_of(state, *id).max(0) as u32;
     vec![
         Effect::DestroyPermanent { target: *id },

@@ -1,14 +1,11 @@
 //! Dismal Failure — `{2}{U}{U}` instant. "Counter target spell. Its
 //! controller discards a card."
-//!
-//! The counter is expressible. The spell's controller is not exposed
-//! as a `PlayerId` to the resolver, so "its controller discards a
-//! card" is GAPped.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -26,28 +23,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Its controller discards a card.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Its controller discards a card.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let p = script::target_controller(state, *id, entry.controller);
     vec![
         Effect::Counter { target: *id },
-        // GAP: spell's controller not exposed — "its controller discards" omitted.
+        Effect::Discard {
+            player: p,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

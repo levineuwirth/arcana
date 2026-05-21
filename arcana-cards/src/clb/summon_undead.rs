@@ -1,5 +1,5 @@
-//! Summon Undead — `{4}{B}` sorcery. "You may mill three cards. Then return
-//! target creature card from your graveyard to the battlefield."
+//! Summon Undead — `{4}{B}` sorcery. "You may mill three cards. Then return a
+//! creature card from your graveyard to the battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,9 +7,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Summon Undead");
@@ -23,15 +21,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "You may mill three cards. Then return target creature card from your graveyard to the battlefield.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
-                    },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                text: "You may mill three cards. Then return a creature card from your graveyard to the battlefield.".into(),
+                target_requirements: vec![],
                 modal: None,
                 effect: resolve,
             }),
@@ -43,11 +34,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "You may mill 3" is optional; emit the mill then the reanimate.
-    vec![
-        Effect::Mill { player: entry.controller, count: 3 },
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-    ]
+    // "You may mill three cards" — treated as the standard mill (the optionality is not modeled).
+    // "Return a creature card from your graveyard to the battlefield" is a non-targeted choice;
+    // GAP: no untargeted ReturnFromGraveyardToBattlefield primitive (only the targeted variant).
+    vec![Effect::Mill { player: entry.controller, count: 3 }]
 }

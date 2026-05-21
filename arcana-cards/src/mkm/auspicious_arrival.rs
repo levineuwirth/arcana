@@ -1,5 +1,5 @@
-//! Auspicious Arrival — `{1}{W}` instant. "Target creature gets +2/+2
-//! until end of turn. Investigate."
+//! Auspicious Arrival — `{1}{W}` instant. "Target creature gets
+//! +2/+2 until end of turn. Investigate."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -30,15 +30,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // Investigate creates a Clue token with an activated ability not
-    // expressible via TokenDefinition; only the pump is implemented.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: Investigate (create a Clue token with an activated ability)
+    // is not expressible — only the +2/+2 is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -1,9 +1,7 @@
 //! Cinder Cloud — `{3}{R}{R}` instant. "Destroy target creature. If a
 //! white creature dies this way, Cinder Cloud deals damage to that
-//! creature's controller equal to the creature's power."
-//!
-//! GAP: no color-of-target / power-of-target accessor for the rider; no
-//! controller-of-target accessor.
+//! creature's controller equal to the creature's power." Dies-rider
+//! with color check not expressible; destroy only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +39,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no color-of-target / controller-of-target / power-at-time-of-
-    // death accessor for the rider.
+    // GAP: dies-rider conditional on target color + damage-equal-to-its-power — no dies-this-way conditional in catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

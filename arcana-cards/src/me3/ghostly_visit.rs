@@ -1,4 +1,5 @@
-//! Ghostly Visit — `{2}{B}` sorcery. "Destroy target nonblack creature."
+//! Ghostly Visit — `{2}{B}` sorcery. "Destroy target nonblack
+//! creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

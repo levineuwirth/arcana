@@ -36,9 +36,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let player = match target {
-        TargetChoice::Player(p) => *p,
-        _ => return Vec::new(),
-    };
-    vec![Effect::Discard { player, count: 1, choice: DiscardChoice::Random }]
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::Random,
+    }]
 }

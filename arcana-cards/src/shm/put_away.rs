@@ -1,8 +1,8 @@
-//! Put Away — `{2}{U}{U}` instant. "Counter target spell. You may shuffle
-//! up to one target card from your graveyard into your library."
-//!
-//! Counter is honest; the graveyard-shuffle rider has no Effect variant
-//! — GAP that piece.
+//! Put Away — `{2}{U}{U}` instant. "Counter target spell. You may
+//! shuffle up to one target card from your graveyard into your
+//! library." Two targets: spell + graveyard card. The shuffle-into-
+//! library primitive isn't in the catalog; counter the spell and GAP
+//! the graveyard shuffle.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -38,7 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     TargetRequirement {
                         filter: TargetFilter::Card {
                             zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::new(),
+                            filter: ObjectFilter::new()
+                                .controlled_by(ControllerConstraint::You),
                         },
                         count: TargetCount::UpTo(1),
                         controller: None,
@@ -56,7 +58,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no shuffle-card-from-graveyard-into-library Effect.
-    vec![Effect::Counter { target: *id }]
+    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
+    // GAP: shuffle a graveyard card into its owner's library — no such Effect primitive.
+    vec![Effect::Counter { target: *stack_id }]
 }

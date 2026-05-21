@@ -1,6 +1,6 @@
-//! Shamble Back — `{B}` sorcery.
-//! "Exile target creature card from a graveyard. Create a 2/2 black Zombie
-//! creature token. You gain 2 life."
+//! Shamble Back — `{B}` sorcery. "Exile target creature card from a
+//! graveyard. Create a 2/2 black Zombie creature token. You gain 2
+//! life."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -8,10 +8,11 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::targets::ObjectFilter;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Shamble Back");
@@ -28,7 +29,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Exile target creature card from a graveyard. Create a 2/2 black Zombie creature token. You gain 2 life.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card { zone: Zone::Graveyard(0), filter: ObjectFilter::creature() },
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
+                    },
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -43,10 +47,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-
-    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned during register()");
+    let zombie = reg.interner().lookup("Zombie")
+        .expect("Zombie interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
     let token = TokenDefinition {
@@ -59,10 +61,11 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-
-    vec![
-        Effect::ExileFromGraveyard { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
-        Effect::GainLife { player: entry.controller, amount: 2 },
-    ]
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ExileFromGraveyard { target: *id });
+    }
+    effects.push(Effect::CreateToken { controller: entry.controller, token });
+    effects.push(Effect::GainLife { player: entry.controller, amount: 2 });
+    effects
 }

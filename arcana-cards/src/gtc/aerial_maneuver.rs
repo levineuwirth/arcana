@@ -1,5 +1,5 @@
-//! Aerial Maneuver — `{1}{W}` instant. "Target creature gets +1/+1 and
-//! gains flying and first strike until end of turn."
+//! Aerial Maneuver — `{1}{W}` instant. "Target creature gets +1/+1
+//! and gains flying and first strike until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

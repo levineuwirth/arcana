@@ -1,7 +1,5 @@
 //! Infernal Contract — `{B}{B}{B}` sorcery. "Draw four cards. You
 //! lose half your life, rounded up."
-//!
-//! Dynamic: life loss = ceil(life / 2). Computed via script::life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

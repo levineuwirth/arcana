@@ -13,7 +13,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Open the Gates");
-    let _gate = reg.interner_mut().intern("Gate");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{G}").expect("valid cost")),
@@ -31,12 +30,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // "Basic land OR Gate card" cannot be expressed as one disjunctive
-    // filter; tutor for a land card (the basic-land branch).
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // Tutor a land card to hand. The ObjectFilter cannot distinguish
+    // basic / Gate from other lands, so any land card qualifies.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
         reveal: true,
     }]
+    // GAP: "basic land card or Gate card" — the filter cannot
+    // constrain to the Basic supertype or the Gate subtype, so the
+    // search is broadened to any land card.
 }

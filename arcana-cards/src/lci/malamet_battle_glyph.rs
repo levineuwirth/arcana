@@ -1,11 +1,9 @@
-//! Malamet Battle Glyph — `{G}` sorcery.
-//! "Choose target creature you control and target creature you don't
-//! control. If the creature you control entered this turn, put a +1/+1
-//! counter on it. Then those creatures fight each other."
-//
-// GAP: conditional "if the creature you control entered this turn" for
-//      the counter — no Effect::Conditional with ETB-this-turn check.
-//      Best effort: fight only (counter omitted).
+//! Malamet Battle Glyph — `{G}` sorcery. "Choose target creature you
+//! control and target creature you don't control. If the creature
+//! you control entered this turn, put a +1/+1 counter on it. Then
+//! those creatures fight each other." "Entered this turn"
+//! conditional not exposed; add the counter unconditionally as best
+//! effort and fight.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,8 +11,11 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
+use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Malamet Battle Glyph");
@@ -31,12 +32,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Choose target creature you control and target creature you don't control. If the creature you control entered this turn, put a +1/+1 counter on it. Then those creatures fight each other.".into(),
                 target_requirements: vec![
                     TargetRequirement {
-                        filter: TargetFilter::Creature,
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
                     TargetRequirement {
-                        filter: TargetFilter::Creature,
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
@@ -52,12 +57,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut iter = entry.targets.targets.iter();
-    let first = iter.next();
-    let second = iter.next();
-    let (Some(TargetChoice::Object(a)), Some(TargetChoice::Object(b))) = (first, second) else {
-        return Vec::new();
-    };
-    // GAP: conditional +1/+1 counter if controlled creature entered this turn
-    vec![Effect::Fight { a: *a, b: *b }]
+    let Some(t0) = entry.targets.targets.get(0) else { return Vec::new(); };
+    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(a) = t0 else { return Vec::new(); };
+    let TargetChoice::Object(b) = t1 else { return Vec::new(); };
+    // GAP: "entered this turn" per-id timestamp check — not exposed via script::*.
+    vec![
+        Effect::AddCounters {
+            target: *a,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
+        Effect::Fight { a: *a, b: *b },
+    ]
 }

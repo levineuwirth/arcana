@@ -1,5 +1,5 @@
-//! Searing Flesh — `{6}{R}` sorcery. "Searing Flesh deals 7 damage
-//! to target opponent or planeswalker."
+//! Searing Flesh — `{6}{R}` sorcery. "Searing Flesh deals 7 damage to
+//! target opponent or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Searing Flesh deals 7 damage to target opponent or planeswalker.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::any_target()],
             modal: None,
             effect: resolve,
         }),
@@ -31,20 +31,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
             ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 7,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 7 }]
 }

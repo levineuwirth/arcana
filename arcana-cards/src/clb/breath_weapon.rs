@@ -1,6 +1,5 @@
-//! Breath Weapon — `{2}{R}` instant. "Breath Weapon deals 2 damage to each
-//! non-Dragon creature."
-//! Uses ForEach on all creatures; GAP: no "non-Dragon" subtype exclusion filter.
+//! Breath Weapon — `{2}{R}` instant. "Breath Weapon deals 2 damage to
+//! each non-Dragon creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -15,6 +14,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Breath Weapon");
+    let _dragon = reg.interner_mut().intern("Dragon");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}").expect("valid cost")),
@@ -36,13 +36,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: non-Dragon filter; damages all creatures as best effort
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    ids.into_iter().map(|id| Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(id),
-        amount: 2,
-    }).collect()
+    let all = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let dragons: std::collections::HashSet<_> = script::ids_matching(
+        state,
+        &script::subtype_filter(reg, "Dragon"),
+        entry.controller,
+    )
+    .into_iter()
+    .collect();
+    let mut effects = Vec::new();
+    for id in all {
+        if dragons.contains(&id) {
+            continue;
+        }
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(id),
+            amount: 2,
+        });
+    }
+    effects
 }

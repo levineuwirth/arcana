@@ -1,11 +1,10 @@
 //! Cry of the Carnarium — `{1}{B}{B}` sorcery. "All creatures get
 //! -2/-2 until end of turn. Exile all creature cards in all
-//! graveyards that were put there from the battlefield this turn. If
-//! a creature would die this turn, exile it instead."
-//!
-//! GAP: 'cards put into graveyards this turn' history tracking and
-//! 'replace death with exile' replacement effect are not in the
-//! catalog. The -2/-2 wipe is modeled.
+//! graveyards that were put there from the battlefield this turn.
+//! If a creature would die this turn, exile it instead." The
+//! all-graveyards selective-exile + dies-replacement-this-turn
+//! aren't catalog primitives — best-effort: -2/-2 wipe; GAP the
+//! exile-replacement and graveyard sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -27,21 +26,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: this-turn graveyard exile + dies-replacement.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "All creatures get -2/-2 until end of turn. Exile all creature cards in all graveyards that were put there from the battlefield this turn. If a creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "All creatures get -2/-2 until end of turn. Exile all creature cards in all graveyards that were put there from the battlefield this turn. If a creature would die this turn, exile it instead.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: 'exile graveyard creatures put there this turn' + 'replace death with exile' not in catalog.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![Effect::ForEach {
-        targets: ids,
+        targets: script::ids_matching(state, &ObjectFilter::creature(), entry.controller),
         effect: Box::new(Effect::Pump {
             target: NULL_OBJECT_ID,
             power: -2,

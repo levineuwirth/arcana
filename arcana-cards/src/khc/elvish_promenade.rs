@@ -1,6 +1,5 @@
 //! Elvish Promenade — `{3}{G}` Kindred Sorcery — Elf. "Create a 1/1
-//! green Elf Warrior creature token for each Elf you control." The
-//! token count is dynamic: one CreateToken per Elf you control.
+//! green Elf Warrior creature token for each Elf you control."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -9,6 +8,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,13 +37,11 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let elf_filter = script::subtype_filter(reg, "Elf")
+        .controlled_by(ControllerConstraint::You);
+    let n = script::count_matching(state, &elf_filter, entry.controller);
     let elf = reg.interner().lookup("Elf").expect("Elf interned");
     let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
-    let n = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Elf"),
-        entry.controller,
-    );
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elf);
     subtypes.0.insert(warrior);
@@ -57,10 +55,9 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    (0..n)
-        .map(|_| Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        })
-        .collect()
+    let mut effects = Vec::with_capacity(n as usize);
+    for _ in 0..n {
+        effects.push(Effect::CreateToken { controller: entry.controller, token: token.clone() });
+    }
+    effects
 }

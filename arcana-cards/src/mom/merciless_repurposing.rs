@@ -1,7 +1,6 @@
-//! Merciless Repurposing — `{4}{B}{B}` instant. "Exile target creature.
-//! Incubate 3."
-//! GAP: Incubate token mechanic not in catalog.
-//! Emits ExilePermanent only.
+//! Merciless Repurposing — `{4}{B}{B}` instant. "Exile target
+//! creature. Incubate 3." Incubator/transform/incubate mechanic not
+//! in catalog; emit the exile.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. Incubate 3.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. Incubate 3.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,6 +37,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Incubate token mechanic not in catalog
+    // GAP: Incubator token with transform activated ability not in catalog.
     vec![Effect::ExilePermanent { target: *id }]
 }

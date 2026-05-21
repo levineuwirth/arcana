@@ -1,11 +1,6 @@
 //! Ceaseless Conflict — `{3}{W}{W}` sorcery. "Destroy all creatures.
 //! Then create a 3/2 red and white Spirit creature token for each
 //! nontoken creature you controlled that was destroyed this way."
-//!
-//! "Destroy all creatures" is a ForEach board wipe. The token rider is
-//! "for each nontoken creature you controlled that was destroyed" — a
-//! count of a pre-destruction subset. We snapshot that count BEFORE
-//! the wipe (your nontoken creatures) and emit that many tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -28,23 +23,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken creature you controlled that was destroyed this way.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken creature you controlled that was destroyed this way.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let all = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let n = script::count_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You).nontoken(),
-        entry.controller,
-    );
-    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned during register()");
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let spirit = reg.interner().lookup("Spirit")
+        .expect("Spirit interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
     let token = TokenDefinition {
@@ -57,12 +52,29 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
         keywords: vec![],
         abilities: vec![],
     };
+    // Count nontoken creatures you control *before* the wipe — that is
+    // the number destroyed this way.
+    let count = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .nontoken(),
+        entry.controller,
+    );
+    let all = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
     let mut effects = vec![Effect::ForEach {
         targets: all,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }];
-    for _ in 0..n {
-        effects.push(Effect::CreateToken { controller: entry.controller, token: token.clone() });
+    for _ in 0..count {
+        effects.push(Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        });
     }
     effects
 }

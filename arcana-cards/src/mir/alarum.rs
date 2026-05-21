@@ -1,5 +1,5 @@
-//! Alarum — `{1}{W}` instant. "Untap target nonattacking creature.
-//! It gets +1/+3 until end of turn."
+//! Alarum — `{1}{W}` instant. "Untap target nonattacking creature. It
+//! gets +1/+3 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -21,14 +21,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Untap target nonattacking creature. It gets +1/+3 until end of turn.".into(),
-            // GAP: no "nonattacking" target filter; restricted to
-            // target creature.
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "nonattacking" target restriction — no
+                // ObjectFilter refinement filters by attacking status;
+                // target is any creature.
+                text: "Untap target creature. It gets +1/+3 until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

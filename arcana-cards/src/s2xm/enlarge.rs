@@ -1,6 +1,6 @@
-//! Enlarge — `{3}{G}{G}` sorcery, "Target creature gets +7/+7 and
+//! Enlarge — `{3}{G}{G}` sorcery. "Target creature gets +7/+7 and
 //! gains trample until end of turn. It must be blocked this turn if
-//! able." The must-be-blocked rider is not expressible.
+//! able." GAP: 'must be blocked' rider not in catalog.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -22,18 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +7/+7 and gains trample until end of turn. It must be blocked this turn if able.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +7/+7 and gains trample until end of turn. It must be blocked this turn if able.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "must be blocked this turn if able" is not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'must be blocked if able' rider not in catalog.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: 7,

@@ -1,5 +1,5 @@
-//! Urza's Guilt — `{2}{U}{B}` sorcery. "Each player draws two cards,
-//! then discards three cards, then loses 4 life."
+//! Urza's Guilt — `{2}{U}{B}` sorcery. "Each player draws two cards, then
+//! discards three cards, then loses 4 life."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -20,21 +20,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player draws two cards, then discards three cards, then loses 4 life.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player draws two cards, then discards three cards, then loses 4 life.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
 fn resolve(
     state: &GameState,
-    _entry: &StackEntry,
+    entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
+    let mut effects: Vec<Effect> = Vec::new();
     for p in script::all_players(state) {
         effects.push(Effect::DrawCards { player: p, count: 2 });
     }
@@ -48,5 +49,6 @@ fn resolve(
     for p in script::all_players(state) {
         effects.push(Effect::LoseLife { player: p, amount: 4 });
     }
-    vec![Effect::Sequence(effects)]
+    let _ = entry;
+    effects
 }

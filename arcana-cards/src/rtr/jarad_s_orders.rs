@@ -1,8 +1,7 @@
-//! Jarad's Orders — `{2}{B}{G}` sorcery. "Search your library for up to two
-//! creature cards and reveal them. Put one into your hand and the other into
-//! your graveyard. Then shuffle." Catalog has tutor-to-hand for a single
-//! creature; tutor + place-one-in-graveyard split is not expressible. GAP the
-//! graveyard half.
+//! Jarad's Orders — `{2}{B}{G}` sorcery. "Search your library for up to
+//! two creature cards and reveal them. Put one into your hand and the
+//! other into your graveyard. Then shuffle." Only the tutor-to-hand of one
+//! creature is expressible; the graveyard placement is gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,7 +32,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no Effect for "tutor a card from library to graveyard"; emitting only the to-hand half.
+    // GAP: no catalog Effect to search a creature card directly into the
+    // graveyard; only the to-hand search is emitted.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::creature(),

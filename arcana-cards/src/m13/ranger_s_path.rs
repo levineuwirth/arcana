@@ -1,6 +1,5 @@
-//! Ranger's Path — `{3}{G}` sorcery. "Search your library for up to
-//! two Forest cards, put them onto the battlefield tapped, then
-//! shuffle."
+//! Ranger's Path — `{3}{G}` sorcery. Search your library for up to two
+//! Forest cards, put them onto the battlefield tapped, then shuffle.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for up to two Forest cards, put them onto the battlefield tapped, then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for up to two Forest cards, put them onto the battlefield tapped, then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,16 +35,16 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let forest = script::subtype_filter(reg, "Forest");
+    let filter = script::subtype_filter(reg, "Forest");
     vec![
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: forest.clone(),
+            filter: filter.clone(),
             tapped: true,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: forest,
+            filter,
             tapped: true,
         },
     ]

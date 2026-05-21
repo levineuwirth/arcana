@@ -39,14 +39,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Indestructible,
-            duration: Duration::EndOfTurn,
-        });
-    }
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let servo = reg.interner().lookup("Servo").expect("Servo interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(servo);
@@ -60,6 +55,12 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    out.push(Effect::CreateToken { controller: entry.controller, token });
-    out
+    vec![
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

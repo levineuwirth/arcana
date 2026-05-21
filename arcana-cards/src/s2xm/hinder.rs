@@ -1,9 +1,6 @@
-//! Hinder — `{1}{U}{U}` instant. "Counter target spell. If that spell is
-//! countered this way, put that card on your choice of the top or bottom
-//! of its owner's library instead of into that player's graveyard."
-//!
-//! GAP: no "countered spell goes to library instead of graveyard" rider;
-//! plain counter emitted as best-effort.
+//! Hinder — `{1}{U}{U}` instant. Counter target spell. If countered
+//! this way, put the card on the top or bottom of its owner's library
+//! instead of into the graveyard.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,6 +44,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: countered-to-library-instead-of-graveyard rider not modeled.
+    // GAP: alternate-destination replacement for countered card (library top/bottom)
+    // not in catalog; emit plain counter.
     vec![Effect::Counter { target: *id }]
 }

@@ -1,6 +1,6 @@
-//! Telekinesis — `{U}{U}` instant. "Tap target creature. Prevent all
-//! combat damage that would be dealt by that creature this turn. It
-//! doesn't untap during its controller's next two untap steps."
+//! Telekinesis — `{U}{U}` instant. Tap target creature; prevent all
+//! combat damage it would deal this turn; it doesn't untap during its
+//! controller's next two untap steps.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,20 +21,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Tap target creature. Prevent all combat damage that would be dealt by that creature this turn. It doesn't untap during its controller's next two untap steps.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Tap target creature. Prevent all combat damage that would be dealt by that creature this turn. It doesn't untap during its controller's next two untap steps.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: combat-damage prevention and the "doesn't untap during next
-    // two untap steps" rider are not expressible with the catalog;
-    // emitting only the tap.
+    // GAP: 'prevent all combat damage dealt BY that creature' (source-side
+    // prevention) and 'doesn't untap during next two untap steps' rider.
     vec![Effect::Tap { target: *id }]
 }

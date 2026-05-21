@@ -1,7 +1,9 @@
 //! Soul Servitude — `{2}{B}` instant. "Target player sacrifices a
 //! nontoken creature. When they do, you may discard a card. If you
-//! do, conjure a duplicate of the sacrificed creature into your
-//! hand."
+//! do, conjure a duplicate of the sacrificed creature into your hand.
+//! It perpetually gains '...'" GAP: Conjure / perpetual gains and
+//! triggered-on-sac follow-up aren't in the catalog. Express only the
+//! initial sac.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target player sacrifices a nontoken creature. When they do, you may discard a card. If you do, conjure a duplicate of the sacrificed creature into your hand.".into(),
+                text: "Target player sacrifices a nontoken creature. When they do, you may discard a card. If you do, conjure a duplicate of the sacrificed creature into your hand. It perpetually gains \"You may spend mana as though it were mana of any color to cast this spell.\"".into(),
                 target_requirements: vec![TargetRequirement::target_player()],
                 modal: None,
                 effect: resolve,
@@ -37,11 +39,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // "conjure a duplicate of the sacrificed creature" rider is not
-    // expressible; the targeted-player nontoken-creature sacrifice is
-    // applied.
+    // GAP: conjure-duplicate + perpetual-gains; only initial sac expressed.
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Sacrifice {
         player: *p,
         filter: ObjectFilter::creature().nontoken(),

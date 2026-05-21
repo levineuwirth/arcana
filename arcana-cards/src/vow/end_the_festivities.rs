@@ -1,12 +1,11 @@
 //! End the Festivities — `{R}` sorcery. "End the Festivities deals 1
 //! damage to each opponent and each creature and planeswalker they
-//! control." 1 damage to each opponent, and 1 damage to each creature
-//! they control via ForEach over opponent-controlled creatures.
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -34,23 +33,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
+    let mut effects = Vec::new();
     for p in script::opponents(state, entry.controller) {
-        out.push(Effect::DealDamage {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Player(p),
             amount: 1,
         });
+        // Creatures and planeswalkers that opponent controls — evaluated
+        // with ControllerConstraint::You against the opponent's id.
+        let filter = ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+            .controlled_by(ControllerConstraint::You);
+        for id in script::ids_matching(state, &filter, p) {
+            effects.push(Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Object(id),
+                amount: 1,
+            });
+        }
     }
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    out.push(Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
-            amount: 1,
-        }),
-    });
-    out
+    effects
 }

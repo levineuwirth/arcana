@@ -1,8 +1,5 @@
-//! Fissure — `{3}{R}{R}` instant. "Destroy target creature or land. It
-//! can't be regenerated."
-//!
-//! "Creature or land" is a disjunctive target the demonstrated
-//! ObjectFilter can't express; constrained to a permanent.
+//! Fissure — `{3}{R}{R}` instant. "Destroy target creature or land.
+//! It can't be regenerated." Regen rider isn't catalog-modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,16 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature or land. It can't be regenerated.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature or land. It can't be regenerated.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::CREATURE | TypeLine::LAND),
+                        ),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -43,8 +45,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

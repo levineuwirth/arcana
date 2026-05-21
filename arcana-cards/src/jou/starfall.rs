@@ -1,6 +1,5 @@
-//! Starfall — `{4}{R}` instant. "Starfall deals 3 damage to target
-//! creature. If that creature is an enchantment, Starfall deals 3
-//! damage to that creature's controller."
+//! Starfall — `{4}{R}` instant. Deals 3 to target creature; if it's an
+//! enchantment, also deals 3 to its controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,21 +21,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Starfall deals 3 damage to target creature. If that creature is an enchantment, Starfall deals 3 damage to that creature's controller.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Starfall deals 3 damage to target creature. If that creature is an enchantment, Starfall deals 3 damage to that creature's controller.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: the "if it's an enchantment, also damage its controller"
-    // conditional rider is not expressible; emitting the 3 damage to
-    // the creature.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'if that creature is an enchantment' subtype/type test at
+    // resolution isn't queryable, so we always emit only the creature
+    // damage.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

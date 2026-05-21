@@ -32,12 +32,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned");
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let soldier = reg
+        .interner()
+        .lookup("Soldier")
+        .expect("Soldier interned during register()");
+    let n = script::count_matching(state, &ObjectFilter::creature(), entry.controller);
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {
@@ -50,11 +50,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    let n = script::count_matching(
-        state,
-        &ObjectFilter::creature(),
-        entry.controller,
-    );
     (0..n)
         .map(|_| Effect::CreateToken {
             controller: entry.controller,

@@ -1,6 +1,5 @@
-//! Highspire Infusion — `{1}{G}` instant. "Target creature gets
-//! +3/+3 until end of turn. You get {E}{E} (two energy counters)."
-//! Energy counters have no primitive; the pump is emitted.
+//! Highspire Infusion — `{1}{G}` instant. "Target creature gets +3/+3
+//! until end of turn. You get {E}{E} (two energy counters)."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -32,9 +31,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: energy counters ({E}{E}) have no primitive.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: energy counters ({E}) are not in the catalog; only the pump is
+    // emitted.
     vec![Effect::Pump {
         target: *id,
         power: 3,

@@ -1,8 +1,6 @@
-//! Soul Nova — `{3}{W}{W}` instant. "Exile target attacking creature and all
-//! Equipment attached to it."
-//!
-//! GAP: no ObjectFilter for 'attacking', and no way to enumerate equipment
-//! attached to a specific permanent. Emitting the target-exile as best effort.
+//! Soul Nova — `{3}{W}{W}` instant. "Exile target attacking creature
+//! and all Equipment attached to it." Attacking-only filter + Aura/
+//! Equipment attachment relationship not in catalog; exile only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +38,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: cannot enumerate Equipment attached to *id
+    // GAP: attacking-only target filter and "Equipment attached to it" collateral exile.
     vec![Effect::ExilePermanent { target: *id }]
 }

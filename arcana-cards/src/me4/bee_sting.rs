@@ -21,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Bee Sting deals 2 damage to any target.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Bee Sting deals 2 damage to any target.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

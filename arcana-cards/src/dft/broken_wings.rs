@@ -1,5 +1,9 @@
-//! Broken Wings — `{2}{G}` instant, "Destroy target artifact,
-//! enchantment, or creature with flying."
+//! Broken Wings — `{2}{G}` instant. "Destroy target artifact, enchantment, or
+//! creature with flying."
+//!
+//! Disjunction with a keyword-qualified third arm (creature WITH FLYING) isn't
+//! expressible as a single filter. Fall back to artifact-or-enchantment OR
+//! creature (i.e. permanent), GAP the flying restriction.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -20,17 +26,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target artifact, enchantment, or creature with flying.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target artifact, enchantment, or creature with flying.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(TypeLine(
+                            TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::CREATURE,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'creature with flying' restriction on the creature branch — keyword-aware
+    // filter not in ObjectFilter.
     vec![Effect::DestroyPermanent { target: *id }]
 }

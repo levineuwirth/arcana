@@ -1,8 +1,10 @@
-//! Clowning Around — `{1}{W}` sorcery. "Create two 1/1 white Clown Robot
-//! artifact creature tokens, then roll a six-sided die. If the result is
-//! equal to or less than the number of Robots you control, create a 1/1
-//! white Clown Robot artifact creature token." Die-roll has no Effect; we
-//! emit only the two unconditional tokens.
+//! Clowning Around — `{1}{W}` sorcery. "Create two 1/1 white Clown
+//! Robot artifact creature tokens, then roll a six-sided die. If the
+//! result is equal to or less than the number of Robots you control,
+//! create a 1/1 white Clown Robot artifact creature token."
+//!
+//! The two guaranteed tokens are emitted. The die-roll-gated third
+//! token is not expressible — see GAP.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,8 +36,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let clown = reg.interner().lookup("Clown").expect("Clown interned during register()");
-    let robot = reg.interner().lookup("Robot").expect("Robot interned during register()");
+    let clown = reg.interner().lookup("Clown").expect("Clown interned");
+    let robot = reg.interner().lookup("Robot").expect("Robot interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(clown);
     subtypes.0.insert(robot);
@@ -49,7 +51,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: die roll + conditional third token requires randomness/Effect we don't have.
+    // GAP: no die-roll primitive — the third token, gated on rolling a
+    // d6 <= number of Robots you control, cannot be expressed.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

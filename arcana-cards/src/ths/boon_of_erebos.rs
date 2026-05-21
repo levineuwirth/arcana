@@ -1,5 +1,5 @@
-//! Boon of Erebos — `{B}` instant. "Target creature gets +2/+0 until
-//! end of turn. Regenerate it. You lose 2 life."
+//! Boon of Erebos — `{B}` instant. "Target creature gets +2/+0 until end
+//! of turn. Regenerate it. You lose 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -31,17 +31,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::Pump {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Pump {
             target: *id,
             power: 2,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-        out.push(Effect::Regenerate { target: *id });
-    }
-    out.push(Effect::LoseLife { player: entry.controller, amount: 2 });
-    out
+        },
+        Effect::Regenerate { target: *id },
+        Effect::LoseLife { player: entry.controller, amount: 2 },
+    ]
 }

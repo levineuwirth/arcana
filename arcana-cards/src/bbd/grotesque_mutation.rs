@@ -22,9 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +3/+1 and gains lifelink until \
-                   end of turn."
-                .into(),
+            text: "Target creature gets +3/+1 and gains lifelink until end of turn.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -37,12 +35,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: 3,

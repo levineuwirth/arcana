@@ -1,9 +1,9 @@
-//! Inspiring Roar — `{3}{W}` sorcery, "Put a +1/+1 counter on each creature
-//! you control."
+//! Inspiring Roar — `{3}{W}` sorcery. "Put a +1/+1 counter on each
+//! creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -41,12 +41,11 @@ fn resolve(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::AddCounters {
-            target: NULL_OBJECT_ID,
+    ids.into_iter()
+        .map(|id| Effect::AddCounters {
+            target: id,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
-        }),
-    }]
+        })
+        .collect()
 }

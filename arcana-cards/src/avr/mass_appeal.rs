@@ -1,6 +1,5 @@
 //! Mass Appeal — `{2}{U}` sorcery. "Draw a card for each Human you
-//! control." Dynamic count via `script::count_matching` over the Human
-//! subtype filtered by controller=you.
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

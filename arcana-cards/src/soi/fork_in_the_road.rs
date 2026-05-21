@@ -1,9 +1,9 @@
-//! Fork in the Road — `{1}{G}` sorcery. "Search your library for up to
-//! two basic land cards and reveal them. Put one into your hand and
-//! the other into your graveyard. Then shuffle."
+//! Fork in the Road — `{1}{G}` sorcery. "Search your library for up
+//! to two basic land cards and reveal them. Put one into your hand
+//! and the other into your graveyard. Then shuffle."
 //!
-//! Only one basic land to hand is expressible; the second card to
-//! graveyard has no search-to-graveyard primitive.
+//! GAP: split-destination tutor (hand vs graveyard) isn't a primitive;
+//! best-effort one basic land to hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,10 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to two basic land cards \
-                   and reveal them. Put one into your hand and the other \
-                   into your graveyard. Then shuffle."
-                .into(),
+            text: "Search your library for up to two basic land cards and reveal them. Put one into your hand and the other into your graveyard. Then shuffle.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -41,9 +38,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no "basic" supertype predicate, and there
-    // is no search-to-graveyard primitive for the second card; emitting
-    // a single land tutor-to-hand as the closest approximation.
+    // GAP: 'basic' restriction and split hand/graveyard destinations
+    // aren't primitives; tutor a land to hand instead.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

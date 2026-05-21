@@ -1,7 +1,5 @@
-//! Turn Inside Out — `{R}` instant. "Target creature gets +3/+0
-//! until end of turn. When it dies this turn, manifest dread."
-//! Manifest dread (and the delayed dies-trigger) has no primitive;
-//! the pump is emitted.
+//! Turn Inside Out — `{R}` instant. "Target creature gets +3/+0 until
+//! end of turn. When it dies this turn, manifest dread."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -33,9 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "when it dies this turn, manifest dread" has no primitive.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the "when it dies this turn, manifest dread" delayed trigger is
+    // not expressible (manifest dread is not in the catalog); only the
+    // pump is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 3,

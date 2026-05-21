@@ -1,8 +1,5 @@
-//! Wrap in Flames — `{3}{R}` sorcery. "Wrap in Flames deals 1 damage to
-//! each of up to three target creatures. Those creatures can't block this
-//! turn."
-//! GAP: "can't block this turn" effect not in catalog.
-//! Emits DealDamage to each of up to 3 targets (TargetCount::UpTo(3)).
+//! Wrap in Flames — `{3}{R}` sorcery. Deals 1 damage to each of up to
+//! three target creatures. Those creatures can't block this turn.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -11,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Wrap in Flames deals 1 damage to each of up to three target creatures. Those creatures can't block this turn.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
                     count: TargetCount::UpTo(3),
                     controller: None,
                 }],
@@ -43,15 +42,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    entry.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t {
-            Some(Effect::DealDamage {
+    // GAP: "can't block this turn" rider not in catalog.
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::DealDamage {
                 source: entry.source,
                 target: DamageTarget::Object(*id),
                 amount: 1,
-            })
-        } else {
-            None
-        }
-    }).collect()
+            }),
+            _ => None,
+        })
+        .collect()
 }

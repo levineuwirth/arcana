@@ -1,8 +1,6 @@
-//! Searing Barb — `{2}{R}` sorcery. "Searing Barb deals 2 damage to
-//! any target. If it's a creature, it can't block this turn.
-//! Incubate 1." The can't-block rider and the Incubate token (an
-//! Incubator artifact with a transform ability) have no primitive;
-//! the 2 damage is modeled (partial).
+//! Searing Barb — `{2}{R}` sorcery. Deals 2 damage to any target. If it's
+//! a creature, it can't block this turn. Incubate 1. (Can't-block rider
+//! and incubate/transform tokens not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -33,10 +31,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "can't block this turn" rider and "Incubate 1" (Incubator
-    // token with a transform ability) have no primitive; the 2 damage
-    // is modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -46,5 +45,10 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
+    // GAP: "can't block this turn" rider; "Incubate 1" Phyrexian transforming token not modeled.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 2,
+    }]
 }

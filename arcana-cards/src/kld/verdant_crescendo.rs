@@ -1,7 +1,9 @@
 //! Verdant Crescendo — `{3}{G}` sorcery. "Search your library for a
 //! basic land card and put it onto the battlefield tapped. Search
 //! your library and graveyard for a card named Nissa, Nature's
-//! Artisan, reveal it, put it into your hand, then shuffle."
+//! Artisan, reveal it, put it into your hand, then shuffle." GAP:
+//! named-card tutor across multiple zones not in catalog; emit just
+//! the basic-land fetch.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,19 +24,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a basic land card and put it onto the battlefield tapped. Search your library and graveyard for a card named Nissa, Nature's Artisan, reveal it, put it into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a basic land card and put it onto the battlefield tapped. Search your library and graveyard for a card named Nissa, Nature's Artisan, reveal it, put it into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: ObjectFilter has no basic-only or named-card refinement;
-    // TutorTo* only search the library (not graveyard). Emit best-effort
-    // land-tutor for clause 1; clause 2 is fully gapped.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: named-card tutor across multiple zones not in catalog.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

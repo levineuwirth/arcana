@@ -11,3 +11,4 @@ pub mod scorch_the_fields;
 pub mod skillful_lunge;
 pub mod sudden_disappearance;
 pub mod wrack_with_madness;
+pub mod death_s_caress;

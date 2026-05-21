@@ -1,5 +1,5 @@
-//! Solve the Equation — `{2}{U}` sorcery. "Search your library for
-//! an instant or sorcery card, reveal it, put it into your hand, then
+//! Solve the Equation — `{2}{U}` sorcery. "Search your library for an
+//! instant or sorcery card, reveal it, put it into your hand, then
 //! shuffle."
 
 use arcana_core::effects::Effect;
@@ -33,7 +33,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::TutorToHand {
         player: entry.controller,
-        filter: ObjectFilter::new().with_types_any(TypeLine::INSTANT.into()),
+        filter: ObjectFilter::new()
+            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
         reveal: true,
     }]
 }

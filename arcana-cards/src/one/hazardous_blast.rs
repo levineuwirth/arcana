@@ -1,13 +1,11 @@
-//! Hazardous Blast — `{3}{R}` sorcery. "Hazardous Blast deals 1
-//! damage to each creature your opponents control. Creatures your
-//! opponents control can't block this turn." The damage half is
-//! expressible via ForEach over opponent-controlled creatures; the
-//! can't-block clause has no primitive (GAP-noted, partial).
+//! Hazardous Blast — `{3}{R}` sorcery. Deals 1 damage to each creature
+//! your opponents control. Creatures your opponents control can't block
+//! this turn. (Can't-block rider not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -34,20 +32,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "creatures your opponents control can't block this turn" —
-    // no can't-block effect primitive; only the damage is applied.
-    let targets = script::ids_matching(
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "creatures your opponents control can't block this turn" rider not modeled.
+    let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
         entry.controller,
     );
-    vec![Effect::ForEach {
-        targets,
-        effect: Box::new(Effect::DealDamage {
+    ids.into_iter()
+        .map(|id| Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
+            target: DamageTarget::Object(id),
             amount: 1,
-        }),
-    }]
+        })
+        .collect()
 }

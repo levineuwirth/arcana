@@ -1,5 +1,5 @@
-//! Ferocious Charge — `{2}{G}` instant. "Target creature gets +4/+4 until end
-//! of turn. Scry 2."
+//! Ferocious Charge — `{2}{G}` instant. "Target creature gets +4/+4
+//! until end of turn. Scry 2."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +4/+4 until end of turn. Scry 2.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +4/+4 until end of turn. Scry 2.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

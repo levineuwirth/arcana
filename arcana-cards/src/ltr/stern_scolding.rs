@@ -22,20 +22,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target creature spell with power or toughness 2 or less.".into(),
-            // GAP: cannot express "power OR toughness 2 or less" on a
-            // spell filter; restricted to creature spells.
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target creature spell with power or toughness 2 or less.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new()
+                            .with_types(TypeLine::CREATURE.into())
+                            .with_max_power(2)
+                            .with_max_toughness(2),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -44,7 +46,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'power OR toughness 2 or less' (disjunctive) not directly
+    // expressible; filter approximates as 'power and toughness 2 or
+    // less'. Counter still applied.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Counter { target: *id }]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    vec![Effect::Counter { target: stack_id }]
 }

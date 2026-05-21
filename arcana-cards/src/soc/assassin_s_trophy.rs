@@ -1,9 +1,5 @@
-//! Assassin's Trophy — `{B}{G}` instant. "Destroy target permanent an opponent
-//! controls. Its controller may search their library for a basic land card, put
-//! it onto the battlefield, then shuffle."
-//!
-//! # GAP: optional TutorToBattlefield for the target's controller (not the
-//!   spell's controller) — TutorToBattlefield uses entry.controller
+//! Assassin's Trophy — `{B}{G}` instant. Destroy target permanent an
+//! opponent controls; its controller may search for a basic land.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,8 +43,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: TutorToBattlefield for the *target's* controller (not entry.controller)
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'its controller may search their library' — TutorToBattlefield
+    // only fires for entry.controller, not a foreign player.
     vec![Effect::DestroyPermanent { target: *id }]
 }

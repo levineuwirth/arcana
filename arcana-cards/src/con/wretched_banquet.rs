@@ -1,6 +1,6 @@
-//! Wretched Banquet — `{B}` sorcery. "Destroy target creature if it has
+//! Wretched Banquet — `{B}` sorcery. Destroy target creature if it has
 //! the least power or is tied for least power among creatures on the
-//! battlefield."
+//! battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,15 +39,22 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let tgt_power = script::power_of(state, *id);
-    let all = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let least = all
-        .iter()
-        .map(|c| script::power_of(state, *c))
-        .min()
-        .unwrap_or(tgt_power);
-    if tgt_power <= least {
-        vec![Effect::DestroyPermanent { target: *id }]
+    let id = *id;
+    let target_power = script::power_of(state, id);
+    let all_creatures = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
+    let mut min_power = target_power;
+    for cid in &all_creatures {
+        let p = script::power_of(state, *cid);
+        if p < min_power {
+            min_power = p;
+        }
+    }
+    if target_power <= min_power {
+        vec![Effect::DestroyPermanent { target: id }]
     } else {
         Vec::new()
     }

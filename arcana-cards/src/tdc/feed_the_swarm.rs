@@ -1,8 +1,6 @@
 //! Feed the Swarm — `{1}{B}` sorcery. "Destroy target creature or
 //! enchantment an opponent controls. You lose life equal to that
-//! permanent's mana value." We destroy the targeted opponent-
-//! controlled permanent; the life-loss-equal-to-its-mana-value rider
-//! has no script helper for a single permanent's CMC, so it is a GAP.
+//! permanent's mana value."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT))
+                        .controlled_by(ControllerConstraint::Opponent),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -42,8 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "you lose life equal to that permanent's mana value" — no
-    // script helper for a single permanent's CMC. Destroy emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "you lose life equal to that permanent's mana value" needs the
+    // target's mana value; only the destroy is emitted.
     vec![Effect::DestroyPermanent { target: *id }]
 }

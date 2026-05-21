@@ -1,6 +1,6 @@
-//! See Beyond — `{1}{U}` sorcery. "Draw two cards, then shuffle a card from
-//! your hand into your library." Draw is expressible; "shuffle a card from
-//! hand into library" has no Effect variant. We GAP that rider.
+//! See Beyond — `{1}{U}` sorcery. "Draw two cards, then shuffle a card
+//! from your hand into your library." Only the draw is expressible; the
+//! shuffle-back is gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,9 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no Effect for "shuffle a card from your hand into your library".
-    vec![Effect::DrawCards {
-        player: entry.controller,
-        count: 2,
-    }]
+    // GAP: "shuffle a card from your hand into your library" has no catalog Effect.
+    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
 }

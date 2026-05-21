@@ -3,9 +3,9 @@
 //! discards that card. Destroy up to one target Attraction that
 //! player controls."
 //!
-//! Models the targeted discard where the controller (you) chooses;
-//! the 'nonland' card filter and the Attraction destroy rider are
-//! GAP'd.
+//! The discard is modeled as a controller-chosen discard by the
+//! target player. The nonland restriction and the Attraction
+//! sub-target (Attractions are not modeled) are GAPs.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,11 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'nonland card' filter on discard, and Attraction destroy rider.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: nonland restriction on the chosen card, and the Attraction
+    // sub-target (Attractions are not modeled), are not expressible.
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

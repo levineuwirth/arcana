@@ -1,4 +1,4 @@
-//! Serum Visions — `{U}` sorcery. "Draw a card. Scry 2."
+//! Serum Visions — `{U}` sorcery. Draw a card. Scry 2.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

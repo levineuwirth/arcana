@@ -1,10 +1,9 @@
-//! Rite of the Serpent — `{4}{B}{B}` sorcery, "Destroy target
-//! creature. If that creature had a +1/+1 counter on it, create a
-//! 1/1 green Snake creature token."
+//! Rite of the Serpent — `{4}{B}{B}` sorcery. "Destroy target creature. If
+//! that creature had a +1/+1 counter on it, create a 1/1 green Snake creature
+//! token."
 //!
-//! The destroy is applied. GAP: no script helper inspects a
-//! permanent's +1/+1 counters, so the conditional Snake token is
-//! omitted.
+//! 'Had a +1/+1 counter on it' history check at destroy time isn't in script::
+//! helpers — GAP the conditional token; emit destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -17,7 +16,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rite of the Serpent");
-    let _snake = reg.interner_mut().intern("Snake");
+    let _ = reg.interner_mut().intern("Snake");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{B}{B}").expect("valid cost")),
@@ -26,18 +25,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature. If that creature had a +1/+1 counter on it, create a 1/1 green Snake creature token.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature. If that creature had a +1/+1 counter on it, create a 1/1 green Snake creature token.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: conditional Snake token (counter inspection) omitted.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'had a +1/+1 counter on it' check at destroy time not in script::.
     vec![Effect::DestroyPermanent { target: *id }]
 }

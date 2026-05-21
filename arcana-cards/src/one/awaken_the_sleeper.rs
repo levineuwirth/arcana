@@ -1,10 +1,9 @@
-//! Awaken the Sleeper — `{3}{R}` sorcery, "Gain control of target creature
-//! until end of turn. Untap that creature. It gains haste until end of
-//! turn. If it's equipped, you may destroy all Equipment attached to that
-//! creature."
-//!
-//! GAP: gain-control-until-end-of-turn not in catalog; expressed as Untap
-//! + GrantKeyword Haste only. Equipment destruction clause also inexpressible.
+//! Awaken the Sleeper — `{3}{R}` sorcery. "Gain control of target
+//! creature until end of turn. Untap that creature. It gains haste
+//! until end of turn. If it's equipped, you may destroy all Equipment
+//! attached to that creature." GAP: temporary gain-control until end
+//! of turn is NOT in the catalog (Effect::ChangeControl is permanent
+//! only). Express the expressible parts: Untap + GrantKeyword Haste.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -41,9 +40,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: temporary (EOT) gain-control; the equipped-destroy-equipment
+    // rider has no Effect surface (no equipment-attached query).
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: GainControl until end of turn not available; Equipment destroy clause inexpressible
     vec![
         Effect::Untap { target: *id },
         Effect::GrantKeyword {

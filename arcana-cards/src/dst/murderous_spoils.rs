@@ -1,9 +1,6 @@
-//! Murderous Spoils — `{5}{B}` instant. "Destroy target nonblack creature.
-//! It can't be regenerated. You gain control of all Equipment that were
-//! attached to it."
-//!
-//! GAP: no effect to gain control of attached Equipment; "can't be
-//! regenerated" not separately modeled. Destroy emitted as best-effort.
+//! Murderous Spoils — `{5}{B}` instant. Destroy target nonblack
+//! creature. It can't be regenerated. You gain control of all
+//! Equipment that were attached to it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,6 +46,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no gain-control-of-attached-Equipment effect.
+    // GAP: "can't be regenerated" rider and gain-control of attached Equipment
+    // are not expressible in the catalog; emit the destroy.
     vec![Effect::DestroyPermanent { target: *id }]
 }

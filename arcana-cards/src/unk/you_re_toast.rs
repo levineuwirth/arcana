@@ -1,7 +1,5 @@
-//! You're Toast! — `{2}{W}` instant. "Exile target nonland
-//! permanent. Its controller manifests bread." The "manifests bread"
-//! Food-manifest rider has no primitive; the exile is modeled
-//! (partial).
+//! You're Toast! — `{2}{W}` instant. Exile target nonland permanent. Its
+//! controller manifests bread (the bread-manifest rider isn't modeled).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,10 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "its controller manifests bread" — manifest / face-down
-    // Food token creation has no primitive; the exile is modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "manifest bread" — facedown Food token with conditional turn-up rules not modeled.
     vec![Effect::ExilePermanent { target: *id }]
 }

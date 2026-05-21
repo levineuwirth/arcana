@@ -1,5 +1,5 @@
-//! Titanic Growth — `{1}{G}` instant. "Target creature gets +4/+4 until end
-//! of turn."
+//! Titanic Growth — `{1}{G}` instant. "Target creature gets +4/+4
+//! until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

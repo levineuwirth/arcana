@@ -1,10 +1,6 @@
-//! Roiling Waters — `{5}{U}{U}` sorcery. "Return up to two target creatures
-//! your opponents control to their owners' hands. Target player draws two
-//! cards."
-//!
-//! GAP: TargetCount::UpTo for the creatures is set, but the target_requirements
-//! slot for the player draw is added as a second requirement. The resolver
-//! iterates the targets.
+//! Roiling Waters — `{5}{U}{U}` sorcery. "Return up to two target
+//! creatures your opponents control to their owners' hands. Target
+//! player draws two cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -38,7 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         count: TargetCount::UpTo(2),
                         controller: None,
                     },
-                    TargetRequirement::target_player(),
+                    TargetRequirement {
+                        filter: TargetFilter::Player,
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
                 ],
                 modal: None,
                 effect: resolve,
@@ -52,16 +53,18 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects: Vec<Effect> = Vec::new();
-    let mut player_draw = None;
-    for t in &entry.targets.targets {
-        match t {
-            TargetChoice::Object(id) => effects.push(Effect::ReturnToHand { target: *id }),
-            TargetChoice::Player(p) => player_draw = Some(*p),
-            _ => {}
+    // First N (up to 2) targets are creatures, last is the player.
+    let len = entry.targets.targets.len();
+    if len == 0 {
+        return Vec::new();
+    }
+    for t in entry.targets.targets.iter().take(len.saturating_sub(1)) {
+        if let TargetChoice::Object(id) = t {
+            effects.push(Effect::ReturnToHand { target: *id });
         }
     }
-    if let Some(p) = player_draw {
-        effects.push(Effect::DrawCards { player: p, count: 2 });
+    if let Some(TargetChoice::Player(p)) = entry.targets.targets.last() {
+        effects.push(Effect::DrawCards { player: *p, count: 2 });
     }
     effects
 }

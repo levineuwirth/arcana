@@ -1,6 +1,5 @@
 //! Glimmer of Genius — `{3}{U}` instant. "Scry 2, then draw two
-//! cards. You get {E}{E} (two energy counters)." Energy counters have
-//! no primitive; the scry and draw are emitted.
+//! cards. You get {E}{E} (two energy counters)."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,9 +29,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: energy counters ({E}{E}) have no primitive.
+    // GAP: energy counters ({E}) are not in the catalog; the scry and draw
+    // are emitted.
     vec![
-        Effect::Scry { player: entry.controller, count: 2 },
-        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::Scry {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
     ]
 }

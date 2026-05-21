@@ -1,8 +1,7 @@
-//! Compelled Duel — `{1}{G}` sorcery. "Target creature gets +3/+3
-//! until end of turn and must be blocked this turn if able."
-//!
-//! "Must be blocked if able" is a combat-requirement modifier with no
-//! catalog Effect; the +3/+3 is emitted.
+//! Compelled Duel — `{1}{G}` sorcery. "Target creature gets +3/+3 until
+//! end of turn and must be blocked this turn if able." The
+//! 'must-be-blocked' rider is not in the catalog — we emit the pump
+//! and GAP the block-forcing.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -24,18 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +3/+3 until end of turn and must be blocked this turn if able.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +3/+3 until end of turn and must be blocked this turn if able.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "must be blocked this turn if able" combat requirement.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'must be blocked if able' compulsion rider.
     vec![Effect::Pump {
         target: *id,
         power: 3,

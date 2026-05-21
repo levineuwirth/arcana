@@ -1,8 +1,5 @@
 //! Cosmium Blast — `{1}{W}` instant. "Cosmium Blast deals 4 damage to
 //! target attacking or blocking creature."
-//!
-//! GAP: no `ObjectFilter` builder for attacking-or-blocking; target spec
-//! falls back to plain target_creature().
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +21,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Cosmium Blast deals 4 damage to target attacking or blocking creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Cosmium Blast deals 4 damage to target attacking or blocking creature.".into(),
+            // GAP: attacking/blocking creature predicate not exposed on
+            // ObjectFilter; accept any creature.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

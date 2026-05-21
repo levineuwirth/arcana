@@ -1,8 +1,7 @@
-//! Give No Ground — `{3}{W}` instant. "Target creature gets +2/+6 until end
-//! of turn and can block any number of creatures this turn."
-//!
-//! GAP: no Effect variant to grant "can block any number of creatures";
-//! the pump portion is expressible but the blocking grant is not.
+//! Give No Ground — `{3}{W}` instant. "Target creature gets +2/+6
+//! until end of turn and can block any number of creatures this
+//! turn." GAP: 'can block any number' rider not in catalog; emit
+//! the Pump only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -39,9 +38,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'can block any number of creatures' rider not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no Effect variant to grant "can block any number of creatures"
     vec![Effect::Pump {
         target: *id,
         power: 2,

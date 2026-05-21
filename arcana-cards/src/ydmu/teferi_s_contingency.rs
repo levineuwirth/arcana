@@ -1,10 +1,8 @@
 //! Teferi's Contingency — `{W}{U}{U}` instant. "Counter target spell.
-//! Each card in its controller's graveyard, hand, and library with
-//! the same name as that spell perpetually gains 'This spell costs
-//! {2} more to cast.'"
-//!
-//! "Perpetually gains" cost modification on same-named cards across
-//! zones has no catalog Effect. Only the counter is modeled.
+//! Each card in its controller's graveyard, hand, and library with the
+//! same name as that spell perpetually gains 'This spell costs {2}
+//! more to cast.'" Perpetual cost-rider across all zones of a player
+//! is not catalog-shaped; emit the counter and GAP the perpetual.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,22 +25,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Each card in its controller's graveyard, hand, and library with the same name as that spell perpetually gains \"This spell costs {2} more to cast.\"".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Each card in its controller's graveyard, hand, and library with the same name as that spell perpetually gains \"This spell costs {2} more to cast.\"".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: perpetual cost-up rider on same-named cards across zones not in catalog.
+    // GAP: perpetual cost-rider tagging cross-zone cards by name.
     vec![Effect::Counter { target: *id }]
 }

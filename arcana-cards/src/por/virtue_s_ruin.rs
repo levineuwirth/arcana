@@ -1,6 +1,4 @@
 //! Virtue's Ruin — `{2}{B}` sorcery. "Destroy all white creatures."
-//!
-//! Filtered board wipe: ForEach over white creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,16 +20,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all white creatures.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all white creatures.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().with_colors(ColorSet::white()),

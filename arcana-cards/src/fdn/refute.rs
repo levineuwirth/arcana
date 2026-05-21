@@ -1,5 +1,5 @@
-//! Refute — `{1}{U}{U}` instant. "Counter target spell. Draw a card, then
-//! discard a card."
+//! Refute — `{1}{U}{U}` instant. "Counter target spell. Draw a card,
+//! then discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -42,17 +42,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
-        Effect::Counter { target: stack_id },
+        Effect::Counter { target: *id },
         Effect::DrawCards { player: entry.controller, count: 1 },
-        Effect::Discard {
-            player: entry.controller,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
+        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
     ]
 }

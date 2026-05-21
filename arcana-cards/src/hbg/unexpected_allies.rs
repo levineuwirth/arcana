@@ -1,13 +1,9 @@
 //! Unexpected Allies — `{1}{R}` sorcery. "Target nontoken creature
-//! you control gets +2/+0 and gains double team until end of turn.
-//! It also gains first strike until end of turn if it has the same
-//! name as another creature you control or a creature card in your
-//! graveyard."
-//!
-//! Double team is not in the demonstrated `KeywordAbility` surface
-//! and the "same name as another creature you control / in graveyard"
-//! conditional first strike has no catalog/script support. Only the
-//! +2/+0 pump is modeled.
+//! you control gets +2/+0 and gains double team until end of turn. It
+//! also gains first strike until end of turn if it has the same name
+//! as another creature you control or a creature card in your
+//! graveyard." Double team isn't in the supported keyword surface;
+//! same-name predicate also missing. Emit the +2/+0 base.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -32,27 +28,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target nontoken creature you control gets +2/+0 and gains double team until end of turn. It also gains first strike until end of turn if it has the same name as another creature you control or a creature card in your graveyard.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You)
-                        .nontoken(),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target nontoken creature you control gets +2/+0 and gains double team until end of turn. It also gains first strike until end of turn if it has the same name as another creature you control or a creature card in your graveyard.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You)
+                            .nontoken(),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "double team" keyword not in supported surface; "same name as another creature
-    // you control / in graveyard" name-equality conditional first-strike not in catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: double-team keyword (not in the catalog surface); 'same
+    // name as another of your creatures / in your graveyard'
+    // conditional for first strike.
     vec![Effect::Pump {
         target: *id,
         power: 2,

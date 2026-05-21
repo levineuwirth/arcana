@@ -1,8 +1,8 @@
 //! Fungal Rebirth — `{2}{G}` instant. "Return target permanent card from
 //! your graveyard to your hand. If a creature died this turn, create two
-//! 1/1 green Saproling creature tokens." No "creature died this turn" helper
-//! — GAP the conditional and emit the tokens unconditionally? No: a literal-
-//! when-text-is-conditional is materially wrong. We GAP the tokens entirely.
+//! 1/1 green Saproling creature tokens." The "creature died this turn"
+//! check is not exposed by the script helpers, so the conditional tokens
+//! are gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -18,7 +18,6 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Fungal Rebirth");
-    let _saproling = reg.interner_mut().intern("Saproling");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G}").expect("valid cost")),
@@ -44,7 +43,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: no helper for "did a creature die this turn"; can't gate the Saproling tokens, so omit them.
+    // GAP: no script helper reports whether a creature died this turn, so the
+    // conditional two Saproling tokens cannot be emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

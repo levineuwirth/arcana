@@ -1,5 +1,5 @@
-//! Fall of the Gavel — `{3}{W}{U}` instant. "Counter target spell. You gain 5
-//! life."
+//! Fall of the Gavel — `{3}{W}{U}` instant. "Counter target spell. You
+//! gain 5 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,13 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::Counter { target: *id });
-    }
-    out.push(Effect::GainLife {
-        player: entry.controller,
-        amount: 5,
-    });
-    out
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Counter { target: *id },
+        Effect::GainLife { player: entry.controller, amount: 5 },
+    ]
 }

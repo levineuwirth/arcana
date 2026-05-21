@@ -23,3 +23,4 @@ pub mod no_witnesses;
 pub mod auspicious_arrival;
 pub mod soul_search;
 pub mod eliminate_the_impossible;
+pub mod hard_hitting_question;

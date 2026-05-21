@@ -1,5 +1,5 @@
-//! Butcher's Glee — `{2}{B}` instant. "Target creature gets +3/+0 and
-//! gains lifelink until end of turn. Regenerate it."
+//! Butcher's Glee — `{2}{B}` instant. "Target creature gets +3/+0
+//! and gains lifelink until end of turn. Regenerate it."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,13 +30,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![
         Effect::Pump {
             target: *id,

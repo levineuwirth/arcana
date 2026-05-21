@@ -1,11 +1,7 @@
-//! Wisecrack — `{2}{R}` instant. "Target creature deals damage equal to its
-//! power to itself. If that creature is attacking, Wisecrack deals 2 damage
-//! to that creature's controller."
-//!
-//! GAP: no Effect variant to check whether a creature is currently attacking;
-//! the conditional secondary damage is inexpressible. The primary
-//! self-damage (power-to-self) requires script::power_of which returns i32;
-//! DealDamage needs a DamageTarget::Object and amount u32.
+//! Wisecrack — `{2}{R}` instant. "Target creature deals damage equal
+//! to its power to itself. If that creature is attacking, Wisecrack
+//! deals 2 damage to that creature's controller." The attacking rider
+//! is GAP'd (no 'is-attacking' check in catalog).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -45,11 +41,11 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id).max(0) as u32;
-    // GAP: no way to check if creature is attacking; secondary damage omitted
+    let amount = script::power_of(state, *id).max(0) as u32;
+    // GAP: 'is attacking' check + 2-damage-to-controller rider not in catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
-        amount: power,
+        amount,
     }]
 }

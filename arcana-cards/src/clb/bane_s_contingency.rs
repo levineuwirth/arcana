@@ -1,8 +1,7 @@
-//! Bane's Contingency — `{1}{U}{U}` instant. "Counter target spell.
-//! If that spell targets a commander you control, instead counter
-//! that spell, scry 2, then draw a card." The commander-target
-//! condition has no script helper, so only the base counter is
-//! modeled; the bonus scry/draw is GAP-noted (partial).
+//! Bane's Contingency — `{1}{U}{U}` instant. Counter target spell. If
+//! that spell targets a commander you control, instead counter that
+//! spell, scry 2, then draw a card. (Commander-target predicate not
+//! modeled — emit plain counter.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,11 +37,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "if that spell targets a commander you control" — no helper
-    // to inspect a spell's targets / commander status; the bonus
-    // scry 2 + draw is omitted, only the base counter is modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if that spell targets a commander you control" — no commander predicate;
+    // emit the plain counter and skip the scry/draw bonus.
     vec![Effect::Counter { target: *id }]
 }

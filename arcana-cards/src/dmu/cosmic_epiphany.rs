@@ -1,4 +1,4 @@
-//! Cosmic Epiphany — `{4}{U}{U}` sorcery, "Draw cards equal to the number
+//! Cosmic Epiphany — `{4}{U}{U}` sorcery. "Draw cards equal to the number
 //! of instant and sorcery cards in your graveyard."
 
 use arcana_core::effects::Effect;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw cards equal to the number of instant and sorcery cards in your graveyard.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw cards equal to the number of instant and sorcery cards in your graveyard.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,13 +35,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let instant_filter = ObjectFilter::new().with_types(TypeLine::INSTANT.into());
-    let sorcery_filter = ObjectFilter::new().with_types(TypeLine::SORCERY.into());
-    let instants = script::graveyard_matching(state, &instant_filter, entry.controller, entry.controller);
-    let sorceries = script::graveyard_matching(state, &sorcery_filter, entry.controller, entry.controller);
-    let count = instants + sorceries;
-    if count == 0 {
-        return Vec::new();
-    }
-    vec![Effect::DrawCards { player: entry.controller, count }]
+    let filter = ObjectFilter::new().with_types_any(TypeLine(
+        TypeLine::INSTANT | TypeLine::SORCERY,
+    ));
+    let n = script::graveyard_matching(state, &filter, entry.controller, entry.controller);
+    vec![Effect::DrawCards { player: entry.controller, count: n }]
 }

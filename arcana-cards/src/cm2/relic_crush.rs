@@ -21,31 +21,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
-    let ae = || {
+    let art_ench = || {
         TargetFilter::Permanent(
-            ObjectFilter::new()
-                .with_types_any(TypeLine::ARTIFACT.into())
-                .with_types_any(TypeLine::ENCHANTMENT.into()),
+            ObjectFilter::permanent()
+                .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
         )
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target artifact or enchantment and up to one other target artifact or enchantment.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: ae(),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: ae(),
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target artifact or enchantment and up to one other target artifact or enchantment.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: art_ench(),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: art_ench(),
+                        count: TargetCount::UpTo(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

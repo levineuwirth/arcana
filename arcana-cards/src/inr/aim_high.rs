@@ -1,5 +1,5 @@
-//! Aim High — `{1}{G}` instant. "Untap target creature. It gets +2/+2
-//! and gains reach until end of turn."
+//! Aim High — `{1}{G}` instant. Untap target creature. It gets +2/+2 and
+//! gains reach until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,14 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Untap target creature. It gets +2/+2 and gains reach until \
-                   end of turn."
-                .into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Untap target creature. It gets +2/+2 and gains reach until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -37,13 +36,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
     vec![
-        Effect::Untap { target: *id },
+        Effect::Untap { target: id },
         Effect::Pump {
-            target: *id,
+            target: id,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,

@@ -11,7 +11,8 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectOrPlayer, TargetChoice, TargetRequirement,
+    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice, TargetCount,
+    TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -25,15 +26,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control deals X damage to any other target and X damage to itself, where X is its power.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::any_target(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature you control deals X damage to any other target and X damage to itself, where X is its power.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement::any_target(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -42,27 +50,25 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(creature)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let Some(other) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let x = script::power_of(state, *creature).max(0) as u32;
-    let other_dt = match other {
+    let Some(first) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(self_id) = first else { return Vec::new(); };
+    let self_id = *self_id;
+    let Some(second) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let other = match second {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
-        TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)) => {
-            DamageTarget::Object(*id)
-        }
-        TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)) => {
-            DamageTarget::Player(*p)
-        }
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
     };
+    let power = script::power_of(state, self_id).max(0) as u32;
     vec![
-        Effect::DealDamage { source: *creature, target: other_dt, amount: x },
+        Effect::DealDamage { source: entry.source, target: other, amount: power },
         Effect::DealDamage {
-            source: *creature,
-            target: DamageTarget::Object(*creature),
-            amount: x,
+            source: entry.source,
+            target: DamageTarget::Object(self_id),
+            amount: power,
         },
     ]
 }

@@ -1,10 +1,6 @@
-//! Spelljack — `{3}{U}{U}{U}` instant. "Counter target spell. If that
-//! spell is countered this way, exile it instead of putting it into its
-//! owner's graveyard. You may play it without paying its mana cost for as
-//! long as it remains exiled."
-//!
-//! GAP: no exile-countered-spell-and-play-for-free rider; plain counter
-//! emitted as best-effort.
+//! Spelljack — `{3}{U}{U}{U}` instant. Counter target spell. If
+//! countered this way, exile it instead. You may play it without
+//! paying its mana cost for as long as it remains exiled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -48,6 +44,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: exile-and-play-for-free rider not modeled.
+    // GAP: exile-instead-of-graveyard replacement and "play from exile without
+    // paying" continuous effect are not in the catalog.
     vec![Effect::Counter { target: *id }]
 }

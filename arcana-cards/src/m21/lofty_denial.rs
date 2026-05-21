@@ -1,6 +1,6 @@
 //! Lofty Denial — `{1}{U}` instant. "Counter target spell unless its
-//! controller pays {1}. If you control a creature with flying,
-//! counter that spell unless its controller pays {4} instead."
+//! controller pays {1}. If you control a creature with flying, counter
+//! that spell unless its controller pays {4} instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,16 +23,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell unless its controller pays {1}. If you control a creature with flying, counter that spell unless its controller pays {4} instead.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: the {4} escalation depends on controlling a
+                // creature with flying — no ObjectFilter refinement
+                // filters by keyword, so only the base {1} tax is used.
+                text: "Counter target spell unless its controller pays {1}.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -43,8 +47,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: the {4} alternate tax conditional on controlling a flier
-    // cannot be expressed; using the base {1} tax.
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{1}").expect("valid cost"),

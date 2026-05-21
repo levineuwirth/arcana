@@ -1,7 +1,7 @@
 //! Dreadmaw's Ire — `{R}` instant. "Until end of turn, target
-//! attacking creature gets +2/+2 and gains trample and \"Whenever
+//! attacking creature gets +2/+2 and gains trample and 'Whenever
 //! this creature deals combat damage to a player, destroy target
-//! artifact that player controls.\""
+//! artifact that player controls.'"
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -32,12 +32,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The granted combat-damage triggered ability is not expressible;
-    // emit the +2/+2 and trample ("attacking" restriction also not
-    // expressible as a target filter).
     vec![Effect::Pump {
         target: *id,
         power: 2,
@@ -45,4 +46,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
         duration: Duration::EndOfTurn,
         keywords: vec![KeywordAbility::Trample],
     }]
+    // GAP: "attacking" target restriction is not expressible, and the
+    // granted combat-damage triggered ability ("destroy target
+    // artifact that player controls") cannot be attached to a
+    // permanent at resolve time.
 }

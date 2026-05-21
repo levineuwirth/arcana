@@ -1,11 +1,8 @@
 //! Stench of Evil — `{2}{B}{B}` sorcery. "Destroy all Plains. For
 //! each land destroyed this way, Stench of Evil deals 1 damage to
-//! that land's controller unless they pay {2}."
-//!
-//! GAP: 'damage to that land's controller unless they pay {2}' rider
-//! references the destroyed permanent's controller and a pay-mana
-//! alternative — neither is in the catalog. The Plains wipe is
-//! modeled via subtype filter.
+//! that land's controller unless they pay {2}." We can ForEach the
+//! Plains destruction; the per-land 'unless they pay {2}' player-
+//! choice is not catalog-expressible — GAP the rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -18,7 +15,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Stench of Evil");
-    let _plains = reg.interner_mut().intern("Plains");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{B}{B}").expect("valid cost")),
@@ -26,21 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: per-land 'unless they pay {2}' player-choice rider.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all Plains. For each land destroyed this way, Stench of Evil deals 1 damage to that land's controller unless they pay {2}.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all Plains. For each land destroyed this way, Stench of Evil deals 1 damage to that land's controller unless they pay {2}.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &script::subtype_filter(reg, "Plains"), entry.controller);
-    // GAP: per-land controller damage with pay-{2} alternative not in catalog.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![Effect::ForEach {
-        targets: ids,
+        targets: script::ids_matching(
+            state,
+            &script::subtype_filter(reg, "Plains"),
+            entry.controller,
+        ),
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

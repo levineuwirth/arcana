@@ -3,3 +3,5 @@ pub mod assault_zeppelid;
 pub mod stomp_and_howl;
 pub mod weight_of_spires;
 pub mod brain_pry;
+pub mod kindle_the_carnage;
+pub mod ignorant_bliss;

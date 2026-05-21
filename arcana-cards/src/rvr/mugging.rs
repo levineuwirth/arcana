@@ -1,8 +1,5 @@
 //! Mugging — `{R}` sorcery. "Mugging deals 2 damage to target creature.
 //! That creature can't block this turn."
-//!
-//! Damage is honest; the "can't block this turn" rider has no Effect
-//! variant — GAP that part.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Mugging deals 2 damage to target creature. That creature can't block this turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Mugging deals 2 damage to target creature. That creature can't block this turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,7 +37,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no "can't block this turn" Effect variant.
+    // GAP: "can't block this turn" rider not in the catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

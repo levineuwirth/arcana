@@ -1,5 +1,5 @@
-//! Night's Whisper — `{1}{B}` sorcery. "You draw two cards and lose
-//! 2 life."
+//! Night's Whisper — `{1}{B}` sorcery. You draw two cards and lose 2
+//! life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,9 +28,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::LoseLife { player: entry.controller, amount: 2 },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::LoseLife {
+            player: entry.controller,
+            amount: 2,
+        },
     ]
 }

@@ -1,12 +1,10 @@
-//! The Grand Tour — `{1}{U}` instant. "Exile target permanent, then put it
-//! into its owner's hand. That player discards that card, then puts it on top
-//! of their library. Then they put it onto the battlefield."
-//!
-//! GAP: no Effect chain for exile → owner's hand → discard same card → top of
-//! library → battlefield on a single card identity (the card changes zones
-//! and id semantics). Best effort: ReturnToHand the target permanent.
+//! The Grand Tour — `{1}{U}` instant. "Exile target permanent, then
+//! put it into its owner's hand. That player discards that card,
+//! then puts it on top of their library. Then they put it onto the
+//! battlefield." Multi-zone shuffle of a single card not in catalog;
+//! exile-then-return-to-hand is the closest expressible piece.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -48,6 +46,14 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: multi-zone chain on a single card identity not expressible
-    vec![Effect::ReturnToHand { target: *id }]
+    // GAP: full hand→library-top→battlefield bounce chain. Only exile-then-return-to-hand expressible.
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::ReturnToHand,
+        },
+    ]
 }

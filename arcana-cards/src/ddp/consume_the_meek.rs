@@ -1,8 +1,7 @@
-//! Consume the Meek — `{3}{B}{B}` instant. "Destroy each creature
-//! with mana value 3 or less. They can't be regenerated."
-//!
-//! "Can't be regenerated" has no catalog flag; the filtered board
-//! wipe is emitted.
+//! Consume the Meek — `{3}{B}{B}` instant. "Destroy each creature with
+//! mana value 3 or less. They can't be regenerated." The
+//! 'can't-be-regenerated' rider isn't separately modeled; the sweep is
+//! a filtered ForEach.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,22 +23,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy each creature with mana value 3 or less. They can't be regenerated.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy each creature with mana value 3 or less. They can't be regenerated.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().with_max_cmc(3),
         entry.controller,
     );
-    // GAP: "can't be regenerated" rider has no catalog flag.
+    // GAP: 'can't be regenerated' rider.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

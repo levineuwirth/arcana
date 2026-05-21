@@ -1,7 +1,7 @@
 //! Deadly Brew — `{B}{G}` sorcery. "Each player sacrifices a creature
-//! or planeswalker of their choice. If you sacrificed a permanent this
-//! way, you may return another permanent card from your graveyard to
-//! your hand."
+//! or planeswalker of their choice. If you sacrificed a permanent
+//! this way, you may return another permanent card from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,21 +32,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    _entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // Partial: per-player sacrifice-a-creature is expressible; the
-    // conditional graveyard-return rider has no catalog effect and is
-    // omitted.
-    let effects = script::all_players(state)
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "if you sacrificed a permanent this way, you may return
+    // another from your graveyard" reflexive clause is not
+    // expressible. The Sacrifice filter cannot express
+    // "creature or planeswalker" either, so use creature().
+    script::all_players(state)
         .into_iter()
         .map(|p| Effect::Sacrifice {
             player: p,
             filter: ObjectFilter::creature(),
             count: 1,
         })
-        .collect();
-    vec![Effect::Sequence(effects)]
+        .collect()
 }

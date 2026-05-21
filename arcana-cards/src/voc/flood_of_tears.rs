@@ -3,9 +3,8 @@
 //! nontoken permanents you control this way, you may put a permanent
 //! card from your hand onto the battlefield."
 //!
-//! GAP: 'four or more nontoken returned, then put a permanent card
-//! from hand' rider isn't a catalog primitive. The mass bounce is
-//! modeled.
+//! The board-wide bounce is expressed. The conditional
+//! put-a-permanent-from-hand rider is not expressible — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,12 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-        entry.controller,
-    );
-    // GAP: 'cheat-a-permanent-from-hand-onto-battlefield' rider.
+    // GAP: the conditional "put a permanent card from your hand onto
+    // the battlefield" rider is not expressible.
+    let filter = ObjectFilter::permanent().without_types(TypeLine::LAND.into());
+    let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

@@ -1,5 +1,5 @@
-//! Stupor — `{2}{B}` sorcery, "Target opponent discards a card at random,
-//! then discards a card."
+//! Stupor — `{2}{B}` sorcery. "Target opponent discards a card at
+//! random, then discards a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,10 +35,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    let p = *p;
     vec![
-        Effect::Discard { player: *p, count: 1, choice: DiscardChoice::Random },
-        Effect::Discard { player: *p, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard { player: p, count: 1, choice: DiscardChoice::Random },
+        Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses },
     ]
 }

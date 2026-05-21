@@ -1,10 +1,5 @@
-//! Ambitious Assault — `{2}{R}` instant. "Creatures you control get
-//! +2/+0 until end of turn. If you control a modified creature, draw
-//! a card."
-//!
-//! GAP: "modified creature" check (Equipment, Auras you control, or
-//! counters) is not expressible via the current script helpers. The
-//! board pump is emitted; the conditional draw is omitted.
+//! Ambitious Assault — `{2}{R}` instant. Creatures you control get
+//! +2/+0 until end of turn; draw if you control a modified creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -14,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Creatures you control get +2/+0 until end of turn. If you control a modified creature, draw a card.".into(),
+                text: "Creatures you control get +2/+0 until end of turn. If you control a modified creature, draw a card. (Equipment, Auras you control, and counters are modifications.)".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -42,9 +37,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    // GAP: conditional draw if controlling a modified creature not supported
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    // GAP: 'modified creature' test (auras/equipment/counters) isn't an
+    // ObjectFilter refinement; we cannot reliably gate the draw.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::Pump {

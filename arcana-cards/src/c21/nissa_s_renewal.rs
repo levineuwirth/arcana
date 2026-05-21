@@ -1,9 +1,6 @@
-//! Nissa's Renewal — `{5}{G}` sorcery. "Search your library for up to
-//! three basic land cards, put them onto the battlefield tapped, then
-//! shuffle. You gain 7 life."
-//!
-//! Modeled as three tapped land tutors plus the life gain. (No basic
-//! supertype filter is available; the type filter selects lands.)
+//! Nissa's Renewal — `{5}{G}` sorcery. "Search your library for up to three
+//! basic land cards, put them onto the battlefield tapped, then shuffle. You
+//! gain 7 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to three basic land cards, put them onto the battlefield tapped, then shuffle. You gain 7 life.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for up to three basic land cards, put them onto the battlefield tapped, then shuffle. You gain 7 life.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,23 +36,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    // Each TutorToBattlefield fetches one land card; repeated for "up to three".
+    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
     vec![
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: land.clone(),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: land.clone(),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: land,
-            tapped: true,
-        },
+        Effect::TutorToBattlefield { player: entry.controller, filter: land_filter.clone(), tapped: true },
+        Effect::TutorToBattlefield { player: entry.controller, filter: land_filter.clone(), tapped: true },
+        Effect::TutorToBattlefield { player: entry.controller, filter: land_filter, tapped: true },
         Effect::GainLife { player: entry.controller, amount: 7 },
     ]
 }

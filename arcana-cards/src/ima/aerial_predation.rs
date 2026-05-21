@@ -1,5 +1,7 @@
 //! Aerial Predation — `{2}{G}` instant. "Destroy target creature with
-//! flying. You gain 2 life."
+//! flying. You gain 2 life." The 'has-flying' predicate isn't in the
+//! ObjectFilter refinement set, so we target any creature and GAP the
+//! flying restriction.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,18 +22,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature with flying. You gain 2 life.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature with flying. You gain 2 life.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "with flying" target restriction is not expressible in
-    // TargetFilter; target requirement is an unrestricted creature.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'with flying' creature filter not in ObjectFilter refinements.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![

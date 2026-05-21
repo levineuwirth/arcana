@@ -1,5 +1,8 @@
 //! Fight On! — `{2}{B}` instant. "Return up to two target creature
-//! cards from your graveyard to your hand."
+//! cards from your graveyard to your hand." The catalog's
+//! `ReturnFromGraveyardToHand` is a single-target primitive — the
+//! up-to-two-target shape is expressed with two TargetRequirements,
+//! each with `TargetCount::UpTo(1)`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,28 +26,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to two target creature cards from your graveyard to your hand.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature(),
-                },
-                count: TargetCount::UpTo(2),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return up to two target creature cards from your graveyard to your hand.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Card {
+                            zone: Zone::Graveyard(0),
+                            filter: ObjectFilter::creature(),
+                        },
+                        count: TargetCount::UpTo(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Card {
+                            zone: Zone::Graveyard(0),
+                            filter: ObjectFilter::creature(),
+                        },
+                        count: TargetCount::UpTo(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
     for t in &entry.targets.targets {
         if let TargetChoice::Object(id) = t {
-            out.push(Effect::ReturnFromGraveyardToHand { target: *id });
+            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
         }
     }
-    out
+    effects
 }

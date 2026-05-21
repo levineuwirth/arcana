@@ -1,7 +1,8 @@
-//! Cradle to Grave — `{1}{B}` instant. "Destroy target nonblack creature that
-//! entered the battlefield this turn."
-//! GAP: no "entered the battlefield this turn" filter in ObjectFilter; target
-//! is widened to any nonblack creature.
+//! Cradle to Grave — `{1}{B}` instant. "Destroy target nonblack
+//! creature that entered this turn."
+//!
+//! GAP: "entered this turn" predicate isn't exposed by ObjectFilter —
+//! filter by nonblack creature only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,19 +25,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target nonblack creature that entered the battlefield this turn.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().without_colors(ColorSet::black()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target nonblack creature that entered this turn.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().without_colors(ColorSet::black()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -45,8 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "entered the battlefield this turn" filter not in ObjectFilter — destroys any nonblack creature
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    // GAP: "entered this turn" filter unavailable.
     vec![Effect::DestroyPermanent { target: *id }]
 }

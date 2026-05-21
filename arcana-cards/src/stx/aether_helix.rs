@@ -1,6 +1,6 @@
 //! Aether Helix — `{3}{G}{U}` sorcery. "Return target permanent to
-//! its owner's hand. Return target permanent card from your graveyard
-//! to your hand."
+//! its owner's hand. Return target permanent card from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,15 +47,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let (Some(TargetChoice::Object(a)), Some(TargetChoice::Object(b))) =
-        (it.next(), it.next())
-    else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut iter = entry.targets.targets.iter();
+    let Some(t1) = iter.next() else { return Vec::new(); };
+    let Some(t2) = iter.next() else { return Vec::new(); };
+    let TargetChoice::Object(id1) = t1 else { return Vec::new(); };
+    let TargetChoice::Object(id2) = t2 else { return Vec::new(); };
     vec![
-        Effect::ReturnToHand { target: *a },
-        Effect::ReturnFromGraveyardToHand { target: *b },
+        Effect::ReturnToHand { target: *id1 },
+        Effect::ReturnFromGraveyardToHand { target: *id2 },
     ]
 }

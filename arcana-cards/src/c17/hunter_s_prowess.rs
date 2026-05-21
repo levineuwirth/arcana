@@ -2,8 +2,8 @@
 //! creature gets +3/+3 and gains trample and 'Whenever this creature
 //! deals combat damage to a player, draw that many cards.'"
 //!
-//! Only the +3/+3 + trample pump is expressible; the granted
-//! draw-on-combat-damage triggered ability is not.
+//! GAP: granting a temporary triggered-ability text isn't modeled —
+//! emit the +3/+3 pump with trample.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -26,10 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Until end of turn, target creature gets +3/+3 and \
-                   gains trample and \"Whenever this creature deals combat \
-                   damage to a player, draw that many cards.\""
-                .into(),
+            text: "Until end of turn, target creature gets +3/+3 and gains trample and \"Whenever this creature deals combat damage to a player, draw that many cards.\"".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -42,14 +39,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: granted "whenever this deals combat damage to a player, draw
-    // that many cards" triggered ability is not expressible.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: granting a temporary "deals combat damage to a player, draw"
+    // triggered ability is not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 3,

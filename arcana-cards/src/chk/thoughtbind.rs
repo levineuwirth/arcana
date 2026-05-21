@@ -1,5 +1,5 @@
-//! Thoughtbind — `{2}{U}` instant. "Counter target spell with mana
-//! value 4 or less."
+//! Thoughtbind — `{2}{U}` instant. "Counter target spell with mana value 4 or
+//! less."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,18 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell with mana value 4 or less.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new().with_max_cmc(4),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell with mana value 4 or less.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::new().with_max_cmc(4)),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

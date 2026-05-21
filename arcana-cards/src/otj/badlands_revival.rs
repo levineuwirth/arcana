@@ -1,6 +1,6 @@
-//! Badlands Revival — `{3}{B}{G}` sorcery. "Return up to one target creature
-//! card from your graveyard to the battlefield. Return up to one target
-//! permanent card from your graveyard to your hand."
+//! Badlands Revival — `{3}{B}{G}` sorcery. "Return up to one target
+//! creature card from your graveyard to the battlefield. Return up to
+//! one target permanent card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -56,13 +56,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = Vec::new();
-    let targets = &entry.targets.targets;
-    if let Some(TargetChoice::Object(a)) = targets.first() {
-        effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *a });
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
     }
-    if let Some(TargetChoice::Object(b)) = targets.get(1) {
-        effects.push(Effect::ReturnFromGraveyardToHand { target: *b });
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.get(1) {
+        out.push(Effect::ReturnFromGraveyardToHand { target: *id });
     }
-    effects
+    out
 }

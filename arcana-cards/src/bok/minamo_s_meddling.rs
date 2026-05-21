@@ -1,10 +1,6 @@
 //! Minamo's Meddling — `{2}{U}{U}` instant. "Counter target spell.
-//! That spell's controller reveals their hand, then discards each card
-//! with the same name as a card spliced onto that spell."
-//!
-//! GAP: the splice-name-matching discard rider has no representation
-//! (no splice model, no name-match discard). The hard counter is
-//! emitted.
+//! That spell's controller reveals their hand, then discards each
+//! card with the same name as a card spliced onto that spell."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,21 +23,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. That spell's controller reveals their hand, then discards each card with the same name as a card spliced onto that spell.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. That spell's controller reveals their hand, then discards each card with the same name as a card spliced onto that spell.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: splice-name-match discard rider not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // NOTE: the "discard cards named like spliced cards" rider depends
+    // on splice information, which the catalog cannot inspect — GAPed.
+    // Emitting the hard counter only.
     vec![Effect::Counter { target: *id }]
 }

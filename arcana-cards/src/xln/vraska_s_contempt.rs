@@ -1,8 +1,5 @@
-//! Vraska's Contempt — `{2}{B}{B}` instant. "Exile target creature
-//! or planeswalker. You gain 2 life."
-//!
-//! Planeswalkers are not separately filterable; we target a creature
-//! and exile it, then gain 2 life.
+//! Vraska's Contempt — `{2}{B}{B}` instant. "Exile target creature or
+//! planeswalker. You gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +24,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target creature or planeswalker. You gain 2 life.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::permanent().with_types_any(
+                    TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER),
+                )),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
@@ -36,13 +41,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: planeswalker target not separately filterable; creature
-    // target used.
     vec![
         Effect::ExilePermanent { target: *id },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 2,
-        },
+        Effect::GainLife { player: entry.controller, amount: 2 },
     ]
 }

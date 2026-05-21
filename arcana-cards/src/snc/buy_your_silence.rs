@@ -1,14 +1,13 @@
 //! Buy Your Silence — `{4}{W}` sorcery. "Exile target nonland
-//! permanent. Its controller creates a Treasure token."
-//!
-//! GAP: 'its controller' — no script helper extracts a permanent's
-//! controller for use as the token's controller. We give the Treasure
-//! to the spell's controller as the closest available approximation.
+//! permanent. Its controller creates a Treasure token." Treasure
+//! token activated ability isn't in TokenDefinition — emit plain
+//! Treasure artifact; GAP the {T}-sac-add-mana ability.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -26,25 +25,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: Treasure token's '{T}, Sacrifice this token: Add one mana of any color'.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target nonland permanent. Its controller creates a Treasure token.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target nonland permanent. Its controller creates a Treasure token.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let treasure = reg.interner().lookup("Treasure").expect("interned");
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let controller = script::target_controller(state, *id, entry.controller);
+    let treasure = reg.interner().lookup("Treasure").expect("Treasure interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
     let token = TokenDefinition {
@@ -57,9 +64,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: token goes to spell's controller, not the exiled permanent's controller.
     vec![
         Effect::ExilePermanent { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken { controller, token },
     ]
 }

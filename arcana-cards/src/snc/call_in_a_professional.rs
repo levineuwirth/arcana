@@ -1,6 +1,5 @@
-//! Call In a Professional — `{2}{R}` instant. "Players can't gain life
-//! this turn. Damage can't be prevented this turn. Call In a
-//! Professional deals 3 damage to any target."
+//! Call In a Professional — `{2}{R}` instant. Players can't gain life;
+//! damage can't be prevented; deals 3 to any target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,19 +21,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Players can't gain life this turn. Damage can't be prevented this turn. Call In a Professional deals 3 damage to any target. (Shield counters don't prevent this damage as they're removed.)".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Players can't gain life this turn. Damage can't be prevented this turn. Call In a Professional deals 3 damage to any target. (Shield counters don't prevent this damage as they're removed.)".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "players can't gain life this turn" and "damage can't be
-    // prevented this turn" continuous restrictions are not expressible;
-    // emitting only the 3 damage.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -44,6 +45,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    // GAP: turn-scoped 'players can't gain life' and 'damage can't be
+    // prevented' continuous floors are not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

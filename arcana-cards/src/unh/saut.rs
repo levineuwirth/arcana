@@ -1,7 +1,6 @@
-//! Sauté — `{1}{R}{R}` instant.
-//! "Sauté deals 3½ damage to any target."
-//! GAP: Effect::DealDamage uses u32 for amount; fractional damage (3½) is not representable;
-//! emitting 3 damage as best-effort integer approximation.
+//! Sauté — `{1}{R}{R}` instant. "Sauté deals 3½ damage to any
+//! target." Fractional damage rounds down to 3 in integer-only
+//! engines; emit 3.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -38,7 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: fractional damage (3½) not representable as u32; using 3 as approximation
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -48,6 +46,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    // GAP: fractional damage (3½) not expressible; engine deals integer u32, so round down to 3.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

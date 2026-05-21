@@ -1,16 +1,11 @@
-//! Funeral Pyre — `{W}` instant. "Exile target card from a
-//! graveyard. Its owner creates a 1/1 white Spirit creature token
-//! with flying."
-//!
-//! The exiled card's owner is not addressable as a player for the
-//! token payout; we exile the targeted graveyard card and create the
-//! Spirit token for the caster's controller as a best-effort (owner
-//! attribution is gapped).
+//! Funeral Pyre — `{W}` instant. "Exile target card from a graveyard.
+//! Its owner creates a 1/1 white Spirit creature token with flying."
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -21,7 +16,7 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Funeral Pyre");
-    let _sp = reg.interner_mut().intern("Spirit");
+    let _spirit = reg.interner_mut().intern("Spirit");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),
@@ -30,46 +25,48 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target card from a graveyard. Its owner creates a 1/1 white Spirit creature token with flying.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::default(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target card from a graveyard. Its owner creates \
+                       a 1/1 white Spirit creature token with flying.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::default(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    let sp = reg.interner().lookup("Spirit").expect("Spirit interned");
+    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(sp);
+    subtypes.0.insert(spirit);
     let token = TokenDefinition {
-        name: sp,
+        name: spirit,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![KeywordAbility::Flying],
+        keywords: vec![arcana_core::effects::KeywordAbility::Flying],
         abilities: vec![],
     };
-    // GAP: the exiled card's owner is not addressable; token payout
-    // goes to the caster's controller as a best-effort.
+    let owner = script::target_controller(state, *id, entry.controller);
     vec![
         Effect::ExileFromGraveyard { target: *id },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
+        Effect::CreateToken { controller: owner, token },
     ]
 }

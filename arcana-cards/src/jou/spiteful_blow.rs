@@ -1,5 +1,5 @@
-//! Spiteful Blow — `{4}{B}{B}` sorcery. "Destroy target creature and
-//! target land."
+//! Spiteful Blow — `{4}{B}{B}` sorcery. Destroy target creature and
+//! target land.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,12 +40,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(creature)) = it.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(land)) = it.next() else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *creature },
-        Effect::DestroyPermanent { target: *land },
-    ]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = Vec::new();
+    for choice in &entry.targets.targets {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::DestroyPermanent { target: *id });
+        }
+    }
+    effects
 }

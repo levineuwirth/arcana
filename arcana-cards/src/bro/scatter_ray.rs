@@ -22,23 +22,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target artifact or creature spell unless its controller pays {4}.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new().with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target artifact or creature spell unless its controller pays {4}.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new().with_types_any(TypeLine(
+                            TypeLine::ARTIFACT | TypeLine::CREATURE,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{4}").expect("valid cost"),

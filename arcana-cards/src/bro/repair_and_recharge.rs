@@ -1,10 +1,6 @@
 //! Repair and Recharge — `{3}{W}{W}` sorcery. "Return target artifact,
 //! enchantment, or planeswalker card from your graveyard to the
 //! battlefield. Create a tapped Powerstone token."
-//!
-//! GAP: token's "{T}: Add {C}. Can't be spent to cast nonartifact" is
-//! the activated mana ability — not expressible in TokenDefinition's
-//! `abilities: vec![]`. The Powerstone token shell is emitted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -35,9 +32,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
                     filter: ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into())
-                        .with_types_any(TypeLine::PLANESWALKER.into()),
+                        .with_types_any(TypeLine(
+                            TypeLine::ARTIFACT
+                                | TypeLine::ENCHANTMENT
+                                | TypeLine::PLANESWALKER,
+                        ))
+                        .controlled_by(ControllerConstraint::You),
                 },
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -48,11 +48,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let powerstone = reg.interner().lookup("Powerstone").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let powerstone = reg.interner().lookup("Powerstone")
+        .expect("Powerstone interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(powerstone);
     let token = TokenDefinition {
@@ -65,12 +69,9 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "tapped" on entry and the Powerstone mana ability.
+    // GAP: token enters tapped — no "create tapped" flag on Effect::CreateToken.
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
+        Effect::CreateToken { controller: entry.controller, token },
     ]
 }

@@ -1,6 +1,5 @@
-//! Rookie Mistake — `{U}` instant. "Until end of turn, target creature gets
-//! +0/+2 and another target creature gets -2/-0." Two creature targets; two
-//! `Effect::Pump`s with the matching deltas.
+//! Rookie Mistake — `{U}` instant. "Until end of turn, target creature
+//! gets +0/+2 and another target creature gets -2/-0."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,24 +34,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(a)) = entry.targets.targets.first() {
-        out.push(Effect::Pump {
+    let Some(TargetChoice::Object(a)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(b)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Pump {
             target: *a,
             power: 0,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-    }
-    if let Some(TargetChoice::Object(b)) = entry.targets.targets.get(1) {
-        out.push(Effect::Pump {
+        },
+        Effect::Pump {
             target: *b,
             power: -2,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-    }
-    out
+        },
+    ]
 }

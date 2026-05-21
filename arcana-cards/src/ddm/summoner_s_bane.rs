@@ -1,5 +1,5 @@
-//! Summoner's Bane — `{2}{U}{U}` instant. "Counter target creature
-//! spell. Create a 2/2 blue Illusion creature token."
+//! Summoner's Bane — `{2}{U}{U}` instant. Counter target creature
+//! spell. Create a 2/2 blue Illusion creature token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -23,25 +23,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target creature spell. Create a 2/2 blue Illusion creature token.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target creature spell. Create a 2/2 blue Illusion creature token.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let illusion = reg.interner().lookup("Illusion").expect("interned");
+    let illusion = reg.interner().lookup("Illusion").expect("Illusion interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(illusion);
     let token = TokenDefinition {
@@ -56,9 +61,6 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
     };
     vec![
         Effect::Counter { target: *id },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
+        Effect::CreateToken { controller: entry.controller, token },
     ]
 }

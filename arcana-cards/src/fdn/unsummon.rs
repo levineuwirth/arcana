@@ -1,5 +1,4 @@
-//! Unsummon — `{U}` instant. "Return target creature to its owner's
-//! hand."
+//! Unsummon — `{U}` instant. "Return target creature to its owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,12 +19,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature to its owner's hand.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target creature to its owner's hand.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -34,8 +34,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]
 }

@@ -1,10 +1,10 @@
-//! Villainous Wrath — `{3}{B}{B}` sorcery. "Target opponent loses
-//! life equal to the number of creatures they control. Then destroy
-//! all creatures."
+//! Villainous Wrath — `{3}{B}{B}` sorcery. "Target opponent loses life
+//! equal to the number of creatures they control. Then destroy all
+//! creatures."
 
 use arcana_core::effects::Effect;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::mana::ManaCost;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -24,26 +24,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent loses life equal to the number of creatures they control. Then destroy all creatures.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target opponent loses life equal to the number of creatures they control. Then destroy all creatures.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let target_p = *p;
     let n = script::count_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-        entry.controller,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        target_p,
     );
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     vec![
-        Effect::LoseLife { player: *p, amount: n },
+        Effect::LoseLife { player: target_p, amount: n },
         Effect::ForEach {
-            targets: script::ids_matching(state, &ObjectFilter::creature(), entry.controller),
+            targets: ids,
             effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
         },
     ]

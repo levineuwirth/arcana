@@ -1,7 +1,8 @@
 //! Urgent Exorcism — `{1}{W}` instant. "Destroy target Spirit or
-//! enchantment." The "Spirit or enchantment" disjunction is not
-//! expressible as a single ObjectFilter; the target is a permanent
-//! and the destroy is emitted.
+//! enchantment." We target an enchantment broadly (Spirit subtype
+//! filter via TargetFilter::Permanent + ObjectFilter cannot OR with a
+//! subtype gate in the helpers without per-instance subtype OR — we
+//! widen to enchantment or creature and the engine prompts honestly).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,7 +28,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target Spirit or enchantment.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::new()),
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::CREATURE | TypeLine::ENCHANTMENT,
+                    )),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -44,7 +49,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "Spirit or enchantment" disjunctive target restriction is
-    // not expressible as a single ObjectFilter.
+    // GAP: filter to "Spirit subtype OR enchantment" exactly — uses broader creature-or-enchantment.
     vec![Effect::DestroyPermanent { target: *id }]
 }

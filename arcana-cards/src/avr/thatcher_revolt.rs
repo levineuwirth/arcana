@@ -1,10 +1,6 @@
-//! Thatcher Revolt — `{2}{R}` sorcery. "Create three 1/1 red Human creature
-//! tokens with haste. Sacrifice those tokens at the beginning of the next
-//! end step."
-//!
-//! GAP: DelayedAction requires a known object id at resolve time; newly
-//! created tokens do not have ids available during resolution. The token
-//! creation is expressible; the sacrifice riders are not (token ids unknown).
+//! Thatcher Revolt — `{2}{R}` sorcery. "Create three 1/1 red Human
+//! creature tokens with haste. Sacrifice those tokens at the
+//! beginning of the next end step."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -25,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 1/1 red Human creature tokens with haste. Sacrifice those tokens at the beginning of the next end step.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 1/1 red Human creature tokens with haste. Sacrifice those tokens at the beginning of the next end step.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -54,11 +49,9 @@ fn resolve(
         keywords: vec![KeywordAbility::Haste],
         abilities: vec![],
     };
-    // GAP: sacrifice-at-end-step rider requires known token ids, which are
-    // unavailable at resolution time
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateTokenSacEot { controller: entry.controller, token: token.clone() },
+        Effect::CreateTokenSacEot { controller: entry.controller, token: token.clone() },
+        Effect::CreateTokenSacEot { controller: entry.controller, token },
     ]
 }

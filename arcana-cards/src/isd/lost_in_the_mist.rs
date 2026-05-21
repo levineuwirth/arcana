@@ -1,5 +1,5 @@
-//! Lost in the Mist — `{3}{U}{U}` instant. "Counter target spell. Return
-//! target permanent to its owner's hand."
+//! Lost in the Mist — `{3}{U}{U}` instant. Counter target spell.
+//! Return target permanent to its owner's hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,11 +49,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let targets = &entry.targets.targets;
-    if targets.len() < 2 { return Vec::new(); }
-    let TargetChoice::Object(spell) = &targets[0] else { return Vec::new(); };
-    let TargetChoice::Object(perm) = &targets[1] else { return Vec::new(); };
+    let Some(TargetChoice::Object(spell_id)) = targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(perm_id)) = targets.get(1) else { return Vec::new(); };
     vec![
-        Effect::Counter { target: *spell },
-        Effect::ReturnToHand { target: *perm },
+        Effect::Counter { target: *spell_id },
+        Effect::ReturnToHand { target: *perm_id },
     ]
 }

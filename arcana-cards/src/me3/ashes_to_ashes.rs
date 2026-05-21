@@ -25,33 +25,44 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().without_types(TypeLine::ARTIFACT.into()),
-                ),
-                count: TargetCount::Exactly(2),
-                controller: None,
-            }],
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_types(TypeLine::ARTIFACT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_types(TypeLine::ARTIFACT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+            ],
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::ExilePermanent { target: *id }),
-            _ => None,
-        })
-        .collect();
-    effects.push(Effect::DealDamage {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let targets = &entry.targets.targets;
+    let mut out: Vec<Effect> = Vec::new();
+    for t in targets.iter().take(2) {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::ExilePermanent { target: *id });
+        }
+    }
+    out.push(Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(entry.controller),
         amount: 5,
     });
-    effects
+    out
 }

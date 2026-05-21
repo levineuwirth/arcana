@@ -1,10 +1,6 @@
-//! Annihilating Fire — `{1}{R}{R}` instant.
-//! "Annihilating Fire deals 3 damage to any target. If a creature dealt damage
-//! this way would die this turn, exile it instead."
-//!
-//! GAP: "if a creature would die this turn, exile it instead" — replacement effect
-//! (die → exile) conditioned on prior damage from this spell is not in the catalog.
-//! Partial: emit the 3 damage to any target.
+//! Annihilating Fire — `{1}{R}{R}` instant. "Annihilating Fire deals 3
+//! damage to any target. If a creature dealt damage this way would die
+//! this turn, exile it instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,23 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Annihilating Fire deals 3 damage to any target. If a creature dealt damage this way would die this turn, exile it instead.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Annihilating Fire deals 3 damage to any target. If a creature dealt damage this way would die this turn, exile it instead.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "if creature would die exile it instead" replacement not in catalog
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -51,9 +41,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 3,
-    }]
+    // GAP: the "if it would die this turn, exile it instead" replacement
+    // rider is not expressible; only the damage is emitted.
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
 }

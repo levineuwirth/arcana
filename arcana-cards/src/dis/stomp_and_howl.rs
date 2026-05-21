@@ -27,16 +27,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: vec![
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
-                            .with_types(TypeLine::ARTIFACT.into()),
+                        ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 },
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
-                            .with_types(TypeLine::ENCHANTMENT.into()),
+                        ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

@@ -1,8 +1,6 @@
 //! Mana Drain — `{U}{U}` instant. "Counter target spell. At the
-//! beginning of your next main phase, add an amount of {C} equal to
-//! that spell's mana value." The deferred mana-add rider is not
-//! expressible (no add-mana effect, no delayed mana grant); we counter
-//! the target spell.
+//! beginning of your next main phase, add an amount of {C} equal to that
+//! spell's mana value."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,8 +37,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "add {C} equal to that spell's mana value next main phase"
-    // — no mana-add effect / delayed mana grant. Counter is emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the delayed "add {C} equal to that spell's mana value at your
+    // next main phase" mana rider is not expressible; only the counter is
+    // emitted.
     vec![Effect::Counter { target: *id }]
 }

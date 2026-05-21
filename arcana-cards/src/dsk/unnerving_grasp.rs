@@ -1,5 +1,6 @@
-//! Unnerving Grasp — `{2}{U}` sorcery. "Return up to one target
-//! nonland permanent to its owner's hand. Manifest dread."
+//! Unnerving Grasp — `{2}{U}` sorcery. "Return up to one target nonland
+//! permanent to its owner's hand. Manifest dread." Manifest dread isn't
+//! a catalog primitive; emit the bounce and GAP it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,27 +23,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to one target nonland permanent to its owner's hand. Manifest dread.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return up to one target nonland permanent to its owner's hand. Manifest dread.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "Manifest dread" (look at top two, one face-down 2/2, other
-    // to graveyard) has no Effect variant; only the optional bounce is
-    // emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    vec![Effect::ReturnToHand { target: *id }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ReturnToHand { target: *id });
+    }
+    // GAP: Manifest dread (top-2 face-down token / yard sort).
+    effects
 }

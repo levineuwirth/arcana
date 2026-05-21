@@ -1,6 +1,9 @@
 //! Ral's Dispersal — `{3}{U}{U}` instant. "Return target creature to
 //! its owner's hand. You may search your library and/or graveyard for
-//! a card named Ral, Caller of Storms, ..."
+//! a card named Ral, Caller of Storms, reveal it, and put it into your
+//! hand. If you search your library this way, shuffle." The 'search by
+//! exact card name across library and graveyard' isn't a catalog
+//! primitive; we model the bounce and GAP the tutor.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,20 +24,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature to its owner's hand. You may search your library and/or graveyard for a card named Ral, Caller of Storms, reveal it, and put it into your hand.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target creature to its owner's hand. You may search your library and/or graveyard for a card named Ral, Caller of Storms, reveal it, and put it into your hand. If you search your library this way, shuffle.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: searching library and/or graveyard for a card with a
-    // specific name is not expressible (ObjectFilter has no name
-    // predicate); only the bounce is modeled.
+    // GAP: 'search library and/or graveyard for a card with a specific
+    // name' isn't a catalog primitive (no name-based filter).
     vec![Effect::ReturnToHand { target: *id }]
 }

@@ -3,3 +3,4 @@ pub mod eerie_interlude;
 pub mod elvish_promenade;
 pub mod storm_herd;
 pub mod synthetic_destiny;
+pub mod harvest_season;

@@ -1,9 +1,7 @@
-//! Yamabushi's Flame — `{2}{R}` instant. "Yamabushi's Flame deals 3 damage
-//! to any target. If a creature dealt damage this way would die this
-//! turn, exile it instead."
-//!
-//! Damage stays honest; "exile-if-dies-this-turn" rider has no Effect
-//! variant tied to a damaged target.
+//! Yamabushi's Flame — `{2}{R}` instant. "Yamabushi's Flame deals 3
+//! damage to any target. If a creature dealt damage this way would
+//! die this turn, exile it instead." Replacement effect "exile if it
+//! would die" not in catalog; emit damage only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -49,6 +47,10 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: exile-if-dies-this-turn rider on a damaged target.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
+    // GAP: "if it would die, exile instead" replacement effect — no replacement primitive on damage source.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }]
 }

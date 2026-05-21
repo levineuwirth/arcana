@@ -1,6 +1,5 @@
 //! Supersize — `{1}{G}` instant. "Target creature gets +3½/+3½ until
-//! end of turn." Pump power/toughness are integer; the half-point
-//! bonus is not representable, so +3/+3 is emitted.
+//! end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -32,10 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: half-point P/T bonus (+3½/+3½) not representable in integer
-    // Pump fields; +3/+3 emitted.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // Pump fields are integers; the +3½/+3½ fractional bonus is rounded
+    // down to +3/+3.
+    // GAP: fractional power/toughness bonus (the ½) is not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 3,

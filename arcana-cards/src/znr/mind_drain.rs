@@ -20,21 +20,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent discards two cards, mills a card, and loses 1 life. You gain 1 life.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target opponent discards two cards, mills a card, and loses 1 life. You gain 1 life.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(opp) = target else { return Vec::new(); };
     vec![
-        Effect::Discard { player: *p, count: 2, choice: DiscardChoice::ControllerChooses },
-        Effect::Mill { player: *p, count: 1 },
-        Effect::LoseLife { player: *p, amount: 1 },
+        Effect::Discard {
+            player: *opp,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
+        Effect::Mill { player: *opp, count: 1 },
+        Effect::LoseLife { player: *opp, amount: 1 },
         Effect::GainLife { player: entry.controller, amount: 1 },
     ]
 }

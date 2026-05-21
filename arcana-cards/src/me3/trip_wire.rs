@@ -1,9 +1,6 @@
 //! Trip Wire — `{2}{G}` sorcery. "Destroy target creature with
-//! horsemanship."
-//!
-//! The target requirement cannot be filtered by the Horsemanship
-//! keyword (ObjectFilter has no keyword predicate); using a plain
-//! creature target.
+//! horsemanship." ObjectFilter has no keyword-presence refinement —
+//! we use a creature target and GAP the horsemanship restriction.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,12 +21,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature with horsemanship.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature with horsemanship.".into(),
+                // GAP: ObjectFilter has no with_keyword refinement —
+                // falling back to any creature target.
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,13 +38,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: target cannot be constrained to "with horsemanship" (no
-    // keyword predicate in ObjectFilter).
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

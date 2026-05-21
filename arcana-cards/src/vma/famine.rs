@@ -1,5 +1,5 @@
-//! Famine — `{3}{B}{B}` sorcery. "Famine deals 3 damage to each creature and
-//! each player."
+//! Famine — `{3}{B}{B}` sorcery. "Famine deals 3 damage to each
+//! creature and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Famine deals 3 damage to each creature and each player.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Famine deals 3 damage to each creature and each player.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,14 +37,15 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut effects = vec![Effect::ForEach {
+    let mut effects: Vec<Effect> = Vec::new();
+    effects.push(Effect::ForEach {
         targets: creatures,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 3,
         }),
-    }];
+    });
     for p in script::all_players(state) {
         effects.push(Effect::DealDamage {
             source: entry.source,

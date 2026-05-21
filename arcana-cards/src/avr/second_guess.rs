@@ -1,7 +1,8 @@
-//! Second Guess — `{1}{U}` instant, "Counter target spell that's the
-//! second spell cast this turn." Modeled as a hard counter on a target
-//! spell; the "second spell cast this turn" restriction is a targeting
-//! constraint not expressible in the demonstrated ObjectFilter API.
+//! Second Guess — `{1}{U}` instant. "Counter target spell that's the
+//! second spell cast this turn."
+//!
+//! GAP: "second spell cast this turn" predicate isn't exposed on
+//! ObjectFilter — emit a plain counter requirement.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,9 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell that's the second spell cast this \
-                   turn."
-                .into(),
+            text: "Counter target spell that's the second spell cast this turn.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Spell(ObjectFilter::default()),
                 count: TargetCount::Exactly(1),
@@ -44,11 +43,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![Effect::Counter { target: *id }]
 }

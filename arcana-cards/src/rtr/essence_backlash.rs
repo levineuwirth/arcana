@@ -1,9 +1,7 @@
 //! Essence Backlash — `{2}{U}{R}` instant. "Counter target creature
-//! spell. Essence Backlash deals damage equal to that spell's power
-//! to its controller." The damage clause needs the countered spell's
-//! power and controller (a stack object, not a battlefield
-//! permanent), which no script helper exposes; only the counter is
-//! emitted.
+//! spell. Essence Backlash deals damage equal to that spell's power to
+//! its controller." Reading a creature spell's power off the stack is
+//! not in helpers; we emit the counter and GAP the damage rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -48,8 +46,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: damage equal to the countered spell's power to its
-    // controller — a stack spell's power/controller is not exposed by
-    // any script helper.
+    // GAP: damage-equal-to-countered-spell's-power not in script helpers.
     vec![Effect::Counter { target: *id }]
 }

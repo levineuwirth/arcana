@@ -15,6 +15,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Peppersmoke");
+    let _faerie = reg.interner_mut().intern("Faerie");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{B}").expect("valid cost")),
@@ -33,22 +34,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let mut effects = vec![Effect::Pump {
-        target: *id,
-        power: -1,
-        toughness: -1,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }];
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::Pump {
+            target: *id,
+            power: -1,
+            toughness: -1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
+    }
     let faeries = script::count_matching(
         state,
         &script::subtype_filter(reg, "Faerie"),
         entry.controller,
     );
     if faeries > 0 {
-        effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
+        effects.push(Effect::DrawCards {
+            player: entry.controller,
+            count: 1,
+        });
     }
     effects
 }

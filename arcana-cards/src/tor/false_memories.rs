@@ -2,7 +2,7 @@
 //! beginning of the next end step, exile seven cards from your
 //! graveyard."
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -20,12 +20,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Mill seven cards. At the beginning of the next end step, exile seven cards from your graveyard.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Mill seven cards. At the beginning of the next end step, exile seven cards from your graveyard.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -34,15 +35,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![
-        Effect::Mill { player: entry.controller, count: 7 },
-        Effect::DelayedAction {
-            source: entry.source,
-            controller: entry.controller,
-            when: DelayedWhen::NextEndStep,
-            action: DelayedAction::Exile,
-        },
-    ]
-    // GAP: the delayed exile cannot specify "seven cards from your
-    // graveyard"; DelayedAction::Exile acts on the source object only.
+    // GAP: delayed "exile seven cards from your graveyard at the next
+    // end step" — DelayedAction needs a known object id and only
+    // supports Sacrifice/Exile/ReturnToHand/ReturnFromExileToBattlefield
+    // on that single id, not a bulk graveyard exile.
+    vec![Effect::Mill { player: entry.controller, count: 7 }]
 }

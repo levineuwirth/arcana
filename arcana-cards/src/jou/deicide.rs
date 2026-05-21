@@ -1,6 +1,9 @@
 //! Deicide — `{1}{W}` instant. "Exile target enchantment. If the
-//! exiled card is a God card, search its controller's graveyard, hand,
-//! and library for cards with the same name and exile them."
+//! exiled card is a God card, search its controller's graveyard,
+//! hand, and library for any number of cards with the same name as
+//! that card and exile them. Then that player shuffles." Same-name
+//! cross-zone exile and 'is a God' subtype check aren't catalog
+//! primitives — only the exile is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,24 +26,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target enchantment. If the exiled card is a God card, search its controller's graveyard, hand, and library for any number of cards with the same name as that card and exile them.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target enchantment. If the exiled card is a God card, search its controller's graveyard, hand, and library for any number of cards with the same name as that card and exile them. Then that player shuffles.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types(TypeLine::ENCHANTMENT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: the God-card name-matching multi-zone exile rider is not
-    // expressible; only the enchantment exile is modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'God-subtype check' and 'same-name cross-zone exile' have
+    // no catalog primitives.
     vec![Effect::ExilePermanent { target: *id }]
 }

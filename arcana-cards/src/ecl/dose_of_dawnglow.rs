@@ -1,8 +1,7 @@
 //! Dose of Dawnglow — `{4}{B}` instant. "Return target creature card
 //! from your graveyard to the battlefield. Then if it isn't your main
-//! phase, blight 2." The conditional blight rider (turn-phase test +
-//! self-targeting -1/-1 counters) is not expressible with the catalog;
-//! only the reanimation half is emitted.
+//! phase, blight 2." Blight is unimplemented; we emit the reanimate
+//! and GAP the blight rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,8 +48,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: turn-phase test ("if it isn't your main phase") and the
-    // conditional blight 2 (-1/-1 counters on a creature you control)
-    // are not expressible with the catalog.
+    // GAP: blight 2 rider (-1/-1 counters on a creature you control) not in catalog
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

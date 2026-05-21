@@ -21,14 +21,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Sarkhan's Catharsis deals 5 damage to target player or planeswalker.".into(),
-            // GAP: no "player or planeswalker" target filter; using
-            // any_target as the closest available requirement.
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "target player or planeswalker" — no TargetFilter
+                // restricts to player-or-planeswalker; using any_target.
+                text: "Sarkhan's Catharsis deals 5 damage to target player or planeswalker.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

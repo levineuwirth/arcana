@@ -1,11 +1,9 @@
 //! Supernatural Stamina — `{B}` instant. "Until end of turn, target
-//! creature gets +2/+0 and gains 'When this creature dies, return it
-//! to the battlefield tapped under its owner's control.'"
+//! creature gets +2/+0 and gains \"When this creature dies, return it
+//! to the battlefield tapped under its owner's control.\""
 //!
-//! Modeled as +2/+0 pump and a delayed-reanimate on death (tapped /
-//! owner-control nuance is GAP'd — DelayedAction::ReturnToHand only
-//! offers the hand fallback; the closest catalog primitive that lands
-//! it back on the battlefield isn't selectable from DelayedAction).
+//! The +2/+0 is expressed. Granting a triggered ability to a creature
+//! is not expressible via Pump — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -37,9 +35,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'dies → return to battlefield tapped' rider; DelayedAction
-    // only offers Sacrifice/Exile/ReturnToHand.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: granting a "when this dies, return it" triggered ability is
+    // not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 2,

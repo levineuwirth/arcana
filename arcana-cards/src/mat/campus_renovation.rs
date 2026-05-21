@@ -1,7 +1,9 @@
 //! Campus Renovation — `{3}{R}{W}` sorcery. "Return up to one target
 //! artifact or enchantment card from your graveyard to the
-//! battlefield. Exile the top two cards of your library. Until the end
-//! of your next turn, you may play those cards."
+//! battlefield. Exile the top two cards of your library. Until the
+//! end of your next turn, you may play those cards." Express the
+//! graveyard reanimate. GAP: exile-top-N + play-from-exile cont.
+//! effect.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,33 +22,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{R}{W}").expect("valid cost")),
-        colors: ColorSet::red() | ColorSet::white(),
+        colors: ColorSet::white() | ColorSet::red(),
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to one target artifact or enchantment card from your graveyard to the battlefield. Exile the top two cards of your library. Until the end of your next turn, you may play those cards.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::new().with_types_any(
-                        TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT).into(),
-                    ),
-                },
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return up to one target artifact or enchantment card from your graveyard to the battlefield. Exile the top two cards of your library. Until the end of your next turn, you may play those cards.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new().with_types_any(
+                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT),
+                        ),
+                    },
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: the impulse-draw half (exile top two, may play until end of
-    // next turn) is not expressible; emitting the graveyard return.
-    let mut effects = Vec::new();
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'exile top 2 + play-from-exile until end of next turn'.
+    let mut effects: Vec<Effect> = Vec::new();
     if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
         effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
     }

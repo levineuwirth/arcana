@@ -1,8 +1,7 @@
-//! Hamato Ninpō — `{1}{W}` instant. "Hamato Ninpō deals 4 damage to target
-//! attacking or blocking creature."
-//!
-//! GAP: no TargetFilter variant to restrict to attacking-or-blocking creatures;
-//! falling back to unfiltered creature target.
+//! Hamato Ninpō — `{1}{W}` instant. "Hamato Ninpō deals 4 damage to
+//! target attacking or blocking creature." 'Attacking or blocking'
+//! isn't an ObjectFilter primitive — best-effort: target a creature;
+//! GAP the attack/block restriction.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -15,7 +14,7 @@ use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
-    let name = reg.interner_mut().intern("Hamato Ninp\u{014d}");
+    let name = reg.interner_mut().intern("Hamato Ninpō");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
@@ -23,11 +22,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: 'attacking or blocking' combat-state filter on target.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Hamato Ninp\u{014d} deals 4 damage to target attacking or blocking creature.".into(),
-                // GAP: no filter for attacking-or-blocking; using unfiltered creature target
+                text: "Hamato Ninpō deals 4 damage to target attacking or blocking creature.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,

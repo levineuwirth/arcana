@@ -21,9 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for an enchantment card, reveal \
-                   it, put it into your hand, then shuffle."
-                .into(),
+            text: "Search your library for an enchantment card, reveal it, put it into your hand, then shuffle.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,

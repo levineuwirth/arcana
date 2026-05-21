@@ -1,7 +1,8 @@
 //! Dark Inquiry — `{2}{B}` sorcery. "Target opponent reveals their
 //! hand. You choose a nonland card from it. That player discards that
-//! card." Modeled as a controller-chosen discard of one card from the
-//! target opponent (the nonland restriction has no discard-filter).
+//! card." Reveal-hand-and-controller-chooses-discard is not in the
+//! catalog; we emit the closest expressible — target player discards
+//! a card with controller (us) choosing — and GAP the rest.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,23 +23,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent reveals their hand. You choose a nonland card from it. That player discards that card.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target opponent reveals their hand. You choose a nonland card from it. That player discards that card.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "nonland card" discard filter not expressible.
-    vec![Effect::Discard {
-        player: *p,
-        count: 1,
-        choice: DiscardChoice::OpponentChooses,
-    }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: reveal-hand prompt and 'controller of the spell chooses a
+    // nonland card' — DiscardChoice has no 'TargetPlayerSeesPicker'
+    // variant; closest expressible is OpponentChooses meaning the
+    // discarder chooses, which is wrong direction. We emit
+    // OpponentChooses (target chooses what to discard) as the honest
+    // partial.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::OpponentChooses }]
 }

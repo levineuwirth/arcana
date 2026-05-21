@@ -1,4 +1,4 @@
-//! Imaginary Friends — `{1}{W}` sorcery (Arcane). "Create three 0/0
+//! Imaginary Friends — `{1}{W}` sorcery — Arcane. "Create three 0/0
 //! white Spirit creature tokens with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
@@ -20,16 +20,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create three 0/0 white Spirit creature tokens with flying.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create three 0/0 white Spirit creature tokens with flying.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let spirit = reg.interner().lookup("Spirit").expect("Spirit interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);

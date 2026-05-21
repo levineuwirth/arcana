@@ -9,3 +9,5 @@ pub mod strength_of_arms;
 pub mod essence_flux;
 pub mod rise_from_the_tides;
 pub mod clear_shot;
+pub mod moonlight_hunt;
+pub mod duel_for_dominance;

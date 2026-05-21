@@ -1,5 +1,5 @@
-//! Jaya's Firenado — `{4}{R}` sorcery. "Jaya's Firenado deals 5 damage to
-//! target creature or planeswalker. Scry 1."
+//! Jaya's Firenado — `{4}{R}` sorcery. "Jaya's Firenado deals 5
+//! damage to target creature or planeswalker. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -8,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,7 +26,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Jaya's Firenado deals 5 damage to target creature or planeswalker. Scry 1.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER),
+                        ),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),

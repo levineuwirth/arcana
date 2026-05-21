@@ -1,11 +1,5 @@
-//! Bond of Passion — `{4}{R}{R}` sorcery, "Gain control of target
-//! creature until end of turn. Untap that creature. It gains haste
-//! until end of turn. Bond of Passion deals 2 damage to any other
-//! target."
-//!
-//! GAP: "gain control of target creature until end of turn" has no
-//! corresponding Effect. The untap, haste grant, and the 2-damage
-//! clause are modeled.
+//! Bond of Passion — `{4}{R}{R}` sorcery. Gain control of target creature
+//! eot. Untap it. It gains haste eot. Deals 2 damage to any other target.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
@@ -15,10 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, ObjectOrPlayer, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
-};
+use arcana_core::targets::{ObjectOrPlayer, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -35,11 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. Bond of Passion deals 2 damage to any other target.".into(),
                 target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(ObjectFilter::creature()),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
+                    TargetRequirement::target_creature(),
                     TargetRequirement::any_target(),
                 ],
                 modal: None,
@@ -53,19 +40,21 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut iter = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(cid)) = iter.next() else { return Vec::new(); };
-    let mut effects = vec![
-        // GAP: gain-control-until-end-of-turn not expressible.
-        Effect::Untap { target: *cid },
+    let Some(a) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(a_id) = a else { return Vec::new(); };
+    let a_id = *a_id;
+    let mut effects: Vec<Effect> = vec![
+        // GAP: "until end of turn" gain-control not in catalog. Emit Untap +
+        // Haste only.
+        Effect::Untap { target: a_id },
         Effect::GrantKeyword {
-            target: *cid,
+            target: a_id,
             keyword: KeywordAbility::Haste,
             duration: Duration::EndOfTurn,
         },
     ];
-    if let Some(t) = iter.next() {
-        let dt = match t {
+    if let Some(b) = entry.targets.targets.get(1) {
+        let dt = match b {
             TargetChoice::Object(id) => DamageTarget::Object(*id),
             TargetChoice::Player(p) => DamageTarget::Player(*p),
             TargetChoice::ObjectOrPlayer(o) => match o {

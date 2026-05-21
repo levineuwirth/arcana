@@ -30,15 +30,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(TargetChoice::Player(opp)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    let opp_hand = script::hand_size(state, *opp) as i64;
-    let my_hand = script::hand_size(state, entry.controller) as i64;
-    let diff = (opp_hand - my_hand).max(0) as u32;
-    if diff == 0 {
-        return Vec::new();
+    let mine = script::hand_size(state, entry.controller);
+    let theirs = script::hand_size(state, *opp);
+    if theirs > mine {
+        vec![Effect::DrawCards {
+            player: entry.controller,
+            count: theirs - mine,
+        }]
+    } else {
+        Vec::new()
     }
-    vec![Effect::DrawCards { player: entry.controller, count: diff }]
 }

@@ -1,8 +1,5 @@
 //! Upheaval — `{4}{U}{U}` sorcery. "Return all permanents to their
 //! owners' hands."
-//!
-//! Board-wide bounce: ForEach over all permanents, returning each to
-//! its owner's hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +34,8 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
     let ids = script::ids_matching(state, &ObjectFilter::permanent(), entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
+        effect: Box::new(Effect::ReturnToHand {
+            target: NULL_OBJECT_ID,
+        }),
     }]
 }

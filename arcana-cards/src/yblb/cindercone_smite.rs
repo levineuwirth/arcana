@@ -1,6 +1,7 @@
-//! Cindercone Smite — `{R}` sorcery.
-//! "Cindercone Smite deals 2 damage to target creature. Then create a
-//! Treasure token if you weren't the starting player."
+//! Cindercone Smite — `{R}` sorcery. "Cindercone Smite deals 2 damage
+//! to target creature. Then create a Treasure token if you weren't the
+//! starting player." Starting-player check is not in helpers; we
+//! emit the damage and GAP the conditional Treasure.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -31,12 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // The conditional Treasure token ("if you weren't the starting
-    // player") has no starting-player helper; the 2 damage is dealt.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: starting-player predicate not in helpers; conditional Treasure token (with sac-for-mana activated ability) also not modeled.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

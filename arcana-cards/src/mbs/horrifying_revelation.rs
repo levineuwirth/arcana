@@ -1,5 +1,5 @@
-//! Horrifying Revelation — `{B}` sorcery. "Target player discards a card,
-//! then mills a card."
+//! Horrifying Revelation — `{B}` sorcery. "Target player discards a
+//! card, then mills a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

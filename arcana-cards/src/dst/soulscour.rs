@@ -38,6 +38,8 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
     );
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        effect: Box::new(Effect::DestroyPermanent {
+            target: NULL_OBJECT_ID,
+        }),
     }]
 }

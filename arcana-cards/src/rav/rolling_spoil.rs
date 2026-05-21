@@ -1,10 +1,7 @@
-//! Rolling Spoil — `{2}{G}{G}` sorcery. "Destroy target land. If {B}
-//! was spent to cast this spell, all creatures get -1/-1 until end of
-//! turn."
-//!
-//! "If {B} was spent" can't be detected at resolution from the
-//! catalog; the land destruction is emitted and the conditional wipe
-//! is GAP'd.
+//! Rolling Spoil — `{2}{G}{G}` sorcery. "Destroy target land. If {B} was
+//! spent to cast this spell, all creatures get -1/-1 until end of turn."
+//! The 'spent-to-cast' condition isn't surfaced by the catalog — we
+//! emit the land destruction and GAP the conditional sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,24 +24,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target land. If {B} was spent to cast this spell, all creatures get -1/-1 until end of turn.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target land. If {B} was spent to cast this spell, all creatures get -1/-1 until end of turn.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "If {B} was spent to cast this spell" — mana-spent
-    // condition is not detectable from the catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no 'mana of color X was spent to cast this spell' predicate.
     vec![Effect::DestroyPermanent { target: *id }]
 }

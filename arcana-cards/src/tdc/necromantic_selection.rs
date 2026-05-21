@@ -1,13 +1,13 @@
 //! Necromantic Selection — `{4}{B}{B}{B}` sorcery. "Destroy all
 //! creatures, then return a creature card put into a graveyard this
-//! way to the battlefield under your control. ... Exile Necromantic
-//! Selection." The "return one of the just-destroyed creatures under
-//! your control with added types, then exile this spell" rider is not
-//! expressible; we emit the board wipe (destroy all creatures).
+//! way to the battlefield under your control. It's a black Zombie in
+//! addition to its other colors and types. Exile Necromantic
+//! Selection." We emit the wipe; chained reanimation-from-this-event
+//! and self-exile-after-resolution aren't expressible.
 
 use arcana_core::effects::Effect;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -25,22 +25,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all creatures, then return a creature card put into a graveyard this way to the battlefield under your control. It's a black Zombie in addition to its other colors and types. Exile Necromantic Selection.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all creatures, then return a creature card put into a graveyard this way to the battlefield under your control. It's a black Zombie in addition to its other colors and types. Exile Necromantic Selection.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: returning a creature destroyed this way under your control
-    // with added Zombie type, and exiling this spell, are not
-    // expressible. Board wipe emitted.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: reanimate-one-of-the-creatures-destroyed-this-way + add
+    // type/color rider + self-exile-after-resolution. Emit the wipe.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }]
+    ids.into_iter().map(|id| Effect::DestroyPermanent { target: id }).collect()
 }

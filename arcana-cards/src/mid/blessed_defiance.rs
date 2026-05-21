@@ -11,7 +11,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -29,7 +30,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Target creature you control gets +2/+0 and gains lifelink until end of turn. When that creature dies this turn, create a 1/1 white Spirit creature token with flying.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -39,12 +42,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The "when that creature dies, create a token" rider is not a
-    // DelayedAction option (only Sacrifice/Exile/ReturnToHand); emit
-    // the pump + lifelink.
     vec![Effect::Pump {
         target: *id,
         power: 2,
@@ -52,4 +56,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
         duration: Duration::EndOfTurn,
         keywords: vec![KeywordAbility::Lifelink],
     }]
+    // GAP: "when that creature dies this turn, create a Spirit token"
+    // — DelayedAction supports a ThisDies trigger only for Sacrifice /
+    // Exile / Return actions, not token creation, so the death rider
+    // is omitted.
 }

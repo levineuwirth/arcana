@@ -1,21 +1,20 @@
-//! Turn to Dust — `{G}` instant. "Destroy target Equipment. Add {G}."
-//!
-//! GAP: no mana-addition Effect; the "Add {G}" rider is omitted. Equipment
-//! is targeted as an artifact (no Equipment subtype filter available).
+//! Turn to Dust — `{G}` instant. Destroy target Equipment. Add {G}.
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Turn to Dust");
+    let _equipment = reg.interner_mut().intern("Equipment");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{G}").expect("valid cost")),
@@ -29,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target Equipment. Add {G}.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+                        ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -43,10 +42,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     _state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no mana-addition effect for "Add {G}".
-    vec![Effect::DestroyPermanent { target: *id }]
+    let mut effects = vec![Effect::DestroyPermanent { target: *id }];
+    let equipment_filter = script::subtype_filter(reg, "Equipment");
+    let _ = equipment_filter; // GAP: target filter is artifact-only; cannot narrow to Equipment in target_requirements.
+    effects.push(Effect::AddMana {
+        player: entry.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Green, entry.source)],
+    });
+    effects
 }

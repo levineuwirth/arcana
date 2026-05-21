@@ -31,16 +31,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::Pump {
             target: *id,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        },
-        Effect::Scry { player: entry.controller, count: 2 },
-    ]
+        });
+    }
+    effects.push(Effect::Scry {
+        player: entry.controller,
+        count: 2,
+    });
+    effects
 }

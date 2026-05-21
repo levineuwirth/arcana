@@ -1,5 +1,5 @@
-//! Kindled Heroism — `{R}` instant. "Target creature gets +1/+0 and
-//! gains first strike until end of turn. Scry 1."
+//! Kindled Heroism — `{R}` instant. Target creature gets +1/+0 and
+//! gains first strike until end of turn. Scry 1.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

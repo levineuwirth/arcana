@@ -1,5 +1,5 @@
-//! Treasured Find — `{B}{G}` sorcery. "Return target card from your
-//! graveyard to your hand. Exile Treasured Find."
+//! Treasured Find — `{B}{G}` sorcery. Return target card from your
+//! graveyard to your hand. Exile Treasured Find.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,21 +23,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target card from your graveyard to your hand. Exile \
-                   Treasured Find."
-                .into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::new(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target card from your graveyard to your hand. Exile Treasured Find.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -46,10 +45,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // "Exile Treasured Find" (self-exile replacing graveyard) is not
-    // separately expressible from a spell resolver.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "Exile Treasured Find" — self-exile of the resolving spell; no
+    // catalog primitive for self-exile (ExilePermanent targets battlefield).
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

@@ -1,7 +1,7 @@
-//! Deal Gone Bad — `{3}{B}` instant. "Target creature gets -3/-3 until
-//! end of turn. Target player mills 3."
+//! Deal Gone Bad — `{3}{B}` instant. "Target creature gets -3/-3
+//! until end of turn. Target player mills three cards."
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -21,16 +21,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -3/-3 until end of turn. Target player mills 3.".into(),
-                target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_player(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -3/-3 until end of turn. Target player mills three cards.".into(),
+            target_requirements: vec![
+                TargetRequirement::target_creature(),
+                TargetRequirement::target_player(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,18 +38,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(creature_id) = t0 else { return Vec::new(); };
-    let TargetChoice::Player(player) = t1 else { return Vec::new(); };
+    let t = &entry.targets.targets;
+    let Some(TargetChoice::Object(id)) = t.first() else { return Vec::new(); };
+    let Some(TargetChoice::Player(p)) = t.get(1) else { return Vec::new(); };
     vec![
         Effect::Pump {
-            target: *creature_id,
+            target: *id,
             power: -3,
             toughness: -3,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
-        Effect::Mill { player: *player, count: 3 },
+        Effect::Mill { player: *p, count: 3 },
     ]
 }

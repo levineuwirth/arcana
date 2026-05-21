@@ -1,5 +1,5 @@
-//! Evaporate — `{2}{R}` sorcery.
-//! "Evaporate deals 1 damage to each white and/or blue creature."
+//! Evaporate — `{2}{R}` sorcery. "Evaporate deals 1 damage to each
+//! white and/or blue creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Evaporate deals 1 damage to each white and/or blue creature.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Evaporate deals 1 damage to each white and/or blue creature.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,23 +36,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // White creatures
-    let white_ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().with_colors(ColorSet::white()),
-        entry.controller,
-    );
-    // Blue creatures (may overlap with white — engine handles duplicate ids gracefully)
-    let blue_ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().with_colors(ColorSet::blue()),
-        entry.controller,
-    );
-    let mut all_ids = white_ids;
-    all_ids.extend(blue_ids);
-    all_ids.dedup();
+    // "White and/or blue" — union; .with_colors uses ANY-of semantics
+    // when given a multi-color set.
+    let filter = ObjectFilter::creature().with_colors(ColorSet::white() | ColorSet::blue());
+    let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
-        targets: all_ids,
+        targets: ids,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),

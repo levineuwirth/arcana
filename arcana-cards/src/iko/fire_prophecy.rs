@@ -1,6 +1,6 @@
-//! Fire Prophecy — `{1}{R}` instant. "Fire Prophecy deals 3 damage
-//! to target creature. You may put a card from your hand on the
-//! bottom of your library. If you do, draw a card."
+//! Fire Prophecy — `{1}{R}` instant. "Fire Prophecy deals 3 damage to
+//! target creature. You may put a card from your hand on the bottom of
+//! your library. If you do, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,12 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Fire Prophecy deals 3 damage to target creature. You may put a card from your hand on the bottom of your library. If you do, draw a card.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "you may put a card from your hand on the bottom
+                // of your library; if you do, draw a card" — no Effect
+                // variant moves a chosen hand card to the library
+                // bottom. Only the damage is emitted.
+                text: "Fire Prophecy deals 3 damage to target creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,8 +43,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "put a card from hand on bottom of library, then draw" — no
-    // hand-to-bottom-of-library effect; only the damage is modeled.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

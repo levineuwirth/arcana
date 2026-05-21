@@ -27,3 +27,4 @@ pub mod pull_through_the_weft;
 pub mod cut_propulsion;
 pub mod scout_for_survivors;
 pub mod diplomatic_relations;
+pub mod cerebral_download;

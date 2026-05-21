@@ -1,8 +1,7 @@
 //! Dead Reckoning — `{1}{B}{B}` sorcery. "You may put target creature card
 //! from your graveyard on top of your library. If you do, Dead Reckoning
-//! deals damage equal to that card's power to target creature." Two targets:
-//! graveyard card + creature. We emit `PutOnTopOfLibrary` then a DealDamage
-//! sized by `script::power_of` of the graveyard id.
+//! deals damage equal to that card's power to target creature." X reads the
+//! graveyard card's power before it is put on the library.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -48,15 +47,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(grave)) = entry.targets.targets.first() else { return Vec::new(); };
-    let power = script::power_of(state, *grave).max(0) as u32;
-    let mut out = vec![Effect::PutOnTopOfLibrary { target: *grave }];
-    if let Some(TargetChoice::Object(creature)) = entry.targets.targets.get(1) {
-        out.push(Effect::DealDamage {
+    let Some(TargetChoice::Object(card)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(victim)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
+    let amount = script::power_of(state, *card).max(0) as u32;
+    vec![
+        Effect::PutOnTopOfLibrary { target: *card },
+        Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(*creature),
-            amount: power,
-        });
-    }
-    out
+            target: DamageTarget::Object(*victim),
+            amount,
+        },
+    ]
 }

@@ -1,5 +1,5 @@
-//! Gates Ablaze — `{2}{R}` sorcery. "Gates Ablaze deals X damage to each
-//! creature, where X is the number of Gates you control."
+//! Gates Ablaze — `{2}{R}` sorcery. "Gates Ablaze deals X damage to
+//! each creature, where X is the number of Gates you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Gates Ablaze deals X damage to each creature, where X is the number of Gates you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Gates Ablaze deals X damage to each creature, where X is the number of Gates you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,16 +37,15 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let x = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Gate").controlled_by(ControllerConstraint::You),
-        entry.controller,
-    );
-    let targets = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let gate_filter =
+        script::subtype_filter(reg, "Gate").controlled_by(ControllerConstraint::You);
+    let x = script::count_matching(state, &gate_filter, entry.controller);
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let source = entry.source;
     vec![Effect::ForEach {
-        targets,
+        targets: creatures,
         effect: Box::new(Effect::DealDamage {
-            source: entry.source,
+            source,
             target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: x,
         }),

@@ -1,5 +1,5 @@
-//! Massive Raid — `{1}{R}{R}` instant, "Massive Raid deals damage to any target equal to the
-//! number of creatures you control."
+//! Massive Raid — `{1}{R}{R}` instant. "Massive Raid deals damage to
+//! any target equal to the number of creatures you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +9,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,8 +40,6 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let n = script::count_matching(state, &filter, entry.controller);
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -48,9 +48,10 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: n,
-    }]
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: n }]
 }

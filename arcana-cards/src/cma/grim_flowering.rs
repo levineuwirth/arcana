@@ -30,15 +30,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let n = script::graveyard_matching(
         state,
         &ObjectFilter::creature(),
         entry.controller,
         entry.controller,
     );
-    vec![Effect::DrawCards {
-        player: entry.controller,
-        count: n,
-    }]
+    vec![Effect::DrawCards { player: entry.controller, count: n }]
 }

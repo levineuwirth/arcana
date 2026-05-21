@@ -1,6 +1,7 @@
-//! Fateful Showdown — `{2}{R}{R}` instant. "Fateful Showdown deals
-//! damage to any target equal to the number of cards in your hand.
-//! Discard all the cards in your hand, then draw that many cards."
+//! Fateful Showdown — `{2}{R}{R}` instant. Deals damage to any target
+//! equal to cards in your hand. Then discard all your cards and draw
+//! that many. "Discard all" requires counting then discarding; use the
+//! current hand size.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::events::DamageTarget;
@@ -23,16 +24,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Fateful Showdown deals damage to any target equal to the number of cards in your hand. Discard all the cards in your hand, then draw that many cards.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Fateful Showdown deals damage to any target equal to the number of cards in your hand. Discard all the cards in your hand, then draw that many cards.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),

@@ -1,8 +1,7 @@
-//! Alchemist's Gift — `{B}` instant. "Target creature gets +1/+1 and gains
-//! your choice of deathtouch or lifelink until end of turn."
-//!
-//! GAP: no modal choice between two keywords. Best effort: grant deathtouch
-//! (one of the two listed options).
+//! Alchemist's Gift — `{B}` instant. "Target creature gets +1/+1 and
+//! gains your choice of deathtouch or lifelink until end of turn."
+//! GAP: in-effect modal player choice between two keywords isn't in
+//! catalog; pick deathtouch as the canonical branch.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -39,9 +38,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: in-resolution choice between Deathtouch and Lifelink not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: choice between deathtouch and lifelink not modeled; using deathtouch
     vec![Effect::Pump {
         target: *id,
         power: 1,

@@ -31,16 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional "if it's an artifact creature" indestructible —
-    // no catalog predicate for a target's type at resolution; only the
-    // unconditional pump is applied.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it's an artifact creature" type test is not expressible
+    // — the conditional indestructible is omitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

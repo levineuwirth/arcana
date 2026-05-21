@@ -1,5 +1,5 @@
-//! Advent of the Wurm — `{1}{G}{G}{W}` instant. "Create a 5/5 green Wurm
-//! creature token with trample."
+//! Advent of the Wurm — `{1}{G}{G}{W}` instant. Create a 5/5 green
+//! Wurm creature token with trample.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -35,14 +35,14 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let wurm = reg.interner().lookup("Wurm").expect("Wurm interned");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(wurm);
+    let wurm = reg.interner().lookup("Wurm").expect("interned");
+    let mut subs = SubtypeSet::default();
+    subs.0.insert(wurm);
     let token = TokenDefinition {
         name: wurm,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: subs,
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(5)),
         keywords: vec![KeywordAbility::Trample],

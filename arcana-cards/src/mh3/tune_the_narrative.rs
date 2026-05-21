@@ -1,8 +1,6 @@
-//! Tune the Narrative — `{U}` instant. "Draw a card. You get {E}{E} (two
-//! energy counters)."
-//!
-//! GAP: no energy-counters Effect (CounterKind only has PlusOnePlusOne).
-//! Draw stays honest.
+//! Tune the Narrative — `{U}` instant. "Draw a card. You get {E}{E}
+//! (two energy counters)." Energy counters not in CounterKind
+//! catalog; emit draw, GAP energy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +35,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no energy-counter primitive.
+    // GAP: energy counters not in CounterKind catalog.
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

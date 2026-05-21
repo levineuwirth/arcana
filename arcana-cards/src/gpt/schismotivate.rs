@@ -1,6 +1,6 @@
 //! Schismotivate — `{1}{U}{R}` instant. "Target creature gets +4/+0
-//! until end of turn. Another target creature gets -4/-0 until end of
-//! turn."
+//! until end of turn. Another target creature gets -4/-0 until end
+//! of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,23 +34,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let (Some(TargetChoice::Object(a)), Some(TargetChoice::Object(b))) =
-        (it.next(), it.next())
-    else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut iter = entry.targets.targets.iter();
+    let Some(t1) = iter.next() else { return Vec::new(); };
+    let Some(t2) = iter.next() else { return Vec::new(); };
+    let TargetChoice::Object(id1) = t1 else { return Vec::new(); };
+    let TargetChoice::Object(id2) = t2 else { return Vec::new(); };
     vec![
         Effect::Pump {
-            target: *a,
+            target: *id1,
             power: 4,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
         Effect::Pump {
-            target: *b,
+            target: *id2,
             power: -4,
             toughness: 0,
             duration: Duration::EndOfTurn,

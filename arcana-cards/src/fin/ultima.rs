@@ -1,8 +1,6 @@
-//! Ultima — `{3}{W}{W}` sorcery. "Destroy all artifacts and creatures. End
-//! the turn."
-//!
-//! GAP: no Effect variant for 'End the turn'. Best effort: destroy all
-//! artifacts and creatures.
+//! Ultima — `{3}{W}{W}` sorcery. "Destroy all artifacts and
+//! creatures. End the turn." GAP: 'End the turn' primitive isn't in
+//! the catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,15 +37,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let artifacts = script::ids_matching(
+    // GAP: 'End the turn' primitive not in catalog.
+    let ids = script::ids_matching(
         state,
-        &ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
         entry.controller,
     );
-    let mut ids = creatures;
-    ids.extend(artifacts);
-    // GAP: 'End the turn' not expressible
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

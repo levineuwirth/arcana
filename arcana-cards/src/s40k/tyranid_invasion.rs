@@ -1,6 +1,6 @@
-//! Tyranid Invasion — `{3}{G}` sorcery. "Create a number of 3/3
-//! green Tyranid Warrior creature tokens with trample equal to the
-//! number of opponents you have."
+//! Tyranid Invasion — `{3}{G}` sorcery. "Create a number of 3/3 green
+//! Tyranid Warrior creature tokens with trample equal to the number of
+//! opponents you have."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -23,12 +23,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create a number of 3/3 green Tyranid Warrior creature tokens with trample equal to the number of opponents you have.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create a number of 3/3 green Tyranid Warrior creature tokens with trample equal to the number of opponents you have.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -37,8 +38,10 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let tyranid = reg.interner().lookup("Tyranid").expect("Tyranid interned");
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
+    let tyranid = reg.interner().lookup("Tyranid")
+        .expect("Tyranid interned during register()");
+    let warrior = reg.interner().lookup("Warrior")
+        .expect("Warrior interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(tyranid);
     subtypes.0.insert(warrior);
@@ -52,11 +55,8 @@ fn resolve(
         keywords: vec![KeywordAbility::Trample],
         abilities: vec![],
     };
-    let n = script::opponents(state, entry.controller).len() as u32;
-    (0..n)
-        .map(|_| Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        })
+    let x = script::opponents(state, entry.controller).len() as u32;
+    (0..x)
+        .map(|_| Effect::CreateToken { controller: entry.controller, token: token.clone() })
         .collect()
 }

@@ -26,41 +26,49 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control deals damage equal to its power to target creature an opponent controls.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature you control deals damage equal to its \
+                       power to target creature an opponent controls.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let (Some(TargetChoice::Object(src)), Some(TargetChoice::Object(victim))) =
-        (it.next(), it.next())
-    else {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(source_id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    let amount = script::power_of(state, *src).max(0) as u32;
+    let Some(TargetChoice::Object(victim)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
+    let power = script::power_of(state, *source_id).max(0) as u32;
     vec![Effect::DealDamage {
-        source: *src,
+        source: *source_id,
         target: DamageTarget::Object(*victim),
-        amount,
+        amount: power,
     }]
 }

@@ -1,11 +1,7 @@
-//! Rally the Righteous — `{1}{R}{W}` instant, "Radiance — Untap target creature and each other
-//! creature that shares a color with it. Those creatures get +2/+0 until end of turn."
-//!
-//! GAP: Radiance mechanic (affect target and each other permanent sharing a color with it)
-//! requires querying color-sharing permanents; no catalog Effect or script helper covers this.
-//! Only the single-target Untap + Pump is implemented for the primary target.
+//! Rally the Righteous — `{1}{R}{W}` instant. Radiance — untap target
+//! creature and each other creature sharing a color; +2/+0 until eot.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -42,11 +38,13 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Radiance — untap/pump each other creature sharing a color with the target
+    let id = *id;
+    // GAP: "shares-a-color-with-target" radiance fan-out not in catalog.
+    // Untap + pump the single target.
     vec![
-        Effect::Untap { target: *id },
+        Effect::Untap { target: id },
         Effect::Pump {
-            target: *id,
+            target: id,
             power: 2,
             toughness: 0,
             duration: Duration::EndOfTurn,

@@ -1,6 +1,5 @@
 //! Piercing Light — `{W}` instant. "Piercing Light deals 2 damage to
-//! target attacking or blocking creature. Scry 1." The
-//! attacking/blocking restriction has no filter predicate.
+//! target attacking or blocking creature. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,6 +23,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Piercing Light deals 2 damage to target attacking or blocking creature. Scry 1.".into(),
+            // GAP: no ObjectFilter predicate for "attacking or blocking";
+            // target is an unfiltered creature.
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -32,15 +33,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking or blocking" target restriction not expressible.
-    vec![
-        Effect::DealDamage {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 2,
-        },
-        Effect::Scry { player: entry.controller, count: 1 },
-    ]
+        });
+    }
+    effects.push(Effect::Scry {
+        player: entry.controller,
+        count: 1,
+    });
+    effects
 }

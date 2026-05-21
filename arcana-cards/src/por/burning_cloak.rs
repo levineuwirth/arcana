@@ -1,5 +1,5 @@
-//! Burning Cloak — `{R}` sorcery. "Target creature gets +2/+0 until end of
-//! turn. Burning Cloak deals 2 damage to that creature."
+//! Burning Cloak — `{R}` sorcery. "Target creature gets +2/+0 until
+//! end of turn. Burning Cloak deals 2 damage to that creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+0 until end of turn. Burning Cloak deals 2 damage to that creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+0 until end of turn. Burning Cloak deals 2 damage to that creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

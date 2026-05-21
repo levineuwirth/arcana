@@ -1,5 +1,5 @@
-//! Last Kiss — `{2}{B}` instant. "Last Kiss deals 2 damage to target
-//! creature and you gain 2 life."
+//! Last Kiss — `{2}{B}` instant. "Deals 2 damage to target creature
+//! and you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Last Kiss deals 2 damage to target creature and you gain 2 life.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Last Kiss deals 2 damage to target creature and you gain 2 life.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -35,9 +36,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
         Effect::DealDamage {
             source: entry.source,

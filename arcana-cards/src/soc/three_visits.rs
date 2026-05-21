@@ -22,9 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a Forest card, put it onto \
-                   the battlefield, then shuffle."
-                .into(),
+            text: "Search your library for a Forest card, put it onto the battlefield, then shuffle.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -37,11 +35,9 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Forest")
-        .with_types(TypeLine::LAND.into());
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
-        filter,
+        filter: script::subtype_filter(reg, "Forest"),
         tapped: false,
     }]
 }

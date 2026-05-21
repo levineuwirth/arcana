@@ -3,3 +3,4 @@ pub mod bloodrage_vampire;
 pub mod decompose;
 pub mod unmake;
 pub mod blazing_salvo;
+pub mod breaking_point;

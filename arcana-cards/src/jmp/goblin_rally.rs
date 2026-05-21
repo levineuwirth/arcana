@@ -1,5 +1,5 @@
-//! Goblin Rally — `{3}{R}{R}` sorcery. "Create four 1/1 red Goblin
-//! creature tokens."
+//! Goblin Rally — `{3}{R}{R}` sorcery. Create four 1/1 red Goblin
+//! creature tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,17 +20,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create four 1/1 red Goblin creature tokens.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create four 1/1 red Goblin creature tokens.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let goblin = reg.interner().lookup("Goblin").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     let token = TokenDefinition {

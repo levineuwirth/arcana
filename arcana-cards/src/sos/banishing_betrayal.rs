@@ -1,4 +1,4 @@
-//! Banishing Betrayal — `{1}{U}` instant, "Return target nonland
+//! Banishing Betrayal — `{1}{U}` instant. "Return target nonland
 //! permanent to its owner's hand. Surveil 1."
 
 use arcana_core::effects::Effect;
@@ -22,21 +22,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target nonland permanent to its owner's hand. \
-                   Surveil 1."
-                .into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target nonland permanent to its owner's hand. Surveil 1.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -45,14 +43,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
         Effect::ReturnToHand { target: *id },
-        Effect::Surveil {
-            player: entry.controller,
-            count: 1,
-        },
+        Effect::Surveil { player: entry.controller, count: 1 },
     ]
 }

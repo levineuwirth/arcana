@@ -1,13 +1,8 @@
-//! Recommission — `{1}{W}` sorcery. "Return target artifact or creature card
-//! with mana value 3 or less from your graveyard to the battlefield. If a
-//! creature enters this way, it enters with an additional +1/+1 counter on
-//! it."
-//!
-//! GAP: TargetFilter::Card supports a graveyard filter but is limited; we use
-//! it with creature() and max_cmc(3). The 'enters with +1/+1 counter' rider
-//! can't be expressed as a conditional on entry — we add the counter after
-//! reanimating as best effort. Artifact-card branch and 'artifact OR creature
-//! card' targeting is not expressible.
+//! Recommission — `{1}{W}` sorcery. "Return target artifact or
+//! creature card with mana value 3 or less from your graveyard to
+//! the battlefield. If a creature enters this way, it enters with
+//! an additional +1/+1 counter on it." Enters-with-counter rider
+//! not in catalog; emit reanimate + a +1/+1 counter as a follow-up.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,7 +11,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 use arcana_core::zones::Zone;
@@ -37,7 +33,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature().with_max_cmc(3),
+                        filter: ObjectFilter::permanent()
+                            .controlled_by(ControllerConstraint::You)
+                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE))
+                            .with_max_cmc(3),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -55,6 +54,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if a creature enters this way" guard — applies counter unconditionally; on a returned artifact-only it would still get a counter.
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: *id },
         Effect::AddCounters {

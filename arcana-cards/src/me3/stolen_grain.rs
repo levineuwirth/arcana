@@ -1,5 +1,5 @@
-//! Stolen Grain — `{4}{B}{B}` sorcery. "Stolen Grain deals 5 damage to target
-//! opponent or planeswalker. You gain 5 life."
+//! Stolen Grain — `{4}{B}{B}` sorcery. "Stolen Grain deals 5 damage
+//! to target opponent or planeswalker. You gain 5 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,7 +24,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Stolen Grain deals 5 damage to target opponent or planeswalker. You gain 5 life.".into(),
-                // GAP: no TargetFilter for 'opponent or planeswalker' specifically; using any_target
                 target_requirements: vec![TargetRequirement::any_target()],
                 modal: None,
                 effect: resolve,
@@ -47,14 +46,7 @@ fn resolve(
         },
     };
     vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: dt,
-            amount: 5,
-        },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 5,
-        },
+        Effect::DealDamage { source: entry.source, target: dt, amount: 5 },
+        Effect::GainLife { player: entry.controller, amount: 5 },
     ]
 }

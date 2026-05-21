@@ -1,6 +1,6 @@
-//! Echoing Truth — `{1}{U}` instant. "Return target nonland permanent
-//! and all other permanents with the same name as that permanent to
-//! their owners' hands."
+//! Echoing Truth — `{1}{U}` instant. "Return target nonland
+//! permanent and all other permanents with the same name as that
+//! permanent to their owners' hands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,10 +38,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The "all other permanents with the same name" sweep is not
-    // expressible; emit the single-target bounce.
     vec![Effect::ReturnToHand { target: *id }]
+    // GAP: "all other permanents with the same name" — no helper
+    // enumerates permanents sharing a name; only the single targeted
+    // permanent is bounced.
 }

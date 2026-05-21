@@ -11,3 +11,4 @@ pub mod yavimaya_wurm;
 pub mod stabbing_pain;
 pub mod hornet_sting;
 pub mod destructive_force;
+pub mod pyretic_ritual;

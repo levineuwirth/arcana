@@ -1,6 +1,9 @@
 //! Fracturing Gust — `{2}{G/W}{G/W}{G/W}` instant. "Destroy all
 //! artifacts and enchantments. You gain 2 life for each permanent
-//! destroyed this way."
+//! destroyed this way." Express the destroys via ForEach. GAP: the
+//! per-destroyed life-gain count is dynamic against the set actually
+//! killed; we estimate from the pre-resolution count which is a
+//! reasonable approximation (the engine will destroy exactly those).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -17,7 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G/W}{G/W}{G/W}").expect("valid cost")),
-        colors: ColorSet::green() | ColorSet::white(),
+        colors: ColorSet::white() | ColorSet::green(),
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };

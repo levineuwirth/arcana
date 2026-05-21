@@ -1,9 +1,10 @@
-//! Rewind — `{2}{U}{U}` instant. "Counter target spell. Untap up to
-//! four lands."
+//! Rewind — `{2}{U}{U}` instant. "Counter target spell. Untap up to four
+//! lands."
 //!
-//! The counter is expressible. "Untap up to four lands" needs a
-//! multi-target untap with player choice; `Effect::Untap` is
-//! single-known-target only, so that clause is GAPped.
+//! Counter expressible; 'untap up to four lands' is a free-pick variable
+//! choice not in the target_requirements model (one TargetRequirement here is
+//! the spell). GAP the untap-up-to-four half — we lack a way to bind 'up to
+//! N' lands as additional spell targets here.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,16 +27,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Untap up to four lands.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Untap up to four lands.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Spell(ObjectFilter::default()),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                        ),
+                        count: TargetCount::UpTo(4),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -44,10 +55,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Counter { target: *id },
-        // GAP: "untap up to four lands" (multi-target player-chosen untap) not expressible.
-    ]
+    let mut effects: Vec<Effect> = Vec::new();
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
+            // First target is the spell, remaining are lands. The engine resolves the
+            // counter on a stack id and untap on a battlefield id — both use Object(id).
+            if effects.is_empty() {
+                effects.push(Effect::Counter { target: *id });
+            } else {
+                effects.push(Effect::Untap { target: *id });
+            }
+        }
+    }
+    effects
 }

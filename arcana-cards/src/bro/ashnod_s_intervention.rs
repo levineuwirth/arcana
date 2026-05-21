@@ -1,8 +1,6 @@
 //! Ashnod's Intervention — `{B}` instant. "Until end of turn, target
-//! creature gets +2/+0 and gains 'When this creature dies or is put
-//! into exile from the battlefield, return it to its owner's hand.'"
-//! The granted dies/exile-trigger return rider isn't expressible; we
-//! emit the +2/+0 pump.
+//! creature gets +2/+0 and gains 'When this creature dies or is put into
+//! exile from the battlefield, return it to its owner's hand.'"
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Until end of turn, target creature gets +2/+0 and gains \"When this creature dies or is put into exile from the battlefield, return it to its owner's hand.\"".into(),
+            text: "Until end of turn, target creature gets +2/+0 and gains a leaves-the-battlefield trigger returning it to its owner's hand.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -34,9 +32,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: granted dies/exile-triggered return-to-hand rider not
-    // expressible. +2/+0 pump emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: granting a "when this dies/is exiled, return it to hand" trigger
+    // to a creature is not expressible; only the pump is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

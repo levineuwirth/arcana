@@ -30,17 +30,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let filter = ObjectFilter::new().with_types(TypeLine::PLANESWALKER.into());
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "Up to two" planeswalker cards — two independent tutor pulls.
     vec![
         Effect::TutorToHand {
             player: entry.controller,
-            filter: filter.clone(),
+            filter: ObjectFilter::new().with_types(TypeLine::PLANESWALKER.into()),
             reveal: true,
         },
         Effect::TutorToHand {
             player: entry.controller,
-            filter,
+            filter: ObjectFilter::new().with_types(TypeLine::PLANESWALKER.into()),
             reveal: true,
         },
     ]

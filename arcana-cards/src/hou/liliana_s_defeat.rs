@@ -1,9 +1,6 @@
-//! Liliana's Defeat — `{B}` sorcery. "Destroy target black creature or
-//! black planeswalker. If that permanent was a Liliana planeswalker, her
-//! controller loses 3 life."
-//!
-//! GAP: target restricted to black creature (no planeswalker target
-//! filter); the Liliana life-loss rider is not modeled.
+//! Liliana's Defeat — `{B}` sorcery. Destroy target black creature or
+//! black planeswalker. If that permanent was a Liliana planeswalker,
+//! her controller loses 3 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +28,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target black creature or black planeswalker. If that permanent was a Liliana planeswalker, her controller loses 3 life.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().with_colors(ColorSet::black()),
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(
+                                TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                            ))
+                            .with_colors(ColorSet::black()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -49,6 +50,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Liliana-planeswalker controller loses 3 life rider not modeled.
+    // GAP: subtype-check for "Liliana" planeswalker rider not expressible in
+    // the script::* surface; emit the destroy.
     vec![Effect::DestroyPermanent { target: *id }]
 }

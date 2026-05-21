@@ -1,4 +1,4 @@
-//! Inner Calm, Outer Strength — `{2}{G}` instant — Arcane. "Target
+//! Inner Calm, Outer Strength — `{2}{G}` instant (Arcane). "Target
 //! creature gets +X/+X until end of turn, where X is the number of
 //! cards in your hand."
 
@@ -22,18 +22,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: Instant — Arcane subtype isn't expressible via Characteristics
+    // (no Arcane subtype interning at this level).
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +X/+X until end of turn, where X is the number of cards in your hand.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +X/+X until end of turn, where X is the number of cards in your hand.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     let x = script::hand_size(state, entry.controller) as i32;
     vec![Effect::Pump {
         target: *id,

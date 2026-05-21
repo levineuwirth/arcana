@@ -1,14 +1,13 @@
-//! Public Execution — `{5}{B}` instant. "Destroy target creature an
-//! opponent controls. Each other creature that player controls gets -2/-0
-//! until end of turn."
-//!
-//! GAP: the script helpers cannot enumerate "creatures the destroyed
-//! creature's controller controls"; the -2/-0 rider is omitted.
+//! Public Execution — `{5}{B}` instant. Destroy target creature an
+//! opponent controls. Each other creature that player controls gets
+//! -2/-0 until end of turn.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -32,7 +31,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target creature an opponent controls. Each other creature that player controls gets -2/-0 until end of turn.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -44,12 +44,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: -2/-0 to each other creature that player controls not scopable.
-    vec![Effect::DestroyPermanent { target: *id }]
+    let id = *id;
+    let owner = script::target_controller(state, id, entry.controller);
+    let others = script::ids_matching(state, &ObjectFilter::creature(), owner);
+    let mut effects = vec![Effect::DestroyPermanent { target: id }];
+    for o in others {
+        if o == id { continue; }
+        effects.push(Effect::Pump {
+            target: o,
+            power: -2,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
+    }
+    effects
 }

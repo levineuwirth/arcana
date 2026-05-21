@@ -1,5 +1,5 @@
-//! Mighty Leap — `{1}{W}` instant. "Target creature gets +2/+2 and gains
-//! flying until end of turn."
+//! Mighty Leap — `{1}{W}` instant. "Target creature gets +2/+2 and
+//! gains flying until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

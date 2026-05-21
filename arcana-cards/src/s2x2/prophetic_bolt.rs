@@ -1,8 +1,6 @@
-//! Prophetic Bolt — `{3}{U}{R}` instant, "Prophetic Bolt deals 4
-//! damage to any target. Look at the top four cards of your library.
-//! Put one of those cards into your hand and the rest on the bottom of
-//! your library in any order." The dig-and-pick is not expressible; the
-//! damage is.
+//! Prophetic Bolt — `{3}{U}{R}` instant. Deals 4 damage to any target.
+//! Look at the top four cards of your library. Put one into your hand
+//! and the rest on the bottom in any order.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,16 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -43,7 +46,12 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: look at top four, take one to hand, rest to bottom, is not
-    // expressible.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 4 }]
+    // GAP: "look at top 4, pick 1 to hand, bury rest" is not a catalog
+    // primitive — best-effort: damage + a Scry 4 surrogate is the closest;
+    // emit damage + DrawCards(1) is materially wrong, so drop the dig.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 4,
+    }]
 }

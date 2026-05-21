@@ -1,14 +1,13 @@
-//! Structural Distortion — `{3}{R}` sorcery. "Exile target artifact
-//! or land. Structural Distortion deals 2 damage to that permanent's
-//! controller." We exile the targeted artifact/land; the
-//! "2 damage to that permanent's controller" rider has no way to
-//! resolve the exiled permanent's controller after exile, so it is a
-//! GAP.
+//! Structural Distortion — `{3}{R}` sorcery. "Exile target artifact or
+//! land. Structural Distortion deals 2 damage to that permanent's
+//! controller."
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -30,9 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Exile target artifact or land. Structural Distortion deals 2 damage to that permanent's controller.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::LAND.into()),
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::LAND)),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -43,9 +41,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "2 damage to that permanent's controller" — no way to read
-    // the exiled permanent's controller. Exile emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    vec![Effect::ExilePermanent { target: *id }]
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let controller = script::target_controller(state, *id, entry.controller);
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(controller),
+            amount: 2,
+        },
+    ]
 }

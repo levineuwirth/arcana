@@ -1,13 +1,11 @@
 //! Beast Within — `{2}{G}` instant. "Destroy target permanent. Its controller
 //! creates a 3/3 green Beast creature token."
-//! GAP: "its controller creates a token" — the controller of the destroyed
-//! permanent cannot be looked up from a single-target shape at resolution time.
-//! Partial: emit DestroyPermanent; token creation for caster is best-effort.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
@@ -39,13 +37,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let beast = reg.interner().lookup("Beast").expect("Beast interned during register()");
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let beast = reg.interner().lookup("Beast").expect("interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(beast);
     let token = TokenDefinition {
@@ -58,10 +55,9 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: token should be created for target's controller, not entry.controller;
-    // no API to look up the controller of a permanent from a single-target shape.
+    let controller = script::target_controller(state, *id, entry.controller);
     vec![
         Effect::DestroyPermanent { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken { controller, token },
     ]
 }

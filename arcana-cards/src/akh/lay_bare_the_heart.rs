@@ -1,16 +1,8 @@
-//! Lay Bare the Heart — `{1}{B}` sorcery, "Target opponent reveals their
-//! hand. You choose a nonlegendary, nonland card from it. That player discards
-//! that card."
-//!
-//! # GAP
-//! - "Reveal opponent's hand" is not an expressible effect in the catalog.
-//! - "You choose which card the opponent discards" (controller-directed
-//!   targeted discard with nonlegendary/nonland restriction) is not
-//!   expressible. `DiscardChoice::OpponentChooses` lets the opponent pick;
-//!   there is no `ControllerChooses` variant scoped to the target player.
-//! Best effort: emit a 1-card discard where the opponent chooses. The
-//! nonlegendary/nonland restriction and controller-selects-the-card are
-//! omitted.
+//! Lay Bare the Heart — `{1}{B}` sorcery. "Target opponent reveals
+//! their hand. You choose a nonlegendary, nonland card from it. That
+//! player discards that card." Targeted discard with chooser/filter
+//! isn't expressible via the simple DiscardChoice enum; emit an
+//! opponent-chooses discard as best effort.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -48,7 +40,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: hand reveal; caster-directed discard with nonlegendary/nonland filter not in catalog
+    // GAP: "you choose a nonlegendary nonland card" — DiscardChoice has no controller-chooses-with-filter variant; falls back to opponent's choice.
     vec![Effect::Discard {
         player: *p,
         count: 1,

@@ -1,13 +1,11 @@
-//! Misfortune's Gain — `{3}{W}` sorcery. "Destroy target creature. Its
-//! owner gains 4 life."
-//!
-//! Destroy is expressible; "its owner gains 4 life" needs the
-//! destroyed creature's owner, which the catalog doesn't expose.
+//! Misfortune's Gain — `{3}{W}` sorcery. "Destroy target creature.
+//! Its owner gains 4 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -33,17 +31,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: cannot resolve the destroyed creature's owner to grant them
-    // 4 life; emitting the destroy only.
-    vec![Effect::DestroyPermanent { target: *id }]
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    let owner = script::target_controller(state, *id, entry.controller);
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::GainLife { player: owner, amount: 4 },
+    ]
 }

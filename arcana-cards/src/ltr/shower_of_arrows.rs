@@ -25,11 +25,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target artifact, enchantment, or creature with flying. Scry 1.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types_any(TypeLine(
+                filter: TargetFilter::Permanent(ObjectFilter::permanent().with_types_any(
+                    TypeLine(
                         TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::CREATURE,
-                    )),
-                ),
+                    ),
+                )),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -39,13 +39,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The "creature must have flying" sub-restriction is not
-    // expressible; target is any artifact/enchantment/creature.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::Scry { player: entry.controller, count: 1 },
     ]
+    // GAP: the creature branch should be restricted to creatures with
+    // flying; the ObjectFilter builders cannot constrain by keyword,
+    // so any creature (not just flyers) is a legal target.
 }

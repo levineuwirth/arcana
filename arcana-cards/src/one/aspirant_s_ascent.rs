@@ -1,6 +1,8 @@
-//! Aspirant's Ascent — `{U}` instant. "Until end of turn, target creature
-//! gets +1/+3 and gains flying and toxic 1."
-//! (Toxic 1 is a keyword ability on the creature until EOT.)
+//! Aspirant's Ascent — `{U}` instant. "Until end of turn, target
+//! creature gets +1/+3 and gains flying and toxic 1." Toxic isn't an
+//! end-of-turn grantable keyword in Pump.keywords (Toxic is
+//! parametrized on creatures at definition time). We pump +1/+3 with
+//! Flying grant and GAP toxic.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -39,6 +41,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: granting 'toxic 1' until end of turn — Toxic(N) is a
+    // definition-time keyword on creatures, not a duration-bounded
+    // grant.
     vec![Effect::Pump {
         target: *id,
         power: 1,

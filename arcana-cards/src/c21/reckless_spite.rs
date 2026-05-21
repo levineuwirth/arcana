@@ -1,5 +1,5 @@
-//! Reckless Spite — `{1}{B}{B}` instant. "Destroy two target
-//! nonblack creatures. You lose 5 life."
+//! Reckless Spite — `{1}{B}{B}` instant. "Destroy two target nonblack
+//! creatures. You lose 5 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,6 +47,9 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             _ => None,
         })
         .collect();
-    effects.push(Effect::LoseLife { player: entry.controller, amount: 5 });
+    effects.push(Effect::LoseLife {
+        player: entry.controller,
+        amount: 5,
+    });
     effects
 }

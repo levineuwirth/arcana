@@ -1,7 +1,6 @@
 //! A-Fates' Reversal — `{B}` sorcery. "Return up to one target
 //! creature card from your graveyard to your hand. Venture into the
-//! dungeon." Venture has no primitive; the graveyard return is
-//! emitted.
+//! dungeon."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,16 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "venture into the dungeon" has no primitive.
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::ReturnFromGraveyardToHand { target: *id })
-            }
-            _ => None,
-        })
-        .collect()
+    // GAP: "venture into the dungeon" is not in the catalog; only the
+    // graveyard return is emitted.
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
+    }
+    effects
 }

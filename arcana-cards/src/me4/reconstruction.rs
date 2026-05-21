@@ -28,8 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::new()
-                        .with_types(TypeLine::ARTIFACT.into()),
+                    filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                 },
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -40,12 +39,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

@@ -1,8 +1,5 @@
 //! Thirst for Knowledge — `{2}{U}` instant. "Draw three cards. Then
 //! discard two cards unless you discard an artifact card."
-//!
-//! GAP: no conditional-discard-or-pay-with-artifact primitive. We honor
-//! the draw and the worst-case discard-two.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,13 +19,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards. Then discard two cards unless you discard an artifact card.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw three cards. Then discard two cards unless you discard an artifact card.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,8 +33,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no discard-2-unless-discard-an-artifact primitive; emitting
-    // worst case (discard 2).
+    // GAP: "unless you discard an artifact card" branches discard cost.
+    // The Discard primitive has no filter argument, so we can't honestly
+    // express the artifact-shortcut. Best-effort: draw 3, discard 2.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::Discard {

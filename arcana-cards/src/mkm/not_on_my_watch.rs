@@ -1,7 +1,6 @@
-//! Not on My Watch — `{1}{W}` instant. "Exile target attacking creature."
-//!
-//! GAP: no ObjectFilter refinement for 'attacking'. Best effort: target any
-//! creature.
+//! Not on My Watch — `{1}{W}` instant. "Exile target attacking
+//! creature." GAP: 'is attacking' filter not in ObjectFilter
+//! refinements; restrict to creature and exile.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +36,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'attacking' filter not in ObjectFilter refinements.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]

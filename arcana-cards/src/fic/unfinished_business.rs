@@ -1,7 +1,7 @@
-//! Unfinished Business — `{3}{W}{W}` sorcery. "Return target creature
-//! card from your graveyard to the battlefield, then return up to two
-//! target Aura and/or Equipment cards from your graveyard to the
-//! battlefield attached to that creature."
+//! Unfinished Business — `{3}{W}{W}` sorcery. "Return target
+//! creature card from your graveyard to the battlefield, then return
+//! up to two target Aura and/or Equipment cards from your graveyard
+//! to the battlefield attached to that creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,11 +41,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The Aura/Equipment "returned attached to that creature" rider is
-    // not expressible (no attach effect); emit the creature
-    // reanimation portion.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
+    // GAP: "return up to two Aura/Equipment cards attached to that
+    // creature" — returning a card to the battlefield pre-attached to
+    // a specified permanent has no catalog Effect (the return
+    // primitive does not take an attach-to argument).
 }

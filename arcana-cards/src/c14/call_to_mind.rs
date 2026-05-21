@@ -1,5 +1,5 @@
-//! Call to Mind — `{2}{U}` sorcery. "Return target instant or sorcery
-//! card from your graveyard to your hand."
+//! Call to Mind — `{2}{U}` sorcery. "Return target instant or
+//! sorcery card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,8 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::new()
-                        .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+                    filter: ObjectFilter::new().with_types_any(TypeLine(
+                        TypeLine::INSTANT | TypeLine::SORCERY,
+                    )),
                 },
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -40,7 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]

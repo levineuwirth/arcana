@@ -1,6 +1,5 @@
 //! Divine Verdict — `{3}{W}` instant. "Destroy target attacking or
-//! blocking creature." The attacking/blocking restriction has no
-//! filter predicate; a creature target is used.
+//! blocking creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,6 +22,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target attacking or blocking creature.".into(),
+            // GAP: no ObjectFilter predicate for "attacking or blocking";
+            // target is an unfiltered creature.
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -31,8 +32,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking or blocking" target restriction not expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

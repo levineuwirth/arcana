@@ -1,5 +1,5 @@
-//! Eye of Nowhere — `{U}{U}` sorcery (Arcane). "Return target
-//! permanent to its owner's hand."
+//! Eye of Nowhere — `{U}{U}` sorcery. Return target permanent to its
+//! owner's hand. (Arcane subtype not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,7 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]

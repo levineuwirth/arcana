@@ -1,10 +1,7 @@
 //! Crumble — `{G}` instant. "Destroy target artifact. It can't be
 //! regenerated. That artifact's controller gains life equal to its
-//! mana value."
-//!
-//! Dynamic life-gain equals the targeted artifact's converted mana
-//! cost — there's no script helper for "mana value of a permanent",
-//! so the life-gain rider is GAP'd while the destroy half is emitted.
+//! mana value." We can't read an object's mana value from script
+//! helpers; emit the destroy and GAP the life gain.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,26 +24,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target artifact. It can't be regenerated. That artifact's controller gains life equal to its mana value.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target artifact. It can't be regenerated. That artifact's controller gains life equal to its mana value.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "controller gains life equal to its mana value" — no
-    // mana-value-of-permanent script helper.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: life-equal-to-mana-value of target; 'can't be regenerated'.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

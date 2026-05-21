@@ -1,5 +1,4 @@
-//! Mass Calcify — `{5}{W}{W}` sorcery. "Destroy all nonwhite
-//! creatures."
+//! Mass Calcify — `{5}{W}{W}` sorcery. "Destroy all nonwhite creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,13 +29,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let filter = ObjectFilter::creature().without_colors(ColorSet::white());
     let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: NULL_OBJECT_ID,
-        }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

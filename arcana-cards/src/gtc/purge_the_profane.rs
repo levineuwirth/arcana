@@ -1,5 +1,5 @@
-//! Purge the Profane — `{2}{W}{B}` sorcery.
-//! "Target opponent discards two cards and you gain 2 life."
+//! Purge the Profane — `{2}{W}{B}` sorcery. "Target opponent discards
+//! two cards and you gain 2 life."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectOrPlayer, TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,16 +29,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let opp = match target {
-        TargetChoice::Player(p) => *p,
-        TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)) => *p,
-        _ => return Vec::new(),
-    };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
     vec![
         Effect::Discard {
-            player: opp,
+            player: *p,
             count: 2,
             choice: DiscardChoice::ControllerChooses,
         },

@@ -2,10 +2,8 @@
 //! nonlegendary creature and gain control of it until end of turn.
 //! That creature gains haste until end of turn."
 //!
-//! GAP: 'gain control' is not in the Effect catalog. We untap and
-//! grant haste; control-stealing is GAP'd. The 'nonlegendary'
-//! ObjectFilter refinement isn't a script primitive either, so the
-//! target is just creature.
+//! The Untap and the haste grant are expressed. "Gain control until
+//! end of turn" has no temporary-control primitive — GAP.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -19,7 +17,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Blind with Anger");
-    let _arcane = reg.interner_mut().intern("Arcane");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{R}").expect("valid cost")),
@@ -38,9 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'gain control until end of turn' — no catalog Effect; the
-    // 'nonlegendary' target filter is also not modeled.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "gain control until end of turn" has no temporary-control
+    // primitive (only permanent ChangeControl); emit the expressible
+    // Untap and haste grant.
     vec![
         Effect::Untap { target: *id },
         Effect::GrantKeyword {

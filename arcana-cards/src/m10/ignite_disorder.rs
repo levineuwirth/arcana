@@ -1,6 +1,6 @@
 //! Ignite Disorder — `{1}{R}` instant. "Ignite Disorder deals 3
-//! damage divided as you choose among one, two, or three target
-//! white and/or blue creatures."
+//! damage divided as you choose among one, two, or three target white
+//! and/or blue creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,18 +24,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Ignite Disorder deals 3 damage divided as you choose among one, two, or three target white and/or blue creatures.".into(),
-            // GAP: no "white and/or blue" combined color filter; target
-            // is left as up to three creatures.
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
-                count: TargetCount::UpTo(3),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "3 damage divided as you choose" has no
+                // damage-division primitive; and "white and/or blue"
+                // restriction can't be expressed (single-color filters
+                // only). Each chosen creature takes 1 damage.
+                text: "Ignite Disorder deals 3 damage divided as you choose among one, two, or three target white and/or blue creatures.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(3),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -44,8 +47,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "divided as you choose" has no catalog primitive; deal 1 to each
-    // chosen target (total still <= 3).
     entry
         .targets
         .targets

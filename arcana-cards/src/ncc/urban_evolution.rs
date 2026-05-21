@@ -1,5 +1,6 @@
 //! Urban Evolution — `{3}{G}{U}` sorcery. "Draw three cards. You may
-//! play an additional land this turn."
+//! play an additional land this turn." 'Play an additional land' has
+//! no catalog primitive — only the draw is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,17 +20,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw three cards. You may play an additional land this turn.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw three cards. You may play an additional land this turn.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "you may play an additional land this turn" (extra land
-    // play grant) is not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'play an additional land this turn' has no catalog primitive.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

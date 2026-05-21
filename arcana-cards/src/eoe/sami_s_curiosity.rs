@@ -1,10 +1,6 @@
-//! Sami's Curiosity — `{G}` sorcery. "You gain 2 life. Create a
-//! Lander token. (It's an artifact with '{2}, {T}, Sacrifice this
-//! token: Search your library for a basic land card, put it onto the
-//! battlefield tapped, then shuffle.')"
-//!
-//! The life gain and a colorless artifact Lander token are emitted;
-//! the token's tutor activated ability is not expressible — GAP.
+//! Sami's Curiosity — `{G}` sorcery. "You gain 2 life. Create a Lander token.
+//! (It's an artifact with '{2}, {T}, Sacrifice this token: Search your library
+//! for a basic land card, put it onto the battlefield tapped, then shuffle.')"
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -25,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You gain 2 life. Create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You gain 2 life. Create a Lander token.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,12 +36,10 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let lander = reg
-        .interner()
-        .lookup("Lander")
-        .expect("Lander interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(lander);
+    let lander = reg.interner().lookup("Lander").expect("interned");
+    let subtypes = SubtypeSet::default();
+    // GAP: the Lander token's activated land-tutor ability cannot be attached to a
+    // TokenDefinition — the artifact token is created without its ability.
     let token = TokenDefinition {
         name: lander,
         colors: ColorSet::new(),
@@ -55,8 +50,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: the token's sacrifice-to-tutor activated ability is not
-    // expressible.
     vec![
         Effect::GainLife { player: entry.controller, amount: 2 },
         Effect::CreateToken { controller: entry.controller, token },

@@ -1,5 +1,5 @@
-//! Demon's Due — `{3}{B}` instant. "Scry 2, then draw two cards. You
-//! lose 2 life."
+//! Demon's Due — `{3}{B}` instant. "Scry 2, then draw two cards. You lose 2
+//! life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,12 +19,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Scry 2, then draw two cards. You lose 2 life.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Scry 2, then draw two cards. You lose 2 life.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

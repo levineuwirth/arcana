@@ -1,6 +1,6 @@
-//! Sever Soul — `{3}{B}{B}` sorcery.
-//! "Destroy target nonblack creature. It can't be regenerated. You
-//! gain life equal to its toughness."
+//! Sever Soul — `{3}{B}{B}` sorcery. "Destroy target nonblack
+//! creature. It can't be regenerated. You gain life equal to its
+//! toughness."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,11 +39,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     let tough = script::toughness_of(state, *id).max(0) as u32;
+    // GAP: "can't be regenerated" rider not in catalog.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::GainLife { player: entry.controller, amount: tough },

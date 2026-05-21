@@ -1,11 +1,10 @@
 //! Devouring Tendrils — `{1}{G}` sorcery. "Target creature you control deals
 //! damage equal to its power to target creature or planeswalker you don't
-//! control. When the permanent you don't control dies this turn, you gain
-//! 2 life."
-//! GAP: DelayedAction supports only Sacrifice/Exile/ReturnToHand; "when it
-//! dies gain 2 life" cannot be expressed.
+//! control. When the permanent you don't control dies this turn, you gain 2
+//! life."
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -13,7 +12,8 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -40,7 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     },
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                            ObjectFilter::permanent()
+                                .with_types_any(TypeLine(
+                                    TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                                ))
+                                .controlled_by(ControllerConstraint::Opponent),
                         ),
                         count: TargetCount::Exactly(1),
                         controller: None,
@@ -57,19 +61,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(attacker_t) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(attacker_id) = attacker_t else { return Vec::new(); };
-    let Some(defender_t) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(defender_id) = defender_t else { return Vec::new(); };
-
-    let pwr = script::power_of(state, *attacker_id);
-    let amount = pwr.max(0) as u32;
-
-    // GAP: "when the permanent you don't control dies this turn, you gain 2 life" —
-    // DelayedAction does not support GainLife as an action
+    let targets = &entry.targets.targets;
+    let (Some(t0), Some(t1)) = (targets.first(), targets.get(1)) else { return Vec::new(); };
+    let (TargetChoice::Object(a), TargetChoice::Object(b)) = (t0, t1) else { return Vec::new(); };
+    let dmg = script::power_of(state, *a).max(0) as u32;
+    // GAP: 'When the permanent you don't control dies this turn, you gain 2 life'
+    // delayed-trigger-on-target's-death rider not in DelayedAction list.
     vec![Effect::DealDamage {
-        source: entry.source,
-        target: arcana_core::events::DamageTarget::Object(*defender_id),
-        amount,
+        source: *a,
+        target: DamageTarget::Object(*b),
+        amount: dmg,
     }]
 }

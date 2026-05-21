@@ -1,5 +1,5 @@
-//! Fraying Omnipotence — `{3}{B}{B}` sorcery. "Each player loses half
-//! their life, then discards half the cards in their hand, then
+//! Fraying Omnipotence — `{3}{B}{B}` sorcery. "Each player loses
+//! half their life, then discards half the cards in their hand, then
 //! sacrifices half the creatures they control of their choice. Round
 //! up each time."
 
@@ -32,30 +32,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects = Vec::new();
+fn half_round_up(n: u32) -> u32 {
+    (n + 1) / 2
+}
+
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = Vec::new();
     for p in script::all_players(state) {
         let life = script::life(state, p).max(0) as u32;
-        let lose = life.div_ceil(2);
+        let life_loss = half_round_up(life);
+        effects.push(Effect::LoseLife { player: p, amount: life_loss });
+    }
+    for p in script::all_players(state) {
         let hand = script::hand_size(state, p);
-        let disc = hand.div_ceil(2);
+        let n = half_round_up(hand);
+        if n > 0 {
+            effects.push(Effect::Discard {
+                player: p,
+                count: n,
+                choice: DiscardChoice::ControllerChooses,
+            });
+        }
+    }
+    for p in script::all_players(state) {
         let creatures = script::count_matching(
             state,
             &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
             p,
         );
-        let sac = creatures.div_ceil(2);
-        effects.push(Effect::LoseLife { player: p, amount: lose });
-        effects.push(Effect::Discard {
-            player: p,
-            count: disc,
-            choice: DiscardChoice::ControllerChooses,
-        });
-        effects.push(Effect::Sacrifice {
-            player: p,
-            filter: ObjectFilter::creature(),
-            count: sac,
-        });
+        let n = half_round_up(creatures);
+        if n > 0 {
+            effects.push(Effect::Sacrifice {
+                player: p,
+                filter: ObjectFilter::creature(),
+                count: n,
+            });
+        }
     }
     effects
 }

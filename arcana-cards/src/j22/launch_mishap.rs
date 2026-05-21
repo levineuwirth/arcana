@@ -1,6 +1,6 @@
-//! Launch Mishap — `{2}{U}` instant. "Counter target creature or planeswalker
-//! spell. Create a 1/1 colorless Thopter artifact creature token with
-//! flying."
+//! Launch Mishap — `{2}{U}` instant. "Counter target creature or
+//! planeswalker spell. Create a 1/1 colorless Thopter artifact creature
+//! token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -27,11 +27,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target creature or planeswalker spell. Create a 1/1 colorless Thopter artifact creature token with flying.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new()
-                        .with_types(TypeLine::CREATURE.into())
-                        .with_types_any(TypeLine::PLANESWALKER.into()),
-                ),
+                filter: TargetFilter::Spell(ObjectFilter::permanent().with_types_any(
+                    TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER),
+                )),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -42,11 +40,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::Counter { target: *id });
-    }
-    let thopter = reg.interner().lookup("Thopter").expect("Thopter interned during register()");
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let thopter = reg.interner().lookup("Thopter").expect("Thopter interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(thopter);
     let token = TokenDefinition {
@@ -59,9 +56,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    out.push(Effect::CreateToken {
-        controller: entry.controller,
-        token,
-    });
-    out
+    vec![
+        Effect::Counter { target: *id },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

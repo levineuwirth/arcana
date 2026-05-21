@@ -1,10 +1,11 @@
 //! Careful Consideration — `{2}{U}{U}` instant. "Target player draws
 //! four cards, then discards three cards. If you cast this spell
-//! during your main phase, instead that player draws four cards,
-//! then discards two cards."
+//! during your main phase, instead that player draws four cards, then
+//! discards two cards."
 //!
-//! GAP: 'cast during your main phase' phase introspection isn't
-//! available. We model the base draw-4 / discard-3 shape.
+//! The base mode (draw four, discard three) is expressed. There is no
+//! way to detect that the spell was cast during the controller's main
+//! phase, so the reduced-discard mode is a GAP.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,8 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'cast during your main phase' phase check.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: cannot detect cast-during-own-main-phase for the
+    // reduced-discard mode.
     vec![
         Effect::DrawCards { player: *p, count: 4 },
         Effect::Discard {

@@ -1,16 +1,16 @@
-//! Bond of Insight — `{3}{U}` sorcery.
-//! "Each player mills four cards. Return up to two instant and/or sorcery cards
-//! from your graveyard to your hand. Exile Bond of Insight."
-//! GAP: 'return up to two instant/sorcery cards from graveyard to hand' (player
-//! chooses up to 2) requires TargetCount::UpTo(2) on graveyard cards — the
-//! catalog only has ReturnFromGraveyardToHand with a single pre-chosen id;
-//! emitting mill for both players and self-exile; return step is a GAP.
-//! GAP: self-exile of the spell (itself on the stack) not in catalog.
+//! Bond of Insight — `{3}{U}` sorcery. "Each player mills four
+//! cards. Return up to two instant and/or sorcery cards from your
+//! graveyard to your hand. Exile Bond of Insight." GAP: targeted
+//! up-to-two-cards-from-graveyard-by-type isn't expressible as a
+//! single TargetRequirement; emit the mill-each-player only. The
+//! 'exile this card' on self-resolve is implicit via the engine's
+//! spell-cleanup path.
 
-use arcana_core::effects::{Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
@@ -36,14 +36,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
+    state: &GameState,
+    _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'each player' requires iterating all players — only controller accessible here
-    // GAP: return up to two instant/sorcery from graveyard (player-chosen) not expressible
-    // GAP: self-exile of the spell not in catalog
-    vec![
-        Effect::Mill { player: entry.controller, count: 4 },
-    ]
+    // GAP: returning up to two instant/sorcery cards from graveyard mid-resolution
+    // (without per-card TargetRequirements) not in catalog. The 'exile this card'
+    // self-exile rider also not in catalog.
+    script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Mill { player: p, count: 4 })
+        .collect()
 }

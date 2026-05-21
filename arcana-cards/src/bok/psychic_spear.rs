@@ -2,9 +2,9 @@
 //! You choose a Spirit or Arcane card from it. That player discards
 //! that card."
 //!
-//! Modeled as a discard where the controller chooses (you pick the
-//! card). GAP: the Spirit-or-Arcane filter on the chosen card is not
-//! expressible — the engine's Discard effect has no card-filter knob.
+//! Modeled as a controller-chosen discard from the target player. The
+//! Spirit/Arcane card-type restriction on the choice is not
+//! expressible — GAP.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,11 +35,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "Spirit or Arcane" subtype filter on the chosen discarded card.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: discard-choice cannot be restricted to Spirit/Arcane cards.
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

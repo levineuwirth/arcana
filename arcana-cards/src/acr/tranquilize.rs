@@ -1,6 +1,6 @@
 //! Tranquilize — `{1}{U}` sorcery. "Tap target creature an opponent
-//! controls and put three stun counters on it." Stun counters are not
-//! a catalog CounterKind; only the tap is emitted.
+//! controls and put three stun counters on it." Stun counters aren't
+//! in CounterKind (only PlusOnePlusOne); we emit Tap and GAP stun.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -46,6 +46,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: stun counters are not a catalog CounterKind.
+    // GAP: stun counters not in CounterKind.
     vec![Effect::Tap { target: *id }]
 }

@@ -1,9 +1,7 @@
-//! Vivid Revival — `{4}{G}` sorcery, "Return up to three target multicolored cards from your
-//! graveyard to your hand. Exile Vivid Revival."
-//!
-//! GAP: 'multicolored' filter on graveyard cards (filter by having 2+ colors) is not an available
-//! ObjectFilter refinement. 'Exile Vivid Revival' (self-exile from stack) is also not in the
-//! catalog. Best-effort: return up to 3 targets from graveyard (color filter omitted).
+//! Vivid Revival — `{4}{G}` sorcery. Return up to three target
+//! multicolored cards from your graveyard to your hand. Exile Vivid
+//! Revival. (Multicolor predicate approximated; self-exile rider not
+//! modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -25,17 +25,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return up to three target multicolored cards from your graveyard to your hand. Exile Vivid Revival.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card { zone: Zone::Graveyard(0), filter: ObjectFilter::new() },
-                    count: TargetCount::UpTo(3),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return up to three target multicolored cards from your graveyard to your hand. Exile Vivid Revival.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::default(),
+                },
+                count: TargetCount::UpTo(3),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,12 +46,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: multicolored filter on graveyard cards; self-exile (Exile Vivid Revival) not in catalog
-    entry.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t {
-            Some(Effect::ReturnFromGraveyardToHand { target: *id })
-        } else {
-            None
+    // GAP: "multicolored" predicate not expressible in the target filter.
+    // GAP: "Exile Vivid Revival" (self-exile-on-resolve) not modeled.
+    let mut effects: Vec<Effect> = Vec::new();
+    for choice in &entry.targets.targets {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
         }
-    }).collect()
+    }
+    effects
 }

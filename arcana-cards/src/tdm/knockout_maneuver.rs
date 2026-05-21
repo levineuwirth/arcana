@@ -11,8 +11,8 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
@@ -27,23 +27,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Put a +1/+1 counter on target creature you control, \
-                   then it deals damage equal to its power to target \
-                   creature an opponent controls."
-                .into(),
+            text: "Put a +1/+1 counter on target creature you control, then it deals damage equal to its power to target creature an opponent controls.".into(),
             target_requirements: vec![
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 },
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -60,24 +55,29 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ts = &entry.targets.targets;
-    let (Some(TargetChoice::Object(own)), Some(TargetChoice::Object(foe))) =
-        (ts.first(), ts.get(1))
-    else {
+    let mut ids = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            ids.push(*id);
+        }
+    }
+    if ids.len() < 2 {
         return Vec::new();
-    };
-    // Power after the +1/+1 counter is its current power + 1.
-    let amount = (script::power_of(state, *own) + 1).max(0) as u32;
+    }
+    let pumped = ids[0];
+    let foe = ids[1];
+    // Power after the counter, since the counter is added first.
+    let dmg = (script::power_of(state, pumped) + 1).max(0) as u32;
     vec![
         Effect::AddCounters {
-            target: *own,
+            target: pumped,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         },
         Effect::DealDamage {
-            source: *own,
-            target: DamageTarget::Object(*foe),
-            amount,
+            source: pumped,
+            target: DamageTarget::Object(foe),
+            amount: dmg,
         },
     ]
 }

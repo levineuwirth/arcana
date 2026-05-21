@@ -1,5 +1,5 @@
-//! Skull Rend — `{3}{B}{R}` sorcery. "Skull Rend deals 2 damage to
-//! each opponent. Those players each discard two cards at random."
+//! Skull Rend — `{3}{B}{R}` sorcery. "Skull Rend deals 2 damage to each
+//! opponent. Those players each discard two cards at random."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::events::DamageTarget;
@@ -21,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Skull Rend deals 2 damage to each opponent. Those players each discard two cards at random.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Skull Rend deals 2 damage to each opponent. Those players each discard two cards at random.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -35,18 +36,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut out = Vec::new();
+    let mut effects = Vec::new();
     for p in script::opponents(state, entry.controller) {
-        out.push(Effect::DealDamage {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Player(p),
             amount: 2,
         });
-        out.push(Effect::Discard {
-            player: p,
-            count: 2,
-            choice: DiscardChoice::Random,
-        });
+        effects.push(Effect::Discard { player: p, count: 2, choice: DiscardChoice::Random });
     }
-    out
+    effects
 }

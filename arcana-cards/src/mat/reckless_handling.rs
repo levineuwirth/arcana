@@ -1,11 +1,10 @@
 //! Reckless Handling — `{1}{R}` sorcery. "Search your library for an
 //! artifact card, reveal it, put it into your hand, shuffle, then
 //! discard a card at random. If an artifact card was discarded this
-//! way, Reckless Handling deals 2 damage to each opponent."
-//!
-//! GAP: 'discard at random + conditional damage based on whether the
-//! discard was an artifact' is not in the catalog. Only the tutor +
-//! random discard are modeled.
+//! way, Reckless Handling deals 2 damage to each opponent." The
+//! conditional 'if an artifact was discarded' branch isn't a catalog
+//! primitive — best-effort: tutor an artifact, random discard; GAP
+//! the conditional damage.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -25,18 +24,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: 'if an artifact was discarded, deal 2 to each opponent' conditional rider.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for an artifact card, reveal it, put it into your hand, shuffle, then discard a card at random. If an artifact card was discarded this way, Reckless Handling deals 2 damage to each opponent.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for an artifact card, reveal it, put it into your hand, shuffle, then discard a card at random. If an artifact card was discarded this way, Reckless Handling deals 2 damage to each opponent.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: conditional-on-discarded-type damage rider not in catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![
         Effect::TutorToHand {
             player: entry.controller,

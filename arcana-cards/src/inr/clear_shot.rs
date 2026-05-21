@@ -27,46 +27,56 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control gets +1/+1 until end of turn. It deals damage equal to its power to target creature you don't control.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature you control gets +1/+1 until end of turn. It deals damage equal to its power to target creature you don't control.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let targets = &entry.targets.targets;
-    let Some(TargetChoice::Object(a)) = targets.first() else { return Vec::new(); };
-    let Some(TargetChoice::Object(b)) = targets.get(1) else { return Vec::new(); };
-    let power = (script::power_of(state, *a) + 1).max(0) as u32;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(mine) = t0 else { return Vec::new(); };
+    let TargetChoice::Object(theirs) = t1 else { return Vec::new(); };
+    let mine = *mine;
+    let theirs = *theirs;
+    let power = (script::power_of(state, mine) + 1).max(0) as u32;
     vec![
         Effect::Pump {
-            target: *a,
+            target: mine,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
         Effect::DealDamage {
-            source: *a,
-            target: DamageTarget::Object(*b),
+            source: mine,
+            target: DamageTarget::Object(theirs),
             amount: power,
         },
     ]

@@ -1,5 +1,5 @@
-//! Storm's Wrath — `{2}{R}{R}` sorcery. "Storm's Wrath deals 4 damage to
-//! each creature and each planeswalker."
+//! Storm's Wrath — `{2}{R}{R}` sorcery. Deals 4 damage to each creature and
+//! each planeswalker.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,14 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Storm's Wrath deals 4 damage to each creature and each \
-                   planeswalker."
-                .into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Storm's Wrath deals 4 damage to each creature and each planeswalker.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -40,13 +39,13 @@ fn resolve(
 ) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature(),
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
         entry.controller,
     );
-    let src = entry.source;
     ids.into_iter()
         .map(|id| Effect::DealDamage {
-            source: src,
+            source: entry.source,
             target: DamageTarget::Object(id),
             amount: 4,
         })

@@ -1,8 +1,6 @@
-//! Tawnos Endures — `{W}` instant. "Exile target creature. It gains
-//! 'At the beginning of your upkeep, if this card is exiled, it
-//! perpetually gets +1/+1, then you may put it onto the
-//! battlefield.'" The granted upkeep ability with perpetual buff and
-//! optional return is not expressible; we exile the target creature.
+//! Tawnos Endures — `{W}` instant. "Exile target creature. It gains 'At
+//! the beginning of your upkeep, if this card is exiled, it perpetually
+//! gets +1/+1, then you may put it onto the battlefield.'"
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target creature. It gains \"At the beginning of your upkeep, if this card is exiled, it perpetually gets +1/+1, then you may put it onto the battlefield.\"".into(),
+            text: "Exile target creature. It gains an upkeep ability granting perpetual +1/+1 and an optional return to the battlefield.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -33,8 +31,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: granted upkeep ability with perpetual +1/+1 and optional
-    // return from exile is not expressible. Exile is emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: granting an exiled card a perpetual-buff upkeep ability with an
+    // optional return-to-battlefield is not expressible; only the exile is
+    // emitted.
     vec![Effect::ExilePermanent { target: *id }]
 }

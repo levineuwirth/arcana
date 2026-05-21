@@ -44,20 +44,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::ReturnFromGraveyardToHand { target: *id })
-            }
-            _ => None,
-        })
-        .collect();
-    effects.push(Effect::GainLife {
-        player: entry.controller,
-        amount: 2,
-    });
+    let mut effects = Vec::new();
+    for choice in &entry.targets.targets {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
+        }
+    }
+    effects.push(Effect::GainLife { player: entry.controller, amount: 2 });
     effects
 }

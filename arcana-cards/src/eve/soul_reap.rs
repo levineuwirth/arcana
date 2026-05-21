@@ -1,9 +1,5 @@
-//! Soul Reap — `{1}{B}` sorcery. "Destroy target nongreen creature.
-//! Its controller loses 3 life if you've cast another black spell
-//! this turn."
-//!
-//! GAP: per-turn cast tracker isn't queryable from script helpers.
-//! Only the destroy is emitted.
+//! Soul Reap — `{1}{B}` sorcery. "Destroy target nongreen creature. Its
+//! controller loses 3 life if you've cast another black spell this turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,10 +37,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "cast another black spell this turn" rider.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if you've cast another black spell this turn" needs a
+    // cast-history predicate inside Effect::Conditional — not catalogued.
+    let _ = entry.controller;
     vec![Effect::DestroyPermanent { target: *id }]
 }

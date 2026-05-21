@@ -1,10 +1,6 @@
-//! Roots of Wisdom — `{1}{G}` sorcery. "Mill three cards, then return
-//! a land card or Elf card from your graveyard to your hand. If you
-//! can't, draw a card."
-//!
-//! The mill is emitted; the non-targeted conditional graveyard-return
-//! (land-or-Elf) with the can't-then-draw fallback is not modeled —
-//! GAP.
+//! Roots of Wisdom — `{1}{G}` sorcery. "Mill three cards, then return a land
+//! card or Elf card from your graveyard to your hand. If you can't, draw a
+//! card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,12 +20,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Mill three cards, then return a land card or Elf card from your graveyard to your hand. If you can't, draw a card.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Mill three cards, then return a land card or Elf card from your graveyard to your hand. If you can't, draw a card.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,7 +35,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: non-targeted conditional graveyard-return with can't-draw
-    // fallback is not modeled.
+    // "return a land/Elf card from your graveyard" is a non-targeted graveyard choice with
+    // an "if you can't, draw" fallback — no untargeted graveyard-return primitive exists.
+    // GAP: the conditional return/draw clause; emit only the mill.
     vec![Effect::Mill { player: entry.controller, count: 3 }]
 }

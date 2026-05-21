@@ -1,8 +1,5 @@
-//! Exile — `{2}{W}` instant. "Exile target nonwhite attacking
-//! creature. You gain life equal to its toughness."
-//!
-//! GAP: "attacking" isn't filterable; we approximate with nonwhite
-//! creature. Life gained = the creature's current toughness.
+//! Exile — `{2}{W}` instant. "Exile target nonwhite attacking creature.
+//! You gain life equal to its toughness."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,6 +25,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target nonwhite attacking creature. You gain life equal to its toughness.".into(),
+            // GAP: "attacking" predicate not exposed on ObjectFilter.
+            // Best-effort: target nonwhite creature.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
                     ObjectFilter::creature().without_colors(ColorSet::white()),
@@ -41,16 +40,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let tough = script::toughness_of(state, *id).max(0) as u32;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let amt = script::toughness_of(state, *id).max(0) as u32;
     vec![
         Effect::ExilePermanent { target: *id },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: tough,
-        },
+        Effect::GainLife { player: entry.controller, amount: amt },
     ]
 }

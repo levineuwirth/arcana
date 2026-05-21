@@ -1,9 +1,6 @@
-//! Absorb Identity — `{1}{U}` instant. "Return target creature to its owner's
-//! hand. You may have Shapeshifters you control become copies of that creature
-//! until end of turn."
-//!
-//! GAP: no Effect variant for "Shapeshifters you control become copies of that
-//! creature". Only the bounce is emitted.
+//! Absorb Identity — `{1}{U}` instant. "Return target creature to its
+//! owner's hand. You may have Shapeshifters you control become copies
+//! of that creature until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,6 +13,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Absorb Identity");
+    let _shapeshifter = reg.interner_mut().intern("Shapeshifter");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{U}").expect("valid cost")),
@@ -24,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature to its owner's hand. You may have Shapeshifters you control become copies of that creature until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target creature to its owner's hand. You may have Shapeshifters you control become copies of that creature until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,5 +39,7 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     // GAP: "Shapeshifters you control become copies of that creature"
+    // — no Effect for copy-target-creature-onto-set-of-permanents
+    // until end of turn.
     vec![Effect::ReturnToHand { target: *id }]
 }

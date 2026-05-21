@@ -1,6 +1,7 @@
-//! Traitorous Instinct — `{3}{R}` sorcery.
-//! "Gain control of target creature until end of turn. Untap that
-//! creature. Until end of turn, it gets +2/+0 and gains haste."
+//! Traitorous Instinct — `{3}{R}` sorcery. "Gain control of target
+//! creature until end of turn. Untap that creature. Until end of
+//! turn, it gets +2/+0 and gains haste." GAP: temporary gain-control
+//! (Threaten family) — express Untap + Pump+Haste.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -22,21 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Gain control of target creature until end of turn. Untap that creature. Until end of turn, it gets +2/+0 and gains haste.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Gain control of target creature until end of turn. Untap that creature. Until end of turn, it gets +2/+0 and gains haste.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // "Gain control until end of turn" has no catalog Effect; the
-    // untap and +2/+0 + haste are applied.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: temporary (EOT) gain-control.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
         Effect::Untap { target: *id },
         Effect::Pump {

@@ -35,6 +35,10 @@ fn resolve(
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

@@ -1,5 +1,5 @@
-//! Take Up Arms — `{4}{W}` instant. "Create three 1/1 white Warrior
-//! creature tokens."
+//! Take Up Arms — `{4}{W}` instant. Create three 1/1 white Warrior
+//! creature tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create three 1/1 white Warrior creature tokens.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create three 1/1 white Warrior creature tokens.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,7 +34,10 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
+    let warrior = reg
+        .interner()
+        .lookup("Warrior")
+        .expect("Warrior interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(warrior);
     let token = TokenDefinition {
@@ -49,8 +51,17 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

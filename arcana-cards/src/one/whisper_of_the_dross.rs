@@ -1,8 +1,6 @@
 //! Whisper of the Dross — `{B}` instant. "Target creature gets -1/-1
-//! until end of turn. Proliferate."
-//!
-//! Proliferate has no catalog Effect; only the -1/-1 pump is
-//! expressed.
+//! until end of turn. Proliferate." The proliferate step has no catalog
+//! Effect, so only the -1/-1 is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,10 +32,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: Proliferate has no catalog Effect variant.
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: proliferate has no catalog Effect.
     vec![Effect::Pump {
         target: *id,
         power: -1,

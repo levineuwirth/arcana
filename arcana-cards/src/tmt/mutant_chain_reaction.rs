@@ -1,10 +1,8 @@
-//! Mutant Chain Reaction — `{2}{G}` sorcery. "Destroy up to one
-//! target artifact, enchantment, or creature with flying. Create a
-//! Mutagen token." The Mutagen token has a sacrifice-for-counter
-//! activated ability that isn't modelable as a token ability; the
-//! destruction is modeled and the token is GAP-noted (partial).
+//! Mutant Chain Reaction — `{2}{G}` sorcery. Destroy up to one target
+//! artifact, enchantment, or creature with flying. Create a Mutagen
+//! token (activated +1/+1 ability not modeled).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -13,10 +11,11 @@ use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Mutant Chain Reaction");
+    let _mutagen = reg.interner_mut().intern("Mutagen");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G}").expect("valid cost")),
@@ -29,9 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy up to one target artifact, enchantment, or creature with flying. Create a Mutagen token.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().with_types_any(TypeLine(
-                        TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
-                    )),
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
                 ),
                 count: TargetCount::UpTo(1),
                 controller: None,
@@ -42,12 +40,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "Create a Mutagen token" — Mutagen is an artifact token
-    // with a "{1},{T},Sacrifice: put a +1/+1 counter on target
-    // creature" sorcery-speed ability, not modelable as a token
-    // ability; the destruction is modeled.
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: *id }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "or creature WITH FLYING" alternative — target filter approximates with
+    // artifact-or-enchantment only; the flying-creature option is omitted.
+    // GAP: Mutagen token's activated ability "{1},{T},Sacrifice: +1/+1 counter (sorcery)" not modeled.
+    let mutagen = reg
+        .interner()
+        .lookup("Mutagen")
+        .expect("Mutagen interned during register()");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(mutagen);
+    let token = TokenDefinition {
+        name: mutagen,
+        colors: ColorSet::new(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![] as Vec<KeywordAbility>,
+        abilities: vec![],
+    };
+    let mut effects: Vec<Effect> = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DestroyPermanent { target: *id });
+    }
+    effects.push(Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    });
+    effects
 }

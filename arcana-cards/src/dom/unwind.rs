@@ -1,9 +1,8 @@
 //! Unwind — `{2}{U}` instant. "Counter target noncreature spell.
-//! Untap up to three lands."
-//!
-//! "Up to three" land untap isn't a TargetCount-shaped spell-target
-//! (lands the controller picks during resolution); modeled as a
-//! single noncreature counter, the multi-untap GAP'd.
+//! Untap up to three lands." Untap-up-to-three on a target-filter we
+//! don't get to pick (no second target slot for the lands here in this
+//! card class without a target_requirements entry) — expose three
+//! optional land targets so the Untap fires per chosen land.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,24 +25,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target noncreature spell. Untap up to three lands.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target noncreature spell. Untap up to three lands.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Spell(
+                            ObjectFilter::new()
+                                .without_types(TypeLine::CREATURE.into()),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                        ),
+                        count: TargetCount::UpTo(3),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "untap up to three lands" resolution-time pick not in catalog.
-    vec![Effect::Counter { target: *id }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut iter = entry.targets.targets.iter();
+    let Some(first) = iter.next() else { return Vec::new(); };
+    let TargetChoice::Object(spell_id) = first else { return Vec::new(); };
+    let mut effects = vec![Effect::Counter { target: *spell_id }];
+    for choice in iter {
+        if let TargetChoice::Object(land_id) = choice {
+            effects.push(Effect::Untap { target: *land_id });
+        }
+    }
+    effects
 }

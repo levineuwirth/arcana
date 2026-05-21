@@ -1,7 +1,6 @@
-//! Chain of Smog — `{1}{B}` sorcery. "Target player discards two cards. That
-//! player may copy this spell and may choose a new target for that copy."
-//! GAP: "may copy this spell" (spell copy / fork mechanic) not in engine
-//! Effect catalog.
+//! Chain of Smog — `{1}{B}` sorcery. Target player discards two cards.
+//! That player may copy this spell and may choose a new target.
+//! (Spell-chain copy not modeled.)
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player discards two cards. That player may copy this spell and may choose a new target for that copy.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player discards two cards. That player may copy this spell and may choose a new target for that copy.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,10 +36,11 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let player = match target {
-        arcana_core::targets::TargetChoice::Player(p) => *p,
-        _ => return Vec::new(),
-    };
-    // GAP: "may copy this spell" fork mechanic not in engine Effect catalog
-    vec![Effect::Discard { player, count: 2, choice: DiscardChoice::ControllerChooses }]
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: "that player may copy this spell" — spell-copy primitive not available.
+    vec![Effect::Discard {
+        player: *p,
+        count: 2,
+        choice: DiscardChoice::ControllerChooses,
+    }]
 }

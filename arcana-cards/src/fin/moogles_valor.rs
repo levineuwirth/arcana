@@ -1,10 +1,10 @@
-//! Moogles' Valor — `{3}{W}{W}` instant. "For each creature you control,
-//! create a 1/2 white Moogle creature token with lifelink. Then creatures
-//! you control gain indestructible until end of turn."
-//!
-//! Dynamic per-creature token count via `script::count_matching`. The
-//! indestructible rider would need ForEach over creatures-you-control
-//! with GrantKeyword; we emit that as well.
+//! Moogles' Valor — `{3}{W}{W}` instant. "For each creature you
+//! control, create a 1/2 white Moogle creature token with lifelink.
+//! Then creatures you control gain indestructible until end of turn."
+//! Uses script::count_matching to repeat CreateToken N times. The
+//! end-of-turn indestructible blanket grant is not in catalog
+//! (GrantKeyword targets a single id) — GAP that rider; we emit
+//! GrantKeyword per controlled-creature id via ForEach.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -61,24 +61,22 @@ fn resolve(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let mut effs: Vec<Effect> = (0..n)
-        .map(|_| Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        })
-        .collect();
-    let yours = script::ids_matching(
+    let mut effects: Vec<Effect> = Vec::new();
+    for _ in 0..n {
+        effects.push(Effect::CreateToken { controller: entry.controller, token: token.clone() });
+    }
+    let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    effs.push(Effect::ForEach {
-        targets: yours,
+    effects.push(Effect::ForEach {
+        targets: ids,
         effect: Box::new(Effect::GrantKeyword {
             target: NULL_OBJECT_ID,
             keyword: KeywordAbility::Indestructible,
             duration: Duration::EndOfTurn,
         }),
     });
-    effs
+    effects
 }

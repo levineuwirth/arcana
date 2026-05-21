@@ -1,11 +1,10 @@
-//! Essence Filter — `{1}{G}{G}` sorcery. "Destroy all enchantments
-//! or all nonwhite enchantments." Modal choice between the two
-//! enchantment sweeps is not modeled; we destroy all enchantments
-//! (the broader, non-conditional sweep).
+//! Essence Filter — `{1}{G}{G}` sorcery. "Destroy all enchantments or
+//! all nonwhite enchantments." Modal choice not expressible; the
+//! all-enchantments mode is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -33,12 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // Modal between the two sweeps is not modeled; destroy all
-    // enchantments (the unconditional first mode).
+    // The "or all nonwhite enchantments" mode requires a modal choice not
+    // expressible; the all-enchantments mode is emitted.
     let filter = ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into());
     let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        effect: Box::new(Effect::DestroyPermanent {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+        }),
     }]
 }

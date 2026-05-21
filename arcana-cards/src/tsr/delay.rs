@@ -1,10 +1,9 @@
-//! Delay — `{1}{U}` instant, "Counter target spell. If the spell is
-//! countered this way, exile it with three time counters on it
-//! instead of putting it into its owner's graveyard. If it doesn't
-//! have suspend, it gains suspend."
+//! Delay — `{1}{U}` instant. "Counter target spell. If the spell is countered
+//! this way, exile it with three time counters on it instead of putting it
+//! into its owner's graveyard. If it doesn't have suspend, it gains suspend."
 //!
-//! Modeled as a plain hard counter. GAP: exile-with-time-counters
-//! and granting suspend (the Suspend mechanic) are not expressible.
+//! Counter half expressible. Custom time-counter exile + Suspend mechanic +
+//! exile-instead-of-graveyard replacement is not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,22 +26,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. If the spell is countered this way, exile it with three time counters on it instead of putting it into its owner's graveyard. If it doesn't have suspend, it gains suspend.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. If the spell is countered this way, exile it with three time counters on it instead of putting it into its owner's graveyard. If it doesn't have suspend, it gains suspend.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: exile-with-time-counters + granting Suspend not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: time-counter exile-replacement and Suspend mechanic not in catalog.
     vec![Effect::Counter { target: *id }]
 }

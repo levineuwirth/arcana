@@ -12,3 +12,4 @@ pub mod finders_keepers;
 pub mod spell_suck;
 pub mod selfie_preservation;
 pub mod subcontract;
+pub mod success;

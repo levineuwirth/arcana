@@ -8,3 +8,5 @@ pub mod coming_attraction;
 pub mod hat_trick;
 pub mod down_for_repairs;
 pub mod park_re_entry;
+pub mod opening_ceremony;
+pub mod finishing_move;

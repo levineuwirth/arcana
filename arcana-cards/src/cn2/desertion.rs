@@ -1,11 +1,9 @@
-//! Desertion — `{3}{U}{U}` instant, "Counter target spell. If an
-//! artifact or creature spell is countered this way, put that card onto
-//! the battlefield under your control instead of into its owner's
-//! graveyard."
-//!
-//! GAP: the "put the countered card onto the battlefield under your
-//! control instead" rider has no corresponding Effect. Only the counter
-//! is modeled.
+//! Desertion — `{3}{U}{U}` instant. "Counter target spell. If an
+//! artifact or creature spell is countered this way, put that card
+//! onto the battlefield under your control instead of into its
+//! owner's graveyard." We can express the plain counter; the
+//! steal-to-battlefield rider is GAPped because there's no
+//! replacement-on-counter effect surface.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,8 +45,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "instead of into graveyard, put onto battlefield under
+    // your control" replacement-on-counter is not in the catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: steal-on-counter rider not expressible.
-    vec![Effect::Counter { target: *id }]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    vec![Effect::Counter { target: stack_id }]
 }

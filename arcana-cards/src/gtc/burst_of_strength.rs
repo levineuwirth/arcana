@@ -1,5 +1,5 @@
-//! Burst of Strength — `{G}` instant. "Put a +1/+1 counter on target
-//! creature and untap it."
+//! Burst of Strength — `{G}` instant. Put a +1/+1 counter on target
+//! creature and untap it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,11 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
-        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
         Effect::Untap { target: *id },
     ]
 }

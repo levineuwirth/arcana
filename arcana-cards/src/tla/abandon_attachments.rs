@@ -1,7 +1,5 @@
 //! Abandon Attachments — `{1}{U/R}` instant — Lesson. "You may
-//! discard a card. If you do, draw two cards." The "may / if you do"
-//! optionality has no primitive; the discard-then-draw is emitted
-//! unconditionally.
+//! discard a card. If you do, draw two cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -31,14 +29,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "may / if you do" optionality not expressible; emitted
-    // unconditionally.
+    // The "you may" optionality on the discard is not modeled; the discard
+    // and the conditional draw are emitted as an unconditional pair.
+    // GAP: optional "you may discard" choice gating the draw.
     vec![
         Effect::Discard {
             player: entry.controller,
             count: 1,
             choice: DiscardChoice::ControllerChooses,
         },
-        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
     ]
 }

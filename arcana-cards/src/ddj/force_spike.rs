@@ -1,5 +1,5 @@
-//! Force Spike — `{U}` instant. "Counter target spell unless its
-//! controller pays {1}."
+//! Force Spike — `{U}` instant. Counter target spell unless its
+//! controller pays {1}.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

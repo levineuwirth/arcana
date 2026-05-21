@@ -1,10 +1,6 @@
 //! Inquisition of Kozilek — `{B}` sorcery. "Target player reveals
 //! their hand. You choose a nonland card from it with mana value 3
 //! or less. That player discards that card."
-//!
-//! Modelled as: target player discards one card chosen by the spell's
-//! controller (the nonland / mana-value-3-or-less filter on the
-//! chosen card is not expressible).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -34,12 +30,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: nonland / mana-value-3-or-less filter on the chosen card
-    // not expressible; modelled as a controller-chosen discard.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: targeted discard with filter (nonland, CMC<=3) chosen by
+    // opponent isn't modeled; Discard takes only count/choice. The
+    // controller-chooses variant is the available approximation.
     vec![Effect::Discard {
         player: *p,
         count: 1,

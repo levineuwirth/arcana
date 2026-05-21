@@ -1,6 +1,6 @@
-//! Rites of Reaping — `{4}{B}{G}` sorcery, "Target creature gets
-//! +3/+3 until end of turn. Another target creature gets -3/-3 until
-//! end of turn."
+//! Rites of Reaping — `{4}{B}{G}` sorcery. Target creature gets +3/+3
+//! until end of turn. Another target creature gets -3/-3 until end of
+//! turn.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,41 +22,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +3/+3 until end of turn. Another target creature gets -3/-3 until end of turn.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +3/+3 until end of turn. Another target creature gets -3/-3 until end of turn.".into(),
+                target_requirements: vec![
+                    TargetRequirement::target_creature(),
+                    TargetRequirement::target_creature(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids: Vec<_> = entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(*id),
-            _ => None,
-        })
-        .collect();
-    if ids.len() < 2 {
-        return Vec::new();
-    }
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let targets = &entry.targets.targets;
+    let Some(TargetChoice::Object(a)) = targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(b)) = targets.get(1) else { return Vec::new(); };
     vec![
         Effect::Pump {
-            target: ids[0],
+            target: *a,
             power: 3,
             toughness: 3,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
         Effect::Pump {
-            target: ids[1],
+            target: *b,
             power: -3,
             toughness: -3,
             duration: Duration::EndOfTurn,

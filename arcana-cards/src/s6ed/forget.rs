@@ -1,5 +1,5 @@
-//! Forget — `{U}{U}` sorcery. "Target player discards two cards, then
-//! draws as many cards as they discarded this way."
+//! Forget — `{U}{U}` sorcery. Target player discards two cards, then
+//! draws as many as they discarded.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -20,27 +20,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target player discards two cards, then draws as many cards as they discarded this way.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target player discards two cards, then draws as many cards as they discarded this way.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // 'draws as many as they discarded' — we sequence 2 discards then 2
+    // draws; if the player has fewer than 2 cards the draw count will be
+    // an overcount. GAP: dynamic 'X = number actually discarded'.
     vec![
         Effect::Discard {
             player: *p,
             count: 2,
             choice: DiscardChoice::ControllerChooses,
         },
-        Effect::DrawCards {
-            player: *p,
-            count: 2,
-        },
+        Effect::DrawCards { player: *p, count: 2 },
     ]
 }

@@ -1,6 +1,5 @@
-//! Pledge of Unity — `{1}{G}{W}` instant.
-//! "Put a +1/+1 counter on each creature you control. You gain 1 life for
-//! each creature you control."
+//! Pledge of Unity — `{1}{G}{W}` instant. "Put a +1/+1 counter on each
+//! creature you control. You gain 1 life for each creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +8,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on each creature you control. You gain 1 life for each creature you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on each creature you control. You gain 1 life for each creature you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,10 +35,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature();
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
     let ids = script::ids_matching(state, &filter, entry.controller);
-    let count = ids.len() as u32;
-    let mut effects: Vec<Effect> = vec![
+    let n = ids.len() as u32;
+    vec![
         Effect::ForEach {
             targets: ids,
             effect: Box::new(Effect::AddCounters {
@@ -49,9 +47,9 @@ fn resolve(
                 count: 1,
             }),
         },
-    ];
-    if count > 0 {
-        effects.push(Effect::GainLife { player: entry.controller, amount: count });
-    }
-    effects
+        Effect::GainLife {
+            player: entry.controller,
+            amount: n,
+        },
+    ]
 }

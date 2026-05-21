@@ -1,8 +1,5 @@
-//! Coercion — `{2}{B}` sorcery. "Target opponent reveals their hand.
-//! You choose a card from it. That player discards that card." Modeled
-//! as the target opponent discarding one card chosen by this spell's
-//! controller (OpponentChooses from the discarding player's view = the
-//! caster picks).
+//! Coercion — `{2}{B}` sorcery. "Target opponent reveals their hand. You
+//! choose a card from it. That player discards that card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -33,7 +30,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::Discard {
         player: *p,
         count: 1,

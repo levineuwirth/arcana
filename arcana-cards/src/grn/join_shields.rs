@@ -31,36 +31,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    vec![
-        Effect::ForEach {
-            targets: ids.clone(),
-            effect: Box::new(Effect::Untap { target: NULL_OBJECT_ID }),
-        },
-        Effect::ForEach {
-            targets: ids.clone(),
-            effect: Box::new(Effect::GrantKeyword {
-                target: NULL_OBJECT_ID,
-                keyword: KeywordAbility::Hexproof,
-                duration: Duration::EndOfTurn,
-            }),
-        },
-        Effect::ForEach {
-            targets: ids,
-            effect: Box::new(Effect::GrantKeyword {
-                target: NULL_OBJECT_ID,
-                keyword: KeywordAbility::Indestructible,
-                duration: Duration::EndOfTurn,
-            }),
-        },
-    ]
+    let mut effects = vec![Effect::ForEach {
+        targets: ids.clone(),
+        effect: Box::new(Effect::Untap {
+            target: NULL_OBJECT_ID,
+        }),
+    }];
+    for id in &ids {
+        effects.push(Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Hexproof,
+            duration: Duration::EndOfTurn,
+        });
+        effects.push(Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        });
+    }
+    effects
 }

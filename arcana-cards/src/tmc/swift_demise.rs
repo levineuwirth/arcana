@@ -1,8 +1,8 @@
-//! Swift Demise — `{2}{B}` instant, "Swift Demise deals 1 damage to target
-//! creature. Destroy all creatures that were dealt damage this turn."
-//!
-//! GAP: destroy all creatures dealt damage this turn (no "dealt damage this
-//! turn" state tracking in the Effect catalog).
+//! Swift Demise — `{2}{B}` instant. "Swift Demise deals 1 damage to
+//! target creature. Then destroy each creature you don't control that
+//! was dealt damage this turn." The 'dealt damage this turn' set is not
+//! a script helper, so we can express only the direct 1-damage half;
+//! the conditional sweep is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Swift Demise deals 1 damage to target creature. Destroy all creatures that were dealt damage this turn.".into(),
+                text: "Swift Demise deals 1 damage to target creature. Then destroy each creature you don't control that was dealt damage this turn.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,8 +41,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: destroy all creatures dealt damage this turn (no turn-damage
-    // history tracking)
+    // GAP: no script helper for 'creatures dealt damage this turn'.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

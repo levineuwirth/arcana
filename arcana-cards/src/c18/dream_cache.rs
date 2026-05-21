@@ -1,9 +1,8 @@
-//! Dream Cache — `{2}{U}` sorcery. "Draw three cards. Then put two cards from
-//! your hand both on top of your library or both on the bottom of your
-//! library."
-//! GAP: "put two cards from your hand to top or bottom of library" (player
-//! chooses two hand cards and top/bottom destination) not in engine Effect
-//! catalog.
+//! Dream Cache — `{2}{U}` sorcery. "Draw three cards, then put two cards from
+//! your hand both on top of your library or both on the bottom of your library."
+//!
+//! Draw is in catalog. The 'put two from hand on top/bottom' rider is not a
+//! catalog primitive. Emit just the draw.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Draw three cards. Then put two cards from your hand both on top of your library or both on the bottom of your library.".into(),
+                text: "Draw three cards, then put two cards from your hand both on top of your library or both on the bottom of your library.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -38,7 +37,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: player selects two hand cards and places them both on top or both on
-    // bottom of library — not in engine Effect catalog
+    // GAP: 'put two from hand on top or bottom' is a from-hand-to-library primitive
+    // not in catalog.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

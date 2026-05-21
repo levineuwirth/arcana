@@ -1,8 +1,5 @@
 //! Begin Anew — `{G}{G}{W}{W}` sorcery. "Destroy all creatures.
 //! Creature cards in your hand perpetually get +1/+1."
-//!
-//! The perpetual +1/+1 on creature cards in hand is not expressible;
-//! the board wipe is emitted via ForEach over all creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,14 +30,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: perpetual +1/+1 on creature cards in hand is not
-    // expressible; only the board wipe is emitted.
+    // GAP: "perpetually +1/+1" on cards in hand has no Effect.
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: NULL_OBJECT_ID,
-        }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

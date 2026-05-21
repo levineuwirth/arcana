@@ -1,9 +1,8 @@
-//! Revive the Fallen — `{1}{B}` sorcery. "Return target creature card from a
-//! graveyard to its owner's hand. Clash with an opponent. If you win, return
-//! Revive the Fallen to its owner's hand."
-//!
-//! GAP: no Effect variant for Clash or for returning this spell from
-//! graveyard to hand. Emitting the reanimation-to-hand only.
+//! Revive the Fallen — `{1}{B}` sorcery. "Return target creature
+//! card from a graveyard to its owner's hand. Clash with an opponent.
+//! If you win, return Revive the Fallen to its owner's hand." GAP:
+//! Clash primitive and 'return this spell card to hand' aren't in the
+//! catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,8 +48,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: Clash and 'return this spell card to hand' not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Clash mechanic and 'return self from graveyard' not supported
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

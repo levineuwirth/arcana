@@ -35,11 +35,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let lose_life: Vec<Effect> = script::all_players(state)
-        .into_iter()
-        .map(|p| Effect::LoseLife { player: p, amount: 2 })
-        .collect();
     let mut effects = vec![Effect::DrawCards { player: entry.controller, count: 2 }];
-    effects.push(Effect::Sequence(lose_life));
+    for p in script::all_players(state) {
+        effects.push(Effect::LoseLife { player: p, amount: 2 });
+    }
     effects
 }

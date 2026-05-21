@@ -2,9 +2,6 @@
 //! creature. You gain life equal to its toughness. You may search
 //! your library and/or graveyard for a card named Vraska, Regal
 //! Gorgon, reveal it, and put it into your hand."
-//!
-//! The named-card tutor from library/graveyard is not expressible;
-//! the destroy + lifegain-equal-to-toughness portion is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,18 +32,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let tough = script::toughness_of(state, *id).max(0) as u32;
-    // GAP: search for a specifically-named card in library/graveyard
-    // is not expressible.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let amount = script::toughness_of(state, *id).max(0) as u32;
+    // GAP: tutor-by-exact-name across library-and-graveyard is not
+    // exposed — TutorToHand uses an ObjectFilter, not a card name.
     vec![
         Effect::DestroyPermanent { target: *id },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: tough,
-        },
+        Effect::GainLife { player: entry.controller, amount },
     ]
 }

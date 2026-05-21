@@ -1,11 +1,11 @@
-//! Vengeful Possession — `{2}{R}` sorcery. "Gain control of target creature
-//! until end of turn. Untap it. It gains haste until end of turn. You may
-//! discard a card. If you do, draw a card."
-//!
-//! GAP: gain-control-until-end-of-turn not in Effect catalog. Partial: Untap,
-//! GrantKeyword Haste, and optional discard→draw expressed.
+//! Vengeful Possession — `{2}{R}` sorcery. "Gain control of target
+//! creature until end of turn. Untap it. It gains haste until end of
+//! turn. You may discard a card. If you do, draw a card." The
+//! 'until end of turn' control duration isn't expressible (only
+//! permanent gain-control) — best effort: untap, grant haste,
+//! loot-rummage. The temporary control change is the GAP.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -40,12 +40,23 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: gain-control-until-end-of-turn not in Effect catalog
-    // GAP: optional discard→draw conditional not expressible
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: temporary 'until end of turn' gain-control isn't in the catalog
+    // (only permanent ChangeControl exists). Loot-rummage isn't a chained
+    // discard-then-draw conditional either — emit the discard + draw plainly.
     vec![
         Effect::Untap { target: *id },
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
+        Effect::DrawCards { player: entry.controller, count: 1 },
     ]
 }

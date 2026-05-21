@@ -1,8 +1,7 @@
-//! Homing Lightning — `{2}{R}{R}` instant, "Homing Lightning deals 4 damage to
-//! target creature and each other creature with the same name as that creature."
-//!
-//! GAP: deal damage to each other creature sharing a name with the target
-//! (no "same name as target" filter in ObjectFilter or ForEach).
+//! Homing Lightning — `{2}{R}{R}` instant. "Homing Lightning deals 4
+//! damage to target creature and each other creature with the same
+//! name as that creature." 'Each creature with the same name' isn't
+//! a static filter; we emit the 4 damage to the target only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -39,13 +38,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'each other creature with the same name' filter not in
+    // ObjectFilter refinements.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 4 damage to each other creature sharing the target's name
-    // (no "same name as target" filter)
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 4,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: DamageTarget::Object(*id), amount: 4 }]
 }

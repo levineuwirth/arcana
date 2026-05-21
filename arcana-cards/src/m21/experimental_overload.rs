@@ -2,8 +2,7 @@
 //! and red Weird creature token, where X is the number of instant and
 //! sorcery cards in your graveyard. Then you may return an instant or
 //! sorcery card from your graveyard to your hand. Exile Experimental
-//! Overload." The optional return and self-exile have no primitives;
-//! the dynamic-P/T token is emitted.
+//! Overload."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -36,14 +35,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let weird = reg.interner().lookup("Weird").expect("Weird interned");
-    let x = script::graveyard_matching(
+    // X is the number of instant+sorcery cards in your graveyard.
+    let instants = script::graveyard_matching(
         state,
-        &ObjectFilter::new()
-            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+        &ObjectFilter::new().with_types(TypeLine::INSTANT.into()),
         entry.controller,
         entry.controller,
-    ) as i32;
+    );
+    let sorceries = script::graveyard_matching(
+        state,
+        &ObjectFilter::new().with_types(TypeLine::SORCERY.into()),
+        entry.controller,
+        entry.controller,
+    );
+    let x = (instants + sorceries) as i32;
+    let weird = reg.interner().lookup("Weird").expect("Weird interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(weird);
     let token = TokenDefinition {
@@ -56,6 +62,10 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: optional graveyard return and self-exile have no primitive.
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    // GAP: the optional graveyard return and the self-exile of this card
+    // are not emitted; only the X/X token creation is expressible.
+    vec![Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    }]
 }

@@ -10,7 +10,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, ObjectOrPlayer, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,14 +26,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Harsh Sustenance deals X damage to any target and you gain \
-                   X life, where X is the number of creatures you control."
-                .into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Harsh Sustenance deals X damage to any target and you gain X life, where X is the number of creatures you control.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,15 +41,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
     let x = script::count_matching(
         state,
-        &ObjectFilter::creature()
-            .controlled_by(arcana_core::targets::ControllerConstraint::You),
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -62,9 +61,6 @@ fn resolve(
             target: dt,
             amount: x,
         },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: x,
-        },
+        Effect::GainLife { player: entry.controller, amount: x },
     ]
 }

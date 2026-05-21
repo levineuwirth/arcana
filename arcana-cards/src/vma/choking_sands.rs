@@ -1,10 +1,7 @@
 //! Choking Sands — `{1}{B}{B}` sorcery. "Destroy target non-Swamp
 //! land. If that land was nonbasic, Choking Sands deals 2 damage to
-//! the land's controller."
-//!
-//! The non-Swamp subtype filter and the nonbasic conditional damage
-//! are not expressible; only the destroy of a target land is
-//! emitted.
+//! the land's controller." Subtype-exclusion target filter and post-
+//! destroy "was nonbasic" lookup aren't catalog-clean.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,25 +24,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target non-Swamp land. If that land was nonbasic, Choking Sands deals 2 damage to the land's controller.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: cannot exclude "Swamp" subtype on target; cannot read post-destroy "was nonbasic" property.
+                text: "Destroy target non-Swamp land. If that land was nonbasic, Choking Sands deals 2 damage to the land's controller.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: non-Swamp subtype filter and the nonbasic-conditional 2
-    // damage to the land's controller are not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

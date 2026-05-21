@@ -1,6 +1,6 @@
-//! Toils of Night and Day — `{2}{U}` instant — Arcane. "You may tap or
-//! untap target permanent, then you may tap or untap another target
-//! permanent."
+//! Toils of Night and Day — `{2}{U}` instant — Arcane. "You may tap
+//! or untap target permanent, then you may tap or untap another
+//! target permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,35 +22,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
-    let perm_req = || TargetRequirement {
-        filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-        count: TargetCount::Exactly(1),
-        controller: None,
-    };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "You may tap or untap target permanent, then you may tap or untap another target permanent.".into(),
-            target_requirements: vec![perm_req(), perm_req()],
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+            ],
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // "tap or untap" is a player choice not modeled; default to Tap of
-    // each targeted permanent.
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::Tap { target: *id }),
-            _ => None,
-        })
-        .collect()
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "tap OR untap" is a per-permanent choice with no catalog
+    // primitive — default to tapping each chosen permanent.
+    let mut effects = Vec::new();
+    for target in &entry.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::Tap { target: *id });
+        }
+    }
+    effects
 }

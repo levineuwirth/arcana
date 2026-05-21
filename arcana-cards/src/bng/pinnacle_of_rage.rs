@@ -23,16 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Pinnacle of Rage deals 3 damage to each of two targets.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::AnyTarget,
-                count: TargetCount::Exactly(2),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Pinnacle of Rage deals 3 damage to each of two targets.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::AnyTarget,
+                    count: TargetCount::Exactly(2),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

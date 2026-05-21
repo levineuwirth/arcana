@@ -1,6 +1,8 @@
 //! Infectious Bite — `{1}{G}` instant. "Target creature you control
 //! deals damage equal to its power to target creature you don't
-//! control. Each opponent gets a poison counter."
+//! control. Each opponent gets a poison counter." Poison counters on
+//! players aren't a catalog primitive (CounterKind::PlusOnePlusOne is
+//! the only counter kind exposed).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,39 +28,51 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control deals damage equal to its power to target creature you don't control. Each opponent gets a poison counter.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature you control deals damage equal to its power to target creature you don't control. Each opponent gets a poison counter.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(src)) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(TargetChoice::Object(dst)) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let pow = script::power_of(state, *src).max(0) as u32;
-    // GAP: "each opponent gets a poison counter" — poison counters on
-    // players are not expressible (AddCounters only targets objects).
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(src)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(victim)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
+    let amount = script::power_of(state, *src).max(0) as u32;
+    // GAP: 'each opponent gets a poison counter' — only
+    // PlusOnePlusOne counters are exposed, and poison counters are on
+    // players (not modeled).
     vec![Effect::DealDamage {
         source: *src,
-        target: DamageTarget::Object(*dst),
-        amount: pow,
+        target: DamageTarget::Object(*victim),
+        amount,
     }]
 }

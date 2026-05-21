@@ -1,5 +1,5 @@
-//! Rain of Embers — `{1}{R}` sorcery. "Rain of Embers deals 1 damage
-//! to each creature and each player."
+//! Rain of Embers — `{1}{R}` sorcery. "Rain of Embers deals 1 damage to
+//! each creature and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,19 +22,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Rain of Embers deals 1 damage to each creature and each player.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Rain of Embers deals 1 damage to each creature and each player.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let mut effects = vec![Effect::ForEach {
-        targets: ids,
+        targets: script::ids_matching(
+            state,
+            &ObjectFilter::creature(),
+            entry.controller,
+        ),
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),

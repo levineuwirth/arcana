@@ -1,8 +1,6 @@
-//! Dina's Guidance — `{1}{B}{G}` instant. "Search your library for a
+//! Dina's Guidance — `{1}{B}{G}` instant. Search your library for a
 //! creature card, reveal it, put it into your hand or graveyard, then
-//! shuffle." Modeled as a tutor-to-hand of a creature card (the
-//! hand-or-graveyard player choice has no primitive — the hand branch
-//! is taken; reveal is implicit).
+//! shuffle. (Choice-of-zone not modeled — emit TutorToHand.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,9 +30,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // "put it into your hand or graveyard" — the to-graveyard branch
-    // has no tutor primitive; the hand branch is modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "into your hand OR graveyard" choice not modeled — default to hand.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::creature(),

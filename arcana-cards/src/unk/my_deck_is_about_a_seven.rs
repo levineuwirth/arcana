@@ -1,6 +1,6 @@
 //! My Deck is About a Seven — `{3}{R}` instant. "Choose a number
-//! between 6 and 8. My Deck is About a Seven deals that much damage
-//! to target creature."
+//! between 6 and 8. My Deck is About a Seven deals that much damage to
+//! target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,12 +22,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Choose a number between 6 and 8. My Deck is About a Seven deals that much damage to target creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "choose a number between 6 and 8" — no Effect
+                // variant prompts for a player-chosen number; the
+                // middle value 7 is used as a fixed amount.
+                text: "Choose a number between 6 and 8. My Deck is About a Seven deals that much damage to target creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,7 +42,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // No "choose a number" prompt in the catalog; using the midpoint 7.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

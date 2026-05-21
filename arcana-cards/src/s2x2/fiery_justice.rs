@@ -24,19 +24,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Fiery Justice deals 5 damage divided as you choose among any number of targets. Target opponent gains 5 life.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::AnyTarget,
-                    count: TargetCount::Any,
-                    controller: None,
-                },
-                TargetRequirement::target_player(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "5 damage divided as you choose" — no damage
+                // division primitive; each chosen target takes 1 damage.
+                text: "Fiery Justice deals 5 damage divided as you choose among any number of targets. Target opponent gains 5 life.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::AnyTarget,
+                        count: TargetCount::Any,
+                        controller: None,
+                    },
+                    TargetRequirement::target_player(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -45,28 +48,31 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "divided as you choose" has no primitive; deal 1 to each damage
-    // target. The final target is the opponent who gains 5 life.
     let mut effects = Vec::new();
-    let targets = &entry.targets.targets;
-    if let Some((last, dmg)) = targets.split_last() {
-        for t in dmg {
-            let dt = match t {
-                TargetChoice::Object(id) => DamageTarget::Object(*id),
-                TargetChoice::Player(p) => DamageTarget::Player(*p),
-                TargetChoice::ObjectOrPlayer(o) => match o {
-                    ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-                    ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
-                },
-            };
-            effects.push(Effect::DealDamage {
+    for t in &entry.targets.targets {
+        match t {
+            TargetChoice::Object(id) => effects.push(Effect::DealDamage {
                 source: entry.source,
-                target: dt,
+                target: DamageTarget::Object(*id),
                 amount: 1,
-            });
-        }
-        if let TargetChoice::Player(p) = last {
-            effects.push(Effect::GainLife { player: *p, amount: 5 });
+            }),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)) => {
+                effects.push(Effect::DealDamage {
+                    source: entry.source,
+                    target: DamageTarget::Object(*id),
+                    amount: 1,
+                })
+            }
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)) => {
+                effects.push(Effect::DealDamage {
+                    source: entry.source,
+                    target: DamageTarget::Player(*p),
+                    amount: 1,
+                })
+            }
+            TargetChoice::Player(p) => {
+                effects.push(Effect::GainLife { player: *p, amount: 5 })
+            }
         }
     }
     effects

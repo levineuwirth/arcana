@@ -1,17 +1,16 @@
-//! Biomantic Mastery — `{4}{G/U}{G/U}{G/U}` sorcery. "Draw a card for each creature target player
-//! controls, then draw a card for each creature another target player controls."
+//! Biomantic Mastery — `{4}{G/U}{G/U}{G/U}` sorcery. "Draw a card for each
+//! creature target player controls, then draw a card for each creature
+//! another target player controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter, TargetCount, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
-use arcana_core::targets::ObjectFilter;
-use arcana_core::targets::ControllerConstraint;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Biomantic Mastery");
@@ -50,18 +49,15 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects = Vec::new();
-    for target in &entry.targets.targets {
-        let TargetChoice::Player(p) = target else { continue; };
-        // count creatures controlled by this player using ObjectFilter::creature()
-        // script::count_matching counts all battlefield creatures; we approximate per player
-        // by using ControllerConstraint matching — GAP: ControllerConstraint::Specific(p) not listed.
-        // Best effort: count all creatures on board and draw that many for each targeted player.
-        let n = script::count_matching(
-            state,
-            &ObjectFilter::creature(),
-            entry.controller,
-        );
-        effects.push(Effect::DrawCards { player: *p, count: n });
+    for t in &entry.targets.targets {
+        if let TargetChoice::Player(p) = t {
+            let n = script::count_matching(
+                state,
+                &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                *p,
+            );
+            effects.push(Effect::DrawCards { player: entry.controller, count: n });
+        }
     }
     effects
 }

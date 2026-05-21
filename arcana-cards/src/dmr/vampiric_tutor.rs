@@ -1,8 +1,8 @@
 //! Vampiric Tutor — `{B}` instant. "Search your library for a card,
-//! then shuffle and put that card on top. You lose 2 life." The
-//! search-to-top-of-library mode is not expressible (only
-//! TutorToHand / TutorToBattlefield exist), so only the life loss is
-//! emitted as a partial.
+//! then shuffle and put that card on top. You lose 2 life."
+//!
+//! GAP: tutor-to-top-of-library isn't a primitive; tutor to hand as
+//! the closest-available form, then lose 2 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,6 +10,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,9 +32,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "search library for a card, shuffle, put it on top" — only
-    // TutorToHand / TutorToBattlefield exist; no search-to-top-of-
-    // library tutor primitive. The life loss is still applied.
-    vec![Effect::LoseLife { player: entry.controller, amount: 2 }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: tutor-to-top-of-library not modeled; fall back to tutor-to-hand.
+    vec![
+        Effect::TutorToHand {
+            player: entry.controller,
+            filter: ObjectFilter::new(),
+            reveal: false,
+        },
+        Effect::LoseLife { player: entry.controller, amount: 2 },
+    ]
 }

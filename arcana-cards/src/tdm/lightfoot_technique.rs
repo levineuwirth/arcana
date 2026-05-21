@@ -1,6 +1,5 @@
-//! Lightfoot Technique — `{1}{W}` instant, "Put a +1/+1 counter on
-//! target creature. It gains flying and indestructible until end of
-//! turn."
+//! Lightfoot Technique — `{1}{W}` instant. +1/+1 counter on target creature;
+//! it gains flying and indestructible until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -39,21 +38,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
     vec![
-        Effect::AddCounters {
-            target: *id,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        },
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Flying,
-            duration: Duration::EndOfTurn,
-        },
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Indestructible,
-            duration: Duration::EndOfTurn,
-        },
+        Effect::AddCounters { target: id, kind: CounterKind::PlusOnePlusOne, count: 1 },
+        Effect::GrantKeyword { target: id, keyword: KeywordAbility::Flying, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword { target: id, keyword: KeywordAbility::Indestructible, duration: Duration::EndOfTurn },
     ]
 }

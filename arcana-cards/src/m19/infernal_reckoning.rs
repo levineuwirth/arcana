@@ -1,5 +1,5 @@
-//! Infernal Reckoning — `{B}` instant. "Exile target colorless creature. You
-//! gain life equal to its power."
+//! Infernal Reckoning — `{B}` instant. "Exile target colorless
+//! creature. You gain life equal to its power."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

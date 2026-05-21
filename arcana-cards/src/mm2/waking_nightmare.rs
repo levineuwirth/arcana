@@ -1,5 +1,5 @@
-//! Waking Nightmare — `{2}{B}` sorcery — Arcane. "Target player discards two
-//! cards."
+//! Waking Nightmare — `{2}{B}` sorcery — Arcane. "Target player
+//! discards two cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

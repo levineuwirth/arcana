@@ -1,14 +1,10 @@
-//! Underworld Fires — `{1}{R}` sorcery. "Underworld Fires deals 1
-//! damage to each creature and each planeswalker. If a permanent
-//! dealt damage this way would die this turn, exile it instead." The
-//! damage to each creature is expressible via ForEach; planeswalkers
-//! aren't a script filter and the die-replacement rider has no
-//! primitive (GAP-noted, partial).
+//! Underworld Fires — `{1}{R}` sorcery. Deals 1 damage to each creature
+//! and each planeswalker. (Exile-instead-of-die rider not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -35,21 +31,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "each planeswalker" is not a script filter, and the
-    // "would die -> exile instead" replacement has no primitive; the
-    // 1 damage to each creature is modeled.
-    let targets = script::ids_matching(
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "if a permanent dealt damage this way would die this turn, exile it instead"
+    // — replacement-effect rider not modeled.
+    let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature(),
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
         entry.controller,
     );
-    vec![Effect::ForEach {
-        targets,
-        effect: Box::new(Effect::DealDamage {
+    ids.into_iter()
+        .map(|id| Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
+            target: DamageTarget::Object(id),
             amount: 1,
-        }),
-    }]
+        })
+        .collect()
 }

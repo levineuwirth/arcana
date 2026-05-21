@@ -1,7 +1,5 @@
 //! Puncturing Light — `{1}{W}` instant. "Destroy target attacking or
-//! blocking creature with power 3 or less." The attacking/blocking
-//! restriction has no ObjectFilter refinement; we target a creature
-//! with power 3 or less.
+//! blocking creature with power 3 or less."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,22 +22,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target attacking or blocking creature with power 3 or less.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::creature().with_max_power(3)),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // NOTE: "attacking or blocking" restriction not
+                // expressible; the power 3-or-less filter is applied.
+                text: "Destroy target attacking or blocking creature with power 3 or less.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_max_power(3),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // Note: "attacking or blocking" has no ObjectFilter refinement;
-    // restriction applied is power 3 or less only.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

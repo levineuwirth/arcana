@@ -1,5 +1,5 @@
-//! Screaming Fury — `{2}{R}` sorcery. "Target creature gets +5/+0
-//! and gains haste until end of turn."
+//! Screaming Fury — `{2}{R}` sorcery. "Target creature gets +5/+0 and
+//! gains haste until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +5/+0 and gains haste until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +5/+0 and gains haste until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

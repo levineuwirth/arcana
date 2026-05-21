@@ -1,5 +1,6 @@
-//! Tremor — `{R}` sorcery.
-//! "Tremor deals 1 damage to each creature without flying."
+//! Tremor — `{R}` sorcery. "Tremor deals 1 damage to each creature
+//! without flying." GAP: no without_keyword filter — falls back to
+//! all creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +10,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetRequirement};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,19 +38,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no .without_keyword() / .without_flying() method;
-    // using plain creature filter (approximation — hits all creatures including flyers).
-    // GAP: DealDamage inside ForEach uses NULL_OBJECT_ID placeholder per catalog spec.
+    // GAP: 'without flying' filter not expressible.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: "without flying" filter not available on ObjectFilter
-    vec![
-        Effect::ForEach {
-            targets: ids,
-            effect: Box::new(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(NULL_OBJECT_ID),
-                amount: 1,
-            }),
-        },
-    ]
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(NULL_OBJECT_ID),
+            amount: 1,
+        }),
+    }]
 }

@@ -1,7 +1,7 @@
 //! Get Lost — `{1}{W}` instant. "Destroy target creature,
 //! enchantment, or planeswalker. Its controller creates two Map
-//! tokens." The Map token half (an artifact token with a complex
-//! activated ability) is not expressible; only the destroy is emitted.
+//! tokens." Map tokens have an activated explore ability that is
+//! not expressible; we GAP the Map token creation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,7 +27,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target creature, enchantment, or planeswalker. Its controller creates two Map tokens.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::new()),
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::CREATURE | TypeLine::ENCHANTMENT | TypeLine::PLANESWALKER,
+                    )),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -44,8 +48,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "Its controller creates two Map tokens" — a Map artifact
-    // token carries a multi-clause activated ability (sac for an
-    // explore) that is not expressible with the catalog.
+    // GAP: Map tokens with explore activated ability not expressible in catalog
     vec![Effect::DestroyPermanent { target: *id }]
 }

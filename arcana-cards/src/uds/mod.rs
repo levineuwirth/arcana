@@ -9,3 +9,4 @@ pub mod elvish_lookout;
 pub mod encroach;
 pub mod wake_of_destruction;
 pub mod multani_s_decree;
+pub mod flicker;

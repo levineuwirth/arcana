@@ -1,12 +1,11 @@
-//! Victorious Destruction — `{4}{R}` sorcery. "Destroy target
-//! artifact or land. Its controller loses 1 life." The destroyed
-//! permanent's controller can't be resolved into a PlayerId for the
-//! life-loss rider, so only the destruction is modeled (partial).
+//! Victorious Destruction — `{4}{R}` sorcery. Destroy target artifact
+//! or land. Its controller loses 1 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -40,10 +39,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "its controller loses 1 life" — the destroyed permanent's
-    // controller can't be resolved to a PlayerId here.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: *id }]
+    let id = *id;
+    let controller = script::target_controller(state, id, entry.controller);
+    vec![
+        Effect::DestroyPermanent { target: id },
+        Effect::LoseLife {
+            player: controller,
+            amount: 1,
+        },
+    ]
 }

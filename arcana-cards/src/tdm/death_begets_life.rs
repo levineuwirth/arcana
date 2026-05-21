@@ -1,6 +1,6 @@
-//! Death Begets Life — `{5}{B}{G}{U}` sorcery. "Destroy all creatures
-//! and enchantments. Draw a card for each permanent destroyed this
-//! way."
+//! Death Begets Life — `{5}{B}{G}{U}` sorcery. "Destroy all
+//! creatures and enchantments. Draw a card for each permanent
+//! destroyed this way."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,9 +16,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Death Begets Life");
     let chars = Characteristics {
         name,
-        mana_cost: Some(
-            ManaCost::parse("{5}{B}{G}{U}").expect("valid cost"),
-        ),
+        mana_cost: Some(ManaCost::parse("{5}{B}{G}{U}").expect("valid cost")),
         colors: ColorSet::black() | ColorSet::green() | ColorSet::blue(),
         types: TypeLine::SORCERY.into(),
         ..Default::default()
@@ -33,31 +31,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let creatures = script::ids_matching(
-        state,
-        &ObjectFilter::creature(),
-        entry.controller,
-    );
-    let enchantments = script::ids_matching(
-        state,
-        &ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
-        entry.controller,
-    );
-    let n = (creatures.len() + enchantments.len()) as u32;
-    let mut targets = creatures;
-    targets.extend(enchantments);
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT));
+    let ids = script::ids_matching(state, &filter, entry.controller);
+    let n = ids.len() as u32;
     vec![
         Effect::ForEach {
-            targets,
+            targets: ids,
             effect: Box::new(Effect::DestroyPermanent {
                 target: NULL_OBJECT_ID,
             }),
         },
-        Effect::DrawCards { player: entry.controller, count: n },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: n,
+        },
     ]
 }

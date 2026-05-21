@@ -1,8 +1,7 @@
 //! Break Down — `{2}{G}` instant. "Destroy target artifact or
-//! enchantment. Create a Junk token."
-//!
-//! The Junk token's activated ability can't be modeled; a Junk
-//! artifact token is still created.
+//! enchantment. Create a Junk token." Junk token has tap-sac-exile
+//! activated ability that we can't synthesise; emit token shell
+//! (artifact, Junk subtype) and GAP its ability.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -26,28 +25,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target artifact or enchantment. Create a Junk token.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target artifact or enchantment. Create a Junk token.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT),
+                        ),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let junk = reg.interner().lookup("Junk").expect("Junk interned during register()");
+    let junk = reg
+        .interner()
+        .lookup("Junk")
+        .expect("Junk interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(junk);
+    // GAP: Junk tap-sac-exile-and-play ability not synthesised.
     let token = TokenDefinition {
         name: junk,
         colors: ColorSet::new(),
@@ -58,8 +67,6 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Junk token's "{T}, Sacrifice: exile top card, may play it"
-    // activated ability.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::CreateToken { controller: entry.controller, token },

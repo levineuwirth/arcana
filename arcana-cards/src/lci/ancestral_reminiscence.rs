@@ -1,5 +1,5 @@
-//! Ancestral Reminiscence — `{3}{U}` sorcery. "Draw three cards, then discard
-//! a card."
+//! Ancestral Reminiscence — `{3}{U}` sorcery. "Draw three cards, then
+//! discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -30,10 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 3,
-        },
+        Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::Discard {
             player: entry.controller,
             count: 1,

@@ -1,5 +1,5 @@
-//! Agonizing Syphon — `{3}{B}` sorcery.
-//! "Agonizing Syphon deals 3 damage to any target and you gain 3 life."
+//! Agonizing Syphon — `{3}{B}` sorcery. "Agonizing Syphon deals 3
+//! damage to any target and you gain 3 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

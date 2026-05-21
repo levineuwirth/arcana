@@ -1,6 +1,7 @@
-//! Roiling Regrowth — `{2}{G}` instant. "Sacrifice a land. Search your library
-//! for up to two basic land cards, put them onto the battlefield tapped, then
-//! shuffle."
+//! Roiling Regrowth — `{2}{G}` instant. "Sacrifice a land. Search your
+//! library for up to two basic land cards, put them onto the
+//! battlefield tapped, then shuffle." The catalog's TutorToBattlefield
+//! is single-card; emit two tutors (best-effort 'up to two').
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,21 +37,20 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
     vec![
         Effect::Sacrifice {
             player: entry.controller,
-            filter: land.clone(),
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             count: 1,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: land.clone(),
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             tapped: true,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: land,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             tapped: true,
         },
     ]

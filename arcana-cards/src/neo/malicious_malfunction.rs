@@ -1,11 +1,13 @@
 //! Malicious Malfunction — `{1}{B}{B}` sorcery. "All creatures get
 //! -2/-2 until end of turn. If a creature would die this turn, exile
-//! it instead."
+//! it instead." The -X/-X to all creatures is a Pump on each creature
+//! with negative numbers; the exile-instead replacement is not in the
+//! catalog, so we GAP that part.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -23,27 +25,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "All creatures get -2/-2 until end of turn. If a creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "All creatures get -2/-2 until end of turn. If a creature would die this turn, exile it instead.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "dies-this-turn -> exile instead" replacement is not
-    // expressible; emit the all-creatures -2/-2 portion.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'if a creature would die this turn, exile it instead' —
+    // replacement effect not in catalog.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
-            power: -2,
-            toughness: -2,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        }),
-    }]
+    ids.into_iter()
+        .map(|id| Effect::Pump { target: id, power: -2, toughness: -2, duration: Duration::EndOfTurn, keywords: vec![] })
+        .collect()
 }

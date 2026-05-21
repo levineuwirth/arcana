@@ -1,5 +1,6 @@
 //! Improvised Weaponry — `{2}{R}` sorcery. "Improvised Weaponry deals
-//! 2 damage to any target. Create a Treasure token."
+//! 2 damage to any target. Create a Treasure token." Treasure's
+//! activated ability ({T},sac→any color) is not modeled on the token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
@@ -13,7 +14,7 @@ use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Improvised Weaponry");
-    let _t = reg.interner_mut().intern("Treasure");
+    let _treasure = reg.interner_mut().intern("Treasure");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}").expect("valid cost")),
@@ -22,16 +23,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Improvised Weaponry deals 2 damage to any target. Create a Treasure token.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Improvised Weaponry deals 2 damage to any target. Create a Treasure token.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -41,9 +47,13 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    let treasure = reg.interner().lookup("Treasure").expect("interned");
+    let treasure = reg
+        .interner()
+        .lookup("Treasure")
+        .expect("Treasure interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
+    // GAP: Treasure activated ability not modeled.
     let token = TokenDefinition {
         name: treasure,
         colors: ColorSet::new(),
@@ -54,10 +64,12 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Treasure's "{T}, Sacrifice: add one mana of any color"
-    // activated ability is not expressible.
     vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 2 },
+        Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 2,
+        },
         Effect::CreateToken { controller: entry.controller, token },
     ]
 }

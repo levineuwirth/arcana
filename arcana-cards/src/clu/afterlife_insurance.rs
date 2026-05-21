@@ -1,7 +1,5 @@
 //! Afterlife Insurance — `{1}{W/B}` instant. "Creatures you control
-//! gain afterlife 1 until end of turn. Draw a card." Granting a
-//! keyword to a whole group has no primitive (GrantKeyword is
-//! single-target); the draw is emitted.
+//! gain afterlife 1 until end of turn. Draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +29,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: granting afterlife 1 to all creatures you control (group
-    // keyword grant) has no primitive.
-    vec![Effect::DrawCards { player: entry.controller, count: 1 }]
+    // GAP: granting a parametrized keyword (afterlife 1) to a board-wide
+    // set is not expressible — GrantKeyword takes only unit keywords and a
+    // single target; only the card draw is emitted.
+    vec![Effect::DrawCards {
+        player: entry.controller,
+        count: 1,
+    }]
 }

@@ -1,6 +1,6 @@
-//! Reinterpret — `{2}{U}{R}` instant, "Counter target spell. You may
+//! Reinterpret — `{2}{U}{R}` instant. Counter target spell. You may
 //! cast a spell with equal or lesser mana value from your hand without
-//! paying its mana cost." Only the counter is expressible.
+//! paying its mana cost.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,22 +23,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. You may cast a spell with equal or lesser mana value from your hand without paying its mana cost.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. You may cast a spell with equal or lesser mana value from your hand without paying its mana cost.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: free-cast a spell of equal/lesser mana value from hand not expressible.
+    // GAP: "cast a spell from hand without paying" is not in the catalog.
     vec![Effect::Counter { target: *id }]
 }

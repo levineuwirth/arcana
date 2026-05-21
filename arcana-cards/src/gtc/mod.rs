@@ -18,3 +18,4 @@ pub mod wildwood_rebirth;
 pub mod massive_raid;
 pub mod enter_the_infinite;
 pub mod arrows_of_justice;
+pub mod spell_rupture;

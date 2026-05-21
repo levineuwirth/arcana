@@ -1,5 +1,5 @@
-//! Captivating Gyre — `{4}{U}{U}` sorcery.
-//! "Return up to three target creatures to their owners' hands."
+//! Captivating Gyre — `{4}{U}{U}` sorcery. "Return up to three target
+//! creatures to their owners' hands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -20,30 +22,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return up to three target creatures to their owners' hands.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: arcana_core::targets::TargetFilter::Creature,
-                    count: TargetCount::UpTo(3),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return up to three target creatures to their owners' hands.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                count: TargetCount::UpTo(3),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    entry.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t {
-            Some(Effect::ReturnToHand { target: *id })
-        } else {
-            None
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for target in &entry.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::ReturnToHand { target: *id });
         }
-    }).collect()
+    }
+    effects
 }

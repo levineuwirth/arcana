@@ -1,5 +1,6 @@
 //! Gaze of Adamaro — `{2}{R}{R}` instant — Arcane. "Gaze of Adamaro deals
-//! damage to target player equal to the number of cards in that player's hand."
+//! damage to target player equal to the number of cards in that player's
+//! hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -37,12 +38,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
     let amount = script::hand_size(state, *p);
-    if amount == 0 {
-        return Vec::new();
-    }
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(*p),

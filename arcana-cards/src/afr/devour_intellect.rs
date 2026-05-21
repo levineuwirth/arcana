@@ -1,8 +1,10 @@
-//! Devour Intellect — `{B}` sorcery, "Target opponent discards a card.
-//! If mana from a Treasure was spent to cast this spell, instead that
-//! player reveals their hand, you choose a nonland card, then discards
-//! that card." The Treasure-spent conditional / caster-chosen discard
-//! is not expressible; the base discard is.
+//! Devour Intellect — `{B}` sorcery. "Target opponent discards a
+//! card. If mana from a Treasure was spent to cast this spell,
+//! instead that player reveals their hand, you choose a nonland card
+//! from it, then that player discards that card."
+//!
+//! GAP: Treasure-mana detection and reveal-and-choose discard aren't
+//! modeled — emit the base discard (opponent-chooses-which).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -24,11 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent discards a card. If mana from a Treasure \
-                   was spent to cast this spell, instead that player \
-                   reveals their hand, you choose a nonland card from it, \
-                   then that player discards that card."
-                .into(),
+            text: "Target opponent discards a card. If mana from a Treasure was spent to cast this spell, instead that player reveals their hand, you choose a nonland card from it, then that player discards that card.".into(),
             target_requirements: vec![TargetRequirement::target_player()],
             modal: None,
             effect: resolve,
@@ -41,14 +39,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let p = match t {
+        TargetChoice::Player(p) => *p,
+        _ => return Vec::new(),
     };
-    // GAP: the "if Treasure mana was spent" upgraded caster-chosen
-    // discard is not expressible.
+    // GAP: Treasure-mana spent detection isn't exposed.
     vec![Effect::Discard {
-        player: *p,
+        player: p,
         count: 1,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

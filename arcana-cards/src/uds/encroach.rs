@@ -1,9 +1,6 @@
-//! Encroach — `{B}` sorcery, "Target player reveals their hand. You choose a
-//! nonbasic land card from it. That player discards that card."
-//!
-//! GAP: reveal hand and choose a specific nonbasic-land card to discard —
-//! no ExileFromHand or choose-from-revealed-hand variant. Best effort:
-//! target player discards 1 card (OpponentChooses).
+//! Encroach — `{B}` sorcery. "Target player reveals their hand. You
+//! choose a nonbasic land card from it. That player discards that
+//! card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -24,25 +21,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player reveals their hand. You choose a nonbasic land card from it. That player discards that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player reveals their hand. You choose a nonbasic land card from it. That player discards that card.".into(),
+            target_requirements: vec![TargetRequirement::target_player()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(target_player) = target else { return Vec::new(); };
-    vec![
-        // GAP: reveal hand and choose a specific nonbasic land card to discard
-        Effect::Discard { player: *target_player, count: 1, choice: DiscardChoice::OpponentChooses },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // The target player discards; OpponentChooses makes you (the caster)
+    // pick the card.
+    // GAP: the "reveal hand" step and the "nonbasic land" restriction on
+    // the choice are not modeled.
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::OpponentChooses,
+    }]
 }

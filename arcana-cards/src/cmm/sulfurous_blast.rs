@@ -6,7 +6,7 @@
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -24,12 +24,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Sulfurous Blast deals 2 damage to each creature and each player. If you cast this spell during your main phase, Sulfurous Blast deals 3 damage to each creature and each player instead.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: the "3 damage if cast during your main phase"
+                // escalation depends on cast-timing, which no script
+                // helper reports. The base 2-damage mode is emitted.
+                text: "Sulfurous Blast deals 2 damage to each creature and each player.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,22 +42,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "cast during your main phase" condition has no catalog
-    // primitive; the fixed 2-damage mode is modeled.
-    let mut effects = Vec::new();
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature(),
-        entry.controller,
-    );
-    effects.push(Effect::ForEach {
-        targets: ids,
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut effects = vec![Effect::ForEach {
+        targets: creatures,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(arcana_core::objects::NULL_OBJECT_ID),
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 2,
         }),
-    });
+    }];
     for p in script::all_players(state) {
         effects.push(Effect::DealDamage {
             source: entry.source,

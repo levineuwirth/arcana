@@ -1,5 +1,6 @@
-//! Beckon Apparition — `{W/B}` instant. "Exile target card from a graveyard.
-//! Create a 1/1 white and black Spirit creature token with flying."
+//! Beckon Apparition — `{W/B}` instant. "Exile target card from a
+//! graveyard. Create a 1/1 white and black Spirit creature token with
+//! flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -7,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -28,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::default(),
+                        filter: ObjectFilter::new(),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -46,7 +49,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned");
+    let spirit = reg
+        .interner()
+        .lookup("Spirit")
+        .expect("Spirit interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
     let token = TokenDefinition {

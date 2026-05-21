@@ -1,8 +1,6 @@
-//! Rush the Room — `{R}` instant. "Target creature gets +1/+0 and
-//! gains first strike until end of turn. If it's a Goblin or Orc, it
-//! also gains haste until end of turn." The conditional Goblin/Orc
-//! haste rider isn't expressible; we emit the unconditional +1/+0 and
-//! first strike.
+//! Rush the Room — `{R}` instant. "Target creature gets +1/+0 and gains
+//! first strike until end of turn. If it's a Goblin or Orc, it also
+//! gains haste until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -34,9 +32,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: conditional "if Goblin or Orc, also gains haste" rider not
-    // expressible. Unconditional +1/+0 + first strike emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the conditional "if it's a Goblin or Orc, also gains haste" rider
+    // needs a subtype check on the target; the unconditional pump + first
+    // strike is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 1,

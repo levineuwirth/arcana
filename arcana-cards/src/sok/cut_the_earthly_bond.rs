@@ -1,8 +1,9 @@
 //! Cut the Earthly Bond — `{U}` instant — Arcane. "Return target
 //! enchanted permanent to its owner's hand."
 //!
-//! GAP: 'enchanted' permanent filter — no script ObjectFilter for
-//! 'permanent enchanted by an Aura'. Modeled as any-permanent bounce.
+//! The "enchanted" restriction on the target is not expressible as a
+//! filter — modeled as bouncing a target permanent, with the
+//! restriction noted as a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,12 +11,13 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cut the Earthly Bond");
-    let _arcane = reg.interner_mut().intern("Arcane");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{U}").expect("valid cost")),
@@ -38,7 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'enchanted' filter on the target permanent.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: the "enchanted" restriction on the target is not
+    // expressible as a filter.
     vec![Effect::ReturnToHand { target: *id }]
 }

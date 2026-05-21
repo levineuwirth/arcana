@@ -1,7 +1,5 @@
-//! Otherworldly Journey — `{1}{W}` instant (Arcane). "Exile target
-//! creature. At the beginning of the next end step, return that card to
-//! the battlefield under its owner's control with a +1/+1 counter on
-//! it."
+//! Otherworldly Journey — `{1}{W}` instant (Arcane). Exile target creature.
+//! At the next end step, return it with a +1/+1 counter on it.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,15 +20,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target creature. At the beginning of the next end \
-                   step, return that card to the battlefield under its \
-                   owner's control with a +1/+1 counter on it."
-                .into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target creature. At the beginning of the next end step, return that card to the battlefield under its owner's control with a +1/+1 counter on it.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,17 +35,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // The +1/+1 counter on return is not expressible via DelayedAction.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
+    // GAP: "+1/+1 counter on return" rider on the delayed return not in
+    // catalog — emit exile + delayed return without the counter.
     vec![
-        Effect::ExilePermanent { target: *id },
+        Effect::ExilePermanent { target: id },
         Effect::DelayedAction {
-            source: *id,
+            source: id,
             controller: entry.controller,
             when: DelayedWhen::NextEndStep,
-            action: DelayedAction::ReturnToHand,
+            action: DelayedAction::ReturnFromExileToBattlefield,
         },
     ]
 }

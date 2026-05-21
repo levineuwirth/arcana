@@ -1,9 +1,6 @@
 //! Threaten — `{2}{R}` sorcery. "Untap target creature and gain
 //! control of it until end of turn. That creature gains haste until
 //! end of turn."
-//!
-//! GAP: temporary "gain control until end of turn" has no catalog
-//! Effect; the untap and the haste grant are emitted.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -25,20 +22,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: temporary control-change ("gain control until end of turn") not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "gain control until end of turn" — only permanent
+    // ChangeControl exists, no end-of-turn control duration. Emitting
+    // the expressible parts (untap + haste) only.
     vec![
         Effect::Untap { target: *id },
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
     ]
 }

@@ -1,13 +1,10 @@
 //! Salt Road Skirmish — `{3}{B}` sorcery. "Destroy target creature.
 //! Create two 1/1 red Warrior creature tokens. They gain haste until
-//! end of turn. Sacrifice them at the beginning of the next end step."
-//!
-//! GAP: the created tokens' ids aren't available at resolution, so
-//! "they gain haste until end of turn" and "sacrifice them at the next
-//! end step" cannot be wired to those tokens. The destroy and the two
-//! tokens are emitted.
+//! end of turn. Sacrifice them at the beginning of the next end
+//! step." Uses CreateTokenSacEot (haste applied at register
+//! definition).
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -27,18 +24,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature. Create two 1/1 red Warrior creature tokens. They gain haste until end of turn. Sacrifice them at the beginning of the next end step.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature. Create two 1/1 red Warrior creature tokens. They gain haste until end of turn. Sacrifice them at the beginning of the next end step.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned during register()");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(warrior);
     let token = TokenDefinition {
@@ -48,13 +51,12 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
+        keywords: vec![KeywordAbility::Haste],
         abilities: vec![],
     };
-    // GAP: "gain haste / sacrifice at next end step" can't target the new token ids.
     vec![
         Effect::DestroyPermanent { target: *id },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateTokenSacEot { controller: entry.controller, token: token.clone() },
+        Effect::CreateTokenSacEot { controller: entry.controller, token },
     ]
 }

@@ -1,4 +1,4 @@
-//! Smelt — `{R}` instant, "Destroy target artifact."
+//! Smelt — `{R}` instant. "Destroy target artifact."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

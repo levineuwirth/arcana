@@ -22,28 +22,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Tap target creature. It deals damage equal to its power to another target creature.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Tap target creature. It deals damage equal to its power to another target creature.".into(),
+                target_requirements: vec![
+                    TargetRequirement::target_creature(),
+                    TargetRequirement::target_creature(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let targets = &entry.targets.targets;
-    let Some(TargetChoice::Object(t0)) = targets.first() else { return Vec::new(); };
-    let Some(TargetChoice::Object(t1)) = targets.get(1) else { return Vec::new(); };
-    let power = script::power_of(state, *t0).max(0) as u32;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(tapped) = t0 else { return Vec::new(); };
+    let TargetChoice::Object(victim) = t1 else { return Vec::new(); };
+    let tapped = *tapped;
+    let victim = *victim;
+    let power = script::power_of(state, tapped).max(0) as u32;
     vec![
-        Effect::Tap { target: *t0 },
+        Effect::Tap { target: tapped },
         Effect::DealDamage {
-            source: *t0,
-            target: DamageTarget::Object(*t1),
+            source: tapped,
+            target: DamageTarget::Object(victim),
             amount: power,
         },
     ]

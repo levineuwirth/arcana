@@ -1,8 +1,6 @@
-//! Vigor Mortis — `{2}{B}{B}` sorcery. "Return target creature card
-//! from your graveyard to the battlefield. If {G} was spent to cast
-//! this spell, that creature enters with an additional +1/+1 counter
-//! on it." The mana-spent condition isn't exposed; we emit the
-//! reanimation.
+//! Vigor Mortis — `{2}{B}{B}` sorcery. "Return target creature card from
+//! your graveyard to the battlefield. If {G} was spent to cast this
+//! spell, that creature enters with an additional +1/+1 counter on it."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -41,8 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "if {G} was spent" mana-spent condition not exposed to the
-    // resolver; reanimation emitted without the bonus counter.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the "if {G} was spent" counter rider needs mana-spent tracking;
+    // only the reanimation is emitted.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

@@ -1,7 +1,8 @@
 //! Growth Spasm — `{2}{G}` sorcery. "Search your library for a basic land
 //! card, put it onto the battlefield tapped, then shuffle. Create a 0/1
 //! colorless Eldrazi Spawn creature token. It has 'Sacrifice this token:
-//! Add {C}.'" Tutor available; Spawn activated ability not expressible.
+//! Add {C}.'" The token's mana ability cannot be expressed on a
+//! TokenDefinition.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,31 +35,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no "basic-only" supertype refinement on ObjectFilter; using plain Land.
-    let eldrazi = reg.interner().lookup("Eldrazi").expect("Eldrazi interned during register()");
-    let spawn = reg.interner().lookup("Spawn").expect("Spawn interned during register()");
+    // GAP: the token's "Sacrifice this token: Add {C}" mana ability cannot be
+    // attached to a TokenDefinition. "basic" land qualifier is not separately
+    // filterable.
+    let eldrazi = reg.interner().lookup("Eldrazi").expect("Eldrazi interned");
+    let spawn = reg.interner().lookup("Spawn").expect("Spawn interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(eldrazi);
     subtypes.0.insert(spawn);
+    let token = TokenDefinition {
+        name: spawn,
+        colors: ColorSet::new(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(0)),
+        toughness: Some(PtValue::Fixed(1)),
+        keywords: vec![],
+        abilities: vec![],
+    };
     vec![
         Effect::TutorToBattlefield {
             player: entry.controller,
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             tapped: true,
         },
-        // GAP: Spawn token's "Sacrifice: Add {C}" activated ability not expressible.
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: TokenDefinition {
-                name: spawn,
-                colors: ColorSet::new(),
-                types: TypeLine::CREATURE.into(),
-                subtypes,
-                power: Some(PtValue::Fixed(0)),
-                toughness: Some(PtValue::Fixed(1)),
-                keywords: vec![],
-                abilities: vec![],
-            },
-        },
+        Effect::CreateToken { controller: entry.controller, token },
     ]
 }

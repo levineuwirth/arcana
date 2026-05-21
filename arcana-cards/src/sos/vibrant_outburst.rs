@@ -9,8 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, ObjectOrPlayer, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
+    ObjectOrPlayer, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -24,41 +23,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Vibrant Outburst deals 3 damage to any target. Tap up to one target creature.".into(),
-            target_requirements: vec![
-                TargetRequirement::any_target(),
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Vibrant Outburst deals 3 damage to any target. Tap up \
+                       to one target creature.".into(),
+                target_requirements: vec![
+                    TargetRequirement::any_target(),
+                    TargetRequirement {
+                        filter: TargetFilter::Creature,
+                        count: TargetCount::UpTo(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(first) = it.next() else {
-        return Vec::new();
-    };
-    let dt = match first {
-        TargetChoice::Object(id) => DamageTarget::Object(*id),
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
-        TargetChoice::ObjectOrPlayer(o) => match o {
-            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
-        },
-    };
-    let mut effects = vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 3,
-    }];
-    if let Some(TargetChoice::Object(id)) = it.next() {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if let Some(target) = entry.targets.targets.first() {
+        let dt = match target {
+            TargetChoice::Object(id) => DamageTarget::Object(*id),
+            TargetChoice::Player(p) => DamageTarget::Player(*p),
+            TargetChoice::ObjectOrPlayer(o) => match o {
+                ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+                ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+            },
+        };
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 3,
+        });
+    }
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.get(1) {
         effects.push(Effect::Tap { target: *id });
     }
     effects

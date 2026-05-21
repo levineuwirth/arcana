@@ -26,13 +26,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Target blocking or blocked creature you control gets +2/+2 until end of turn.".into(),
-            // "blocking or blocked" restriction is not expressible in
-            // the ObjectFilter builders; restricted to a creature you
-            // control.
+            // "blocking or blocked" combat state is not expressible in
+            // ObjectFilter — fall back to a creature-you-control target.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -43,13 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -1,5 +1,5 @@
-//! Mana Leak — `{1}{U}` instant. "Counter target spell unless its controller
-//! pays {3}." Direct CounterUnlessPays.
+//! Mana Leak — `{1}{U}` instant. "Counter target spell unless its
+//! controller pays {3}."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{3}").expect("valid cost"),

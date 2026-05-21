@@ -1,8 +1,8 @@
-//! Ravages of War — `{3}{W}` sorcery, "Destroy all lands."
+//! Ravages of War — `{3}{W}` sorcery. Destroy all lands.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -37,11 +37,10 @@ fn resolve(
 ) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+        &ObjectFilter::new().with_types(TypeLine::LAND.into()),
         entry.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }]
+    ids.into_iter()
+        .map(|id| Effect::DestroyPermanent { target: id })
+        .collect()
 }

@@ -1,13 +1,12 @@
-//! Ionize — `{1}{U}{R}` instant. "Counter target spell. Ionize deals
-//! 2 damage to that spell's controller."
-//!
-//! The counter is emitted; the spell's controller is not readable
-//! from the effect surface, so the 2 damage is a GAP.
+//! Ionize — `{1}{U}{R}` instant. "Counter target spell. Ionize deals 2
+//! damage to that spell's controller."
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -25,28 +24,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Ionize deals 2 damage to that spell's controller.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Ionize deals 2 damage to that spell's controller.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: spell's controller not readable, so the 2 damage is
-    // omitted.
-    vec![Effect::Counter { target: *id }]
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let controller = script::target_controller(state, *id, entry.controller);
+    vec![
+        Effect::Counter { target: *id },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(controller),
+            amount: 2,
+        },
+    ]
 }

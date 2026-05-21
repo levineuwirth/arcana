@@ -3,24 +3,24 @@
 //! permanents you control. Then you gain life equal to the number of creatures
 //! you control."
 //!
-//! # GAP: ColorCountAmongPermanents — no script helper for counting distinct
-//! colors among permanents you control. Token creation count is inexpressible;
-//! Vec::new() returned for that part. Life gain uses script::count_matching.
-//! GAP: Vivid keyword marker — not in the supported keyword list; omitted.
+//! 'Number of colors among permanents you control' is not in the script::
+//! helpers — GAP the token count. Lifegain half uses creature count and is
+//! emittable. (Per MANDATORY: if scaling is dynamic and not computable, GAP the
+//! whole sub-effect rather than emit a fixed-size stand-in.)
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Elemental Spectacle");
-    let _elemental = reg.interner_mut().intern("Elemental");
+    let _ = reg.interner_mut().intern("Elemental");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{5}{G}").expect("valid cost")),
@@ -42,25 +42,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     state: &GameState,
     entry: &StackEntry,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ColorCountAmongPermanents — no script helper for counting distinct colors
-    // among permanents you control; token creation is omitted.
-    let creature_count = script::count_matching(state, &ObjectFilter::creature(), entry.controller);
-    let elemental = reg.interner().lookup("Elemental").expect("Elemental interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(elemental);
-    let _token = TokenDefinition {
-        name: elemental,
-        colors: ColorSet::red() | ColorSet::green(),
-        types: TypeLine::CREATURE.into(),
-        subtypes,
-        power: Some(PtValue::Fixed(5)),
-        toughness: Some(PtValue::Fixed(5)),
-        keywords: vec![],
-        abilities: vec![],
-    };
-    vec![
-        Effect::GainLife { player: entry.controller, amount: creature_count },
-    ]
+    let creature_count = script::count_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    // GAP: 'number of colors among permanents you control' — color-distinct count
+    // helper not in script::.
+    vec![Effect::GainLife {
+        player: entry.controller,
+        amount: creature_count,
+    }]
 }

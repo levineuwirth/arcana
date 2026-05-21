@@ -1,6 +1,8 @@
 //! Back on Track — `{4}{B}` sorcery. "Return target creature or
 //! Vehicle card from your graveyard to the battlefield. Create a 1/1
-//! colorless Pilot creature token ..."
+//! colorless Pilot creature token with [crew-helper text]." The Pilot
+//! activated ability with crew/saddle rider isn't in the catalog;
+//! we emit the reanimation and a vanilla Pilot token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -9,7 +11,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -25,19 +27,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature or Vehicle card from your graveyard to the battlefield. Create a 1/1 colorless Pilot creature token with \"This token saddles Mounts and crews Vehicles as though its power were 2 greater.\"".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target creature or Vehicle card from your graveyard to the battlefield. Create a 1/1 colorless Pilot creature token with \"This token saddles Mounts and crews Vehicles as though its power were 2 greater.\"".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -46,8 +49,16 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'Vehicle' card-type filter on graveyard target (TargetFilter
+    // takes a single filter); we use creature(). Also GAP the Pilot
+    // token's 'as though its power were 2 greater' rider — emit a
+    // vanilla 1/1 Pilot.
+    let mut effects = Vec::new();
+    if let Some(target) = entry.targets.targets.first() {
+        if let arcana_core::targets::TargetChoice::Object(id) = target {
+            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
+        }
+    }
     let pilot = reg.interner().lookup("Pilot").expect("Pilot interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(pilot);
@@ -61,10 +72,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // The token's saddle/crew text ability is not expressible; the
-    // token's bones are still created.
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
-    ]
+    effects.push(Effect::CreateToken { controller: entry.controller, token });
+    effects
 }

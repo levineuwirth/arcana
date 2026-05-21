@@ -26,8 +26,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target artifact or land.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
-                            .with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::LAND)),
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::ARTIFACT | TypeLine::LAND),
+                        ),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

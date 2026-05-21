@@ -1,8 +1,6 @@
 //! Victim of Night — `{B}{B}` instant. "Destroy target non-Vampire,
-//! non-Werewolf, non-Zombie creature."
-//!
-//! The negative subtype constraints aren't expressible with the
-//! demonstrated ObjectFilter; the target is a creature.
+//! non-Werewolf, non-Zombie creature." ObjectFilter has no "without
+//! subtype" refinement; GAP the exclusion.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,12 +21,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target non-Vampire, non-Werewolf, non-Zombie creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: ObjectFilter has no subtype-exclusion refinement; cannot restrict to non-Vampire/Werewolf/Zombie.
+                text: "Destroy target non-Vampire, non-Werewolf, non-Zombie creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -37,9 +37,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: negative subtype target constraints (non-Vampire/Werewolf/Zombie) not expressible.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

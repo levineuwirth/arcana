@@ -1,7 +1,5 @@
 //! Embrace the Paradox — `{3}{G}{U}` instant. "Draw three cards. You
 //! may put a land card from your hand onto the battlefield tapped."
-//! Putting a land from hand onto the battlefield has no primitive;
-//! the draw is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +29,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "put a land card from your hand onto the battlefield" has
-    // no primitive.
-    vec![Effect::DrawCards { player: entry.controller, count: 3 }]
+    // GAP: "put a land card from your hand onto the battlefield" — no
+    // Effect plays a permanent from hand; only the draw is emitted.
+    vec![Effect::DrawCards {
+        player: entry.controller,
+        count: 3,
+    }]
 }

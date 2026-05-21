@@ -1,5 +1,5 @@
-//! Volt Charge — `{2}{R}` instant. "Volt Charge deals 3 damage to any
-//! target. Proliferate."
+//! Volt Charge — `{2}{R}` instant. Deals 3 damage to any target.
+//! Proliferate. (Proliferate not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Volt Charge deals 3 damage to any target. Proliferate.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Volt Charge deals 3 damage to any target. Proliferate.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -45,8 +44,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // "Proliferate" is not expressible (no proliferate effect variant);
-    // the 3 damage is applied.
+    // GAP: "Proliferate" not modeled.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

@@ -1,11 +1,11 @@
-//! Ideas Unbound — `{U}{U}` sorcery — Arcane. "Draw three cards.
+//! Ideas Unbound — `{U}{U}` sorcery (Arcane). "Draw three cards.
 //! Discard three cards at the beginning of the next end step."
-//!
-//! DelayedAction supports Sacrifice/Exile/ReturnToHand on a known
-//! permanent id — not a player-discards-N at end step. The delayed
-//! discard is GAP'd; only the draw is modeled.
+//! Sorcery — Arcane subtype isn't expressible at the Characteristics
+//! layer for sorceries; flag it but emit the rest.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{
+    DelayedAction, DelayedWhen, DiscardChoice, Effect,
+};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -22,17 +22,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: Sorcery — Arcane subtype isn't expressible at this layer.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw three cards. Discard three cards at the beginning of the next end step.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw three cards. Discard three cards at the beginning of the next end step.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: end-step-delayed discard-N on a player has no DelayedAction variant.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: DelayedAction has no 'Discard N' variant — only Sacrifice/
+    // Exile/ReturnToHand/ReturnFromExileToBattlefield. Emit the draw;
+    // the parametrized end-step discard is unmodeled.
+    let _ = DelayedWhen::NextEndStep;
+    let _ = DelayedAction::Sacrifice;
+    let _ = DiscardChoice::ControllerChooses;
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

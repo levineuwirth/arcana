@@ -1,4 +1,4 @@
-//! Saltblast — `{3}{W}{W}` sorcery, "Destroy target nonwhite permanent."
+//! Saltblast — `{3}{W}{W}` sorcery. "Destroy target nonwhite permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,19 +21,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target nonwhite permanent.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().without_colors(ColorSet::white()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target nonwhite permanent.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().without_colors(ColorSet::white()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

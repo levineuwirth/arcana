@@ -1,9 +1,7 @@
 //! Battlefield Improvisation — `{1}{W}` instant. "Target creature
 //! gets +2/+2 until end of turn. If that creature is attacking, you
-//! may attach any number of Equipment you control to it."
-//!
-//! The conditional Equipment-attach rider has no catalog effect;
-//! only the pump is emitted.
+//! may attach any number of Equipment you control to it." Equipment
+//! attach mid-resolution isn't catalog; emit the pump and GAP attach.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,20 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +2/+2 until end of turn. If that creature is attacking, you may attach any number of Equipment you control to it.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +2/+2 until end of turn. If that creature is attacking, you may attach any number of Equipment you control to it.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: equipment attach effect is not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional "attach any number of Equipment you control"
-    // is not in the effect catalog.
     vec![Effect::Pump {
         target: *id,
         power: 2,

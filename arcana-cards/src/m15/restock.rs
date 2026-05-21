@@ -1,7 +1,6 @@
-//! Restock — `{3}{G}{G}` sorcery. "Return two target cards from your
-//! graveyard to your hand. Exile Restock." The "exile Restock"
-//! self-exile-on-resolution has no primitive; the two-card return is
-//! modeled (partial).
+//! Restock — `{3}{G}{G}` sorcery. Return two target cards from your
+//! graveyard to your hand. Exile Restock. (Self-exile-on-resolve not
+//! modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,8 +11,8 @@ use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::zones::Zone;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Restock");
@@ -41,18 +40,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "Exile Restock" (self-exile instead of going to graveyard)
-    // has no primitive; the two-card graveyard return is modeled.
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::ReturnFromGraveyardToHand { target: *id })
-            }
-            _ => None,
-        })
-        .collect()
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "Exile Restock" (self-exile-on-resolve replacement) not modeled.
+    let mut effects: Vec<Effect> = Vec::new();
+    for choice in &entry.targets.targets {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
+        }
+    }
+    effects
 }

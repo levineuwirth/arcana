@@ -11,7 +11,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Spore Swarm");
-    let _sap = reg.interner_mut().intern("Saproling");
+    let _saproling = reg.interner_mut().intern("Saproling");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
@@ -34,11 +34,11 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let sap = reg.interner().lookup("Saproling").expect("Saproling interned");
+    let saproling = reg.interner().lookup("Saproling").expect("Saproling interned");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(sap);
+    subtypes.0.insert(saproling);
     let token = TokenDefinition {
-        name: sap,
+        name: saproling,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,

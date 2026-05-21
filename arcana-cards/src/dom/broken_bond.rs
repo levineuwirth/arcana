@@ -1,7 +1,6 @@
 //! Broken Bond — `{1}{G}` sorcery. "Destroy target artifact or
 //! enchantment. You may put a land card from your hand onto the
-//! battlefield." Putting a land from hand onto the battlefield has no
-//! primitive; the destroy is emitted.
+//! battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,9 +27,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target artifact or enchantment. You may put a land card from your hand onto the battlefield.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types_any(
-                        TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT),
-                    ),
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                    )),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -42,9 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "put a land card from your hand onto the battlefield" has
-    // no primitive.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "put a land card from your hand onto the battlefield" — no
+    // Effect plays a permanent from hand; only the destroy is emitted.
     vec![Effect::DestroyPermanent { target: *id }]
 }

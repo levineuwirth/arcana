@@ -1,21 +1,23 @@
-//! Gloomwidow's Feast — `{3}{G}` instant. "Destroy target creature with
-//! flying. If that creature was blue or black, create a 1/2 green Spider
-//! creature token with reach."
-//! GAP: no ObjectFilter for "has flying keyword" on target filter; no way to
-//! inspect the destroyed creature's color at resolution time for the
-//! conditional token creation.
+//! Gloomwidow's Feast — `{3}{G}` instant. "Destroy target creature
+//! with flying. If that creature was blue or black, create a 1/2
+//! green Spider creature token with reach."
+//!
+//! GAP: ObjectFilter has no flying predicate; create the Spider token
+//! unconditionally since we can't read the destroyed creature's
+//! colors at resolve time either.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Gloomwidow's Feast");
+    let _spider = reg.interner_mut().intern("Spider");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
@@ -24,24 +26,42 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature with flying. If that creature was blue or black, create a 1/2 green Spider creature token with reach.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature with flying. If that creature was blue or black, create a 1/2 green Spider creature token with reach.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
 fn resolve(
     _state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no flying-keyword filter on target; no post-resolution color check for conditional
-    // Spider token creation
-    vec![Effect::DestroyPermanent { target: *id }]
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    let spider = reg
+        .interner()
+        .lookup("Spider")
+        .expect("Spider interned during register()");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(spider);
+    let token = TokenDefinition {
+        name: spider,
+        colors: ColorSet::green(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![KeywordAbility::Reach],
+        abilities: vec![],
+    };
+    // GAP: target's color isn't checkable at resolve time; emit the
+    // Spider token regardless.
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

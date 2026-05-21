@@ -1,9 +1,9 @@
-//! Divine Purge — `{1}{W}{W}` sorcery. "Exile all artifacts and creatures
-//! with mana value 3 or less. They perpetually gain ... For as long as each
-//! of them remain exiled, its owner may play it."
-//!
-//! GAP: no support for perpetual riders, no 'owner may play exiled cards'
-//! mechanic. Best effort: exile all matching permanents.
+//! Divine Purge — `{1}{W}{W}` sorcery. "Exile all artifacts and
+//! creatures with mana value 3 or less. They perpetually gain 'This
+//! spell costs {2} more to cast' and 'This permanent enters the
+//! battlefield tapped.' For as long as each of them remain exiled,
+//! its owner may play it." Perpetual cost-modifying riders and
+//! play-from-exile not in catalog; emit the bulk exile only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Exile all artifacts and creatures with mana value 3 or less.".into(),
+                text: "Exile all artifacts and creatures with mana value 3 or less. They perpetually gain \"This spell costs {2} more to cast\" and \"This permanent enters the battlefield tapped.\" For as long as each of them remain exiled, its owner may play it.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -40,21 +40,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creatures = script::ids_matching(
-        state,
-        &ObjectFilter::creature().with_max_cmc(3),
-        entry.controller,
-    );
-    let artifacts = script::ids_matching(
+    let ids = script::ids_matching(
         state,
         &ObjectFilter::permanent()
-            .with_types(TypeLine::ARTIFACT.into())
+            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE))
             .with_max_cmc(3),
         entry.controller,
     );
-    let mut ids = creatures;
-    ids.extend(artifacts);
-    // GAP: perpetual riders and 'owner may play exiled cards' not supported
+    // GAP: perpetual cost rider and play-from-exile not expressible.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),

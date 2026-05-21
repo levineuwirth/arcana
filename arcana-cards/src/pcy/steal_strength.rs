@@ -22,23 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +1/+1 until end of turn. Another target creature gets -1/-1 until end of turn.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +1/+1 until end of turn. Another target creature gets -1/-1 until end of turn.".into(),
+                target_requirements: vec![
+                    TargetRequirement::target_creature(),
+                    TargetRequirement::target_creature(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(a) = t0 else { return Vec::new(); };
-    let TargetChoice::Object(b) = t1 else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let ts = &entry.targets.targets;
+    if ts.len() < 2 { return Vec::new(); }
+    let (TargetChoice::Object(a), TargetChoice::Object(b)) = (&ts[0], &ts[1]) else {
+        return Vec::new();
+    };
     vec![
         Effect::Pump {
             target: *a,

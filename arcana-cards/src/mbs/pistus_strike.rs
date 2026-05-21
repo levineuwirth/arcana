@@ -1,6 +1,6 @@
-//! Pistus Strike — `{2}{G}` instant.
-//! "Destroy target creature with flying. Its controller gets a poison
-//! counter."
+//! Pistus Strike — `{2}{G}` instant. "Destroy target creature with
+//! flying. Its controller gets a poison counter." Poison counters are
+//! not in CounterKind; we emit the destroy and GAP the poison.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,11 +30,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // "Its controller gets a poison counter" has no catalog effect;
-    // the destroy is performed.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: poison counter on a player not in CounterKind; with-flying target filter not in ObjectFilter helpers.
     vec![Effect::DestroyPermanent { target: *id }]
 }

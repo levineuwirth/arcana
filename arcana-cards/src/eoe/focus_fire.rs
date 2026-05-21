@@ -1,11 +1,7 @@
 //! Focus Fire — `{W}` instant. "Focus Fire deals X damage to target
 //! attacking or blocking creature, where X is 2 plus the number of
-//! creatures and/or Spacecraft you control."
-//!
-//! GAP: Spacecraft is not a recognized subtype in the catalog; computing
-//! "creatures and/or Spacecraft" requires a union we cannot express
-//! cleanly. We honestly compute 2 + (creatures you control) as a
-//! near-equivalent — flagging the Spacecraft union as a GAP.
+//! creatures and/or Spacecraft you control." Treats Spacecraft as
+//! absent; X = 2 + creatures-you-control.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -15,9 +11,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,16 +41,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Spacecraft subtype union is not modeled; counting just
-    // creatures-you-control here.
-    let n = script::count_matching(
+    let creatures = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
+    let x = creatures.saturating_add(2);
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
-        amount: 2 + n,
+        amount: x,
     }]
 }

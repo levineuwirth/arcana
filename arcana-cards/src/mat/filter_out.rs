@@ -1,11 +1,9 @@
-//! Filter Out — `{1}{U}{U}` instant. "Return all noncreature,
-//! nonland permanents to their owners' hands." Board-wide bounce of
-//! permanents that are neither creature nor land, via ForEach over
-//! script::ids_matching.
+//! Filter Out — `{1}{U}{U}` instant. "Return all noncreature, nonland
+//! permanents to their owners' hands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -39,6 +37,8 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
     let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
+        effect: Box::new(Effect::ReturnToHand {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+        }),
     }]
 }

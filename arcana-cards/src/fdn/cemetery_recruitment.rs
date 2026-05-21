@@ -1,10 +1,6 @@
 //! Cemetery Recruitment — `{1}{B}` sorcery. "Return target creature
-//! card from your graveyard to your hand. If it's a Zombie card,
-//! draw a card."
-//!
-//! The conditional Zombie-card draw is not expressible: there is no
-//! catalog predicate to test the returned card's subtype. We honor
-//! the return; the conditional draw is gapped.
+//! card from your graveyard to your hand. If it's a Zombie card, draw
+//! a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,30 +24,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature card from your graveyard to your hand. If it's a Zombie card, draw a card.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target creature card from your graveyard to your \
+                       hand. If it's a Zombie card, draw a card.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: no catalog predicate to test whether the returned card is a
-    // Zombie card, so the conditional "draw a card" is omitted.
+    // GAP: the conditional "if it's a Zombie card, draw a card" rider
+    // cannot be expressed against the returned card; emit the return.
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

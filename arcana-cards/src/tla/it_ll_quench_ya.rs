@@ -1,5 +1,7 @@
-//! It'll Quench Ya! — `{1}{U}` instant — Lesson. "Counter target
-//! spell unless its controller pays {2}."
+//! It'll Quench Ya! — `{1}{U}` instant (Lesson). "Counter target spell
+//! unless its controller pays {2}." Lesson subtype isn't expressible
+//! via Characteristics here; the spell text itself maps cleanly to
+//! CounterUnlessPays.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,21 +23,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: 'Lesson' subtype on Instant — no subtype interning at this
+    // characteristic-level layer for instants/sorceries.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell unless its controller pays {2}.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell unless its controller pays {2}.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::CounterUnlessPays {

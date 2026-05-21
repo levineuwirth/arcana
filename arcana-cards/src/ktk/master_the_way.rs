@@ -1,6 +1,5 @@
-//! Master the Way — `{3}{U}{R}` sorcery, "Draw a card. Master the Way
-//! deals damage to any target equal to the number of cards in your
-//! hand." Damage counts the hand after the draw.
+//! Master the Way — `{3}{U}{R}` sorcery. Draw a card. Deals damage to
+//! any target equal to the number of cards in your hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,16 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw a card. Master the Way deals damage to any target equal to the number of cards in your hand.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw a card. Master the Way deals damage to any target equal to the number of cards in your hand.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -42,10 +46,13 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // Hand after the draw = current hand size + 1.
-    let amount = script::hand_size(state, entry.controller) + 1;
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 1 },
-        Effect::DealDamage { source: entry.source, target: dt, amount },
-    ]
+    let mut effects = vec![Effect::DrawCards { player: entry.controller, count: 1 }];
+    // After the draw, hand-size will reflect the new card.
+    let n = script::hand_size(state, entry.controller) + 1;
+    effects.push(Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: n,
+    });
+    effects
 }

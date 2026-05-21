@@ -1,10 +1,6 @@
-//! Proctor's Gaze — `{2}{G}{U}` instant, "Return up to one target
+//! Proctor's Gaze — `{2}{G}{U}` instant. "Return up to one target
 //! nonland permanent to its owner's hand. Search your library for a
 //! basic land card, put it onto the battlefield tapped, then shuffle."
-//!
-//! GAP: the tutor filter cannot constrain to the Basic supertype
-//! (ObjectFilter has no supertype refinement), so it is modeled as a
-//! land-card tutor.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -48,14 +44,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effects.push(Effect::ReturnToHand { target: *id });
+    let mut out: Vec<Effect> = Vec::new();
+    if let Some(target) = entry.targets.targets.first() {
+        if let TargetChoice::Object(id) = target {
+            out.push(Effect::ReturnToHand { target: *id });
+        }
     }
-    effects.push(Effect::TutorToBattlefield {
+    // GAP: 'basic land card' tutor filter — no supertype (Basic) filter on
+    // ObjectFilter; approximated as any land card put onto the battlefield tapped.
+    out.push(Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
         tapped: true,
     });
-    effects
+    out
 }

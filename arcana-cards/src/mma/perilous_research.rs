@@ -1,5 +1,5 @@
-//! Perilous Research — `{1}{U}` instant. "Draw two cards, then
-//! sacrifice a permanent."
+//! Perilous Research — `{1}{U}` instant. Draw two cards, then sacrifice
+//! a permanent.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,21 +20,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw two cards, then sacrifice a permanent.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw two cards, then sacrifice a permanent.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 2,
-        },
+        Effect::DrawCards { player: entry.controller, count: 2 },
         Effect::Sacrifice {
             player: entry.controller,
             filter: ObjectFilter::permanent(),

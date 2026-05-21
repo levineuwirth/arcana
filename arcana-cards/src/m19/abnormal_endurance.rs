@@ -1,8 +1,6 @@
 //! Abnormal Endurance — `{1}{B}` instant. "Until end of turn, target
-//! creature gets +2/+0 and gains 'When this creature dies, return it
-//! to the battlefield tapped under its owner's control.'" The granted
-//! dies-trigger reanimation rider is not expressible; we emit the
-//! +2/+0 pump.
+//! creature gets +2/+0 and gains 'When this creature dies, return it to
+//! the battlefield tapped under its owner's control.'"
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Until end of turn, target creature gets +2/+0 and gains \"When this creature dies, return it to the battlefield tapped under its owner's control.\"".into(),
+            text: "Until end of turn, target creature gets +2/+0 and gains a dies-trigger returning it to the battlefield tapped.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -34,9 +32,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: granted dies-triggered reanimation rider not expressible.
-    // +2/+0 pump emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: granting a "when this dies, return it tapped" dies-trigger to a
+    // creature is not expressible; only the pump is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

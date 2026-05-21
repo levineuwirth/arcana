@@ -1,9 +1,5 @@
-//! Icequake — `{1}{B}{B}` sorcery. "Destroy target land. If that land
-//! was a snow land, Icequake deals 1 damage to that land's
-//! controller."
-//!
-//! GAP: snow-supertype filter / per-land "controller" damage rider.
-//! Only the destroy is emitted.
+//! Icequake — `{1}{B}{B}` sorcery. "Destroy target land. If that land was
+//! a snow land, Icequake deals 1 damage to that land's controller."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,10 +37,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: snow-supertype detection + ping its controller.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: snow-supertype predicate not exposed for use inside
+    // Effect::Conditional, so the 1-damage rider can't be conditional.
     vec![Effect::DestroyPermanent { target: *id }]
 }

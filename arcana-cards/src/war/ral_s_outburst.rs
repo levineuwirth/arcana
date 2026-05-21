@@ -1,6 +1,8 @@
 //! Ral's Outburst — `{2}{U}{R}` instant. "Ral's Outburst deals 3
 //! damage to any target. Look at the top two cards of your library.
 //! Put one of them into your hand and the other into your graveyard."
+//! The look-and-choose step is not in the catalog; we emit damage +
+//! Scry-1 + DrawCards-1 as an honest partial and GAP the rest.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,16 +24,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Ral's Outburst deals 3 damage to any target. Look at the top two cards of your library. Put one of them into your hand and the other into your graveyard.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Ral's Outburst deals 3 damage to any target. Look at the top two cards of your library. Put one of them into your hand and the other into your graveyard.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: look-top-2-and-split (hand/graveyard) not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -41,12 +49,5 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // The "look at top two, one to hand / one to graveyard" dig is
-    // not expressible with the available card-flow effects; emit the
-    // damage portion.
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 3,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
 }

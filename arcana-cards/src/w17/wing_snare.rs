@@ -20,14 +20,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature with flying.".into(),
-            // GAP: no ObjectFilter builder for "has keyword flying";
-            // narrowed to target creature.
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "with flying" target restriction — no ObjectFilter
+                // refinement filters by keyword; target is any creature.
+                text: "Destroy target creature with flying.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

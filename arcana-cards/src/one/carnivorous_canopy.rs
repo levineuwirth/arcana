@@ -1,11 +1,6 @@
 //! Carnivorous Canopy — `{2}{G}` sorcery. "Destroy target artifact,
 //! enchantment, or creature with flying. If that permanent's mana
 //! value was 3 or less, proliferate."
-//!
-//! Note: the "artifact, enchantment, or creature with flying"
-//! disjunctive target is approximated by a permanent target; the
-//! conditional proliferate is not expressible. Only the destroy is
-//! emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,8 +25,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target artifact, enchantment, or creature with flying. If that permanent's mana value was 3 or less, proliferate.".into(),
+            // Best-effort target shape — artifact/enchantment OR a
+            // flying creature combined into one filter is awkward,
+            // but with_types_any covers artifact/enchantment, and the
+            // KeywordAbility::Flying filtering for the creature arm
+            // is GAP'd (no keyword predicate on ObjectFilter).
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::CREATURE,
+                    )),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -41,11 +45,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: conditional proliferate (no Proliferate effect) not
-    // expressible; only the destroy is emitted.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: proliferate (no Effect::Proliferate) and "mana value was
+    // 3 or less at time of destruction" predicate. Emit destroy only.
     vec![Effect::DestroyPermanent { target: *id }]
 }

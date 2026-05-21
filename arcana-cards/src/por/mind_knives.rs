@@ -1,5 +1,5 @@
-//! Mind Knives — `{1}{B}` sorcery. "Target opponent discards a card
-//! at random."
+//! Mind Knives — `{1}{B}` sorcery. "Target opponent discards a card at
+//! random."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -30,10 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    vec![Effect::Discard {
-        player: *p,
-        count: 1,
-        choice: DiscardChoice::Random,
-    }]
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::Random }]
 }

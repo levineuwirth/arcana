@@ -1,8 +1,10 @@
 //! Mythos of Nethroi — `{2}{B}` instant. "Destroy target nonland
 //! permanent if it's a creature or if {G}{W} was spent to cast this
-//! spell." The mana-spent condition is untrackable; the target is
-//! constrained to a creature so the destroy is always legal, and the
-//! {G}{W}-spent broadening of valid targets is gapped.
+//! spell." We can target a nonland permanent; the conditional destroy
+//! (only fires if creature OR colored-mana-spent) — colored-mana
+//! tracking is not in catalog. We emit destroy unconditionally for the
+//! creature branch and rely on the target filter to restrict to
+//! creatures; GAP the GW-spent branch.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,8 +41,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: the "{G}{W} was spent" alternative (which would let any
-    // nonland permanent be targeted) is untrackable; only the
-    // creature case is implemented.
+    // GAP: "{G}{W} was spent to cast this" branch (nonland permanent destroy) not in catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

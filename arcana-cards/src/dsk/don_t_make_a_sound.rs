@@ -1,8 +1,7 @@
 //! Don't Make a Sound — `{1}{U}` instant. "Counter target spell
-//! unless its controller pays {2}. If they do, surveil 2."
-//!
-//! The soft counter is expressed; the "if they pay, surveil 2"
-//! conditional rider cannot observe whether payment was made.
+//! unless its controller pays {2}. If they do, surveil 2." We can't
+//! conditionally branch on whether the {2} was paid — best effort:
+//! emit the soft counter (the surveil-if-paid rider is the GAP).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +24,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell unless its controller pays {2}. If they do, surveil 2.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell unless its controller pays {2}. If they do, surveil 2.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "If they do, surveil 2" — cannot observe whether the tax was paid.
+    // GAP: surveil-2-if-they-paid rider isn't expressible (no post-CounterUnlessPays branch).
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{2}").expect("valid cost"),

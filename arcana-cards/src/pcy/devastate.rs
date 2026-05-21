@@ -4,7 +4,7 @@
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -39,29 +39,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let creatures = script::ids_matching(
-        state,
-        &ObjectFilter::creature(),
-        entry.controller,
-    );
-    let mut effects = vec![
-        Effect::DestroyPermanent { target: *id },
-        Effect::ForEach {
-            targets: creatures,
-            effect: Box::new(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(NULL_OBJECT_ID),
-                amount: 1,
-            }),
-        },
-    ];
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let mut effects = vec![Effect::DestroyPermanent { target: *id }];
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    for cid in creatures {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(cid),
+            amount: 1,
+        });
+    }
     for p in script::all_players(state) {
         effects.push(Effect::DealDamage {
             source: entry.source,
@@ -69,5 +59,5 @@ fn resolve(
             amount: 1,
         });
     }
-    vec![Effect::Sequence(effects)]
+    effects
 }

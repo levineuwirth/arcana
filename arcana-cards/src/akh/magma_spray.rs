@@ -1,7 +1,8 @@
 //! Magma Spray — `{R}` instant. "Magma Spray deals 2 damage to target
 //! creature. If that creature would die this turn, exile it instead."
-//! GAP: "if that creature would die this turn, exile it instead" is a
-//! replacement effect not in catalog. Emits DealDamage only.
+//! The replacement-effect 'exile instead of die this turn' on the
+//! damaged creature isn't a catalog primitive — only the damage
+//! resolves.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,7 +41,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if that creature would die this turn, exile it instead" replacement effect not in catalog
+    // GAP: 'if that creature would die this turn, exile it instead' —
+    // no catalog primitive for a die→exile replacement on a target.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

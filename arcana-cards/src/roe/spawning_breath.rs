@@ -1,7 +1,7 @@
 //! Spawning Breath — `{1}{R}` instant. "Spawning Breath deals 1 damage to
-//! any target. Create a 0/1 colorless Eldrazi Spawn creature token." Spawn's
-//! "Sacrifice this token: Add {C}" ability isn't expressible — emit token
-//! stub and GAP the activated ability.
+//! any target. Create a 0/1 colorless Eldrazi Spawn creature token. It has
+//! 'Sacrifice this token: Add {C}.'" The token's mana ability is not
+//! expressible; the token is created without it.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
@@ -35,40 +35,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(target) = entry.targets.targets.first() {
-        let dt = match target {
-            TargetChoice::Object(id) => DamageTarget::Object(*id),
-            TargetChoice::Player(p) => DamageTarget::Player(*p),
-            TargetChoice::ObjectOrPlayer(o) => match o {
-                ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-                ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
-            },
-        };
-        out.push(Effect::DealDamage {
-            source: entry.source,
-            target: dt,
-            amount: 1,
-        });
-    }
-    let eldrazi = reg.interner().lookup("Eldrazi").expect("Eldrazi interned during register()");
-    let spawn = reg.interner().lookup("Spawn").expect("Spawn interned during register()");
+    // GAP: the token's "Sacrifice this token: Add {C}" mana ability cannot be
+    // attached to a TokenDefinition.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let dt = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
+    };
+    let eldrazi = reg.interner().lookup("Eldrazi").expect("Eldrazi interned");
+    let spawn = reg.interner().lookup("Spawn").expect("Spawn interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(eldrazi);
     subtypes.0.insert(spawn);
-    // GAP: token's "Sacrifice this token: Add {C}" activated ability not expressible.
-    out.push(Effect::CreateToken {
-        controller: entry.controller,
-        token: TokenDefinition {
-            name: spawn,
-            colors: ColorSet::new(),
-            types: TypeLine::CREATURE.into(),
-            subtypes,
-            power: Some(PtValue::Fixed(0)),
-            toughness: Some(PtValue::Fixed(1)),
-            keywords: vec![],
-            abilities: vec![],
-        },
-    });
-    out
+    let token = TokenDefinition {
+        name: spawn,
+        colors: ColorSet::new(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(0)),
+        toughness: Some(PtValue::Fixed(1)),
+        keywords: vec![],
+        abilities: vec![],
+    };
+    vec![
+        Effect::DealDamage { source: entry.source, target: dt, amount: 1 },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

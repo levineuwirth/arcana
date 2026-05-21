@@ -1,10 +1,10 @@
 //! Firemind's Foresight — `{5}{U}{R}` instant. "Search your library
 //! for an instant card with mana value 3, reveal it, and put it into
 //! your hand. Then repeat this process for instant cards with mana
-//! values 2 and 1. Then shuffle."
-//!
-//! Three sequential tutors to hand, filtered to instant cards of
-//! exact mana value 3, 2, and 1.
+//! values 2 and 1. Then shuffle." GAP: TutorToHand's ObjectFilter
+//! does support with_exact_cmc, but the chained-three-tutors-in-one
+//! resolution does compose; emit three TutorToHand entries with the
+//! instant filter narrowed by exact CMC.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,12 +25,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for an instant card with mana value 3, reveal it, and put it into your hand. Then repeat this process for instant cards with mana values 2 and 1. Then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for an instant card with mana value 3, reveal it, and put it into your hand. Then repeat this process for instant cards with mana values 2 and 1. Then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,27 +40,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let instant_at = |cmc: u32| ObjectFilter::new()
+        .with_types(TypeLine::INSTANT.into())
+        .with_exact_cmc(cmc);
     vec![
-        Effect::TutorToHand {
-            player: entry.controller,
-            filter: ObjectFilter::new()
-                .with_types(TypeLine::INSTANT.into())
-                .with_exact_cmc(3),
-            reveal: true,
-        },
-        Effect::TutorToHand {
-            player: entry.controller,
-            filter: ObjectFilter::new()
-                .with_types(TypeLine::INSTANT.into())
-                .with_exact_cmc(2),
-            reveal: true,
-        },
-        Effect::TutorToHand {
-            player: entry.controller,
-            filter: ObjectFilter::new()
-                .with_types(TypeLine::INSTANT.into())
-                .with_exact_cmc(1),
-            reveal: true,
-        },
+        Effect::TutorToHand { player: entry.controller, filter: instant_at(3), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: instant_at(2), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: instant_at(1), reveal: true },
     ]
 }

@@ -1,6 +1,6 @@
 //! Crack Open — `{2}{G}` sorcery. "Destroy target artifact or enchantment.
-//! Create a Treasure token." Treasure's "{T}, sacrifice: add one mana of any
-//! color" activated ability isn't expressible — emit token stub and GAP it.
+//! Create a Treasure token." The Treasure token's mana ability cannot be
+//! attached to a TokenDefinition; the token is created as a bare artifact.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -27,11 +27,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target artifact or enchantment. Create a Treasure token.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into()),
-                ),
+                filter: TargetFilter::Permanent(ObjectFilter::permanent().with_types_any(
+                    TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT),
+                )),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -42,26 +40,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::DestroyPermanent { target: *id });
-    }
-    let treasure = reg.interner().lookup("Treasure").expect("Treasure interned during register()");
+    // GAP: the Treasure token's "{T}, Sacrifice: Add any color" mana ability
+    // cannot be expressed on a TokenDefinition.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let treasure = reg.interner().lookup("Treasure").expect("Treasure interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
-    // GAP: Treasure token's "{T}, sacrifice: add one mana of any color" activated ability not expressible.
-    out.push(Effect::CreateToken {
-        controller: entry.controller,
-        token: TokenDefinition {
-            name: treasure,
-            colors: ColorSet::new(),
-            types: TypeLine::ARTIFACT.into(),
-            subtypes,
-            power: None,
-            toughness: None,
-            keywords: vec![],
-            abilities: vec![],
-        },
-    });
-    out
+    let token = TokenDefinition {
+        name: treasure,
+        colors: ColorSet::new(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

@@ -1,6 +1,5 @@
-//! Act of Heroism — `{1}{W}` instant. "Untap target creature. It gets
-//! +2/+2 until end of turn and can block an additional creature this
-//! turn."
+//! Act of Heroism — `{1}{W}` instant. Untap target creature. It gets
+//! +2/+2 until end of turn. (Block-additional rider not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Untap target creature. It gets +2/+2 until end of turn and can block an additional creature this turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Untap target creature. It gets +2/+2 until end of turn and can block an additional creature this turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,12 +37,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "can block an additional creature this turn" is not expressible;
-    // untap + pump are applied.
+    let id = *id;
+    // GAP: "can block an additional creature this turn" not modeled.
     vec![
-        Effect::Untap { target: *id },
+        Effect::Untap { target: id },
         Effect::Pump {
-            target: *id,
+            target: id,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,

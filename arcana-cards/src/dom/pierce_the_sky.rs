@@ -1,8 +1,6 @@
-//! Pierce the Sky — `{1}{G}` instant. "Pierce the Sky deals 7 damage to
-//! target creature with flying."
-//!
-//! GAP: `ObjectFilter` exposes no `with_keyword(Flying)` builder, so the
-//! flying restriction is honest text-only on the target.
+//! Pierce the Sky — `{1}{G}` instant. "Pierce the Sky deals 7 damage
+//! to target creature with flying." Flying-target filter not in
+//! ObjectFilter; emit as plain creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

@@ -1,5 +1,5 @@
-//! Funeral Rites — `{2}{B}` sorcery. "You draw two cards, lose 2 life,
-//! then mill two cards."
+//! Funeral Rites — `{2}{B}` sorcery. "You draw two cards, lose 2
+//! life, then mill two cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,28 +19,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You draw two cards, lose 2 life, then mill two cards.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You draw two cards, lose 2 life, then mill two cards.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 2,
-        },
-        Effect::LoseLife {
-            player: entry.controller,
-            amount: 2,
-        },
-        Effect::Mill {
-            player: entry.controller,
-            count: 2,
-        },
+        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::LoseLife { player: entry.controller, amount: 2 },
+        Effect::Mill { player: entry.controller, count: 2 },
     ]
 }

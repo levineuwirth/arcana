@@ -17,33 +17,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{G}{U}{R}").expect("valid cost")),
-        colors: ColorSet::green() | ColorSet::blue() | ColorSet::red(),
+        colors: ColorSet::blue() | ColorSet::red() | ColorSet::green(),
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target creature spell. Put two +1/+1 counters \
-                   on up to one target creature."
-                .into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Spell(
-                        ObjectFilter::default()
-                            .with_types(TypeLine::CREATURE.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target creature spell. Put two +1/+1 counters on up to one target creature.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Spell(
+                            ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Creature,
+                        count: TargetCount::UpTo(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -52,17 +50,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ts = &entry.targets.targets;
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = ts.first() {
-        out.push(Effect::Counter { target: *id });
+    let mut effects: Vec<Effect> = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::Counter { target: *id });
     }
-    if let Some(TargetChoice::Object(id)) = ts.get(1) {
-        out.push(Effect::AddCounters {
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.get(1) {
+        effects.push(Effect::AddCounters {
             target: *id,
             kind: CounterKind::PlusOnePlusOne,
             count: 2,
         });
     }
-    out
+    effects
 }

@@ -1,8 +1,7 @@
-//! Mind Roots — `{1}{B}{G}` sorcery. "Target player discards two
-//! cards. Put up to one land card discarded this way onto the
-//! battlefield tapped under your control." The discard is
-//! expressible; recovering a land from the just-discarded cards has
-//! no primitive (GAP-noted, partial).
+//! Mind Roots — `{1}{B}{G}` sorcery. Target player discards two cards.
+//! Put up to one land card discarded this way onto the battlefield
+//! tapped under your control. (Land-from-discarded rider not modeled —
+//! emit the discard only.)
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -32,14 +31,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "put up to one land card discarded this way onto the
-    // battlefield" — no primitive references the just-discarded cards.
-    let Some(target) = _entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: cannot link "land card discarded this way" to a battlefield put-onto effect.
     vec![Effect::Discard {
         player: *p,
         count: 2,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

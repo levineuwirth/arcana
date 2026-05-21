@@ -1,5 +1,5 @@
-//! Big Play — `{1}{G}` instant. "Target creature gets +2/+2 and gains
-//! reach until end of turn. Put a +1/+1 counter on it."
+//! Big Play — `{1}{G}` instant. "Target creature gets +2/+2 and
+//! gains reach until end of turn. Put a +1/+1 counter on it."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,7 +30,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![

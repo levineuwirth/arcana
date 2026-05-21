@@ -1,5 +1,5 @@
-//! Dry Spell — `{1}{B}` sorcery. "Dry Spell deals 1 damage to each
-//! creature and each player."
+//! Dry Spell — `{1}{B}` sorcery. "Dry Spell deals 1 damage to each creature
+//! and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,12 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Dry Spell deals 1 damage to each creature and each player.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Dry Spell deals 1 damage to each creature and each player.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -36,9 +37,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut out = vec![Effect::ForEach {
-        targets: ids,
+    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut effects = vec![Effect::ForEach {
+        targets: creature_ids,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),
@@ -46,11 +47,11 @@ fn resolve(
         }),
     }];
     for p in script::all_players(state) {
-        out.push(Effect::DealDamage {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Player(p),
             amount: 1,
         });
     }
-    out
+    effects
 }

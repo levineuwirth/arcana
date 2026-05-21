@@ -1,9 +1,6 @@
-//! Barrin's Unmaking — `{1}{U}` instant. "Return target permanent to its
-//! owner's hand if that permanent shares a color with the most common
-//! color among all permanents or a color tied for most common."
-//!
-//! GAP: no "most common color among all permanents" analysis; the
-//! conditional bounce is emitted unconditionally as best-effort.
+//! Barrin's Unmaking — `{1}{U}` instant. Return target permanent to
+//! its owner's hand if that permanent shares a color with the most
+//! common color among all permanents or a color tied for most common.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,6 +44,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: most-common-color condition not modeled.
+    // GAP: cannot enumerate per-color permanent histograms via script::* to
+    // compute "most common color". Best-effort: unconditional bounce.
     vec![Effect::ReturnToHand { target: *id }]
 }

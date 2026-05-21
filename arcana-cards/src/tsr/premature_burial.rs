@@ -1,8 +1,5 @@
 //! Premature Burial — `{1}{B}` sorcery. "Destroy target nonblack
 //! creature that entered since your last turn ended."
-//!
-//! Note: the "entered since your last turn ended" timing restriction
-//! is not expressible; modelled as a nonblack creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,6 +24,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target nonblack creature that entered since your last turn ended.".into(),
+            // "Entered since your last turn ended" has no filter
+            // predicate in ObjectFilter; nonblack we can express.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
                     ObjectFilter::creature().without_colors(ColorSet::black()),
@@ -40,9 +39,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "entered since your last turn ended" predicate not in
+    // ObjectFilter.
     vec![Effect::DestroyPermanent { target: *id }]
 }

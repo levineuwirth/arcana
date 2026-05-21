@@ -1,11 +1,9 @@
 //! No Witnesses — `{2}{W}{W}` sorcery. "Each player who controls the
-//! most creatures investigates. Then destroy all creatures." The
-//! conditional per-player investigate (Clue token) is not modeled; we
-//! emit the board wipe (destroy all creatures).
+//! most creatures investigates. Then destroy all creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -33,11 +31,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: conditional per-player investigate (Clue token) not
-    // modeled. Board wipe emitted.
+    // The "investigate" Clue-token rider (gated on most-creatures count) is
+    // not expressible; the board wipe is emitted.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        effect: Box::new(Effect::DestroyPermanent {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+        }),
     }]
 }

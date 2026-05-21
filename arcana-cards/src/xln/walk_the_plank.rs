@@ -1,13 +1,13 @@
-//! Walk the Plank — `{B}{B}` sorcery. "Destroy target non-Merfolk creature."
+//! Walk the Plank — `{B}{B}` sorcery. "Destroy target non-Merfolk
+//! creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
-use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,32 +21,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target non-Merfolk creature.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target non-Merfolk creature.".into(),
+            // GAP: ObjectFilter has no subtype-exclusion predicate to
+            // express "non-Merfolk"; closest available is target
+            // creature.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
 fn resolve(
-    state: &GameState,
+    _state: &GameState,
     entry: &StackEntry,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // Verify target is not a Merfolk via subtype filter
-    let merfolk_filter = script::subtype_filter(reg, "Merfolk");
-    let merfolk_ids = script::ids_matching(state, &merfolk_filter, entry.controller);
-    if merfolk_ids.contains(id) {
-        return Vec::new();
-    }
     vec![Effect::DestroyPermanent { target: *id }]
 }

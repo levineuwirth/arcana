@@ -1,7 +1,6 @@
-//! Incendiary Flow — `{1}{R}` sorcery, "Incendiary Flow deals 3
-//! damage to any target. If a creature dealt damage this way would die
-//! this turn, exile it instead." Replacement-exile rider not
-//! expressible; the damage is modeled.
+//! Incendiary Flow — `{1}{R}` sorcery. Deals 3 damage to any target.
+//! If a creature dealt damage this way would die this turn, exile it
+//! instead.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,16 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Incendiary Flow deals 3 damage to any target. If a creature dealt damage this way would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Incendiary Flow deals 3 damage to any target. If a creature dealt damage this way would die this turn, exile it instead.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -42,6 +46,11 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: "would die this turn, exile it instead" replacement not expressible.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
+    // GAP: dies-to-exile replacement on a damaged-by-this-source creature
+    // not in catalog.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }]
 }

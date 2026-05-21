@@ -3,9 +3,8 @@
 //! for as long as it remains exiled, and mana of any type can be
 //! spent to cast that spell. Exile Heartless Conscription."
 //!
-//! GAP: 'play that card from exile / mana of any type' rider and
-//! self-exile-after-cast aren't catalog primitives. The board wipe
-//! exile is modeled.
+//! The board-wide creature exile is expressed. The play-from-exile
+//! permission and the self-exile have no primitive — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,8 +36,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: play-from-exile permission and "Exile Heartless
+    // Conscription" self-exile have no primitive.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: play-from-exile / any-color-mana / self-exile riders.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),

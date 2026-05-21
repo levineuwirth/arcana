@@ -1,11 +1,11 @@
-//! Lava Coil — `{1}{R}` sorcery, "Lava Coil deals 4 damage to target
-//! creature. If that creature would die this turn, exile it
-//! instead."
+//! Lava Coil — `{1}{R}` sorcery. "Lava Coil deals 4 damage to target
+//! creature. If that creature would die this turn, exile it instead."
 //!
-//! The 4 damage is applied. GAP: the "if it would die this turn,
-//! exile it instead" replacement rider is not expressible.
+//! Damage half expressible. 'Exile instead of die' replacement for the rest
+//! of turn is not a catalog primitive — but the engine offers a DelayedAction
+//! ThisDies → Exile, which approximates 'exile when it dies this turn'.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -25,21 +25,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Lava Coil deals 4 damage to target creature. If that creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Lava Coil deals 4 damage to target creature. If that creature would die this turn, exile it instead.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 4,
-    }]
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 4,
+        },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::ThisDies,
+            action: DelayedAction::Exile,
+        },
+    ]
 }

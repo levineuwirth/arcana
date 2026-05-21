@@ -25,7 +25,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target black or red permanent.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().with_colors(ColorSet::black() | ColorSet::red()),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -38,7 +40,5 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "black OR red" is a color disjunction not expressible with the
-    // conjunctive with_colors filter; target is any permanent.
     vec![Effect::ExilePermanent { target: *id }]
 }

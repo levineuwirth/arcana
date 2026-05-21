@@ -1,5 +1,6 @@
-//! Rumbling Rockslide — `{3}{R}` sorcery. "Rumbling Rockslide deals damage to
-//! target creature equal to the number of lands you control."
+//! Rumbling Rockslide — `{3}{R}` sorcery. "Rumbling Rockslide deals
+//! damage to target creature equal to the number of lands you
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

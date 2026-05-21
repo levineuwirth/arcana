@@ -24,9 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target nonblue spell.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::default().without_colors(ColorSet::blue()),
-                ),
+                filter: TargetFilter::Spell(ObjectFilter::default().without_colors(ColorSet::blue())),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -37,6 +35,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::Counter { target: *id }]
 }

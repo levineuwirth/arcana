@@ -1,11 +1,5 @@
 //! Monstrous Rage — `{R}` instant. "Target creature gets +2/+0 until
 //! end of turn. Create a Monster Role token attached to it."
-//!
-//! The +2/+0 until end of turn is emitted. The "Monster Role token
-//! attached to it" (an Aura-like Role token granting +1/+1 and
-//! trample) has no token-attachment / Role primitive.
-//!
-//! GAP: Role token creation and attachment not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -37,8 +31,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: Monster Role token creation/attachment not expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: Role token (an attached Aura-like enchantment token) is not
+    // expressible — only the +2/+0 pump portion is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

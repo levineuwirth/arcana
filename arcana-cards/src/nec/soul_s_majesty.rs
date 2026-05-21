@@ -1,6 +1,5 @@
-//! Soul's Majesty — `{4}{G}` sorcery. "Draw cards equal to the power
-//! of target creature you control." The draw count is dynamic (the
-//! target creature's power).
+//! Soul's Majesty — `{4}{G}` sorcery. Draw cards equal to the power of
+//! target creature you control.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,9 +39,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let n = script::power_of(state, *id).max(0) as u32;
-    vec![Effect::DrawCards { player: entry.controller, count: n }]
+    let count = script::power_of(state, *id).max(0) as u32;
+    vec![Effect::DrawCards {
+        player: entry.controller,
+        count,
+    }]
 }

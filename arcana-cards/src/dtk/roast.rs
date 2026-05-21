@@ -1,6 +1,5 @@
-//! Roast — `{1}{R}` sorcery. "Roast deals 5 damage to target
-//! creature without flying." The "without flying" predicate has no
-//! ObjectFilter support; a creature target is used.
+//! Roast — `{1}{R}` sorcery. "Roast deals 5 damage to target creature
+//! without flying."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,6 +23,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Roast deals 5 damage to target creature without flying.".into(),
+            // GAP: no ObjectFilter predicate for "without flying"; target
+            // is an unfiltered creature.
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -32,9 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "without flying" target restriction not expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

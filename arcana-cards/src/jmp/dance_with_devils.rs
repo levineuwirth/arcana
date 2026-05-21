@@ -1,7 +1,6 @@
 //! Dance with Devils — `{3}{R}` instant. "Create two 1/1 red Devil
 //! creature tokens. They have 'When this token dies, it deals 1
-//! damage to any target.'" The token's death-trigger ability has no
-//! TokenDefinition representation; two plain 1/1 Devils are emitted.
+//! damage to any target.'"
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -31,10 +30,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let devil = reg.interner().lookup("Devil").expect("Devil interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(devil);
+    // GAP: the token's "When this token dies, deal 1 damage" triggered
+    // ability cannot be attached via TokenDefinition.abilities with the
+    // demonstrated API; tokens are created without the death trigger.
     let token = TokenDefinition {
         name: devil,
         colors: ColorSet::red(),
@@ -45,8 +51,6 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: token "when this dies, deals 1 damage to any target"
-    // ability has no TokenDefinition representation.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

@@ -1,4 +1,4 @@
-//! Eyes of the Beholder — `{4}{B}{B}` instant, "Target creature gets
+//! Eyes of the Beholder — `{4}{B}{B}` instant. "Target creature gets
 //! -11/-11 until end of turn."
 
 use arcana_core::effects::Effect;
@@ -35,9 +35,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: -11,

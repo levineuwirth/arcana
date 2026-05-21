@@ -1,11 +1,10 @@
 //! Ray of Command — `{3}{U}` instant. "Untap target creature an
 //! opponent controls and gain control of it until end of turn. That
 //! creature gains haste until end of turn. When you lose control of
-//! the creature, tap it."
-//!
-//! Temporary control-stealing has no catalog Effect; we can untap and
-//! grant haste, but the control transfer and the lose-control trigger
-//! that taps it are GAP'd.
+//! the creature, tap it." Temporary control isn't catalog-shaped —
+//! Effect::ChangeControl is permanent and there's no end-of-turn
+//! variant. Emit Untap + Haste; GAP the gain-control/tap-on-loss
+//! rider.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,25 +29,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Untap target creature an opponent controls and gain control of it until end of turn. That creature gains haste until end of turn. When you lose control of the creature, tap it.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Untap target creature an opponent controls and gain control of it until end of turn. That creature gains haste until end of turn. When you lose control of the creature, tap it.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: gain-control-until-EOT and the lose-control trigger that taps the creature
-    // are not in the catalog Effect surface. Best-effort: untap + grant haste.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: temporary 'gain control until end of turn' + on-loss tap
+    // rider. ChangeControl in the catalog is permanent; per CARD
+    // SCRIPTING guidance, emit Untap+Haste and GAP the control swap
+    // rather than emit a permanent control change.
     vec![
         Effect::Untap { target: *id },
         Effect::GrantKeyword {

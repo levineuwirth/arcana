@@ -2,9 +2,8 @@
 //! for up to three creature cards, reveal them, then shuffle and put
 //! those cards on top in any order."
 //!
-//! No "search and put on top of library" primitive (TutorToHand /
-//! TutorToBattlefield are the only search destinations). Emitting the
-//! closest expressible form: search up to three creatures to hand.
+//! GAP: tutor-to-top-of-library isn't a primitive; closest available
+//! match is creature tutor to hand. Emit best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,10 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to three creature cards, \
-                   reveal them, then shuffle and put those cards on top \
-                   in any order."
-                .into(),
+            text: "Search your library for up to three creature cards, reveal them, then shuffle and put those cards on top in any order.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -42,9 +38,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no "search and put on top of library" primitive; emitting a
-    // single creature tutor-to-hand as the closest approximation (the
-    // up-to-three count and on-top placement are not modeled).
+    // GAP: tutor-to-top-of-library not modeled; fall back to tutor-to-hand.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::creature(),

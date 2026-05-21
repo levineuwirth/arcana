@@ -1,6 +1,6 @@
-//! Corrupt — `{5}{B}` sorcery. "Corrupt deals damage to any target equal
-//! to the number of Swamps you control. You gain life equal to the damage
-//! dealt this way."
+//! Corrupt — `{5}{B}` sorcery. Deals damage to any target equal to the
+//! number of Swamps you control. You gain life equal to the damage
+//! dealt this way.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +10,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectOrPlayer, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectOrPlayer, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,11 +49,9 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    let n = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Swamp").controlled_by(ControllerConstraint::You),
-        entry.controller,
-    );
+    let swamp_filter = script::subtype_filter(reg, "Swamp")
+        .controlled_by(ControllerConstraint::You);
+    let n = script::count_matching(state, &swamp_filter, entry.controller);
     vec![
         Effect::DealDamage { source: entry.source, target: dt, amount: n },
         Effect::GainLife { player: entry.controller, amount: n },

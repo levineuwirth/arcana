@@ -1,10 +1,5 @@
 //! Don't Move — `{3}{W}{W}` sorcery. "Destroy all tapped creatures. Until
 //! your next turn, whenever a creature becomes tapped, destroy it."
-//!
-//! The first half is `ForEach DestroyPermanent` over tapped creatures.
-//! GAP: the second half needs a one-shot lingering "becomes tapped"
-//! trigger that lasts until your next turn — no DelayedAction/effect
-//! variant for that.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all tapped creatures. Until your next turn, whenever a creature becomes tapped, destroy it.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all tapped creatures. Until your next turn, whenever a creature becomes tapped, destroy it.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,13 +35,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "until your next turn, becomes-tapped triggered destruction"
+    // is a floating triggered/replacement effect that the catalog does
+    // not expose. Best-effort: destroy currently-tapped creatures.
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().tapped_only(),
         entry.controller,
     );
-    // GAP: cannot install a lasting "whenever a creature becomes tapped"
-    // trigger from a spell resolve; emitting only the immediate wipe.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

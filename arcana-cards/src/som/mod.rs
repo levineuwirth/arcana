@@ -14,3 +14,4 @@ pub mod tainted_strike;
 pub mod withstand_death;
 pub mod melt_terrain;
 pub mod carrion_call;
+pub mod wing_puncture;

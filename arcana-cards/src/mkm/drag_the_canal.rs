@@ -1,10 +1,11 @@
-//! Drag the Canal — `{U}{B}` instant, "Create a 2/2 white and blue Detective
-//! creature token. If a creature died this turn, you gain 2 life, surveil 2,
-//! then investigate."
-//!
-//! GAP: "if a creature died this turn" — turn-death tracking not in script API.
-//! GAP: Investigate (Clue token activated ability) not expressible in TokenDefinition.
-//! Only the token creation is modeled.
+//! Drag the Canal — `{U}{B}` instant. "Create a 2/2 white and blue
+//! Detective creature token. If a creature died this turn, you gain 2
+//! life, surveil 2, then investigate." 'A creature died this turn' is
+//! not a script helper, and the Clue token sub-ability ('{2}, Sacrifice:
+//! Draw') isn't modelable on a token (no activated ability primitive on
+//! TokenDefinition). We emit the Detective token + best-effort gain 2 /
+//! surveil 2 (we cannot gate on the conditional — emit honest GAP for
+//! the conditional and the Clue's draw activation).
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -40,7 +41,10 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let detective = reg.interner().lookup("Detective").expect("Detective interned during register()");
+    let detective = reg
+        .interner()
+        .lookup("Detective")
+        .expect("Detective interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(detective);
     let token = TokenDefinition {
@@ -53,7 +57,10 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "if a creature died this turn" — turn-death tracking not in script API.
-    // GAP: GainLife 2, Surveil 2, and Clue token (activated ability) not modeled.
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    // GAP: 'if a creature died this turn' predicate; investigate
+    // (Clue tokens with activated-ability draw).
+    vec![Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    }]
 }

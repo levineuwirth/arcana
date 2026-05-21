@@ -1,10 +1,6 @@
-//! Chandra's Defeat — `{R}` instant. "Chandra's Defeat deals 5
-//! damage to target red creature or red planeswalker. If that
-//! permanent is a Chandra planeswalker, you may discard a card. If
-//! you do, draw a card."
-//!
-//! The 5 damage to a red creature is emitted; the "if Chandra
-//! planeswalker, loot" rider is not expressible — GAP.
+//! Chandra's Defeat — `{R}` instant. "Chandra's Defeat deals 5 damage to
+//! target red creature or red planeswalker. If that permanent is a Chandra
+//! planeswalker, you may discard a card. If you do, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -13,9 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,18 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Chandra's Defeat deals 5 damage to target red creature or red planeswalker. If that permanent is a Chandra planeswalker, you may discard a card. If you do, draw a card.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().with_colors(ColorSet::red()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Chandra's Defeat deals 5 damage to target red creature or red planeswalker. If that permanent is a Chandra planeswalker, you may discard a card. If you do, draw a card.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+                            .with_colors(ColorSet::red())
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -48,11 +45,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "if it's a Chandra planeswalker, loot" rider not
-    // expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // Note: the "if it's a Chandra planeswalker, loot" rider needs a subtype predicate
+    // (no such conditional); omitting it.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

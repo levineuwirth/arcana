@@ -1,16 +1,15 @@
-//! Fleeting Flight — `{W}` instant. "Put a +1/+1 counter on target
+//! Fleeting Flight — `{W}` instant. Put a +1/+1 counter on target
 //! creature. It gains flying until end of turn. Prevent all combat
-//! damage that would be dealt to it this turn."
-//!
-//! The +1/+1 counter and the flying grant are expressible. The
-//! combat-damage prevention shield is not modeled by any catalog
-//! Effect; it is omitted (best-effort).
+//! damage that would be dealt to it this turn. (Combat-damage-only
+//! prevention approximated as PreventDamage all-damage.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::replacement::ReplacementDuration;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -42,17 +41,23 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
+    // GAP: "combat damage only" filter not modeled — Effect::PreventDamage prevents all damage.
     vec![
         Effect::AddCounters {
-            target: *id,
+            target: id,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         },
         Effect::GrantKeyword {
-            target: *id,
+            target: id,
             keyword: KeywordAbility::Flying,
             duration: Duration::EndOfTurn,
         },
-        // GAP: prevent-all-combat-damage shield is not an expressible Effect.
+        Effect::PreventDamage {
+            target: DamageTarget::Object(id),
+            amount: None,
+            duration: ReplacementDuration::EndOfTurn,
+        },
     ]
 }

@@ -1,5 +1,5 @@
-//! Moment of Triumph — `{W}` instant. "Target creature gets +2/+2
-//! until end of turn. You gain 2 life."
+//! Moment of Triumph — `{W}` instant. "Target creature gets +2/+2 until
+//! end of turn. You gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -31,16 +31,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::Pump {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Pump {
             target: *id,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-    }
-    out.push(Effect::GainLife { player: entry.controller, amount: 2 });
-    out
+        },
+        Effect::GainLife { player: entry.controller, amount: 2 },
+    ]
 }

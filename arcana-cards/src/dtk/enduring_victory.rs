@@ -1,7 +1,5 @@
 //! Enduring Victory — `{4}{W}` instant. "Destroy target attacking or
-//! blocking creature. Bolster 1." The attacking/blocking restriction
-//! has no filter, and Bolster (least-toughness chooser) has no
-//! primitive; the destroy is emitted.
+//! blocking creature. Bolster 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,6 +22,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target attacking or blocking creature. Bolster 1.".into(),
+            // GAP: no ObjectFilter predicate for "attacking or blocking";
+            // target is an unfiltered creature.
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -32,9 +32,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking or blocking" restriction + Bolster 1 (least
-    // toughness chooser) have no primitive.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: bolster 1 (choose the creature with least toughness you
+    // control, add a +1/+1 counter) is not in the catalog; only the
+    // destroy is emitted.
     vec![Effect::DestroyPermanent { target: *id }]
 }

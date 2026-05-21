@@ -1,5 +1,5 @@
-//! A-Eyes of the Beholder — `{3}{B}{B}` instant. "Target creature
-//! gets -11/-11 until end of turn."
+//! A-Eyes of the Beholder — `{3}{B}{B}` instant. "Target creature gets
+//! -11/-11 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -30,10 +30,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Pump {
         target: *id,
         power: -11,

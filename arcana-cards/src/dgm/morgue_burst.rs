@@ -46,19 +46,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut iter = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(card)) = iter.next() else {
-        return Vec::new();
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    let card_id = match entry.targets.targets.first() {
+        Some(TargetChoice::Object(id)) => Some(*id),
+        _ => None,
     };
-    let amount = script::power_of(state, *card).max(0) as u32;
-    let mut effects = vec![Effect::ReturnFromGraveyardToHand { target: *card }];
-    if let Some(t) = iter.next() {
-        let dt = match t {
+    let amount = card_id
+        .map(|id| script::power_of(state, id).max(0) as u32)
+        .unwrap_or(0);
+    if let Some(id) = card_id {
+        effects.push(Effect::ReturnFromGraveyardToHand { target: id });
+    }
+    if let Some(target) = entry.targets.targets.get(1) {
+        let dt = match target {
             TargetChoice::Object(id) => DamageTarget::Object(*id),
             TargetChoice::Player(p) => DamageTarget::Player(*p),
             TargetChoice::ObjectOrPlayer(o) => match o {

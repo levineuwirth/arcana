@@ -2,8 +2,7 @@
 //! +3/+3 until end of turn. All creatures able to block it this turn
 //! do so."
 //!
-//! The +3/+3 pump is expressible; the lure ("all creatures able to
-//! block it must do so") has no catalog primitive.
+//! GAP: 'must-block' compulsion isn't expressible — emit the pump only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,9 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +3/+3 until end of turn. All \
-                   creatures able to block it this turn do so."
-                .into(),
+            text: "Target creature gets +3/+3 until end of turn. All creatures able to block it this turn do so.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -41,14 +38,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: "all creatures able to block it this turn do so" (lure) has
-    // no catalog primitive.
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    // GAP: must-block rider isn't expressible.
     vec![Effect::Pump {
         target: *id,
         power: 3,

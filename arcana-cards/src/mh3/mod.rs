@@ -8,3 +8,5 @@ pub mod pyretic_rebirth;
 pub mod brainsurge;
 pub mod consuming_corruption;
 pub mod horrific_assault;
+pub mod signature_slam;
+pub mod invert_polarity;

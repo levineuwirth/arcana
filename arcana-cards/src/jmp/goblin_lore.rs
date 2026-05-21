@@ -1,5 +1,5 @@
-//! Goblin Lore — `{1}{R}` sorcery. "Draw four cards, then discard three
-//! cards at random."
+//! Goblin Lore — `{1}{R}` sorcery. Draw four cards, then discard three cards
+//! at random.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -19,12 +19,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw four cards, then discard three cards at random.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw four cards, then discard three cards at random.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -35,10 +36,6 @@ fn resolve(
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: entry.controller, count: 4 },
-        Effect::Discard {
-            player: entry.controller,
-            count: 3,
-            choice: DiscardChoice::Random,
-        },
+        Effect::Discard { player: entry.controller, count: 3, choice: DiscardChoice::Random },
     ]
 }

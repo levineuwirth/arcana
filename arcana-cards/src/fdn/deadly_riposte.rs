@@ -24,12 +24,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Deadly Riposte deals 3 damage to target tapped creature and you gain 2 life."
-                .into(),
+            text: "Deadly Riposte deals 3 damage to target tapped creature and you gain 2 life.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().tapped_only(),
-                ),
+                filter: TargetFilter::Permanent(ObjectFilter::creature().tapped_only()),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -40,17 +37,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::DealDamage {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 3,
-        });
-    }
-    out.push(Effect::GainLife {
-        player: entry.controller,
-        amount: 2,
-    });
-    out
+        },
+        Effect::GainLife { player: entry.controller, amount: 2 },
+    ]
 }

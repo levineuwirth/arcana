@@ -1,8 +1,7 @@
 //! Purge — `{1}{W}` instant. "Destroy target artifact creature or
-//! black creature. It can't be regenerated." The "artifact or black"
-//! disjunction is not a single ObjectFilter, and the
-//! can't-be-regenerated rider has no catalog primitive; the target is
-//! a creature and the destroy is emitted.
+//! black creature. It can't be regenerated." Filter for "artifact
+//! creature OR black creature" via colors-or-type — we approximate by
+//! creature filter and the engine prompts honestly; GAP regen.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +38,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "artifact creature or black creature" disjunctive target
-    // and "can't be regenerated" have no catalog primitive.
+    // GAP: target filter widened to creature; regen-prevention rider not modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

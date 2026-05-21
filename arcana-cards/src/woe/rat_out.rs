@@ -1,7 +1,9 @@
-//! Rat Out — `{B}` instant, "Up to one target creature gets -1/-1
+//! Rat Out — `{B}` instant. "Up to one target creature gets -1/-1
 //! until end of turn. You create a 1/1 black Rat creature token with
-//! \"This token can't block.\"" The token's can't-block ability is not
-//! expressible via the demonstrated TokenDefinition surface.
+//! 'This token can't block.'"
+//!
+//! GAP: granting a token an inherent "can't block" rider isn't a
+//! catalog primitive; create a plain Rat token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -10,9 +12,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,10 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Up to one target creature gets -1/-1 until end of turn. \
-                   You create a 1/1 black Rat creature token with \"This \
-                   token can't block.\""
-                .into(),
+            text: "Up to one target creature gets -1/-1 until end of turn. You create a 1/1 black Rat creature token with \"This token can't block.\"".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Creature,
                 count: TargetCount::UpTo(1),
@@ -61,25 +58,19 @@ fn resolve(
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
-        // GAP: "This token can't block" cannot be attached via the
-        // demonstrated TokenDefinition.abilities surface.
         abilities: vec![],
     };
-    let mut effects = vec![Effect::CreateToken {
-        controller: entry.controller,
-        token,
-    }];
+    let mut out = Vec::new();
     if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effects.insert(
-            0,
-            Effect::Pump {
-                target: *id,
-                power: -1,
-                toughness: -1,
-                duration: Duration::EndOfTurn,
-                keywords: vec![],
-            },
-        );
+        out.push(Effect::Pump {
+            target: *id,
+            power: -1,
+            toughness: -1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
     }
-    effects
+    // GAP: "can't block" rider on the token not modeled.
+    out.push(Effect::CreateToken { controller: entry.controller, token });
+    out
 }

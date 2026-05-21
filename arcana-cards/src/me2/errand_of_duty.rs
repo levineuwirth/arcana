@@ -21,8 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create a 1/1 white Knight creature token with banding."
-                .into(),
+            text: "Create a 1/1 white Knight creature token with banding.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -35,7 +34,10 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let knight = reg.interner().lookup("Knight").expect("Knight interned");
+    let knight = reg
+        .interner()
+        .lookup("Knight")
+        .expect("Knight interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(knight);
     let token = TokenDefinition {

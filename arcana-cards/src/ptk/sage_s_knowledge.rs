@@ -1,5 +1,5 @@
-//! Sage's Knowledge — `{2}{U}` sorcery. "Return target sorcery card from your
-//! graveyard to your hand."
+//! Sage's Knowledge — `{2}{U}` sorcery. "Return target sorcery card
+//! from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

@@ -1,6 +1,6 @@
-//! Felling Blow — `{2}{G}` sorcery, "Put a +1/+1 counter on target
-//! creature you control. Then that creature deals damage equal to
-//! its power to target creature an opponent controls."
+//! Felling Blow — `{2}{G}` sorcery. "Put a +1/+1 counter on target creature
+//! you control. Then that creature deals damage equal to its power to target
+//! creature an opponent controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,46 +26,53 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Put a +1/+1 counter on target creature you control. Then that creature deals damage equal to its power to target creature an opponent controls.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Put a +1/+1 counter on target creature you control. Then that creature deals damage equal to its power to target creature an opponent controls.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut ts = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(mine)) = ts.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(theirs)) = ts.next() else { return Vec::new(); };
-    // Damage uses power after the +1/+1 counter is added.
-    let amount = (script::power_of(state, *mine) + 1).max(0) as u32;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let targets = &entry.targets.targets;
+    let (Some(t0), Some(t1)) = (targets.first(), targets.get(1)) else { return Vec::new(); };
+    let (TargetChoice::Object(a), TargetChoice::Object(b)) = (t0, t1) else { return Vec::new(); };
+    // Damage is computed AFTER the counter (the counter raises power by +1). Use the
+    // post-counter power = current power + 1.
+    let dmg = (script::power_of(state, *a) + 1).max(0) as u32;
     vec![
         Effect::AddCounters {
-            target: *mine,
+            target: *a,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         },
         Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*theirs),
-            amount,
+            source: *a,
+            target: DamageTarget::Object(*b),
+            amount: dmg,
         },
     ]
 }

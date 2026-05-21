@@ -1,5 +1,5 @@
-//! Wildfire — `{4}{R}{R}` sorcery. "Each player sacrifices four lands of
-//! their choice. Wildfire deals 4 damage to each creature."
+//! Wildfire — `{4}{R}{R}` sorcery. "Each player sacrifices four
+//! lands of their choice. Wildfire deals 4 damage to each creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -37,16 +37,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = script::all_players(state)
+    let mut out: Vec<Effect> = script::all_players(state)
         .into_iter()
         .map(|p| Effect::Sacrifice {
             player: p,
-            filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             count: 4,
         })
         .collect();
     let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    effects.push(Effect::ForEach {
+    out.push(Effect::ForEach {
         targets: creatures,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
@@ -54,5 +54,5 @@ fn resolve(
             amount: 4,
         }),
     });
-    effects
+    out
 }

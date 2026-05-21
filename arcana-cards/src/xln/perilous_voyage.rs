@@ -1,7 +1,9 @@
-//! Perilous Voyage — `{1}{U}` instant, "Return target nonland
+//! Perilous Voyage — `{1}{U}` instant. "Return target nonland
 //! permanent you don't control to its owner's hand. If its mana value
-//! was 2 or less, scry 2." The mana-value-gated scry is not expressible
-//! (no helper exposes a target's mana value); the bounce is.
+//! was 2 or less, scry 2."
+//!
+//! GAP: the conditional scry depends on the target's CMC (not readable
+//! at resolve time); emit the bounce only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,8 +12,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -26,9 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target nonland permanent you don't control to its \
-                   owner's hand. If its mana value was 2 or less, scry 2."
-                .into(),
+            text: "Return target nonland permanent you don't control to its owner's hand. If its mana value was 2 or less, scry 2.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
                     ObjectFilter::permanent()
@@ -49,10 +49,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "if its mana value was 2 or less, scry 2" — no helper
-    // exposes the target's mana value for the conditional.
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    // GAP: target's CMC isn't exposed at resolve time; conditional
+    // scry omitted.
     vec![Effect::ReturnToHand { target: *id }]
 }

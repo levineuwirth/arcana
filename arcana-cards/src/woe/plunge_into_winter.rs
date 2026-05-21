@@ -1,5 +1,5 @@
-//! Plunge into Winter — `{1}{W}` instant, "Tap up to one target creature.
-//! Scry 1, then draw a card."
+//! Plunge into Winter — `{1}{W}` instant. "Tap up to one target
+//! creature. Scry 1, then draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Tap up to one target creature. Scry 1, then draw a card.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
                     count: TargetCount::UpTo(1),
                     controller: None,
                 }],
@@ -40,10 +42,8 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects = Vec::new();
-    if let Some(target) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::Tap { target: *id });
-        }
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::Tap { target: *id });
     }
     effects.push(Effect::Scry { player: entry.controller, count: 1 });
     effects.push(Effect::DrawCards { player: entry.controller, count: 1 });

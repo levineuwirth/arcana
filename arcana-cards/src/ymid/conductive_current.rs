@@ -1,10 +1,6 @@
 //! Conductive Current — `{R}{R}{R}` sorcery. "Conductive Current
-//! deals 3 damage to each creature. Choose an instant or sorcery card
-//! in your hand. It perpetually gains [a damage-boost ability]."
-//!
-//! The perpetual-gain rider on a hand card is not expressible; the
-//! 3-damage-to-each-creature board sweep is emitted via ForEach over
-//! all creatures.
+//! deals 3 damage to each creature. Choose an instant or sorcery
+//! card in your hand. It perpetually gains '...+2 instead.'"
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -36,12 +32,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: perpetual-gain rider on a chosen instant/sorcery in hand
-    // is not expressible; only the board damage is emitted.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    // GAP: "perpetual" gains on a card in hand are not modeled.
     vec![Effect::ForEach {
-        targets: ids,
+        targets: creatures,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),

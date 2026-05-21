@@ -1,6 +1,6 @@
-//! At Least It's a Dry Heat — `{3}{R}` instant, "deals 1,000,000
-//! damage to target creature." (The damage-can't-be-prevented/etc.
-//! flavor riders are not modeled.)
+//! At Least It's a Dry Heat — `{3}{R}` instant. "Deals 1,000,000 damage to
+//! target creature." The 'can't be prevented/redirected/etc.' rider isn't a
+//! separate primitive; emit the literal damage.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,18 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "At Least It's a Dry Heat deals 1,000,000 damage to target creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "At Least It's a Dry Heat deals 1,000,000 damage to target creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'this damage can't be prevented/redirected' rider not catalogued.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

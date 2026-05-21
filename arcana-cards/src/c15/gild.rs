@@ -1,5 +1,5 @@
-//! Gild — `{3}{B}` sorcery. "Exile target creature. Create a Gold
-//! token." (Gold is an artifact token with a mana-ability.)
+//! Gild — `{3}{B}` sorcery. Exile target creature. Create a Gold token.
+//! (Gold mana ability not modeled — token is a plain Gold artifact.)
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. Create a Gold token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. Create a Gold token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,14 +35,12 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let gold = reg.interner().lookup("Gold").expect("Gold interned");
+    let gold = reg
+        .interner()
+        .lookup("Gold")
+        .expect("Gold interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(gold);
-    // Gold token's "Sacrifice this token: Add one mana of any color"
-    // activated ability is not expressible via the token abilities API
-    // here; created as a vanilla artifact token.
     let token = TokenDefinition {
         name: gold,
         colors: ColorSet::new(),
@@ -54,8 +51,13 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    vec![
-        Effect::ExilePermanent { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
-    ]
+    let mut effects: Vec<Effect> = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ExilePermanent { target: *id });
+    }
+    effects.push(Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    });
+    effects
 }

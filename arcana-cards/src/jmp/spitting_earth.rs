@@ -1,6 +1,5 @@
-//! Spitting Earth — `{1}{R}` sorcery. "Spitting Earth deals damage
-//! to target creature equal to the number of Mountains you control."
-//! Dynamic amount = number of Mountains you control.
+//! Spitting Earth — `{1}{R}` sorcery. "Spitting Earth deals damage to
+//! target creature equal to the number of Mountains you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -15,6 +14,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Spitting Earth");
+    let _mountain = reg.interner_mut().intern("Mountain");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{R}").expect("valid cost")),
@@ -33,12 +33,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let n = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Mountain"),
-        entry.controller,
-    );
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let mountains = script::subtype_filter(reg, "Mountain");
+    let n = script::count_matching(state, &mountains, entry.controller);
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,8 +1,10 @@
 //! Vampire's Zeal — `{W}` instant. "Target creature gets +2/+2 until
 //! end of turn. If it's a Vampire, it gains first strike until end of
-//! turn."
+//! turn." The conditional 'if it's a Vampire' branch isn't
+//! expressible with the existing helpers — we always grant first
+//! strike (Pump keyword rider applies regardless of subtype).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -22,27 +24,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +2/+2 until end of turn. If it's a Vampire, it gains first strike until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +2/+2 until end of turn. If it's a Vampire, it gains first strike until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: the "if it's a Vampire, gains first strike" rider needs a
-    // subtype check on the target at resolution, which no permitted
-    // script helper exposes; only the +2/+2 is emitted.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'if it's a Vampire' conditional check on the target's subtypes
+    // isn't expressible — first strike is granted unconditionally.
     vec![Effect::Pump {
         target: *id,
         power: 2,
         toughness: 2,
         duration: Duration::EndOfTurn,
-        keywords: vec![],
+        keywords: vec![KeywordAbility::FirstStrike],
     }]
 }

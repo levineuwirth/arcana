@@ -1,7 +1,9 @@
-//! Destroy the Evidence — `{4}{B}` sorcery, "Destroy target land. Its
+//! Destroy the Evidence — `{4}{B}` sorcery. "Destroy target land. Its
 //! controller reveals cards from the top of their library until they
-//! reveal a land card, then puts those cards into their graveyard." The
-//! reveal-until-land mill is not expressible; the destroy is.
+//! reveal a land card, then puts those cards into their graveyard."
+//!
+//! GAP: 'reveal until X, mill the lot' loop isn't a primitive — emit
+//! the destroy only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,10 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target land. Its controller reveals cards from \
-                   the top of their library until they reveal a land card, \
-                   then puts those cards into their graveyard."
-                .into(),
+            text: "Destroy target land. Its controller reveals cards from the top of their library until they reveal a land card, then puts those cards into their graveyard.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
                     ObjectFilter::new().with_types(TypeLine::LAND.into()),
@@ -47,10 +46,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "reveal from top until a land, then mill those" — no
-    // reveal-until / conditional-count mill Effect in the catalog.
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    // GAP: reveal-until-land-then-mill isn't a catalog primitive.
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,7 +1,7 @@
-//! Hog-Monkey Rampage — `{1}{R/G}` instant. "Choose target creature
-//! you control and target creature an opponent controls. Put a +1/+1
-//! counter on the creature you control if it has power 4 or greater.
-//! Then those creatures fight each other."
+//! Hog-Monkey Rampage — `{1}{R/G}` instant. Choose target creature you
+//! control and target creature an opponent controls. Put a +1/+1 counter
+//! on the creature you control if it has power 4 or greater. Then those
+//! creatures fight each other.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,16 +31,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: vec![
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 },
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -52,18 +50,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(mine)) = it.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(theirs)) = it.next() else { return Vec::new(); };
-    let mut effects = Vec::new();
-    if script::power_of(state, *mine) >= 4 {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(t1) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(t2) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(a) = t1 else { return Vec::new(); };
+    let TargetChoice::Object(b) = t2 else { return Vec::new(); };
+    let a = *a;
+    let b = *b;
+    let mut effects: Vec<Effect> = Vec::new();
+    if script::power_of(state, a) >= 4 {
         effects.push(Effect::AddCounters {
-            target: *mine,
+            target: a,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         });
     }
-    effects.push(Effect::Fight { a: *mine, b: *theirs });
+    effects.push(Effect::Fight { a, b });
     effects
 }

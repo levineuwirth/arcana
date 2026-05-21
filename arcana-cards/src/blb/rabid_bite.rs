@@ -1,5 +1,5 @@
-//! Rabid Bite — `{1}{G}` sorcery, "Target creature you control deals
-//! damage equal to its power to target creature you don't control."
+//! Rabid Bite — `{1}{G}` sorcery. Target creature you control deals
+//! damage equal to its power to target creature you don't control.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +9,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,35 +25,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control deals damage equal to its power to target creature you don't control.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature you control deals damage equal to its power to target creature you don't control.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids: Vec<_> = entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(*id),
-            _ => None,
-        })
-        .collect();
-    if ids.len() < 2 {
-        return Vec::new();
-    }
-    let amount = script::power_of(state, ids[0]).max(0) as u32;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let targets = &entry.targets.targets;
+    let Some(TargetChoice::Object(my_id)) = targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(their_id)) = targets.get(1) else { return Vec::new(); };
+    let amount = script::power_of(state, *my_id).max(0) as u32;
     vec![Effect::DealDamage {
-        source: ids[0],
-        target: DamageTarget::Object(ids[1]),
+        source: *my_id,
+        target: DamageTarget::Object(*their_id),
         amount,
     }]
 }

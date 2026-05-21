@@ -1,5 +1,5 @@
-//! Allied Reinforcements — `{3}{W}` sorcery. "Create two 2/2 white Knight
-//! Ally creature tokens."
+//! Allied Reinforcements — `{3}{W}` sorcery. Create two 2/2 white
+//! Knight Ally creature tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -36,16 +36,16 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let knight = reg.interner().lookup("Knight").expect("Knight interned");
-    let ally = reg.interner().lookup("Ally").expect("Ally interned");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(knight);
-    subtypes.0.insert(ally);
+    let knight = reg.interner().lookup("Knight").expect("interned");
+    let ally = reg.interner().lookup("Ally").expect("interned");
+    let mut subs = SubtypeSet::default();
+    subs.0.insert(knight);
+    subs.0.insert(ally);
     let token = TokenDefinition {
         name: knight,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: subs,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         keywords: vec![],

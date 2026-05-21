@@ -30,9 +30,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = vec![Effect::DrawCards { player: entry.controller, count: 3 }];
+    let mut effects = vec![Effect::DrawCards { player: entry.controller, count: 3 }];
     if let Some(TargetChoice::Player(p)) = entry.targets.targets.first() {
-        out.push(Effect::DrawCards { player: *p, count: 3 });
+        effects.push(Effect::DrawCards { player: *p, count: 3 });
     }
-    out
+    effects
 }

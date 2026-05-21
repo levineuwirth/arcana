@@ -1,9 +1,7 @@
 //! Foul Renewal — `{3}{B}` instant. "Return target creature card from your
 //! graveyard to your hand. Target creature gets -X/-X until end of turn,
-//! where X is the toughness of the card returned this way." Two targets:
-//! a graveyard creature card and a battlefield creature. We use
-//! `script::toughness_of` on the graveyard id (returns 0 if gone, but it's a
-//! grave card, so just read the spec-time value).
+//! where X is the toughness of the card returned this way." X reads the
+//! returned card's toughness; toughness is read before the return move.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -49,17 +47,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(grave)) = entry.targets.targets.first() else { return Vec::new(); };
-    let x = script::toughness_of(state, *grave).max(0);
-    let mut out = vec![Effect::ReturnFromGraveyardToHand { target: *grave }];
-    if let Some(TargetChoice::Object(creature)) = entry.targets.targets.get(1) {
-        out.push(Effect::Pump {
-            target: *creature,
+    let Some(TargetChoice::Object(card)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(victim)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
+    let x = script::toughness_of(state, *card).max(0);
+    vec![
+        Effect::ReturnFromGraveyardToHand { target: *card },
+        Effect::Pump {
+            target: *victim,
             power: -x,
             toughness: -x,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        });
-    }
-    out
+        },
+    ]
 }

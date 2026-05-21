@@ -1,5 +1,5 @@
-//! Zuko's Offense — `{R}` sorcery. "Zuko's Offense deals 2 damage to any
-//! target."
+//! Zuko's Offense — `{R}` sorcery. "Zuko's Offense deals 2 damage to
+//! any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -45,5 +45,9 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 2,
+    }]
 }

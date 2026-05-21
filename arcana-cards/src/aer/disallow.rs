@@ -1,9 +1,8 @@
 //! Disallow — `{1}{U}{U}` instant. "Counter target spell, activated
-//! ability, or triggered ability."
-//!
-//! GAP: 'counter target activated or triggered ability' (in addition
-//! to a spell) is not modeled by TargetFilter::Spell or
-//! Effect::Counter. Only spell-counter is modeled.
+//! ability, or triggered ability." TargetFilter::Spell with default
+//! ObjectFilter covers the spell target; ability counters (activated
+//! / triggered on the stack) aren't a TargetFilter primitive — GAP
+//! the ability-counter branches.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,22 +24,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: counter an activated/triggered ability on the stack (no TargetFilter::Ability).
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell, activated ability, or triggered ability.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell, activated ability, or triggered ability.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: counter-ability mode not in catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Counter { target: *id }]
 }

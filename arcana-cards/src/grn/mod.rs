@@ -25,3 +25,4 @@ pub mod ritual_of_soot;
 pub mod justice_strike;
 pub mod vraska_s_stoneglare;
 pub mod undercity_uprising;
+pub mod gruesome_menagerie;

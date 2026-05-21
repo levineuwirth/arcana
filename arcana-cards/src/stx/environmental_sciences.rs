@@ -1,6 +1,7 @@
-//! Environmental Sciences — `{2}` sorcery (Lesson). "Search your
-//! library for a basic land card, reveal it, put it into your hand,
-//! then shuffle. You gain 2 life."
+//! Environmental Sciences — `{2}` sorcery — Lesson. Search your library
+//! for a basic land card, reveal it, put it into your hand, then
+//! shuffle. You gain 2 life. (Lesson subtype not modeled; basic
+//! predicate approximated.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a basic land card, reveal it, put it into your hand, then shuffle. You gain 2 life.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a basic land card, reveal it, put it into your hand, then shuffle. You gain 2 life.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,14 +36,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "basic" supertype constraint not expressible in ObjectFilter;
-    // search for a land card.
+    // GAP: "basic" predicate not modeled — approximate with any LAND card.
     vec![
         Effect::TutorToHand {
             player: entry.controller,
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             reveal: true,
         },
-        Effect::GainLife { player: entry.controller, amount: 2 },
+        Effect::GainLife {
+            player: entry.controller,
+            amount: 2,
+        },
     ]
 }

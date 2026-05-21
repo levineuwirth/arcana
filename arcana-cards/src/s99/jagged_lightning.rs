@@ -1,5 +1,5 @@
-//! Jagged Lightning — `{3}{R}{R}` sorcery. "Jagged Lightning deals 3
-//! damage to each of two target creatures."
+//! Jagged Lightning — `{3}{R}{R}` sorcery. Deals 3 damage to each of
+//! two target creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,16 +21,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Jagged Lightning deals 3 damage to each of two target creatures.".into(),
-                target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Jagged Lightning deals 3 damage to each of two target creatures.".into(),
+            target_requirements: vec![
+                TargetRequirement::target_creature(),
+                TargetRequirement::target_creature(),
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,15 +38,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut out = Vec::new();
-    for t in entry.targets.targets.iter() {
-        if let TargetChoice::Object(id) = t {
-            out.push(Effect::DealDamage {
+    let mut effects: Vec<Effect> = Vec::new();
+    for choice in &entry.targets.targets {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::DealDamage {
                 source: entry.source,
                 target: DamageTarget::Object(*id),
                 amount: 3,
             });
         }
     }
-    out
+    effects
 }

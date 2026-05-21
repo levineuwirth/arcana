@@ -1,9 +1,5 @@
 //! Devout Decree — `{1}{W}` sorcery. "Exile target creature or
 //! planeswalker that's black or red. Scry 1."
-//!
-//! Planeswalker as an alternative target type has no catalog
-//! TypeLine; the target is restricted to a black-or-red creature and
-//! Scry 1 follows.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,26 +21,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: 'black OR red' color filter — only with_colors (set-equal /
+    // contains-all semantics) is exposed; we approximate with black-or-
+    // red by using with_colors per the prompt's stated API. Use
+    // 'with_colors(ColorSet::black() | ColorSet::red())' which is the
+    // available expression.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target creature or planeswalker that's black or red. Scry 1.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature()
-                        .with_colors(ColorSet::black() | ColorSet::red()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target creature or planeswalker that's black or red. Scry 1.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(arcana_core::types::TypeLine(
+                                TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                            ))
+                            .with_colors(ColorSet::black() | ColorSet::red()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: planeswalker as an alternative target type.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
         Effect::ExilePermanent { target: *id },
         Effect::Scry { player: entry.controller, count: 1 },

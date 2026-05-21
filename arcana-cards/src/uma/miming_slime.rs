@@ -1,6 +1,6 @@
-//! Miming Slime — `{2}{G}` sorcery.
-//! "Create an X/X green Ooze creature token, where X is the greatest power
-//! among creatures you control."
+//! Miming Slime — `{2}{G}` sorcery. "Create an X/X green Ooze
+//! creature token, where X is the greatest power among creatures you
+//! control."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -9,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,30 +23,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create an X/X green Ooze creature token, where X is the greatest power among creatures you control.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create an X/X green Ooze creature token, where X is the greatest power among creatures you control.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let filter = ObjectFilter::creature();
-    let ids = script::ids_matching(state, &filter, entry.controller);
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let ooze = reg
+        .interner()
+        .lookup("Ooze")
+        .expect("Ooze interned during register()");
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
     let x = ids
         .iter()
-        .map(|&id| script::power_of(state, id).max(0))
+        .map(|id| script::power_of(state, *id))
         .max()
-        .unwrap_or(0) as i32;
-
-    let ooze = reg.interner().lookup("Ooze").expect("Ooze interned during register()");
+        .unwrap_or(0)
+        .max(0);
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(ooze);
     let token = TokenDefinition {
@@ -59,5 +60,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    vec![Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    }]
 }

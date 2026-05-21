@@ -1,6 +1,12 @@
 //! Flash Conscription — `{5}{R}` instant. "Untap target creature and
 //! gain control of it until end of turn. That creature gains haste
-//! until end of turn."
+//! until end of turn. If {W} was spent to cast this spell, the
+//! creature gains 'Whenever this creature deals combat damage, you
+//! gain that much life' until end of turn." The catalog has no
+//! 'gain-control-until-EOT' (ChangeControl is permanent), no hybrid
+//! 'mana spent' inspection, and no way to grant a bespoke triggered
+//! ability. We emit only the expressible parts (Untap, GrantKeyword
+//! Haste) and GAP the rest.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -22,20 +28,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn. If {W} was spent to cast this spell, the creature gains \"Whenever this creature deals combat damage, you gain that much life\" until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "gain control of it until end of turn" (Threaten effect) is
-    // not expressible; the {W}-was-spent lifelink rider is also gated
-    // on mana spent. Only untap + haste are modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'gain control until end of turn' — ChangeControl is
+    // permanent in the catalog. GAP: '{W} spent' hybrid conditional and
+    // custom 'gain life equal to combat damage' triggered grant.
     vec![
         Effect::Untap { target: *id },
         Effect::GrantKeyword {

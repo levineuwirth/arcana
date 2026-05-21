@@ -1,5 +1,5 @@
-//! Bathe in Dragonfire — `{2}{R}` sorcery. "Bathe in Dragonfire deals 4 damage
-//! to target creature."
+//! Bathe in Dragonfire — `{2}{R}` sorcery. "Bathe in Dragonfire deals
+//! 4 damage to target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Bathe in Dragonfire deals 4 damage to target creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Bathe in Dragonfire deals 4 damage to target creature.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

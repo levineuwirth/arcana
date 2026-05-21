@@ -1,4 +1,4 @@
-//! Kaervek's Hex — `{3}{B}` sorcery, "Kaervek's Hex deals 1 damage to
+//! Kaervek's Hex — `{3}{B}` sorcery. "Kaervek's Hex deals 1 damage to
 //! each nonblack creature and an additional 1 damage to each green
 //! creature."
 
@@ -38,19 +38,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let nonblack = script::ids_matching(
-        state,
-        &ObjectFilter::creature().without_colors(ColorSet::black()),
-        entry.controller,
-    );
-    let green = script::ids_matching(
-        state,
-        &ObjectFilter::creature().with_colors(ColorSet::green()),
-        entry.controller,
-    );
+    let nonblack = ObjectFilter::creature().without_colors(ColorSet::black());
+    let green = ObjectFilter::creature().with_colors(ColorSet::green());
     vec![
         Effect::ForEach {
-            targets: nonblack,
+            targets: script::ids_matching(state, &nonblack, entry.controller),
             effect: Box::new(Effect::DealDamage {
                 source: entry.source,
                 target: DamageTarget::Object(NULL_OBJECT_ID),
@@ -58,7 +50,7 @@ fn resolve(
             }),
         },
         Effect::ForEach {
-            targets: green,
+            targets: script::ids_matching(state, &green, entry.controller),
             effect: Box::new(Effect::DealDamage {
                 source: entry.source,
                 target: DamageTarget::Object(NULL_OBJECT_ID),

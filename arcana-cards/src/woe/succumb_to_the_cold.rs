@@ -9,7 +9,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -26,7 +27,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Tap one or two target creatures an opponent controls. Put a stun counter on each of them.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                ),
                 count: TargetCount::UpTo(2),
                 controller: None,
             }],
@@ -36,9 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "stun counter on each" rider has no CounterKind in the
-    // catalog; emit the tap of each chosen target.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     entry
         .targets
         .targets
@@ -48,4 +53,7 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             _ => None,
         })
         .collect()
+    // GAP: "put a stun counter on each" — stun counters are not a
+    // catalog CounterKind (only PlusOnePlusOne); the counter clause
+    // is omitted.
 }

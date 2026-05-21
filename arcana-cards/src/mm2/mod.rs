@@ -16,3 +16,4 @@ pub mod wildfire;
 pub mod sigil_blessing;
 pub mod vapor_snag;
 pub mod hurkyl_s_recall;
+pub mod tribal_flames;

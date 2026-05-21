@@ -1,8 +1,5 @@
 //! Reciprocate — `{W}` instant. "Exile target creature that dealt
 //! damage to you this turn."
-//!
-//! Note: the "dealt damage to you this turn" restriction is not
-//! expressible; modelled as exile target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,6 +22,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target creature that dealt damage to you this turn.".into(),
+            // GAP: "dealt damage to you this turn" predicate not in
+            // ObjectFilter.
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -32,9 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

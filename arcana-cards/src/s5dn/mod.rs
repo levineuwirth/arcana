@@ -12,3 +12,4 @@ pub mod feedback_bolt;
 pub mod shattered_dreams;
 pub mod devour_in_shadow;
 pub mod granulate;
+pub mod channel_the_suns;

@@ -1,7 +1,5 @@
 //! Echoing Ruin — `{1}{R}` sorcery. "Destroy target artifact and all
-//! other artifacts with the same name as that artifact." The
-//! same-name sweep has no filter primitive; the targeted destroy is
-//! emitted.
+//! other artifacts with the same name as that artifact."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,9 +38,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "all other artifacts with the same name" — no same-name
-    // ObjectFilter predicate available.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: no filter matches "artifacts with the same name as that
+    // artifact"; only the targeted artifact is destroyed.
     vec![Effect::DestroyPermanent { target: *id }]
 }

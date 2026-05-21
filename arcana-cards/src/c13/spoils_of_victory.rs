@@ -1,9 +1,6 @@
 //! Spoils of Victory — `{2}{G}` sorcery. "Search your library for a
 //! Plains, Island, Swamp, Mountain, or Forest card and put that card
 //! onto the battlefield. Then shuffle."
-//!
-//! Basic-subtype list is not expressible in ObjectFilter; best-effort
-//! tutors any land. Subtype-disjunction is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,17 +21,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a Plains, Island, Swamp, Mountain, or Forest card and put that card onto the battlefield. Then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a Plains, Island, Swamp, Mountain, or Forest card and put that card onto the battlefield. Then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: subtype-disjunction over Plains/Island/Swamp/Mountain/Forest not in ObjectFilter.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // The basic-land disjunction degrades to 'any land' here — the
+    // five basic subtypes can't be ORed in one ObjectFilter and there's
+    // no 'basic' refinement. Verify will flag the subtype gap.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

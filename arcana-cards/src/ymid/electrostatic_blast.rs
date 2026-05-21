@@ -1,7 +1,8 @@
-//! Electrostatic Blast — `{1}{R}` instant, "Electrostatic Blast deals
-//! 2 damage to any target. You get a one-time boon with ..." The boon
-//! mechanic and its triggered impulse-draw are not expressible with the
-//! demonstrated Effect catalog; the damage is.
+//! Electrostatic Blast — `{1}{R}` instant. "Electrostatic Blast deals
+//! 2 damage to any target. You get a one-time boon with [...]."
+//!
+//! GAP: one-time boon / play-from-exile-while-active mechanic not
+//! modeled; emit the damage only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,12 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Electrostatic Blast deals 2 damage to any target. You \
-                   get a one-time boon with \"When you cast an instant or \
-                   sorcery spell, exile the top three cards of your \
-                   library. You may play one of those cards until end of \
-                   turn.\""
-                .into(),
+            text: "Electrostatic Blast deals 2 damage to any target. You get a one-time boon with \"When you cast an instant or sorcery spell, exile the top three cards of your library. You may play one of those cards until end of turn.\"".into(),
             target_requirements: vec![TargetRequirement::any_target()],
             modal: None,
             effect: resolve,
@@ -42,9 +38,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -53,11 +47,6 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: the "one-time boon" with its own cast-triggered impulse draw
-    // is not expressible with the catalog.
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 2,
-    }]
+    // GAP: one-time boon side-effect not modeled.
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
 }

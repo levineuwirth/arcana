@@ -1,6 +1,6 @@
 //! A-Deal Gone Bad — `{3}{B}` instant. "Target creature gets -3/-3
 //! until end of turn. Target player mills three cards. You gain 3
-//! life." Two targets: a creature and a player.
+//! life."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,22 +22,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets -3/-3 until end of turn. Target player mills three cards. You gain 3 life.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_player(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets -3/-3 until end of turn. Target player mills three cards. You gain 3 life.".into(),
+                target_requirements: vec![
+                    TargetRequirement::target_creature(),
+                    TargetRequirement::target_player(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
     if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::Pump {
+        effects.push(Effect::Pump {
             target: *id,
             power: -3,
             toughness: -3,
@@ -46,8 +51,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
         });
     }
     if let Some(TargetChoice::Player(p)) = entry.targets.targets.get(1) {
-        out.push(Effect::Mill { player: *p, count: 3 });
+        effects.push(Effect::Mill { player: *p, count: 3 });
     }
-    out.push(Effect::GainLife { player: entry.controller, amount: 3 });
-    out
+    effects.push(Effect::GainLife { player: entry.controller, amount: 3 });
+    effects
 }

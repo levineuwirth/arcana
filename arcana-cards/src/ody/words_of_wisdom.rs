@@ -1,5 +1,5 @@
-//! Words of Wisdom — `{1}{U}` instant. "You draw two cards, then each
-//! other player draws a card."
+//! Words of Wisdom — `{1}{U}` instant. "You draw two cards, then
+//! each other player draws a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,17 +29,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let mut effects = vec![Effect::DrawCards {
         player: entry.controller,
         count: 2,
     }];
     for p in script::opponents(state, entry.controller) {
-        effects.push(Effect::DrawCards { player: p, count: 1 });
+        effects.push(Effect::DrawCards {
+            player: p,
+            count: 1,
+        });
     }
-    vec![Effect::Sequence(effects)]
+    effects
 }

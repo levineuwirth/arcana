@@ -1,6 +1,8 @@
 //! Growth Curve — `{G}{U}` sorcery. "Put a +1/+1 counter on target
 //! creature you control, then double the number of +1/+1 counters on
-//! that creature."
+//! that creature." Doubling counters has no catalog primitive (we
+//! can't read the current counter count to add the same amount), so
+//! the doubling step is GAP'd; the single counter goes on.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,26 +26,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Put a +1/+1 counter on target creature you control, then double the number of +1/+1 counters on that creature.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Put a +1/+1 counter on target creature you control, then double the number of +1/+1 counters on that creature.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "double the number of +1/+1 counters" — no counter-count
-    // read or counter-doubling primitive; only the single counter is
-    // modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'double the number of +1/+1 counters' — no script::* helper
+    // reads existing counter counts.
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,

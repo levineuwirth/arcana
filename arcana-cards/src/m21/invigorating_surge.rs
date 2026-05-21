@@ -9,7 +9,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
@@ -26,7 +27,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Put a +1/+1 counter on target creature you control, then double the number of +1/+1 counters on that creature.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -36,15 +39,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "Then double the number of +1/+1 counters" is not expressible
-    // (no read of an object's current counter count); emit the
-    // +1/+1 counter portion only.
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,
         count: 1,
     }]
+    // GAP: "then double the number of +1/+1 counters on that creature"
+    // — there is no helper to read a permanent's current counter count,
+    // so the doubling cannot be computed; only the first counter is
+    // placed.
 }

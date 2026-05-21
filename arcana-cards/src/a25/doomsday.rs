@@ -2,9 +2,8 @@
 //! for five cards and exile the rest. Put the chosen cards on top of
 //! your library in any order. You lose half your life, rounded up."
 //!
-//! Dynamic half-life loss is computed. GAP: the library-restructure
-//! primitive (search-five-and-exile-the-rest, place-on-top) isn't in
-//! the catalog.
+//! The library/graveyard rebuild has no engine primitive. Only the
+//! life loss is expressed; the search-and-exile-rest is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,8 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: search-five / exile-the-rest / rebuild-library has no
+    // engine primitive; only the life loss is emitted.
     let life = script::life(state, entry.controller).max(0) as u32;
     let half_up = (life + 1) / 2;
-    // GAP: library/graveyard restructure (search-five-exile-rest, top-order).
     vec![Effect::LoseLife { player: entry.controller, amount: half_up }]
 }

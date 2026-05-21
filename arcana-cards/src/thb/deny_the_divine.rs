@@ -1,11 +1,8 @@
 //! Deny the Divine — `{2}{U}` instant. "Counter target creature or
 //! enchantment spell. If that spell is countered this way, exile it
-//! instead of putting it into its owner's graveyard."
-//!
-//! The "exile instead of graveyard" replacement on the countered spell
-//! is not expressible; the base counter is emitted. "Creature or
-//! enchantment spell" is a disjunctive filter the demonstrated
-//! ObjectFilter can't express, so the spell filter is unconstrained.
+//! instead of putting it into its owner's graveyard." Counter-then-
+//! exile replacement isn't catalog; emit a plain Counter on a filtered
+//! spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,16 +25,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target creature or enchantment spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: cannot replace counter-to-graveyard with exile.
+                text: "Counter target creature or enchantment spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::default().with_types_any(
+                            TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT),
+                        ),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -46,9 +49,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "exile instead of graveyard" replacement on the countered spell not expressible.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Counter { target: *id }]
 }

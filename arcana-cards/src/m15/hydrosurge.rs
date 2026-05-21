@@ -1,5 +1,5 @@
-//! Hydrosurge — `{U}` instant. "Target creature gets -5/-0 until end of
-//! turn."
+//! Hydrosurge — `{U}` instant. "Target creature gets -5/-0 until end
+//! of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

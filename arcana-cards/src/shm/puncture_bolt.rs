@@ -1,8 +1,9 @@
-//! Puncture Bolt — `{1}{R}` instant. "Puncture Bolt deals 1 damage
-//! to target creature. Put a -1/-1 counter on that creature."
+//! Puncture Bolt — `{1}{R}` instant. "Puncture Bolt deals 1 damage to
+//! target creature. Put a -1/-1 counter on that creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -21,25 +22,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Puncture Bolt deals 1 damage to target creature. Put a -1/-1 counter on that creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Puncture Bolt deals 1 damage to target creature. Put a \
+                       -1/-1 counter on that creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: -1/-1 counter — catalog only documents
-    // CounterKind::PlusOnePlusOne; a -1/-1 counter variant is not
-    // shown, so only the damage is expressed.
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 1,
-    }]
+    // GAP: only CounterKind::PlusOnePlusOne exists; the -1/-1 counter
+    // is approximated with a permanent -1/-1 Pump so the stat shift is
+    // not lost.
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 1,
+        },
+        Effect::Pump {
+            target: *id,
+            power: -1,
+            toughness: -1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+    ]
 }

@@ -1,10 +1,10 @@
-//! Steam Blast — `{2}{R}` sorcery. "Steam Blast deals 2 damage to each
-//! creature and each player."
+//! Steam Blast — `{2}{R}` sorcery. "Steam Blast deals 2 damage to
+//! each creature and each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -37,24 +37,21 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let creature_damage = Effect::ForEach {
-        targets: creature_ids,
-        effect: Box::new(Effect::DealDamage {
+    let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let mut effects: Vec<Effect> = Vec::new();
+    for c in creatures {
+        effects.push(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
+            target: DamageTarget::Object(c),
             amount: 2,
-        }),
-    };
-    let player_damage = Effect::Sequence(
-        script::all_players(state)
-            .into_iter()
-            .map(|p| Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Player(p),
-                amount: 2,
-            })
-            .collect(),
-    );
-    vec![creature_damage, player_damage]
+        });
+    }
+    for p in script::all_players(state) {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 2,
+        });
+    }
+    effects
 }

@@ -1,5 +1,5 @@
-//! Read the Bones — `{2}{B}` sorcery.
-//! "Scry 2, then draw two cards. You lose 2 life."
+//! Read the Bones — `{2}{B}` sorcery. "Scry 2, then draw two cards. You
+//! lose 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,21 +19,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Scry 2, then draw two cards. You lose 2 life.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Scry 2, then draw two cards. You lose 2 life.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
         Effect::Scry { player: entry.controller, count: 2 },
         Effect::DrawCards { player: entry.controller, count: 2 },

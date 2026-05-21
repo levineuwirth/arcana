@@ -1,15 +1,14 @@
-//! Tempt with Glory — `{5}{W}` sorcery. "Tempting offer — Put a +1/+1
-//! counter on each creature you control. Each opponent may put a +1/+1
-//! counter on each creature they control. For each opponent who does,
-//! put a +1/+1 counter on each creature you control."
+//! Tempt with Glory — `{5}{W}` sorcery. "Tempting offer — Put a
+//! +1/+1 counter on each creature you control. Each opponent may put
+//! a +1/+1 counter on each creature they control. For each opponent
+//! who does, put a +1/+1 counter on each creature you control."
 //!
-//! Only the first clause (a +1/+1 counter on each creature you
-//! control) is expressible; the tempting-offer opponent choice and the
-//! per-accepting-opponent rider are not.
+//! GAP: "tempting offer" opponent-may-also and matching-rider scaling
+//! aren't expressible — emit only the friendly +1/+1 sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -28,11 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Tempting offer — Put a +1/+1 counter on each creature \
-                   you control. Each opponent may put a +1/+1 counter on \
-                   each creature they control. For each opponent who does, \
-                   put a +1/+1 counter on each creature you control."
-                .into(),
+            text: "Tempting offer - Put a +1/+1 counter on each creature you control. Each opponent may put a +1/+1 counter on each creature they control. For each opponent who does, put a +1/+1 counter on each creature you control.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -50,14 +45,12 @@ fn resolve(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    // GAP: tempting-offer opponent choice and per-accepting-opponent
-    // extra counters are not expressible; only the first clause stands.
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::AddCounters {
-            target: NULL_OBJECT_ID,
+    // GAP: opponent tempting-offer follow-on is not expressible.
+    ids.into_iter()
+        .map(|id| Effect::AddCounters {
+            target: id,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
-        }),
-    }]
+        })
+        .collect()
 }

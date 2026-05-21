@@ -23,22 +23,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy up to one target artifact, enchantment, or creature with flying. Create a Food token.".into(),
-            // GAP: cannot express "artifact, enchantment, OR creature
-            // with flying"; allow any artifact/enchantment.
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into()),
-                ),
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "create a Food token" — Food tokens carry an
+                // activated ability that TokenDefinition cannot express.
+                // The "with flying" branch of the target also can't be
+                // keyword-filtered; target restricted to artifact or
+                // enchantment.
+                text: "Destroy up to one target artifact or enchantment.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -47,8 +50,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no Food token primitive; only the optional destroy is
-    // modeled.
     entry
         .targets
         .targets

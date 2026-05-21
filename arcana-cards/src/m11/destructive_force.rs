@@ -1,9 +1,6 @@
 //! Destructive Force — `{5}{R}{R}` sorcery. "Each player sacrifices five
 //! lands of their choice. Destructive Force deals 5 damage to each
 //! creature."
-//!
-//! Uses `script::all_players` to sacrifice per player, then ForEach over
-//! every creature for the 5 damage sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Each player sacrifices five lands of their choice. Destructive Force deals 5 damage to each creature.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Each player sacrifices five lands of their choice. Destructive Force deals 5 damage to each creature.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,22 +37,25 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effs: Vec<Effect> = script::all_players(state)
+    let land_filter = || ObjectFilter::new().with_types(TypeLine::LAND.into());
+    let sacs: Vec<Effect> = script::all_players(state)
         .into_iter()
         .map(|p| Effect::Sacrifice {
             player: p,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            filter: land_filter(),
             count: 5,
         })
         .collect();
     let creatures = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    effs.push(Effect::ForEach {
-        targets: creatures,
-        effect: Box::new(Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
-            amount: 5,
-        }),
-    });
-    effs
+    vec![
+        Effect::Sequence(sacs),
+        Effect::ForEach {
+            targets: creatures,
+            effect: Box::new(Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Object(NULL_OBJECT_ID),
+                amount: 5,
+            }),
+        },
+    ]
 }

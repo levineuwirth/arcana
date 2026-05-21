@@ -1,8 +1,5 @@
 //! Artificer's Epiphany — `{2}{U}` instant. "Draw two cards. If you
 //! control no artifacts, discard a card."
-//!
-//! Conditional discard wired via count_matching over artifacts you
-//! control: discard only if that count is zero.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -24,16 +21,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw two cards. If you control no artifacts, discard a card.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw two cards. If you control no artifacts, discard a card.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = vec![Effect::DrawCards { player: entry.controller, count: 2 }];
     let artifacts = script::count_matching(
         state,
         &ObjectFilter::permanent()
@@ -41,7 +44,6 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
             .controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let mut effects = vec![Effect::DrawCards { player: entry.controller, count: 2 }];
     if artifacts == 0 {
         effects.push(Effect::Discard {
             player: entry.controller,

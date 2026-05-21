@@ -28,3 +28,4 @@ pub mod inspirit;
 pub mod flashfires;
 pub mod boiling_seas;
 pub mod chastise;
+pub mod persecute;

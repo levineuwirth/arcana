@@ -1,5 +1,5 @@
-//! Atomize — `{2}{B}{G}` instant. "Destroy target nonland permanent.
-//! Proliferate."
+//! Atomize — `{2}{B}{G}` instant. Destroy target nonland permanent.
+//! Proliferate.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,19 +22,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target nonland permanent. Proliferate.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target nonland permanent. Proliferate.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -43,9 +43,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // Proliferate is not modeled by any catalog Effect — destroy only.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: Proliferate not in catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

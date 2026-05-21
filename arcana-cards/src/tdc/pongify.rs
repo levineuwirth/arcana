@@ -1,14 +1,11 @@
-//! Pongify — `{U}` instant, "Destroy target creature. It can't be
+//! Pongify — `{U}` instant. "Destroy target creature. It can't be
 //! regenerated. Its controller creates a 3/3 green Ape creature token."
-//!
-//! "It can't be regenerated" — no Prevent/Remove Regenerate effect in
-//! catalog; omitted. Token creation is assigned to entry.controller as
-//! a partial; GAP: "its controller" not accessible.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -25,18 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target creature. It can't be regenerated. Its controller creates a 3/3 green Ape creature token.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target creature. It can't be regenerated. Its controller creates a 3/3 green Ape creature token.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
@@ -55,9 +51,10 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: token should go to "its controller" (the target's controller), not entry.controller.
+    let controller = script::target_controller(state, *id, entry.controller);
+    // GAP: "can't be regenerated" rider not modeled.
     vec![
         Effect::DestroyPermanent { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken { controller, token },
     ]
 }

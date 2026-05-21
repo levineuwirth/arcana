@@ -1,15 +1,15 @@
-//! Hypothesizzle — `{3}{U}{R}` instant.
-//! "Draw two cards. Then you may discard a nonland card. When you do,
-//! Hypothesizzle deals 4 damage to target creature."
+//! Hypothesizzle — `{3}{U}{R}` instant. "Draw two cards. Then you may
+//! discard a nonland card. When you do, Hypothesizzle deals 4 damage
+//! to target creature." Optional discard with reflexive trigger is
+//! not in catalog; emit the draws and GAP the rider.
 
-use arcana_core::effects::{DiscardChoice, Effect};
-use arcana_core::events::DamageTarget;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,24 +31,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects = vec![
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard {
-            player: entry.controller,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
-    ];
-    // The discard-conditioned reflexive trigger is approximated as an
-    // unconditional discard + damage; the damage is dealt to the
-    // target creature.
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effects.push(Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id),
-            amount: 4,
-        });
-    }
-    effects
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "you may discard a nonland card. When you do, deal 4 damage" reflexive trigger not in catalog.
+    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
 }

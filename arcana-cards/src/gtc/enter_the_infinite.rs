@@ -1,10 +1,8 @@
 //! Enter the Infinite — `{8}{U}{U}{U}{U}` sorcery. "Draw cards equal
 //! to the number of cards in your library, then put a card from your
 //! hand on top of your library. You have no maximum hand size until
-//! your next turn."
-//!
-//! The dynamic draw (= library size) is expressed. The "put a card
-//! on top" and "no maximum hand size" riders have no primitive.
+//! your next turn." We draw library_size cards; the hand-size and
+//! top-of-library placement are GAPs.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,25 +17,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Enter the Infinite");
     let chars = Characteristics {
         name,
-        mana_cost: Some(
-            ManaCost::parse("{8}{U}{U}{U}{U}").expect("valid cost"),
-        ),
+        mana_cost: Some(ManaCost::parse("{8}{U}{U}{U}{U}").expect("valid cost")),
         colors: ColorSet::blue(),
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw cards equal to the number of cards in your library, then put a card from your hand on top of your library. You have no maximum hand size until your next turn.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw cards equal to the number of cards in your library, then put a card from your hand on top of your library. You have no maximum hand size until your next turn.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let n = script::library_size(state, entry.controller);
-    // GAP: "put a card from hand on top" and "no maximum hand size" — no primitive.
+    // GAP: 'then put a card from your hand on top of your library' and
+    // 'no maximum hand size' aren't in the catalog.
     vec![Effect::DrawCards { player: entry.controller, count: n }]
 }

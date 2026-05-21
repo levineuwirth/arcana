@@ -2,10 +2,10 @@
 //! enchantment, or green planeswalker. If that permanent was a Nissa
 //! planeswalker, draw a card."
 //!
-//! The disjunctive target filter (Forest OR green enchantment OR
-//! green planeswalker) cannot be expressed as one `ObjectFilter`; the
-//! target is broadened to any permanent (best-effort) and the
-//! conditional draw ("if it was a Nissa planeswalker") is GAPped.
+//! 'Forest OR green enchantment OR green planeswalker' isn't expressible as a
+//! single ObjectFilter (no disjunction). Fall back to plain Permanent. The
+//! 'Nissa planeswalker' name check for the draw rider is also not modeled —
+//! GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,17 +28,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target Forest, green enchantment, or green planeswalker. If that permanent was a Nissa planeswalker, draw a card.".into(),
-            // GAP: disjunctive Forest/green-enchantment/green-pw filter not expressible.
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target Forest, green enchantment, or green planeswalker. If that permanent was a Nissa planeswalker, draw a card.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -49,8 +49,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        // GAP: conditional "if it was a Nissa planeswalker, draw a card" not expressible.
-    ]
+    // GAP: disjunctive 'Forest OR green enchantment OR green planeswalker' filter;
+    // 'was a Nissa planeswalker' conditional draw rider.
+    vec![Effect::DestroyPermanent { target: *id }]
 }

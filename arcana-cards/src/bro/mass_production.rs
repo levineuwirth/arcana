@@ -29,12 +29,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let soldier = reg
+        .interner()
+        .lookup("Soldier")
+        .expect("Soldier interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {
@@ -48,9 +47,21 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

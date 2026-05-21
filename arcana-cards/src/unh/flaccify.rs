@@ -1,5 +1,6 @@
 //! Flaccify — `{2}{U}` instant. "Counter target spell unless its
-//! controller pays {3}{½}."
+//! controller pays {3}{½}." GAP: half-mana symbol {½} not parseable
+//! by ManaCost::parse. Fall back to a plain {3} surcharge.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,25 +23,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell unless its controller pays {3}{½}.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell unless its controller pays {3}{1/2}.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: the {½} half-mana symbol is not parseable; tax approximated
-    // as {3}.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: half-mana {½} symbol not parseable; truncated to {3}.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
     vec![Effect::CounterUnlessPays {
-        target: *id,
+        target: stack_id,
         cost: ManaCost::parse("{3}").expect("valid cost"),
     }]
 }

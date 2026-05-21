@@ -1,5 +1,5 @@
-//! Prying Eyes — `{4}{U}{U}` instant. "Draw four cards, then discard two
-//! cards."
+//! Prying Eyes — `{4}{U}{U}` instant. "Draw four cards, then discard
+//! two cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

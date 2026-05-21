@@ -1,7 +1,5 @@
-//! Wanderer's Strike — `{4}{W}` sorcery. "Exile target creature, then
-//! proliferate."
-//!
-//! GAP: no proliferate Effect; the exile is emitted as best-effort.
+//! Wanderer's Strike — `{4}{W}` sorcery. Exile target creature, then
+//! proliferate.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +37,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no proliferate effect.
+    // GAP: proliferate (interactive choose-any-number-of-permanents/players-
+    // with-counters) is not in catalog.
     vec![Effect::ExilePermanent { target: *id }]
 }

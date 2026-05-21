@@ -1,5 +1,7 @@
-//! Untamed Wilds — `{2}{G}` sorcery. "Search your library for a basic land
-//! card, put that card onto the battlefield, then shuffle."
+//! Untamed Wilds — `{2}{G}` sorcery. "Search your library for a
+//! basic land card, put that card onto the battlefield, then
+//! shuffle." Basic-land filter via SupertypeSet is not exposed on
+//! ObjectFilter; emit generic land tutor as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,8 +37,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no "basic" supertype refinement; emitting a
-    // land tutor — broader than "basic" only.
+    // GAP: "basic" supertype filter not on ObjectFilter; falls back to any land.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

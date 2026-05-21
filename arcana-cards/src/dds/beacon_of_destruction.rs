@@ -1,9 +1,6 @@
-//! Beacon of Destruction — `{3}{R}{R}` instant. "Beacon of Destruction deals 5
-//! damage to any target. Shuffle Beacon of Destruction into its owner's
-//! library."
-//!
-//! GAP: no Effect variant to shuffle this spell back into its owner's library
-//! after resolution. Only the damage is emitted.
+//! Beacon of Destruction — `{3}{R}{R}` instant. "Beacon of
+//! Destruction deals 5 damage to any target. Shuffle Beacon of
+//! Destruction into its owner's library."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Beacon of Destruction deals 5 damage to any target. Shuffle Beacon of Destruction into its owner's library.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Beacon of Destruction deals 5 damage to any target. Shuffle Beacon of Destruction into its owner's library.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -49,7 +45,9 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: "shuffle Beacon of Destruction into its owner's library"
+    // GAP: "Shuffle self into library on resolution" — no
+    // ShuffleSelfIntoLibrary primitive; the spell would normally hit
+    // its owner's graveyard after resolving.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

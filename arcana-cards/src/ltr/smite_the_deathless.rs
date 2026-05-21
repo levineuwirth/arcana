@@ -1,7 +1,7 @@
-//! Smite the Deathless — `{1}{R}` instant. "Smite the Deathless
-//! deals 3 damage to target creature. That creature loses
-//! indestructible until end of turn. If that creature would die this
-//! turn, exile it instead."
+//! Smite the Deathless — `{1}{R}` instant. "Smite the Deathless deals
+//! 3 damage to target creature. That creature loses indestructible
+//! until end of turn. If that creature would die this turn, exile it
+//! instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,12 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Smite the Deathless deals 3 damage to target creature. That creature loses indestructible until end of turn. If that creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "loses indestructible" has no keyword-removal
+                // Effect; "if it would die, exile it instead" is a
+                // replacement effect with no primitive. Only the damage
+                // is emitted.
+                text: "Smite the Deathless deals 3 damage to target creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,8 +44,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "loses indestructible" and the dies-replacement-to-exile
-    // riders have no catalog effect; only the damage is modeled.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

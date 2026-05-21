@@ -1,6 +1,6 @@
-//! Chill to the Bone — `{3}{B}` instant. "Destroy target nonsnow creature."
-//!
-//! GAP: no ObjectFilter refinement for nonsnow; using plain creature target.
+//! Chill to the Bone — `{3}{B}` instant. "Destroy target nonsnow
+//! creature." "Nonsnow" supertype filter not in ObjectFilter; emit
+//! plain creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,5 +38,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "nonsnow" supertype filter not on ObjectFilter.
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,20 +1,20 @@
-//! Brokers' Safeguard — `{W}{U}` instant. "Exile target nonartifact creature
-//! you control. It perpetually gains 'This creature enters the battlefield with
-//! an additional shield counter on it.' Then return that card to the battlefield
-//! under its owner's control."
-//!
-//! # GAP: perpetually modify a card's abilities
-//! # GAP: exile then immediately return to battlefield as part of one effect
-//! Best-effort: exile the target (the return and perpetual grant are not
-//! expressible).
+//! Brokers' Safeguard — `{W}{U}` instant. "Exile target nonartifact
+//! creature you control. It perpetually gains '...'. Then return
+//! that card to the battlefield under its owner's control."
+//! Blink the target via ExilePermanent + DelayedAction
+//! ReturnFromExileToBattlefield at NextEndStep. GAP: perpetual-gain
+//! shield-counters rider not in catalog.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -33,8 +33,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()
-                            .without_types(TypeLine::ARTIFACT.into())
-                            .controlled_by(ControllerConstraint::You),
+                            .controlled_by(ControllerConstraint::You)
+                            .without_types(TypeLine::ARTIFACT.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -50,9 +50,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: perpetually grant ability to a card
-    // GAP: exile-then-immediately-return-to-battlefield as atomic pair
+    // GAP: perpetual gains + shield-counter mechanic.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::ExilePermanent { target: *id }]
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::ReturnFromExileToBattlefield,
+        },
+    ]
 }

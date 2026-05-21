@@ -1,4 +1,4 @@
-//! Unnerve — `{3}{B}` sorcery, "Each opponent discards two cards."
+//! Unnerve — `{3}{B}` sorcery. "Each opponent discards two cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

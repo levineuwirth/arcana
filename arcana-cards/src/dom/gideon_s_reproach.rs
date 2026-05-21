@@ -1,8 +1,7 @@
-//! Gideon's Reproach — `{1}{W}` instant. "Gideon's Reproach deals 4
-//! damage to target attacking or blocking creature."
-//!
-//! No target filter for "attacking or blocking" exists in the
-//! catalog; the closest expressible requirement is target creature.
+//! Gideon's Reproach — `{1}{W}` instant. "Deals 4 damage to target
+//! attacking or blocking creature." The attacking/blocking filter
+//! isn't expressible as an ObjectFilter refinement; we target any
+//! creature and GAP the attacker/blocker constraint.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,16 +23,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Gideon's Reproach deals 4 damage to target attacking or blocking creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: attacking-or-blocking restriction on the target is not a TargetFilter refinement.
+                text: "Gideon's Reproach deals 4 damage to target attacking or blocking creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

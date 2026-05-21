@@ -1,5 +1,5 @@
-//! Earth Tremor — `{3}{R}` instant. "Earth Tremor deals damage to target
-//! creature or planeswalker equal to the number of lands you control."
+//! Earth Tremor — `{3}{R}` instant. Deals damage to target creature or
+//! planeswalker equal to lands you control.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +9,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Earth Tremor deals damage to target creature or planeswalker equal to the number of lands you control.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -45,14 +48,16 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
-    let n = script::count_matching(state, &land_filter, entry.controller);
-    if n == 0 {
-        return Vec::new();
-    }
+    let amount = script::count_matching(
+        state,
+        &ObjectFilter::new()
+            .with_types(TypeLine::LAND.into())
+            .controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
-        amount: n,
+        amount,
     }]
 }

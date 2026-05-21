@@ -1,10 +1,8 @@
 //! They Went This Way — `{2}{G}` sorcery. "Search your library for a
 //! basic land card, put it onto the battlefield tapped, then shuffle.
-//! Investigate."
-//!
-//! Investigate's Clue token has an activated mana ability that can't
-//! be constructed from the token surface here (GAP'd); the Clue
-//! `TokenDefinition` is emitted with empty abilities.
+//! Investigate." The Clue token's '{2}, Sacrifice: Draw a card'
+//! activated ability is not modelable on a token; emit the tutor and
+//! the Clue token with no activations, GAP the draw.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -26,17 +24,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Investigate.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Investigate.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let clue = reg.interner().lookup("Clue").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let clue = reg
+        .interner()
+        .lookup("Clue")
+        .expect("Clue interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(clue);
     let token = TokenDefinition {
@@ -49,13 +55,17 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Clue's "{2}, Sacrifice: draw" activated ability not constructable on the token here.
+    // GAP: Clue token's '{2}, Sacrifice: Draw a card' activated
+    // ability (no activated-ability primitive on tokens).
     vec![
         Effect::TutorToBattlefield {
             player: entry.controller,
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             tapped: true,
         },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

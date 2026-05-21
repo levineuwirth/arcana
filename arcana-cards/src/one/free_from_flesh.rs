@@ -1,8 +1,8 @@
 //! Free from Flesh — `{R}` instant. "Target creature gets +2/+2
 //! until end of turn. Put two oil counters on it."
 //!
-//! GAP: CounterKind::Oil isn't in the catalog (only PlusOnePlusOne).
-//! Only the pump is modeled.
+//! The +2/+2 is expressed. An oil counter is not a supported counter
+//! kind (only +1/+1) — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,8 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: oil counters (only PlusOnePlusOne kind exists).
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: oil counters are not a supported counter kind.
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -1,6 +1,6 @@
-//! Heroic Reinforcements — `{2}{R}{W}` sorcery. "Create two 1/1 white Soldier
-//! creature tokens. Until end of turn, creatures you control get +1/+1 and
-//! gain haste."
+//! Heroic Reinforcements — `{2}{R}{W}` sorcery. "Create two 1/1 white
+//! Soldier creature tokens. Until end of turn, creatures you control
+//! get +1/+1 and gain haste."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -10,7 +10,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,8 +39,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier")
-        .expect("Soldier interned during register()");
+    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {
@@ -53,20 +52,22 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut effects = vec![
+    vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },
-    ];
-    effects.push(Effect::ForEach {
-        targets: creature_ids,
-        effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
-            power: 1,
-            toughness: 1,
-            duration: Duration::EndOfTurn,
-            keywords: vec![KeywordAbility::Haste],
-        }),
-    });
-    effects
+        Effect::ForEach {
+            targets: script::ids_matching(
+                state,
+                &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                entry.controller,
+            ),
+            effect: Box::new(Effect::Pump {
+                target: NULL_OBJECT_ID,
+                power: 1,
+                toughness: 1,
+                duration: Duration::EndOfTurn,
+                keywords: vec![KeywordAbility::Haste],
+            }),
+        },
+    ]
 }

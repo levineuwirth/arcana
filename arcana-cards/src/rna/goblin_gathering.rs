@@ -1,9 +1,6 @@
-//! Goblin Gathering — `{2}{R}` sorcery. "Create a number of 1/1 red Goblin
-//! creature tokens equal to two plus the number of cards named Goblin
-//! Gathering in your graveyard."
-//!
-//! # GAP: token count scaled to named-card graveyard count requires dynamic
-//! state lookup. Best-effort: create two tokens (base count only).
+//! Goblin Gathering — `{2}{R}` sorcery. "Create a number of 1/1 red
+//! Goblin creature tokens equal to two plus the number of cards named
+//! Goblin Gathering in your graveyard."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -26,9 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Create a number of 1/1 red Goblin creature tokens equal to two plus the \
-                       number of cards named Goblin Gathering in your graveyard."
-                    .into(),
+                text: "Create a number of 1/1 red Goblin creature tokens equal to two plus the number of cards named Goblin Gathering in your graveyard.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -41,8 +36,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: extra tokens based on graveyard named-card count not supported; creating base 2
-    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned during register()");
+    let goblin = reg.interner().lookup("Goblin")
+        .expect("Goblin interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     let token = TokenDefinition {
@@ -55,6 +50,10 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // NOTE: the "+ number of cards named Goblin Gathering in your
+    // graveyard" term needs a by-name graveyard count, which no script
+    // helper provides — that addend is a GAP. The guaranteed two
+    // tokens are created.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

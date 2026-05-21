@@ -1,4 +1,5 @@
-//! Inspirit — `{2}{W}` instant. "Untap target creature. It gets +2/+4 until end of turn."
+//! Inspirit — `{2}{W}` instant. "Untap target creature. It gets +2/+4
+//! until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

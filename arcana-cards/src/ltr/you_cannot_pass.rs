@@ -1,8 +1,5 @@
-//! You Cannot Pass! — `{W}` instant. "Destroy target creature that blocked
-//! or was blocked by a legendary creature this turn."
-//!
-//! GAP: no combat-history ("blocked or was blocked by a legendary this
-//! turn") target filter; modeled as destroy target creature.
+//! You Cannot Pass! — `{W}` instant. Destroy target creature that
+//! blocked or was blocked by a legendary creature this turn.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +37,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: combat-history target restriction not expressible.
+    // GAP: target-restriction "blocked/was-blocked-by-legendary-this-turn" not
+    // modelable in TargetFilter; emit unrestricted destroy.
     vec![Effect::DestroyPermanent { target: *id }]
 }

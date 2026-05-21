@@ -1,8 +1,9 @@
 //! Turn Aside — `{U}` instant. "Counter target spell that targets a
 //! permanent you control."
 //!
-//! GAP: 'spell that targets a permanent you control' is not an
-//! ObjectFilter refinement on Spell — modeled as plain Counter.
+//! The "targets a permanent you control" restriction on the target
+//! spell cannot be expressed as a spell filter — modeled as a plain
+//! counter, with the restriction noted as a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,7 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'targets a permanent you control' filter on the spell.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "that targets a permanent you control" restriction on the
+    // target spell is not expressible.
     vec![Effect::Counter { target: *id }]
 }

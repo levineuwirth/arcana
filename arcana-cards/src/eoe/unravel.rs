@@ -1,9 +1,8 @@
 //! Unravel — `{1}{U}{U}` instant. "Counter target spell. If the
 //! amount of mana spent to cast that spell was less than its mana
-//! value, you draw a card."
-//!
-//! The "mana spent < mana value" condition is not in Conditional's
-//! surface; only the unconditional counter is modeled.
+//! value, you draw a card." The mana-spent-vs-mana-value predicate
+//! isn't a script helper; emit the counter and GAP the conditional
+//! draw.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,22 +25,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. If the amount of mana spent to cast that spell was less than its mana value, you draw a card.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. If the amount of mana spent to cast that spell was less than its mana value, you draw a card.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "mana spent < mana value" Conditional condition not in catalog.
+    // GAP: 'mana spent to cast vs mana value' inequality predicate.
     vec![Effect::Counter { target: *id }]
 }

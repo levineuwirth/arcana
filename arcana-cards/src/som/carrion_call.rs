@@ -1,5 +1,5 @@
-//! Carrion Call — `{3}{G}` instant.
-//! "Create two 1/1 green Phyrexian Insect creature tokens with infect."
+//! Carrion Call — `{3}{G}` instant. "Create two 1/1 green Phyrexian
+//! Insect creature tokens with infect."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,23 +21,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 1/1 green Phyrexian Insect creature tokens with infect.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 1/1 green Phyrexian Insect creature tokens with infect.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let phyrexian = reg.interner().lookup("Phyrexian").expect("Phyrexian interned during register()");
-    let insect = reg.interner().lookup("Insect").expect("Insect interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let phyrexian = reg
+        .interner()
+        .lookup("Phyrexian")
+        .expect("Phyrexian interned during register()");
+    let insect = reg
+        .interner()
+        .lookup("Insect")
+        .expect("Insect interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(phyrexian);
     subtypes.0.insert(insect);
@@ -52,7 +53,13 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

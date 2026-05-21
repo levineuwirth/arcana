@@ -1,5 +1,5 @@
-//! Vines of the Recluse — `{G}` instant. "Target creature gets +1/+2
-//! and gains reach until end of turn. Untap it."
+//! Vines of the Recluse — `{G}` instant. Target creature gets +1/+2 and
+//! gains reach until end of turn. Untap it.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +1/+2 and gains reach until end of turn. Untap it.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +1/+2 and gains reach until end of turn. Untap it.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,14 +37,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
     vec![
         Effect::Pump {
-            target: *id,
+            target: id,
             power: 1,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::Reach],
         },
-        Effect::Untap { target: *id },
+        Effect::Untap { target: id },
     ]
 }

@@ -1,6 +1,6 @@
-//! Seek the Horizon — `{3}{G}` sorcery. "Search your library for up
-//! to three basic land cards, reveal them, put them into your hand,
-//! then shuffle."
+//! Seek the Horizon — `{3}{G}` sorcery. "Search your library for up to
+//! three basic land cards, reveal them, put them into your hand, then
+//! shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,12 +21,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "basic land cards" — ObjectFilter cannot restrict
+                // to the Basic supertype; filtered to land cards.
+                text: "Search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -35,10 +38,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land = || ObjectFilter::new().with_types(TypeLine::LAND.into());
+    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
     vec![
-        Effect::TutorToHand { player: entry.controller, filter: land(), reveal: true },
-        Effect::TutorToHand { player: entry.controller, filter: land(), reveal: true },
-        Effect::TutorToHand { player: entry.controller, filter: land(), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: land.clone(), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: land.clone(), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: land, reveal: true },
     ]
 }

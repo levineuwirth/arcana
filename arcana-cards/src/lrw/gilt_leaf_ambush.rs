@@ -1,8 +1,8 @@
-//! Gilt-Leaf Ambush — `{2}{G}` kindred instant — Elf. "Create two 1/1 green
-//! Elf Warrior creature tokens. Clash with an opponent. If you win, those
-//! creatures gain deathtouch until end of turn."
-//!
-//! GAP: Clash mechanic not supported; the conditional deathtouch is dropped.
+//! Gilt-Leaf Ambush — `{2}{G}` kindred instant — Elf. "Create two
+//! 1/1 green Elf Warrior creature tokens. Clash with an opponent. If
+//! you win, those creatures gain deathtouch until end of turn." GAP:
+//! Clash + grant-keyword-to-newly-created-tokens not in catalog; emit
+//! the tokens only.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,8 +39,11 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let elf = reg.interner().lookup("Elf").expect("Elf interned");
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
+    // GAP: Clash and grant-keyword-to-just-created-tokens not in catalog.
+    let elf = reg.interner().lookup("Elf")
+        .expect("Elf interned during register()");
+    let warrior = reg.interner().lookup("Warrior")
+        .expect("Warrior interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elf);
     subtypes.0.insert(warrior);
@@ -54,7 +57,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Clash not modeled; deathtouch rider dropped
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

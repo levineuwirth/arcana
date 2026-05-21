@@ -1,16 +1,15 @@
-//! River's Rebuke — `{4}{U}{U}` sorcery. "Return all nonland permanents
-//! target player controls to their owner's hand."
+//! River's Rebuke — `{4}{U}{U}` sorcery. Return all nonland permanents
+//! target player controls to their owners' hands.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::objects::NULL_OBJECT_ID;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("River's Rebuke");
@@ -38,9 +37,12 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(_p) = target else { return Vec::new(); };
-    let filter = ObjectFilter::permanent().without_types(TypeLine::LAND.into());
-    let ids = script::ids_matching(state, &filter, entry.controller);
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+        *p,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

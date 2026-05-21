@@ -1,8 +1,5 @@
-//! Unnatural Restoration — `{1}{G}` sorcery. "Return target permanent
-//! card from your graveyard to your hand. Proliferate."
-//!
-//! The graveyard-to-hand return is emitted; proliferate has no effect
-//! variant (GAP).
+//! Unnatural Restoration — `{1}{G}` sorcery. "Return target permanent card
+//! from your graveyard to your hand. Proliferate."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,9 +7,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetFilter, TargetRequirement, TargetCount,
-};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetFilter, TargetCount, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -26,19 +21,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target permanent card from your graveyard to your hand. Proliferate.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::permanent(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target permanent card from your graveyard to your hand. Proliferate.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::permanent(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -47,9 +43,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: proliferate has no effect variant.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: proliferate has no Effect variant — emit only the graveyard return.
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

@@ -1,5 +1,5 @@
-//! The Chase Is On — `{2}{R}` instant. "Target creature gets +3/+0 and
-//! gains first strike until end of turn. Investigate."
+//! The Chase Is On — `{2}{R}` instant. "Target creature gets +3/+0
+//! and gains first strike until end of turn. Investigate."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,16 +30,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     // GAP: Investigate (create a Clue token with an activated ability)
-    // — no catalog effect for tokens carrying abilities; only the pump
-    // is implemented.
+    // is not expressible — only the pump and first strike are emitted.
     vec![Effect::Pump {
         target: *id,
         power: 3,

@@ -1,5 +1,5 @@
-//! Rise of Eagles — `{4}{U}{U}` sorcery. "Create two 2/2 blue Bird
-//! enchantment creature tokens with flying. Scry 1."
+//! Rise of Eagles — `{4}{U}{U}` sorcery. Create two 2/2 blue Bird
+//! enchantment creature tokens with flying. Scry 1.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,7 +21,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create two 2/2 blue Bird enchantment creature tokens with flying. Scry 1.".into(),
+            text: "Create two 2/2 blue Bird enchantment creature tokens with flying. Scry 1."
+                .into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -29,8 +30,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let bird = reg.interner().lookup("Bird").expect("Bird interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let bird = reg
+        .interner()
+        .lookup("Bird")
+        .expect("Bird interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(bird);
     let token = TokenDefinition {
@@ -44,8 +52,17 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
-        Effect::Scry { player: entry.controller, count: 1 },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
+        Effect::Scry {
+            player: entry.controller,
+            count: 1,
+        },
     ]
 }

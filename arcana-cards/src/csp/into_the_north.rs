@@ -1,7 +1,6 @@
-//! Into the North — `{1}{G}` sorcery. "Search your library for a
-//! snow land card, put it onto the battlefield tapped, then shuffle."
-//! The "snow" restriction isn't a filter builder; a tapped land tutor
-//! to the battlefield is the closest expressible form.
+//! Into the North — `{1}{G}` sorcery. Search your library for a snow
+//! land card, put it onto the battlefield tapped, then shuffle. (Snow
+//! predicate not modeled — approximate with LAND.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,9 +30,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "snow" restriction has no filter builder; a tapped land
-    // tutor is the closest expressible form.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "snow" supertype predicate not modeled — approximate with LAND.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

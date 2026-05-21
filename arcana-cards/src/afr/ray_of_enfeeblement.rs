@@ -31,11 +31,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The "if white -> -4/-4 instead" branch requires reading the
-    // target's color (no such script helper); emit the base -4/-1.
+    // Base mode is -4/-1; the white-creature -4/-4 escalation cannot
+    // be tested (no helper reports a permanent's color).
     vec![Effect::Pump {
         target: *id,
         power: -4,
@@ -43,4 +47,7 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]
+    // GAP: "if that creature is white, -4/-4 instead" — no script
+    // helper exposes a permanent's color, so the conditional branch
+    // is omitted and the unconditional -4/-1 is applied.
 }

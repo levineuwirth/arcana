@@ -1,6 +1,8 @@
 //! Galvanize — `{1}{R}` instant. "Galvanize deals 3 damage to target
 //! creature. If you've drawn two or more cards this turn, Galvanize
-//! deals 5 damage to that creature instead."
+//! deals 5 damage to that creature instead." Per-turn draws-counter
+//! isn't a script helper; we emit the baseline 3 damage and GAP the
+//! upgrade.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,12 +24,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Galvanize deals 3 damage to target creature. If you've drawn two or more cards this turn, Galvanize deals 5 damage to that creature instead.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Galvanize deals 3 damage to target creature. If you've drawn two or more cards this turn, Galvanize deals 5 damage to that creature instead.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -36,13 +39,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'cards drawn this turn' counter not in script helpers.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The "drawn two+ this turn → 5 instead" rider has no catalog
-    // cards-drawn-this-turn predicate; modeled as the base 3 damage.
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 3,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: DamageTarget::Object(*id), amount: 3 }]
 }

@@ -1,7 +1,8 @@
-//! Peregrination — `{3}{G}` sorcery. "Search your library for up to
-//! two basic land cards, reveal those cards, and put one onto the
-//! battlefield tapped and the other into your hand. Shuffle, then
-//! scry 1."
+//! Peregrination — `{3}{G}` sorcery. Search your library for up to two
+//! basic land cards, reveal them, and put one onto the battlefield
+//! tapped and the other into your hand. Shuffle, then scry 1. (Up-to-2
+//! search + split routing approximated: one onto-battlefield, one into
+//! hand.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for up to two basic land cards, reveal those cards, and put one onto the battlefield tapped and the other into your hand. Shuffle, then scry 1.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for up to two basic land cards, reveal those cards, and put one onto the battlefield tapped and the other into your hand. Shuffle, then scry 1.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -37,8 +37,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "basic" supertype not expressible in ObjectFilter; one land to
-    // battlefield tapped, one to hand, then scry 1.
+    // GAP: "basic" predicate approximated to LAND; two-card-split routing approximated as
+    // one tutor-to-battlefield-tapped + one tutor-to-hand.
     vec![
         Effect::TutorToBattlefield {
             player: entry.controller,
@@ -50,6 +50,9 @@ fn resolve(
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             reveal: true,
         },
-        Effect::Scry { player: entry.controller, count: 1 },
+        Effect::Scry {
+            player: entry.controller,
+            count: 1,
+        },
     ]
 }

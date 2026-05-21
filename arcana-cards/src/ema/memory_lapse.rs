@@ -1,10 +1,7 @@
-//! Memory Lapse — `{1}{U}` instant, "Counter target spell. If that
+//! Memory Lapse — `{1}{U}` instant. "Counter target spell. If that
 //! spell is countered this way, put it on top of its owner's library
-//! instead of into that player's graveyard."
-//!
-//! GAP: the "put on top of library instead of graveyard" replacement on
-//! the countered spell has no corresponding Effect. Only the counter is
-//! modeled.
+//! instead of into that player's graveyard." Expressible part is the
+//! counter; the put-on-top rider is GAPped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -46,8 +43,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "put on top of library instead of graveyard" replacement on counter.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: put-on-top-of-library-instead replacement not expressible.
-    vec![Effect::Counter { target: *id }]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    vec![Effect::Counter { target: stack_id }]
 }

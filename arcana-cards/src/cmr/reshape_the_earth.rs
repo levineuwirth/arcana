@@ -1,8 +1,7 @@
-//! Reshape the Earth — `{6}{G}{G}{G}` sorcery, "Search your library for up to
-//! ten land cards, put them onto the battlefield tapped, then shuffle."
-//!
-//! GAP: TutorToBattlefield supports only a single card; "up to ten" lands
-//! requires repeating the effect or a count parameter neither of which exists.
+//! Reshape the Earth — `{6}{G}{G}{G}` sorcery. "Search your library for
+//! up to ten land cards, put them onto the battlefield tapped, then
+//! shuffle." Tutor primitive is single-card; emit ten of them
+//! (best-effort 'up to ten').
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,10 +37,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: search for up to ten land cards (no multi-card tutor variant)
-    vec![Effect::TutorToBattlefield {
-        player: entry.controller,
-        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-        tapped: true,
-    }]
+    let mut effects = Vec::new();
+    for _ in 0..10 {
+        effects.push(Effect::TutorToBattlefield {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: true,
+        });
+    }
+    effects
 }

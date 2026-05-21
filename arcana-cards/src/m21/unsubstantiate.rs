@@ -1,5 +1,5 @@
-//! Unsubstantiate — `{1}{U}` instant. "Return target spell or
-//! creature to its owner's hand."
+//! Unsubstantiate — `{1}{U}` instant. "Return target spell or creature
+//! to its owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,14 +20,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target spell or creature to its owner's hand.".into(),
-            // GAP: no combined "spell or creature" target filter;
-            // restricted to a creature permanent.
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "target spell" mode — there is no TargetFilter
+                // covering "spell OR creature" and no Effect that
+                // returns a spell from the stack to hand. The creature
+                // (bounce) mode is implemented.
+                text: "Return target creature to its owner's hand.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

@@ -28,10 +28,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "unless you discard a creature card" reduction (discard 1
-    // creature instead of 2) is not expressible; model the default
-    // branch: draw three, discard two.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "Discard two cards unless you discard a creature card" — the
+    // engine has no "discard X unless you discard a card of type Y"
+    // primitive; we model the always-true clause: draw three, then a
+    // controller-chosen discard of two.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::Discard {
@@ -40,4 +45,7 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             choice: DiscardChoice::ControllerChooses,
         },
     ]
+    // GAP: "unless you discard a creature card" — a single-creature-
+    // card discard substituting for the two-card discard cannot be
+    // expressed; the discard count is fixed at two.
 }

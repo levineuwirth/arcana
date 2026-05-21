@@ -1,6 +1,5 @@
-//! Pillar of Flame — `{R}` sorcery. "Pillar of Flame deals 2 damage to
-//! any target. If a creature dealt damage this way would die this turn,
-//! exile it instead."
+//! Pillar of Flame — `{R}` sorcery. Deals 2 to any target; if creature
+//! would die this turn, exile instead (rider not expressible).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,18 +21,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Pillar of Flame deals 2 damage to any target. If a creature dealt damage this way would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Pillar of Flame deals 2 damage to any target. If a creature dealt damage this way would die this turn, exile it instead.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: the "if it would die this turn, exile it instead"
-    // replacement rider is not expressible; emitting only the damage.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -43,6 +45,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    // GAP: 'if it would die this turn, exile it instead' replacement
+    // effect on damage source.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

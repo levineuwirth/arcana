@@ -1,5 +1,5 @@
-//! Festive Funeral — `{4}{B}` instant. "Target creature gets -X/-X until end
-//! of turn, where X is the number of cards in your graveyard."
+//! Festive Funeral — `{4}{B}` instant. Target creature gets -X/-X until end
+//! of turn, where X is the number of cards in your graveyard.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

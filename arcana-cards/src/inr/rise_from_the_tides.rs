@@ -1,8 +1,6 @@
-//! Rise from the Tides — `{5}{U}` sorcery. "Create a tapped 2/2 black Zombie
-//! creature token for each instant and sorcery card in your graveyard."
-//!
-//! Uses `script::graveyard_matching` with an instant-or-sorcery filter to count
-//! qualifying cards, then creates that many Zombie tokens.
+//! Rise from the Tides — `{5}{U}` sorcery. "Create a tapped 2/2 black
+//! Zombie creature token for each instant and sorcery card in your
+//! graveyard."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,21 +32,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(zombie);
     let filter = ObjectFilter::new()
         .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY));
     let n = script::graveyard_matching(state, &filter, entry.controller, entry.controller);
-    if n == 0 {
-        return Vec::new();
-    }
-    let zombie = reg.interner().lookup("Zombie")
-        .expect("Zombie interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(zombie);
+    // The tokens enter tapped; CreateToken has no tapped flag, so the
+    // tapped-on-entry detail is not modeled.
     let token = TokenDefinition {
         name: zombie,
         colors: ColorSet::black(),
@@ -59,5 +51,10 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    (0..n).map(|_| Effect::CreateToken { controller: entry.controller, token: token.clone() }).collect()
+    (0..n)
+        .map(|_| Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        })
+        .collect()
 }

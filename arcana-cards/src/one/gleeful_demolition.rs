@@ -1,8 +1,9 @@
 //! Gleeful Demolition — `{R}` sorcery. "Destroy target artifact. If you
 //! controlled that artifact, create three 1/1 red Phyrexian Goblin creature
 //! tokens."
-//! GAP: no post-resolution check of "did you control the destroyed artifact"
-//! to conditionally create tokens.
+//!
+//! 'If you controlled' is a conditional past-tense check — not a catalog
+//! Effect. GAP that conditional; emit base destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -48,7 +49,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no post-resolution check of "you controlled the destroyed artifact" for
-    // conditional token creation
+    // GAP: 'if you controlled that artifact' conditional token rider — past-tense
+    // controller check not modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

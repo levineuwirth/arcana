@@ -1,11 +1,7 @@
-//! Urge to Feed — `{B}{B}` instant.
-//! "Target creature gets -3/-3 until end of turn. You may tap any number of
-//! untapped Vampire creatures you control. If you do, put a +1/+1 counter on
-//! each of those Vampires."
-//!
-//! GAP: "You may tap any number of untapped Vampires you control. If you do,
-//! put a +1/+1 counter on each" — optional multi-tap with conditional counters
-//! requires interactive choice not in catalog.
+//! Urge to Feed — `{B}{B}` instant. "Target creature gets -3/-3
+//! until end of turn. You may tap any number of untapped Vampire
+//! creatures you control. If you do, put a +1/+1 counter on each of
+//! those Vampires."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -27,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -3/-3 until end of turn. You may tap any number of untapped Vampire creatures you control. If you do, put a +1/+1 counter on each of those Vampires.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -3/-3 until end of turn. You may tap any number of untapped Vampire creatures you control. If you do, put a +1/+1 counter on each of those Vampires.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,7 +39,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: optional tap-vampires-for-counters interactive choice not in catalog
     vec![Effect::Pump {
         target: *id,
         power: -3,
@@ -52,4 +46,8 @@ fn resolve(
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]
+    // GAP: "you may tap any number of untapped Vampires you control,
+    // then counter each" — an optional player-chosen multi-tap with a
+    // counter rider on the chosen set has no catalog primitive (Tap
+    // takes one mandatory target).
 }

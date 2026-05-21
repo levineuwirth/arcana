@@ -1,9 +1,5 @@
 //! Imperial Seal — `{B}` sorcery. "Search your library for a card, then
 //! shuffle and put that card on top. You lose 2 life."
-//!
-//! GAP: no tutor variant that places onto the top of the library;
-//! `TutorToHand`/`TutorToBattlefield` are the only library-search
-//! primitives. Emitting only the life-loss honestly.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,13 +19,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a card, then shuffle and put that card on top. You lose 2 life.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a card, then shuffle and put that card on top. You lose 2 life.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,6 +33,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no tutor-to-top-of-library variant; only life-loss is honest.
-    vec![Effect::LoseLife { player: entry.controller, amount: 2 }]
+    // GAP: "tutor to top of library" — Effect::TutorToHand puts the
+    // found card in hand, not on top; no TutorToTop primitive. Emit only
+    // the life-loss half (best-effort).
+    vec![Effect::LoseLife {
+        player: entry.controller,
+        amount: 2,
+    }]
 }

@@ -1,6 +1,6 @@
-//! Emergent Growth — `{3}{G}` sorcery. "Target creature gets +5/+5 until end
-//! of turn and must be blocked this turn if able." Pump is direct; the
-//! must-be-blocked rider has no Effect — GAP that.
+//! Emergent Growth — `{3}{G}` sorcery. "Target creature gets +5/+5 until
+//! end of turn and must be blocked this turn if able." Only the +5/+5 is
+//! expressible; the lure-style "must be blocked" clause is gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -32,8 +32,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: no Effect for "must be blocked this turn if able".
+    // GAP: "must be blocked this turn if able" has no catalog Effect.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::Pump {
         target: *id,
         power: 5,

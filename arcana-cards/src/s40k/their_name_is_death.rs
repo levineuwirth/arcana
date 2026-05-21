@@ -1,8 +1,5 @@
-//! Their Name Is Death — `{3}{B}{B}{B}` sorcery. "Destroy all nonartifact
-//! creatures."
-//!
-//! `ObjectFilter::creature().without_types(ARTIFACT)` keeps only the
-//! non-artifact subset.
+//! Their Name Is Death — `{3}{B}{B}{B}` sorcery. "Destroy all
+//! nonartifact creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

@@ -1,8 +1,8 @@
-//! Fallaji Excavation — `{3}{G}{G}` sorcery. "Create three tapped Powerstone
-//! tokens. You gain 3 life."
-//!
-//! GAP: cannot create tokens with the Powerstone tapped-add-{C} ability
-//! intrinsic; emitting plain Powerstone artifact tokens.
+//! Fallaji Excavation — `{3}{G}{G}` sorcery. "Create three tapped
+//! Powerstone tokens. You gain 3 life." GAP: tapped-on-creation and
+//! token activated mana ability ({T}: Add {C}, restricted) aren't in
+//! catalog; emit token bones (artifact, name=Powerstone) without the
+//! activated ability or tapped state.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,10 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let powerstone = reg.interner().lookup("Powerstone").expect("Powerstone interned");
+    // GAP: tapped-on-creation and Powerstone's restricted {T}: Add {C}
+    // activated ability not in catalog.
+    let powerstone = reg.interner().lookup("Powerstone")
+        .expect("Powerstone interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(powerstone);
     let token = TokenDefinition {
@@ -51,7 +54,6 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: tapped-entry and {T}: Add {C} for nonartifact-only intrinsic ability not supported
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token: token.clone() },

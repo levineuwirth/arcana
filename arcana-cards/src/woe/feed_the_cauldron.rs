@@ -1,10 +1,7 @@
-//! Feed the Cauldron — `{2}{B}` instant. "Destroy target creature
-//! with mana value 3 or less. If it's your turn, create a Food
-//! token." The "if it's your turn" condition and the Food token's
-//! activated sac-for-life ability aren't modeled; we destroy the
-//! filtered creature.
+//! Feed the Cauldron — `{2}{B}` instant. "Destroy target creature with
+//! mana value 3 or less. If it's your turn, create a Food token."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -13,10 +10,11 @@ use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Feed the Cauldron");
+    let _food = reg.interner_mut().intern("Food");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{B}").expect("valid cost")),
@@ -38,9 +36,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "if it's your turn, create a Food token" — no turn-owner
-    // condition and Food token's activated ability not modeled.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: *id }]
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let food = reg.interner().lookup("Food").expect("Food interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(food);
+    // The "if it's your turn" condition is not expressible; the Food token
+    // is created unconditionally (the Food activated ability is not
+    // modeled).
+    let token = TokenDefinition {
+        name: food,
+        colors: ColorSet::new(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

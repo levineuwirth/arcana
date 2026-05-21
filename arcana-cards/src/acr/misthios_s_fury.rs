@@ -1,9 +1,8 @@
-//! Misthios's Fury — `{1}{R}` instant. "Misthios's Fury deals 3 damage to
-//! target creature. If you control an Equipment, Misthios's Fury also deals 2
-//! damage to that creature's controller."
-//!
-//! GAP: cannot read 'that creature's controller' as a damage target — only
-//! id-targeted damage is expressible. Conditional 3-damage delivered.
+//! Misthios's Fury — `{1}{R}` instant. "Misthios's Fury deals 3
+//! damage to target creature. If you control an Equipment, Misthios's
+//! Fury also deals 2 damage to that creature's controller."
+//! Conditional damage gated by "control an Equipment" is not exposed
+//! via script::*; emit the 3 damage and GAP the rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -42,7 +41,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: cannot derive 'that creature's controller' as PlayerId from target id
+    // GAP: "if you control an Equipment" — Equipment subtype filter on permanents not exposed via script:: tribal helper without a subtype string.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

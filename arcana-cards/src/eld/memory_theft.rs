@@ -1,11 +1,7 @@
-//! Memory Theft — `{2}{B}` sorcery. "Target opponent reveals their
-//! hand. You choose a nonland card from it. That player discards that
-//! card. You may put a card that has an Adventure that player owns
-//! from exile into that player's graveyard."
-//!
-//! Best-effort: the targeted player discards one card (chosen by you).
-//! Reveal-hand, the nonland constraint on the chosen card, and the
-//! Adventure-from-exile rider are not modeled — GAP.
+//! Memory Theft — `{2}{B}` sorcery. "Target opponent reveals their hand. You
+//! choose a nonland card from it. That player discards that card. You may put
+//! a card that has an Adventure that player owns from exile into that player's
+//! graveyard."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,12 +22,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent reveals their hand. You choose a nonland card from it. That player discards that card. You may put a card that has an Adventure that player owns from exile into that player's graveyard.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target opponent reveals their hand. You choose a nonland card from it. That player discards that card. You may put a card that has an Adventure that player owns from exile into that player's graveyard.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -40,14 +41,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: reveal-hand, nonland constraint, and the Adventure-exile
-    // rider are not modeled; modeled as a controller-chosen discard.
-    vec![Effect::Discard {
-        player: *p,
-        count: 1,
-        choice: DiscardChoice::OpponentChooses,
-    }]
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    // "You choose a nonland card, that player discards it" — approximated by an
+    // opponent-chooses discard on the target player.
+    // GAP: the "nonland" restriction on the chosen card, and the optional Adventure
+    // exile-to-graveyard clause, are not expressible.
+    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::OpponentChooses }]
 }

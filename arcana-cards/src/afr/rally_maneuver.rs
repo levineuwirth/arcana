@@ -1,6 +1,6 @@
-//! Rally Maneuver — `{2}{W}` instant. "Target creature gets +2/+0 and gains
-//! first strike until end of turn. Up to one other target creature gets +0/+2
-//! and gains lifelink until end of turn."
+//! Rally Maneuver — `{2}{W}` instant. "Target creature gets +2/+0
+//! and gains first strike until end of turn. Up to one other target
+//! creature gets +0/+2 and gains lifelink until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,7 +30,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![
                     TargetRequirement::target_creature(),
                     TargetRequirement {
-                        filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature(),
+                        ),
                         count: TargetCount::UpTo(1),
                         controller: None,
                     },
@@ -46,25 +48,24 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = Vec::new();
-    let targets = &entry.targets.targets;
-    if let Some(TargetChoice::Object(a)) = targets.first() {
-        effects.push(Effect::Pump {
-            target: *a,
+    let mut out = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        out.push(Effect::Pump {
+            target: *id,
             power: 2,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::FirstStrike],
         });
     }
-    if let Some(TargetChoice::Object(b)) = targets.get(1) {
-        effects.push(Effect::Pump {
-            target: *b,
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.get(1) {
+        out.push(Effect::Pump {
+            target: *id,
             power: 0,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::Lifelink],
         });
     }
-    effects
+    out
 }

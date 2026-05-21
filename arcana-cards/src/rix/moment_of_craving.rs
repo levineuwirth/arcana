@@ -1,5 +1,5 @@
-//! Moment of Craving — `{1}{B}` instant. "Target creature gets -2/-2 until
-//! end of turn. You gain 2 life."
+//! Moment of Craving — `{1}{B}` instant. "Target creature gets -2/-2
+//! until end of turn. You gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

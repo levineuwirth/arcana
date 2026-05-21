@@ -1,8 +1,6 @@
 //! Horses of the Bruinen — `{3}{U}{U}` sorcery. "Return up to two
 //! target creatures to their owners' hands. Scry 1. The Ring tempts
-//! you."
-//!
-//! "The Ring tempts you" is not expressible with the demonstrated API.
+//! you." Ring isn't catalog; emit bounces (up to 2 targets) + Scry.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,16 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to two target creatures to their owners' hands. Scry 1. The Ring tempts you.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
-                count: TargetCount::UpTo(2),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return up to two target creatures to their owners' hands. Scry 1. The Ring tempts you.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -43,16 +42,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::ReturnToHand { target: *id }),
-            _ => None,
-        })
-        .collect();
+    // GAP: "The Ring tempts you" is not in catalog.
+    let mut effects = Vec::new();
+    for choice in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::ReturnToHand { target: *id });
+        }
+    }
     effects.push(Effect::Scry { player: entry.controller, count: 1 });
-    // GAP: "The Ring tempts you" not expressible.
     effects
 }

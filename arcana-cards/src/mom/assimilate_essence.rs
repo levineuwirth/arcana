@@ -1,5 +1,5 @@
-//! Assimilate Essence — `{1}{U}` instant. "Counter target creature or
-//! battle spell unless its controller pays {4}. If they do, you
+//! Assimilate Essence — `{1}{U}` instant. "Counter target creature
+//! or battle spell unless its controller pays {4}. If they do, you
 //! incubate 2."
 
 use arcana_core::effects::Effect;
@@ -38,13 +38,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "if they pay, you incubate 2" rider has no Incubate effect;
-    // emit the soft-counter core.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{4}").expect("valid cost"),
     }]
+    // GAP: "If they do, you incubate 2" — the Incubate mechanic
+    // (create an Incubator token with two +1/+1 counters and a
+    // transform ability) has no catalog Effect, and the conditional
+    // "if they paid" branch cannot be observed.
 }

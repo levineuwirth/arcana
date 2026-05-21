@@ -1,10 +1,5 @@
-//! Flunk — `{1}{B}` instant. "Target creature gets -X/-X until end of turn,
-//! where X is 7 minus the number of cards in that creature's controller's hand."
-//!
-//! # GAP: hand_size of the *target creature's controller* (not entry.controller)
-//!   — script::hand_size takes a PlayerId; we cannot read the target creature's
-//!   controller from entry alone without state field access.
-//! Best-effort: use entry.controller's hand size as an approximation.
+//! Flunk — `{1}{B}` instant. Target creature gets -X/-X until end of
+//! turn, X = 7 minus that creature's controller's hand size.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -42,15 +37,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: cannot read target creature's controller's player id without state field access
-    // Best-effort: using entry.controller's hand size
-    let hand = script::hand_size(state, entry.controller);
-    let x = (7i32 - hand as i32).max(0);
-    if x == 0 {
-        return Vec::new();
-    }
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let ctrl = script::target_controller(state, *id, entry.controller);
+    let hand = script::hand_size(state, ctrl) as i32;
+    let x = (7 - hand).max(0);
     vec![Effect::Pump {
         target: *id,
         power: -x,

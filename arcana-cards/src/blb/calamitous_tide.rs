@@ -1,6 +1,5 @@
 //! Calamitous Tide — `{4}{U}{U}` sorcery. "Return up to two target
-//! creatures to their owners' hands. Draw two cards, then discard a
-//! card."
+//! creatures to their owners' hands. Draw two cards, then discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,24 +35,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::ReturnToHand { target: *id }),
-            _ => None,
-        })
-        .collect();
-    effects.push(Effect::DrawCards {
-        player: entry.controller,
-        count: 2,
-    });
-    effects.push(Effect::Discard {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut out: Vec<Effect> = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::ReturnToHand { target: *id });
+        }
+    }
+    out.push(Effect::DrawCards { player: entry.controller, count: 2 });
+    out.push(Effect::Discard {
         player: entry.controller,
         count: 1,
         choice: DiscardChoice::ControllerChooses,
     });
-    effects
+    out
 }

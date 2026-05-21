@@ -1,9 +1,6 @@
 //! Slick Sequence — `{U}{R}` instant. "Slick Sequence deals 2 damage
 //! to any target. If you've cast another spell this turn, draw a
 //! card."
-//!
-//! GAP: "if you've cast another spell this turn" has no
-//! spells-cast-this-turn tracker; only the 2 damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,16 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Slick Sequence deals 2 damage to any target. If you've cast another spell this turn, draw a card.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Slick Sequence deals 2 damage to any target. If you've cast another spell this turn, draw a card.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // NOTE: "if you've cast another spell this turn" is not testable
+    // from the catalog helpers — the conditional draw is GAPed,
+    // emitting only the base 2 damage.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -44,6 +49,9 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: "cast another spell this turn" rider not expressible; draw omitted.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 2,
+    }]
 }

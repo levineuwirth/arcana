@@ -1,9 +1,5 @@
 //! Thrilling Discovery — `{R}{W}` sorcery. "You gain 2 life. Then you
 //! may discard two cards. If you do, draw three cards."
-//!
-//! GAP: optional ("you may discard"), conditional ("if you do, draw")
-//! sequencing is not expressible via plain Effects. Emit the
-//! unconditional life-gain and a best-effort loot.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,32 +19,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You gain 2 life. Then you may discard two cards. If you do, draw three cards.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You gain 2 life. Then you may discard two cards. If you do, draw three cards.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: the "you may discard, if you do draw" optionality has no
-    // catalog operator. Emit the lifegain plus an unconditional
-    // discard-2-then-draw-3 loot as the closest expression.
-    vec![
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 2,
-        },
-        Effect::Discard {
-            player: entry.controller,
-            count: 2,
-            choice: DiscardChoice::ControllerChooses,
-        },
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 3,
-        },
-    ]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // The gain-life is unconditional. GAP: the optional 'you may
+    // discard two cards; if you do, draw three' is a player-choice
+    // gated branch with no catalog Conditional condition that reads a
+    // discard decision.
+    vec![Effect::GainLife { player: entry.controller, amount: 2 }]
 }

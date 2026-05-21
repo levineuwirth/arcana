@@ -16,3 +16,4 @@ pub mod cauldron_haze;
 pub mod talara_s_bane;
 pub mod chaotic_backlash;
 pub mod inundate;
+pub mod fire_at_will;

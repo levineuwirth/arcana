@@ -1,4 +1,5 @@
-//! Wit's End — `{5}{B}{B}` sorcery, "Target player discards their hand."
+//! Wit's End — `{5}{B}{B}` sorcery. "Target player discards their
+//! hand." Use script::hand_size for dynamic discard count.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,11 +36,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    let count = script::hand_size(state, *p);
-    if count == 0 {
-        return Vec::new();
-    }
-    vec![Effect::Discard { player: *p, count, choice: DiscardChoice::ControllerChooses }]
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+    let p = *p;
+    let n = script::hand_size(state, p);
+    vec![Effect::Discard { player: p, count: n, choice: DiscardChoice::ControllerChooses }]
 }

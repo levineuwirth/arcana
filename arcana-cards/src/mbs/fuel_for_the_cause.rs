@@ -1,6 +1,5 @@
-//! Fuel for the Cause — `{2}{U}{U}` instant. "Counter target spell,
-//! then proliferate." The counter is expressible; proliferate has no
-//! primitive (GAP-noted, partial).
+//! Fuel for the Cause — `{2}{U}{U}` instant. Counter target spell, then
+//! proliferate. (Proliferate effect not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,10 +35,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "then proliferate" — no proliferate primitive; the counter
-    // is modeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "proliferate" rider not modeled (no Effect::Proliferate primitive).
     vec![Effect::Counter { target: *id }]
 }

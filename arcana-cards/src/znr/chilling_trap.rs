@@ -14,6 +14,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Chilling Trap");
+    let _wizard = reg.interner_mut().intern("Wizard");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{U}").expect("valid cost")),
@@ -22,18 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets -4/-0 until end of turn. If you control a Wizard, draw a card.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets -4/-0 until end of turn. If you control a Wizard, draw a card.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let mut out = vec![Effect::Pump {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let mut effects = vec![Effect::Pump {
         target: *id,
         power: -4,
         toughness: 0,
@@ -46,7 +53,7 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
         entry.controller,
     );
     if wizards > 0 {
-        out.push(Effect::DrawCards { player: entry.controller, count: 1 });
+        effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
     }
-    out
+    effects
 }

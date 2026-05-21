@@ -1,6 +1,5 @@
-//! Rampant Growth — `{1}{G}` sorcery. "Search your library for a
-//! basic land card, put that card onto the battlefield tapped, then
-//! shuffle."
+//! Rampant Growth — `{1}{G}` sorcery. "Search your library for a basic
+//! land card, put that card onto the battlefield tapped, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,6 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // The "basic" restriction is not separately filterable; the search is
+    // restricted to land cards.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

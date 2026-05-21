@@ -1,8 +1,7 @@
 //! First Pick — `{3}{G}` instant. "Destroy target artifact or
-//! enchantment. Assemble a Contraption."
-//!
-//! GAP: Assemble-a-Contraption is a silver-bordered minigame not in
-//! the catalog. Only the destroy is modeled.
+//! enchantment. Assemble a Contraption." Contraptions are silver-
+//! border / Un-set; no engine support — best-effort: destroy the
+//! permanent; GAP Assemble.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,26 +23,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: 'Assemble a Contraption' (Un-set Contraption deck mechanic) — no engine support.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target artifact or enchantment. Assemble a Contraption.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target artifact or enchantment. Assemble a Contraption.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(arcana_core::types::TypeLine(
+                            TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: Assemble-a-Contraption mechanic not in catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

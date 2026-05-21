@@ -1,8 +1,7 @@
-//! Mystic Meditation — `{3}{U}` sorcery. "Draw three cards. Then discard two
-//! cards unless you discard a creature card."
-//!
-//! GAP: cannot model the 'unless you discard a creature card' branch — best
-//! effort is to draw three and discard two.
+//! Mystic Meditation — `{3}{U}` sorcery. "Draw three cards. Then
+//! discard two cards unless you discard a creature card." GAP:
+//! 'discard N unless you discard a card of type X' branching choice
+//! not in catalog; emit the draw and an unconditional discard-2.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -37,12 +36,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'discard-2-unless-you-discard-creature' branching choice not in catalog.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::Discard {
-            player: entry.controller,
-            count: 2,
-            choice: DiscardChoice::ControllerChooses,
-        },
+        Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },
     ]
 }

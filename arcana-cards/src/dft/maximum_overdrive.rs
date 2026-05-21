@@ -1,6 +1,6 @@
-//! Maximum Overdrive — `{1}{B}` instant, "Put a +1/+1 counter on
-//! target creature. It gains deathtouch and indestructible until end of
-//! turn."
+//! Maximum Overdrive — `{1}{B}` instant. "Put a +1/+1 counter on
+//! target creature. It gains deathtouch and indestructible until end
+//! of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -23,9 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Put a +1/+1 counter on target creature. It gains \
-                   deathtouch and indestructible until end of turn."
-                .into(),
+            text: "Put a +1/+1 counter on target creature. It gains deathtouch and indestructible until end of turn.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -38,9 +36,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![
         Effect::AddCounters {
             target: *id,

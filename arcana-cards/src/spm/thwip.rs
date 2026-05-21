@@ -1,7 +1,6 @@
 //! Thwip! — `{W}` instant. "Target creature gets +2/+2 and gains
-//! flying until end of turn. If it's a Spider, you gain 2 life." The
-//! conditional Spider life-gain has no catalog primitive; the pump +
-//! flying is emitted.
+//! flying until end of turn. If it's a Spider, you gain 2 life." We
+//! emit the pump+flying and GAP the conditional Spider lifegain.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -39,8 +38,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "If it's a Spider, you gain 2 life" — a per-target subtype
-    // test has no catalog primitive.
+    // GAP: Spider-subtype conditional 2-life gain not in catalog.
     vec![Effect::Pump {
         target: *id,
         power: 2,

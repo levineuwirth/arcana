@@ -1,10 +1,8 @@
-//! Death Wish — `{1}{B}{B}` sorcery. "You may put a card you own
-//! from outside the game into your hand. You lose half your life,
-//! rounded up. Exile Death Wish."
-//!
-//! Only the "lose half your life, rounded up" clause is expressed
-//! (computed from current life). The wish (outside-the-game fetch)
-//! and self-exile have no catalog primitive.
+//! Death Wish — `{1}{B}{B}` sorcery. "You may put a card you own from
+//! outside the game into your hand. You lose half your life, rounded
+//! up. Exile Death Wish." Sideboard / outside-the-game zones aren't
+//! in the catalog — we emit the life-loss half and GAP the
+//! wish-from-outside.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,19 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You may put a card you own from outside the game into your hand. You lose half your life, rounded up. Exile Death Wish.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You may put a card you own from outside the game into your hand. You lose half your life, rounded up. Exile Death Wish.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let life = script::life(state, entry.controller).max(0) as u32;
-    let half_up = (life + 1) / 2;
-    // GAP: "put a card from outside the game into your hand" and
-    // self-exile — no wishboard / self-exile primitive.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let life = script::life(state, entry.controller).max(0);
+    let half_up = ((life + 1) / 2) as u32;
+    // GAP: outside-the-game zone (wish effect) and 'exile this spell on
+    // resolution' aren't in the catalog. Emit only the life loss.
     vec![Effect::LoseLife { player: entry.controller, amount: half_up }]
 }

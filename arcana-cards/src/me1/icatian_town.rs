@@ -1,5 +1,5 @@
-//! Icatian Town — `{5}{W}` sorcery.
-//! "Create four 1/1 white Citizen creature tokens."
+//! Icatian Town — `{5}{W}` sorcery. "Create four 1/1 white Citizen
+//! creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create four 1/1 white Citizen creature tokens.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create four 1/1 white Citizen creature tokens.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -36,7 +34,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let citizen = reg.interner().lookup("Citizen").expect("Citizen interned during register()");
+    let citizen = reg.interner().lookup("Citizen").expect("Citizen interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(citizen);
     let token = TokenDefinition {

@@ -1,6 +1,6 @@
 //! Eladamri's Call — `{G}{W}` instant. "Search your library for a
 //! creature card, reveal that card, put it into your hand, then
-//! shuffle."
+//! shuffle." Standard TutorToHand with the creature filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,17 +16,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{G}{W}").expect("valid cost")),
-        colors: ColorSet::green() | ColorSet::white(),
+        colors: ColorSet::white() | ColorSet::green(),
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a creature card, reveal that card, put it into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a creature card, reveal that card, put it into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

@@ -1,5 +1,5 @@
-//! Storm Seeker — `{3}{G}` instant. "Storm Seeker deals damage to
-//! target player equal to the number of cards in that player's hand."
+//! Storm Seeker — `{3}{G}` instant. "Deals damage to target player
+//! equal to the number of cards in that player's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectOrPlayer, TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,12 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Storm Seeker deals damage to target player equal to the number of cards in that player's hand.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Storm Seeker deals damage to target player equal to the number of cards in that player's hand.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -37,15 +38,11 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let p = match target {
-        TargetChoice::Player(p) => *p,
-        TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)) => *p,
-        _ => return Vec::new(),
-    };
-    let amount = script::hand_size(state, p);
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let n = script::hand_size(state, *p);
     vec![Effect::DealDamage {
         source: entry.source,
-        target: DamageTarget::Player(p),
-        amount,
+        target: DamageTarget::Player(*p),
+        amount: n,
     }]
 }

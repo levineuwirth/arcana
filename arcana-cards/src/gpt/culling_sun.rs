@@ -1,7 +1,5 @@
 //! Culling Sun — `{2}{W}{W}{B}` sorcery. "Destroy each creature with
 //! mana value 3 or less."
-//!
-//! Filtered board wipe: ForEach over creatures with mana value <= 3.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,16 +21,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy each creature with mana value 3 or less.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy each creature with mana value 3 or less.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().with_max_cmc(3),

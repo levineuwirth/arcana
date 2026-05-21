@@ -2,8 +2,9 @@
 //! cards. Put one into your hand and the other into your graveyard.
 //! Then shuffle."
 //!
-//! Modeled as a single library tutor to hand. GAP: 'put one into your
-//! graveyard' has no library-to-graveyard tutor primitive.
+//! TutorToHand searches a single card; there is no primitive for
+//! searching out two cards routed to different zones. Modeled as a
+//! single unrestricted tutor to hand, with the second fetch a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +35,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: second card going to graveyard has no library-tutor-to-graveyard primitive.
+    // GAP: searching out a second card to the graveyard is not
+    // expressible; only the hand fetch is emitted.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new(),

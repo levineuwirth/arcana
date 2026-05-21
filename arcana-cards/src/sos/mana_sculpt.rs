@@ -1,7 +1,6 @@
-//! Mana Sculpt — `{1}{U}{U}` instant, "Counter target spell. If you
-//! control a Wizard, add an amount of {C} equal to the amount of mana
-//! spent to cast that spell at the beginning of your next main phase."
-//! Only the counter is expressible.
+//! Mana Sculpt — `{1}{U}{U}` instant. Counter target spell. If you
+//! control a Wizard, add {C} equal to that spell's spent mana at the
+//! beginning of your next main phase.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,21 +23,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. If you control a Wizard, add an amount of {C} equal to the amount of mana spent to cast that spell at the beginning of your next main phase.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. If you control a Wizard, add an amount of {C} equal to the amount of mana spent to cast that spell at the beginning of your next main phase.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: deferred conditional mana refund based on mana spent not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "add mana at next main phase equal to spell's spent mana" — neither
+    // a delayed mana grant nor reading spent-mana from a stack object exists.
     vec![Effect::Counter { target: *id }]
 }

@@ -1,5 +1,4 @@
-//! Peace and Quiet — `{1}{W}` instant, "Destroy two target
-//! enchantments."
+//! Peace and Quiet — `{1}{W}` instant. "Destroy two target enchantments."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,27 +21,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy two target enchantments.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
-                ),
-                count: TargetCount::Exactly(2),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy two target enchantments.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
+                    ),
+                    count: TargetCount::Exactly(2),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    for t in &entry.targets.targets {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = Vec::new();
+    for t in entry.targets.targets.iter() {
         if let TargetChoice::Object(id) = t {
-            out.push(Effect::DestroyPermanent { target: *id });
+            effects.push(Effect::DestroyPermanent { target: *id });
         }
     }
-    out
+    effects
 }

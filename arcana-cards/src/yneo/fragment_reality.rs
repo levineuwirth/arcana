@@ -1,9 +1,7 @@
 //! Fragment Reality — `{W}` instant. "Exile target nontoken
 //! artifact, creature, or enchantment an opponent controls. Its
 //! controller puts a random creature card with lesser mana value from
-//! their library onto the battlefield tapped." The random
-//! lesser-MV-from-library rider has no primitive; the exile is
-//! emitted.
+//! their library onto the battlefield tapped."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +10,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -30,13 +29,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Exile target nontoken artifact, creature, or enchantment an opponent controls. Its controller puts a random creature card with lesser mana value from their library onto the battlefield tapped.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().nontoken().with_types_any(
-                        TypeLine(
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(
                             TypeLine::ARTIFACT
                                 | TypeLine::CREATURE
                                 | TypeLine::ENCHANTMENT,
-                        ),
-                    ),
+                        ))
+                        .nontoken()
+                        .controlled_by(ControllerConstraint::Opponent),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -48,9 +48,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "puts a random creature card with lesser mana value from
-    // their library onto the battlefield" has no primitive.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "put a random creature with lesser mana value from their
+    // library" requires reading the exiled card's MV at resolution; only
+    // the exile is emitted.
     vec![Effect::ExilePermanent { target: *id }]
 }

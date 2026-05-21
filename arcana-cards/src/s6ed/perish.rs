@@ -1,7 +1,5 @@
 //! Perish — `{2}{B}` sorcery. "Destroy all green creatures. They
 //! can't be regenerated."
-//!
-//! GAP: 'can't be regenerated' rider not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,23 +21,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all green creatures. They can't be regenerated.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all green creatures. They can't be regenerated.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().with_colors(ColorSet::green()),
-        entry.controller,
-    );
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![Effect::ForEach {
-        targets: ids,
+        targets: script::ids_matching(
+            state,
+            &ObjectFilter::creature().with_colors(ColorSet::green()),
+            entry.controller,
+        ),
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

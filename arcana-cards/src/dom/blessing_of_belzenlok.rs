@@ -1,7 +1,6 @@
 //! Blessing of Belzenlok — `{B}` instant. "Target creature gets
 //! +2/+1 until end of turn. If it's legendary, it also gains lifelink
-//! until end of turn." The legendary conditional is not checkable;
-//! the +2/+1 is emitted.
+//! until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -33,10 +32,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if it's legendary, also gains lifelink" — legendary
-    // conditional not checkable.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it's legendary, also gains lifelink" — no script helper
+    // checks the legendary supertype; only the +2/+1 pump is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

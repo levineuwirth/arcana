@@ -1,6 +1,5 @@
-//! Resolute Strike — `{W}` instant. "Target creature gets +2/+2 until end
-//! of turn. If it's a Warrior, you may attach an Equipment you control to it."
-//! GAP: subtype-conditional Equipment attach is not in the Effect catalog.
+//! Resolute Strike — `{W}` instant. Target creature gets +2/+2 until
+//! end of turn (Equipment attach rider is a gap).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -39,7 +38,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: subtype-conditional (Warrior check) Equipment attach not in Effect catalog
+    // GAP: 'if it's a Warrior, attach an Equipment you control' — no
+    // attach primitive or subtype-conditional auxiliary.
     vec![Effect::Pump {
         target: *id,
         power: 2,

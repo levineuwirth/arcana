@@ -1,11 +1,6 @@
-//! Return Triumphant — `{1}{W}` sorcery. "Return target creature card
-//! with mana value 3 or less from your graveyard to the battlefield.
-//! Create a Young Hero Role token attached to it."
-//!
-//! GAP note: the Young Hero Role token (an Aura-like attached
-//! enchantment token granting a triggered ability) is not expressible
-//! with the token/aura API available here. Only the reanimation is
-//! emitted.
+//! Return Triumphant — `{1}{W}` sorcery. "Return target creature
+//! card with mana value 3 or less from your graveyard to the
+//! battlefield. Create a Young Hero Role token attached to it."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetFilter, TargetRequirement,
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -36,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     zone: Zone::Graveyard(0),
                     filter: ObjectFilter::creature().with_max_cmc(3),
                 },
-                count: arcana_core::targets::TargetCount::Exactly(1),
+                count: TargetCount::Exactly(1),
                 controller: None,
             }],
             modal: None,
@@ -45,11 +40,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: Young Hero Role token (attached Aura-style enchantment
-    // token with a triggered ability) is not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: Role tokens with attached-aura semantics and the implied
+    // triggered ability aren't modeled; omit the Role create half.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

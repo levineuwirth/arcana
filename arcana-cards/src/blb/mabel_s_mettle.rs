@@ -24,20 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. Up to one other target creature gets +1/+1 until end of turn.".into(),
-                target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(ObjectFilter::creature()),
-                        count: TargetCount::UpTo(1),
-                        controller: None,
-                    },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. Up to one other target creature gets +1/+1 until end of turn.".into(),
+            target_requirements: vec![
+                TargetRequirement::target_creature(),
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,23 +45,25 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(a)) = it.next() else { return Vec::new(); };
-    let mut effs = vec![Effect::Pump {
-        target: *a,
-        power: 2,
-        toughness: 2,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }];
-    if let Some(TargetChoice::Object(b)) = it.next() {
-        effs.push(Effect::Pump {
-            target: *b,
+    let targets = &entry.targets.targets;
+    let mut out: Vec<Effect> = Vec::new();
+    if let Some(TargetChoice::Object(a_id)) = targets.first() {
+        out.push(Effect::Pump {
+            target: *a_id,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
+    }
+    if let Some(TargetChoice::Object(b_id)) = targets.get(1) {
+        out.push(Effect::Pump {
+            target: *b_id,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         });
     }
-    effs
+    out
 }

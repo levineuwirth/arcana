@@ -1,5 +1,5 @@
-//! Titan's Strength — `{R}` instant. "Target creature gets +3/+1
-//! until end of turn. Scry 1."
+//! Titan's Strength — `{R}` instant. "Target creature gets +3/+1 until
+//! end of turn. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -30,10 +30,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
         Effect::Pump {
             target: *id,
@@ -42,9 +45,6 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
-        Effect::Scry {
-            player: entry.controller,
-            count: 1,
-        },
+        Effect::Scry { player: entry.controller, count: 1 },
     ]
 }

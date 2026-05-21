@@ -1,7 +1,6 @@
 //! Carbonize — `{2}{R}` instant. "Carbonize deals 3 damage to any
 //! target. If it's a creature, it can't be regenerated this turn, and
-//! if it would die this turn, exile it instead." The replacement
-//! riders have no primitive; the damage is emitted.
+//! if it would die this turn, exile it instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -33,7 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -42,7 +43,11 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: "can't be regenerated" + "if it would die, exile instead"
-    // replacement riders have no primitive.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
+    // GAP: "can't be regenerated" and "if it would die, exile instead"
+    // replacement riders are not expressible; only the 3 damage is emitted.
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }]
 }

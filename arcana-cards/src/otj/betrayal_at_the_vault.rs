@@ -1,6 +1,6 @@
-//! Betrayal at the Vault — `{4}{G}{G}` instant, "Target creature you
-//! control deals damage equal to its power to each of two other target
-//! creatures."
+//! Betrayal at the Vault — `{4}{G}{G}` instant. "Target creature you
+//! control deals damage equal to its power to each of two other
+//! target creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +10,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,13 +27,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control deals damage equal to its \
-                   power to each of two other target creatures."
-                .into(),
+            text: "Target creature you control deals damage equal to its power to each of two other target creatures.".into(),
             target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
             ],
             modal: None,
             effect: resolve,
@@ -43,23 +58,27 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ts = &entry.targets.targets;
-    let (Some(TargetChoice::Object(src)), Some(TargetChoice::Object(a)), Some(TargetChoice::Object(b))) =
-        (ts.first(), ts.get(1), ts.get(2))
-    else {
+    let mut ids = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            ids.push(*id);
+        }
+    }
+    if ids.len() < 3 {
         return Vec::new();
-    };
-    let pw = script::power_of(state, *src).max(0) as u32;
+    }
+    let src = ids[0];
+    let dmg = script::power_of(state, src).max(0) as u32;
     vec![
         Effect::DealDamage {
-            source: *src,
-            target: DamageTarget::Object(*a),
-            amount: pw,
+            source: src,
+            target: DamageTarget::Object(ids[1]),
+            amount: dmg,
         },
         Effect::DealDamage {
-            source: *src,
-            target: DamageTarget::Object(*b),
-            amount: pw,
+            source: src,
+            target: DamageTarget::Object(ids[2]),
+            amount: dmg,
         },
     ]
 }

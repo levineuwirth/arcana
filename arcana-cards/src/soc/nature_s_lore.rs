@@ -1,9 +1,5 @@
-//! Nature's Lore — `{1}{G}` sorcery. "Search your library for a
-//! Forest card, put that card onto the battlefield, then shuffle."
-//!
-//! The "Forest" subtype constraint on a tutor isn't expressible via
-//! the ObjectFilter surface directly; using `subtype_filter` resolved
-//! via the registry's interner.
+//! Nature's Lore — `{1}{G}` sorcery. "Search your library for a Forest
+//! card, put that card onto the battlefield, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,19 +21,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a Forest card, put that card onto the battlefield, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a Forest card, put that card onto the battlefield, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = script::subtype_filter(reg, "Forest");
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
-        filter: script::subtype_filter(reg, "Forest"),
+        filter,
         tapped: false,
     }]
 }

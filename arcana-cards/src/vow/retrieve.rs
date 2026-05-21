@@ -1,6 +1,7 @@
 //! Retrieve — `{2}{G}` sorcery. "Return up to one target creature
 //! card and up to one target noncreature permanent card from your
-//! graveyard to your hand. Exile Retrieve."
+//! graveyard to your hand. Exile Retrieve." 'Exile this spell' is not
+//! a catalog primitive — only the returns are modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,41 +25,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to one target creature card and up to one target noncreature permanent card from your graveyard to your hand. Exile Retrieve.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return up to one target creature card and up to one target noncreature permanent card from your graveyard to your hand. Exile Retrieve.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Card {
+                            zone: Zone::Graveyard(0),
+                            filter: ObjectFilter::creature(),
+                        },
+                        count: TargetCount::UpTo(1),
+                        controller: None,
                     },
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::permanent()
-                            .without_types(TypeLine::CREATURE.into()),
+                    TargetRequirement {
+                        filter: TargetFilter::Card {
+                            zone: Zone::Graveyard(0),
+                            filter: ObjectFilter::permanent()
+                                .without_types(TypeLine::CREATURE.into()),
+                        },
+                        count: TargetCount::UpTo(1),
+                        controller: None,
                     },
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
     for t in &entry.targets.targets {
         if let TargetChoice::Object(id) = t {
-            out.push(Effect::ReturnFromGraveyardToHand { target: *id });
+            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
         }
     }
-    // "Exile Retrieve" (exile this spell card on resolution) has no
-    // catalog effect; non-load-bearing for the catalog.
-    out
+    // GAP: 'Exile Retrieve' (exile this spell on resolution) is not a
+    // catalog primitive.
+    effects
 }

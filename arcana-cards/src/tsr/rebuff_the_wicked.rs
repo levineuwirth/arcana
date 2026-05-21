@@ -1,7 +1,6 @@
-//! Rebuff the Wicked — `{W}` instant. "Counter target spell that
-//! targets a permanent you control." The "targets a permanent you
-//! control" restriction on the target spell is not expressible in the
-//! Spell ObjectFilter; modeled as a plain counter of target spell.
+//! Rebuff the Wicked — `{W}` instant. "Counter target spell that targets
+//! a permanent you control." The "targets a permanent you control"
+//! restriction is not expressible; targets any spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,6 +25,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target spell that targets a permanent you control.".into(),
+            // GAP: "spell that targets a permanent you control" filter is
+            // not expressible; targets any spell.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Spell(ObjectFilter::default()),
                 count: TargetCount::Exactly(1),
@@ -38,7 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::Counter { target: *id }]
 }

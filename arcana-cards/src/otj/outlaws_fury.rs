@@ -1,11 +1,9 @@
-//! Outlaws' Fury — `{2}{R}` instant. "Creatures you control get
-//! +2/+0 until end of turn. If you control an outlaw, exile the top
-//! card of your library. Until the end of your next turn, you may play
-//! that card."
-//!
-//! Only the team-wide pump is expressed. The conditional outlaw
-//! exile/play-from-exile rider has no catalog primitive (no
-//! "exile-top-and-grant-play" effect, no outlaw test).
+//! Outlaws' Fury — `{2}{R}` instant. "Creatures you control get +2/+0
+//! until end of turn. If you control an outlaw, exile the top card of
+//! your library. Until the end of your next turn, you may play that
+//! card." The 'outlaw' supertype isn't in the catalog; the
+//! 'exile-then-play-until-next-turn' play-from-exile sub-mechanic also
+//! isn't — best effort: pump creatures you control.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -28,24 +26,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Creatures you control get +2/+0 until end of turn. If you control an outlaw, exile the top card of your library. Until the end of your next turn, you may play that card.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Creatures you control get +2/+0 until end of turn. If you control an outlaw, exile the top card of your library. Until the end of your next turn, you may play that card.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let mut out = Vec::new();
+    let mut effects: Vec<Effect> = Vec::new();
     for id in ids {
-        out.push(Effect::Pump {
+        effects.push(Effect::Pump {
             target: id,
             power: 2,
             toughness: 0,
@@ -53,7 +56,7 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
             keywords: vec![],
         });
     }
-    // GAP: conditional "if you control an outlaw, exile top card and
-    // you may play it until end of your next turn" — no exile-and-grant-play primitive.
-    out
+    // GAP: 'outlaw' supertype/typeset and 'exile + may-play-until-next-turn'
+    // primitive are not in the catalog.
+    effects
 }

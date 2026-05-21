@@ -1,6 +1,7 @@
-//! Map the Wastes — `{2}{G}` sorcery.
-//! "Search your library for a basic land card, put it onto the
-//! battlefield tapped, then shuffle. Bolster 1."
+//! Map the Wastes — `{2}{G}` sorcery. "Search your library for a
+//! basic land card, put it onto the battlefield tapped, then shuffle.
+//! Bolster 1." Bolster (choose least-toughness creature you control)
+//! is not a catalog primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ObjectFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,17 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Bolster 1.".into(),
-            target_requirements: vec![],
+            target_requirements: vec![] as Vec<TargetRequirement>,
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // Bolster 1 (put a +1/+1 counter on the creature with least
-    // toughness you control) has no catalog representation; the land
-    // tutor is performed.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: Bolster 1 (player-choice least-toughness creature) not in catalog.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

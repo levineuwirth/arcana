@@ -1,10 +1,6 @@
 //! Hellfire — `{2}{B}{B}{B}` sorcery. "Destroy all nonblack
 //! creatures. Hellfire deals X plus 3 damage to you, where X is the
 //! number of creatures that died this way."
-//!
-//! Dynamic X is computed pre-resolution as the count of nonblack
-//! creatures currently on the battlefield (a stand-in for "creatures
-//! that died this way", since the engine has no died-this-way hook).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,25 +23,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all nonblack creatures. Hellfire deals X plus 3 damage to you, where X is the number of creatures that died this way.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all nonblack creatures. Hellfire deals X plus 3 damage to you, where X is the number of creatures that died this way.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let filter = ObjectFilter::creature().without_colors(ColorSet::black());
     let ids = script::ids_matching(state, &filter, entry.controller);
-    let x: u32 = ids.len() as u32;
+    let x = ids.len() as u32;
     vec![
         Effect::ForEach {
             targets: ids,
-            effect: Box::new(Effect::DestroyPermanent {
-                target: NULL_OBJECT_ID,
-            }),
+            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
         },
         Effect::DealDamage {
             source: entry.source,

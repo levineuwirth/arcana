@@ -1,10 +1,8 @@
-//! Double Play — `{3}{G}{G}` sorcery. "Choose another player. Search
-//! your library for a basic land card, put it onto the battlefield,
-//! then shuffle. At the beginning of the first upkeep in your next
-//! game with that player, [repeat]."
-//!
-//! Only the immediate basic-land tutor is emitted; the next-game
-//! delayed half is not expressible.
+//! Double Play — `{3}{G}{G}` sorcery. "Choose another player. Search your
+//! library for a basic land card, put it onto the battlefield, then shuffle.
+//! At the beginning of the first upkeep in your next game with that player,
+//! search your library for a basic land card, put it onto the battlefield,
+//! then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,12 +23,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Choose another player. Search your library for a basic land card, put it onto the battlefield, then shuffle. At the beginning of the first upkeep in your next game with that player, search your library for a basic land card, put it onto the battlefield, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Choose another player. Search your library for a basic land card, put it onto the battlefield, then shuffle. At the beginning of the first upkeep in your next game with that player, search your library for a basic land card, put it onto the battlefield, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,8 +38,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the "next game with that player" delayed second tutor is
-    // not modeled.
+    // The "next game" delayed effect has no representation; emit only the immediate basic-land tutor.
+    // GAP: "at the beginning of the first upkeep in your next game" cross-game delayed effect not modeled.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

@@ -1,12 +1,10 @@
 //! Tibalt's Trickery — `{1}{R}` instant. "Counter target spell.
 //! Choose 1, 2, or 3 at random. Its controller mills that many cards,
 //! then exiles cards from the top of their library until they exile a
-//! nonland card with a different name than that spell. They may cast
-//! that card without paying its mana cost. Then they put the exiled
-//! cards on the bottom of their library in a random order."
+//! nonland card with a different name than that spell. ..."
 //!
-//! Only the counter is modeled. The cascade-style exile-cast-bottom
-//! pipeline isn't a catalog Effect.
+//! The counter is expressed. The random-number mill and the
+//! exile-until / free-cast tail are not expressible — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +12,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,8 +41,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: random 1/2/3 mill + exile-until-nonland-different-name +
-    // cast-from-exile pipeline.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: random 1/2/3 mill and exile-until-different-name free-cast
+    // tail are not expressible.
     vec![Effect::Counter { target: *id }]
 }

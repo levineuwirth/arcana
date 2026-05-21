@@ -1,14 +1,12 @@
-//! Peer Past the Veil — `{2}{R}{G}` instant. "Discard your hand.
-//! Then draw X cards, where X is the number of card types among cards
-//! in your graveyard." Discarding your whole hand is a dynamic count
-//! (hand size). X (card types among graveyard cards) is not a script
-//! helper, so the draw is a GAP; we emit the hand discard only.
+//! Peer Past the Veil — `{2}{R}{G}` instant. "Discard your hand. Then
+//! draw X cards, where X is the number of card types among cards in your
+//! graveyard."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
+use arcana_core::script;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
-use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
@@ -33,8 +31,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: X = number of card types among graveyard cards is not a
-    // script helper, so the draw is omitted; discard-hand emitted.
+    // GAP: X = "number of card types among cards in your graveyard" has no
+    // script helper, so the X-card draw is omitted; the discard-your-hand
+    // half is emitted.
     let hand = script::hand_size(state, entry.controller);
     if hand == 0 {
         return Vec::new();

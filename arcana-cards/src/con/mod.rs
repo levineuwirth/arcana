@@ -8,3 +8,4 @@ pub mod shard_convergence;
 pub mod view_from_above;
 pub mod quenchable_fire;
 pub mod wretched_banquet;
+pub mod voices_from_the_void;

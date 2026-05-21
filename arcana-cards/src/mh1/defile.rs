@@ -1,7 +1,6 @@
 //! Defile — `{B}` instant. "Target creature gets -1/-1 until end of
-//! turn for each Swamp you control." Dynamic amount = number of
-//! Swamps you control, computed via script::count_matching over a
-//! Swamp subtype filter.
+//! turn for each Swamp you control." Dynamic -N/-N via count of
+//! Swamps you control.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,7 +10,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,28 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets -1/-1 until end of turn for each Swamp you control.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets -1/-1 until end of turn for each Swamp you control.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let n = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Swamp"),
-        entry.controller,
-    ) as i32;
-    vec![Effect::Pump {
-        target: *id,
-        power: -n,
-        toughness: -n,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    let swamp_filter = script::subtype_filter(reg, "Swamp").controlled_by(ControllerConstraint::You);
+    let n = script::count_matching(state, &swamp_filter, entry.controller) as i32;
+    vec![Effect::Pump { target: *id, power: -n, toughness: -n, duration: Duration::EndOfTurn, keywords: vec![] }]
 }

@@ -1,7 +1,5 @@
 //! Voidslime — `{G}{U}{U}` instant. "Counter target spell, activated
-//! ability, or triggered ability." Targeting/countering an ability on
-//! the stack is not expressible (TargetFilter::Spell only covers
-//! spells); modeled as countering target spell.
+//! ability, or triggered ability."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,6 +24,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target spell, activated ability, or triggered ability.".into(),
+            // The "activated/triggered ability" target branches are not
+            // expressible; targets a spell.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Spell(ObjectFilter::default()),
                 count: TargetCount::Exactly(1),
@@ -38,6 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::Counter { target: *id }]
 }

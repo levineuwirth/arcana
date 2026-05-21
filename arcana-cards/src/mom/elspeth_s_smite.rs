@@ -1,12 +1,9 @@
-//! Elspeth's Smite — `{W}` instant. "Elspeth's Smite deals 3 damage
-//! to target attacking or blocking creature. If that creature would
-//! die this turn, exile it instead."
-//!
-//! No "attacking or blocking" target filter; approximated as target
-//! creature. The dies-replacement is modeled as a ThisDies delayed
-//! exile on the damaged creature.
+//! Elspeth's Smite — `{W}` instant. "Deals 3 damage to target
+//! attacking or blocking creature. If that creature would die this
+//! turn, exile it instead." Both attacker/blocker target restriction
+//! and the death-replacement aren't catalog-expressible.
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -26,29 +23,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Elspeth's Smite deals 3 damage to target attacking or blocking creature. If that creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: attacking-or-blocking target restriction and dies-this-turn exile replacement not modeled.
+                text: "Elspeth's Smite deals 3 damage to target attacking or blocking creature. If that creature would die this turn, exile it instead.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id),
-            amount: 3,
-        },
-        Effect::DelayedAction {
-            source: *id,
-            controller: entry.controller,
-            when: DelayedWhen::ThisDies,
-            action: DelayedAction::Exile,
-        },
-    ]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Object(*id),
+        amount: 3,
+    }]
 }

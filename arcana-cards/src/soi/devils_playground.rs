@@ -1,10 +1,6 @@
-//! Devils' Playground — `{4}{R}{R}` sorcery.
-//! "Create four 1/1 red Devil creature tokens. They have 'When this token dies,
-//! it deals 1 damage to any target.'"
-//!
-//! GAP: Devil token triggered ability "When this token dies, it deals 1 damage
-//! to any target" is not expressible via the TokenDefinition abilities field.
-//! The tokens are created without the triggered ability.
+//! Devils' Playground — `{4}{R}{R}` sorcery. "Create four 1/1 red
+//! Devil creature tokens. They have 'When this token dies, it deals 1
+//! damage to any target.'"
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +8,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,25 +21,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create four 1/1 red Devil creature tokens. They have \"When this token dies, it deals 1 damage to any target.\"".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create four 1/1 red Devil creature tokens. They have \"When this token dies, it deals 1 damage to any target.\"".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let devil = reg.interner().lookup("Devil").expect("Devil interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let devil = reg.interner().lookup("Devil").expect("Devil interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(devil);
-    // GAP: devil "when dies deals 1 damage" triggered ability not in TokenDefinition
+    // GAP: the tokens' "when this dies, deal 1 damage" triggered ability
+    // cannot be attached to a TokenDefinition via the catalog; the four
+    // tokens are created without the trigger.
     let token = TokenDefinition {
         name: devil,
         colors: ColorSet::red(),
@@ -56,9 +48,21 @@ fn resolve(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

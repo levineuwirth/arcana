@@ -1,6 +1,6 @@
 //! Sudden Reclamation — `{3}{G}` instant. "Mill four cards, then
-//! return a creature card and a land card from your graveyard to your
-//! hand."
+//! return a creature card and a land card from your graveyard to
+//! your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,13 +29,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // The non-targeted "return a creature card and a land card from
-    // your graveyard" choice has no catalog effect (only targeted
-    // graveyard return exists); only the mill is implemented.
-    vec![Effect::Mill { player: entry.controller, count: 4 }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: the "return a creature card and a land card from your
+    // graveyard" selection is untargeted and has no primitive — only
+    // the mill is emitted.
+    vec![Effect::Mill {
+        player: entry.controller,
+        count: 4,
+    }]
 }

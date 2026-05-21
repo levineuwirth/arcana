@@ -1,15 +1,19 @@
-//! Sagittars' Volley — `{2}{G}` instant, "Destroy target creature
-//! with flying. Sagittars' Volley deals 1 damage to each creature with
-//! flying your opponents control." The "with flying" refinement is not
-//! expressible as a filter; only the target destruction is modeled.
+//! Sagittars' Volley — `{2}{G}` instant. Destroy target creature with
+//! flying. Deals 1 damage to each creature with flying your opponents
+//! control.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -22,18 +26,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature with flying. Sagittars' Volley deals 1 damage to each creature with flying your opponents control.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature with flying. Sagittars' Volley deals 1 damage to each creature with flying your opponents control.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "creature with flying" filter (target restriction and the
-    // 1-damage-to-each-opponent-flier rider) is not expressible.
-    vec![Effect::DestroyPermanent { target: *id }]
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let mut effects = vec![Effect::DestroyPermanent { target: *id }];
+    // Damage each opponent-controlled creature; GAP: no "with flying"
+    // ObjectFilter refinement.
+    let opp_creatures = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        entry.controller,
+    );
+    let _ = KeywordAbility::Flying; // marker that flying filtering is the gap.
+    for cid in opp_creatures {
+        if cid == *id { continue; }
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(cid),
+            amount: 1,
+        });
+    }
+    effects
 }

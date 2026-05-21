@@ -19,3 +19,4 @@ pub mod mass_appeal;
 pub mod dangerous_wager;
 pub mod aggravate;
 pub mod rush_of_blood;
+pub mod battle_hymn;

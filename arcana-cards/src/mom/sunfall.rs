@@ -1,13 +1,5 @@
 //! Sunfall — `{3}{W}{W}` sorcery. "Exile all creatures. Incubate X,
 //! where X is the number of creatures exiled this way."
-//!
-//! "Exile all creatures" is a board-wide exile via ForEach over every
-//! creature. The Incubate X rider creates an Incubator token with X
-//! +1/+1 counters and a transform ability — no Incubate primitive and
-//! no way to size it from the just-exiled count.
-//!
-//! GAP: Incubate X is not expressible (no Incubate primitive / dynamic
-//! token-counter sizing); only the board exile is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,18 +21,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile all creatures. Incubate X, where X is the number of creatures exiled this way.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile all creatures. Incubate X, where X is the number of creatures exiled this way.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: Incubate X rider not expressible.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // NOTE: the "Incubate X" rider has no token/counter primitive that
+    // models the transforming Incubator token — GAPed. Emitting the
+    // expressible "exile all creatures".
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),

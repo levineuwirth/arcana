@@ -1,7 +1,6 @@
 //! Hisoka's Defiance — `{1}{U}` instant. "Counter target Spirit or
-//! Arcane spell." The Spirit/Arcane spell-type restriction on the
-//! countered spell isn't expressible via the Spell ObjectFilter;
-//! modeled as a plain counter of target spell.
+//! Arcane spell." The Spirit/Arcane spell filter is not expressible;
+//! targets any spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,6 +25,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target Spirit or Arcane spell.".into(),
+            // GAP: "Spirit or Arcane spell" subtype filter is not
+            // expressible; targets any spell.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Spell(ObjectFilter::default()),
                 count: TargetCount::Exactly(1),
@@ -38,6 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::Counter { target: *id }]
 }

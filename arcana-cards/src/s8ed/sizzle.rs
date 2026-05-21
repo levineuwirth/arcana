@@ -20,13 +20,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Sizzle deals 3 damage to each opponent.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Sizzle deals 3 damage to each opponent.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -35,14 +34,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Sequence(
-        script::opponents(state, entry.controller)
-            .into_iter()
-            .map(|p| Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Player(p),
-                amount: 3,
-            })
-            .collect(),
-    )]
+    script::opponents(state, entry.controller)
+        .into_iter()
+        .map(|p| Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 3,
+        })
+        .collect()
 }

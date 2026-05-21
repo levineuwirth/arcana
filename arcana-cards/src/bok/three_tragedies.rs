@@ -1,5 +1,5 @@
-//! Three Tragedies — `{3}{B}{B}` sorcery, "Target player discards three
-//! cards."
+//! Three Tragedies — `{3}{B}{B}` sorcery (Arcane). Target player discards
+//! three cards.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -37,9 +37,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard {
-        player: *p,
-        count: 3,
-        choice: DiscardChoice::ControllerChooses,
-    }]
+    vec![Effect::Discard { player: *p, count: 3, choice: DiscardChoice::ControllerChooses }]
 }

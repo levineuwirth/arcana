@@ -1,8 +1,10 @@
-//! Imperial Edict — `{1}{B}` sorcery. "Target opponent chooses a
-//! creature they control. Destroy that creature."
+//! Imperial Edict — `{1}{B}` sorcery. "Target opponent chooses a creature
+//! they control. Destroy that creature."
 //!
-//! Modeled as an edict: the targeted opponent loses a creature of
-//! their choice (`Effect::Sacrifice` with a creature filter).
+//! 'Target player sacrifices' is in the catalog as `Effect::Sacrifice` — that's
+//! the closest analogue (destroy and sacrifice differ; this is an Edict-style
+//! 'opponent-chooses-then-destroy', which the engine doesn't model
+//! distinctly). Emit `Sacrifice` for the target opponent picking a creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,12 +25,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent chooses a creature they control. Destroy that creature.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target opponent chooses a creature they control. Destroy that creature.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,6 +42,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: 'opponent chooses, then destroyed' (Edict) — modeled as Sacrifice since
+    // Sacrifice is also opponent-chooses-and-leaves-the-battlefield.
     vec![Effect::Sacrifice {
         player: *p,
         filter: ObjectFilter::creature(),

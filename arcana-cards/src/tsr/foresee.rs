@@ -27,13 +27,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
-        Effect::Scry { player: entry.controller, count: 4 },
-        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::Scry {
+            player: entry.controller,
+            count: 4,
+        },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
     ]
 }

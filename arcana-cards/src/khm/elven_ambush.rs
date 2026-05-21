@@ -1,5 +1,5 @@
-//! Elven Ambush — `{3}{G}` instant.
-//! "Create a 1/1 green Elf Warrior creature token for each Elf you control."
+//! Elven Ambush — `{3}{G}` instant. "Create a 1/1 green Elf Warrior
+//! creature token for each Elf you control."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -8,7 +8,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,10 +38,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let elf_filter = script::subtype_filter(reg, "Elf");
-    let n = script::count_matching(state, &elf_filter, entry.controller);
-    let elf = reg.interner().lookup("Elf").expect("Elf interned during register()");
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned during register()");
+    let elf = reg.interner().lookup("Elf").expect("Elf interned");
+    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elf);
     subtypes.0.insert(warrior);
@@ -55,5 +53,17 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    (0..n).map(|_| Effect::CreateToken { controller: entry.controller, token: token.clone() }).collect()
+    let n = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Elf").controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    let mut effects = Vec::with_capacity(n as usize);
+    for _ in 0..n {
+        effects.push(Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        });
+    }
+    effects
 }

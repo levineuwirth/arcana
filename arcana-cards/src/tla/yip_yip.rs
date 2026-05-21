@@ -1,21 +1,23 @@
-//! Yip Yip! — `{W}` instant (Lesson), "Target creature you control gets
-//! +2/+2 until end of turn. If that creature is an Ally, it also gains
-//! flying until end of turn."
-//! GAP: conditional keyword grant based on creature subtype (Ally check
-//! at resolution time is not expressible with current script helpers).
+//! Yip Yip! — `{W}` instant — Lesson. "Target creature you control
+//! gets +2/+2 until end of turn. If that creature is an Ally, it also
+//! gains flying until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
+    TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Yip Yip!");
+    let _lesson = reg.interner_mut().intern("Lesson");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),
@@ -27,7 +29,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Target creature you control gets +2/+2 until end of turn. If that creature is an Ally, it also gains flying until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -41,7 +50,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional flying grant when creature is an Ally (subtype check at resolution)
+    // GAP: conditional "if that creature is an Ally, it gains flying" —
+    // subtype-of-target check at resolution is not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 2,

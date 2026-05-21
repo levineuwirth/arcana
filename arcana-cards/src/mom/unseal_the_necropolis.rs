@@ -1,5 +1,5 @@
-//! Unseal the Necropolis — `{2}{B}` instant. "Each player mills three cards.
-//! Then return up to two target creature cards from your graveyard to your hand."
+//! Unseal the Necropolis — `{2}{B}` instant. Each player mills three;
+//! return up to two creature cards from your graveyard to hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +8,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -24,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Each player mills three cards. Then return up to two target creature cards from your graveyard to your hand.".into(),
+                text: "Each player mills three cards. Then you return up to two creature cards from your graveyard to your hand. (To mill three cards, a player puts the top three cards of their library into their graveyard.)".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
@@ -44,13 +46,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mill_effects: Vec<Effect> = script::all_players(state)
+    let mut effects: Vec<Effect> = script::all_players(state)
         .into_iter()
         .map(|p| Effect::Mill { player: p, count: 3 })
         .collect();
-    let mut effects = vec![Effect::Sequence(mill_effects)];
-    for target in &entry.targets.targets {
-        if let TargetChoice::Object(id) = target {
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
             effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
         }
     }

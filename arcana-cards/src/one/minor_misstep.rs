@@ -25,9 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Counter target spell with mana value 1 or less.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::default().with_max_cmc(1),
-                ),
+                filter: TargetFilter::Spell(ObjectFilter::default().with_max_cmc(1)),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -42,11 +40,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Counter { target: *id }]
 }

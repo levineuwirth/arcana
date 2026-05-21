@@ -1,6 +1,5 @@
-//! Shower of Sparks — `{R}` instant. "Shower of Sparks deals 1
-//! damage to target creature and 1 damage to target player or
-//! planeswalker."
+//! Shower of Sparks — `{R}` instant. Deals 1 damage to target creature
+//! and 1 damage to target player or planeswalker.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectOrPlayer, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +27,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Shower of Sparks deals 1 damage to target creature and 1 damage to target player or planeswalker.".into(),
             target_requirements: vec![
                 TargetRequirement::target_creature(),
-                TargetRequirement::target_player(),
+                TargetRequirement {
+                    filter: TargetFilter::AnyTarget,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                },
             ],
             modal: None,
             effect: resolve,
@@ -34,20 +39,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(creature)) = it.next() else { return Vec::new(); };
-    let Some(TargetChoice::Player(p)) = it.next() else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*creature),
-            amount: 1,
+fn to_damage_target(choice: &TargetChoice) -> Option<DamageTarget> {
+    match choice {
+        TargetChoice::Object(id) => Some(DamageTarget::Object(*id)),
+        TargetChoice::Player(p) => Some(DamageTarget::Player(*p)),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => Some(DamageTarget::Object(*id)),
+            ObjectOrPlayer::Player(p) => Some(DamageTarget::Player(*p)),
         },
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Player(*p),
-            amount: 1,
-        },
-    ]
+    }
+}
+
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = Vec::new();
+    for choice in &entry.targets.targets {
+        if let Some(dt) = to_damage_target(choice) {
+            effects.push(Effect::DealDamage {
+                source: entry.source,
+                target: dt,
+                amount: 1,
+            });
+        }
+    }
+    effects
 }

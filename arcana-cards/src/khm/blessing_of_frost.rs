@@ -1,13 +1,9 @@
-//! Blessing of Frost — `{3}{G}` Snow Sorcery.
-//! "Distribute X +1/+1 counters among any number of creatures you control,
-//! where X is the amount of {S} spent to cast this spell. Then draw a card
-//! for each creature you control with power 4 or greater."
-//!
-//! GAP: "X is the amount of {S} spent to cast this spell" — tracking snow mana
-//! spent is not available via script::* helpers.
-//! GAP: "distribute X counters among any number" — player-directed distribution
-//! targeting is not in the Effect catalog.
-//! The draw-for-each-creature-with-power-4-or-greater portion uses script::count_matching.
+//! Blessing of Frost — `{3}{G}` Snow Sorcery. "Distribute X +1/+1 counters
+//! among any number of creatures you control, where X is the amount of {S}
+//! spent to cast this spell. Then draw a card for each creature you control
+//! with power 4 or greater." The {S}-spent amount X is not exposed by any
+//! script helper, so the counter distribution is gapped; the conditional
+//! draw is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,29 +25,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Distribute X +1/+1 counters among any number of creatures you control, where X is the amount of {S} spent to cast this spell. Then draw a card for each creature you control with power 4 or greater.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Distribute X +1/+1 counters among any number of creatures you control, where X is the amount of {S} spent to cast this spell. Then draw a card for each creature you control with power 4 or greater.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: snow mana tracking not available via script::*.
-    // GAP: player-directed counter distribution not in Effect catalog.
-    let n = script::count_matching(
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: X = the amount of {S} (snow mana) spent to cast this spell is not
+    // exposed by any script helper, so the +1/+1 counter distribution is omitted.
+    let draws = script::count_matching(
         state,
         &ObjectFilter::creature()
             .controlled_by(ControllerConstraint::You)
             .with_min_power(4),
         entry.controller,
     );
-    vec![Effect::DrawCards { player: entry.controller, count: n }]
+    if draws == 0 {
+        Vec::new()
+    } else {
+        vec![Effect::DrawCards { player: entry.controller, count: draws }]
+    }
 }

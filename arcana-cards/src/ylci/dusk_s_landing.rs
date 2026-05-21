@@ -1,8 +1,8 @@
-//! Dusk's Landing — `{B}` sorcery. "Draw a card. If an opponent lost life
-//! this turn and you gained life this turn, seek two Vampire cards instead."
-//!
-//! GAP: no Effect for seek; no 'lost/gained life this turn' condition. Best
-//! effort: draw a card.
+//! Dusk's Landing — `{B}` sorcery. "Draw a card. If an opponent
+//! lost life this turn and you gained life this turn, seek two
+//! Vampire cards instead." GAP: 'opponent lost life this turn /
+//! you gained life this turn' history predicates and Seek primitive
+//! not in catalog; emit only the unconditional draw.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'seek' and turn-history conditions not supported
+    // GAP: turn-history life predicates + Seek primitive not in catalog.
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

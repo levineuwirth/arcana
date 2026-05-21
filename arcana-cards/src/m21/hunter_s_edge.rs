@@ -1,6 +1,7 @@
 //! Hunter's Edge — `{3}{G}` sorcery. "Put a +1/+1 counter on target
-//! creature you control. Then that creature deals damage equal to its
-//! power to target creature you don't control."
+//! creature you control. Then that creature deals damage equal to
+//! its power to target creature you don't control." Fight-like
+//! one-way damage: dynamic amount via script::power_of after counter.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -32,14 +33,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
                         ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
                         ),
                         count: TargetCount::Exactly(1),
                         controller: None,
@@ -56,21 +59,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let targets = &entry.targets.targets;
-    if targets.len() < 2 { return Vec::new(); }
-    let TargetChoice::Object(a) = &targets[0] else { return Vec::new(); };
-    let TargetChoice::Object(b) = &targets[1] else { return Vec::new(); };
-    let dmg = (script::power_of(state, *a) + 1).max(0) as u32;
+    let Some(TargetChoice::Object(mine)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(theirs)) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let mine = *mine;
+    let theirs = *theirs;
+    // Counter goes on first, so damage uses post-counter power.
+    let after_power = script::power_of(state, mine).max(0) as u32 + 1;
     vec![
         Effect::AddCounters {
-            target: *a,
+            target: mine,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         },
         Effect::DealDamage {
-            source: *a,
-            target: DamageTarget::Object(*b),
-            amount: dmg,
+            source: mine,
+            target: DamageTarget::Object(theirs),
+            amount: after_power,
         },
     ]
 }

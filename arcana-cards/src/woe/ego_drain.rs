@@ -30,16 +30,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // The "you choose a nonland card" targeted discard is approximated
-    // as the controller choosing the discarded card; the Faerie
-    // self-exile clause is not expressible and is omitted.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "you choose a nonland card from the revealed hand" is a
+    // targeted-discard with no primitive; the Faerie clause is also
+    // not expressible. Emit a one-card discard chosen by the caster.
     vec![Effect::Discard {
         player: *p,
         count: 1,

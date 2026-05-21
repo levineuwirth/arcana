@@ -1,6 +1,5 @@
-//! Manhole Missile — `{1}{R}` instant. "Manhole Missile deals 3 damage
-//! to target creature. You may put a card from your hand on the bottom
-//! of your library. If you do, draw a card."
+//! Manhole Missile — `{1}{R}` instant. Deals 3 to target creature;
+//! optional bottom-from-hand cantrip rider is partial.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,20 +21,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Manhole Missile deals 3 damage to target creature. You may put a card from your hand on the bottom of your library. If you do, draw a card.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Manhole Missile deals 3 damage to target creature. You may put a card from your hand on the bottom of your library. If you do, draw a card.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: the optional "put a hand card on bottom, if you do draw a
-    // card" loot rider is not expressible; emitting only the damage.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'put a card from your hand on the bottom of your library, if
+    // you do draw a card' — no hand-to-bottom-of-library primitive.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

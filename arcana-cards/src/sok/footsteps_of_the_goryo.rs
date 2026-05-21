@@ -1,12 +1,7 @@
-//! Footsteps of the Goryo — `{2}{B}` sorcery, "Return target creature
-//! card from your graveyard to the battlefield. Sacrifice that creature
-//! at the beginning of the next end step."
-//!
-//! GAP: the delayed sacrifice needs the battlefield id of the
-//! just-returned creature, which is not available at resolution (the
-//! target id is the graveyard card). Only the reanimation is modeled.
+//! Footsteps of the Goryo — `{2}{B}` sorcery (Arcane). Reanimate target
+//! creature card; sacrifice it at the next end step.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -52,6 +47,14 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: delayed sacrifice of just-returned creature not expressible.
-    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
+    let id = *id;
+    vec![
+        Effect::ReturnFromGraveyardToBattlefield { target: id },
+        Effect::DelayedAction {
+            source: id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::Sacrifice,
+        },
+    ]
 }

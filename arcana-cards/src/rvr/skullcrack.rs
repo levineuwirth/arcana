@@ -1,11 +1,6 @@
 //! Skullcrack — `{1}{R}` instant. "Players can't gain life this turn.
 //! Damage can't be prevented this turn. Skullcrack deals 3 damage to
 //! target player or planeswalker."
-//!
-//! GAP: "players can't gain life this turn" and "damage can't be
-//! prevented this turn" are continuous turn-long replacement locks
-//! with no catalog Effect. The 3 damage is emitted. The target is a
-//! player (planeswalker option not separately modeled).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -14,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectOrPlayer, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,22 +22,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Players can't gain life this turn. Damage can't be prevented this turn. Skullcrack deals 3 damage to target player or planeswalker.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // NOTE: the "player or planeswalker" target is modeled
+                // as any_target; the lifegain/prevention lockout riders
+                // are GAPed in resolve.
+                text: "Players can't gain life this turn. Damage can't be prevented this turn. Skullcrack deals 3 damage to target player or planeswalker.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "players can't gain life this turn" and "damage can't be
+    // prevented this turn" — no turn-scoped lifegain/prevention lockout
+    // primitive. Emitting only the expressible 3 damage.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: "players can't gain life" / "damage can't be prevented" turn locks not expressible.
+    let dt = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
+    };
     vec![Effect::DealDamage {
         source: entry.source,
-        target: DamageTarget::Player(*p),
+        target: dt,
         amount: 3,
     }]
 }

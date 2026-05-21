@@ -1,7 +1,6 @@
-//! Gandalf's Sanction — `{1}{U}{R}` sorcery. "Gandalf's Sanction deals X
-//! damage to target creature, where X is the number of instant and
-//! sorcery cards in your graveyard. Excess damage is dealt to that
-//! creature's controller instead."
+//! Gandalf's Sanction — `{1}{U}{R}` sorcery. Deals X damage to target
+//! creature, where X is the number of instant and sorcery cards in your
+//! graveyard. Excess damage hits the controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,16 +23,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Gandalf's Sanction deals X damage to target creature, \
-                   where X is the number of instant and sorcery cards in your \
-                   graveyard. Excess damage is dealt to that creature's \
-                   controller instead."
-                .into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Gandalf's Sanction deals X damage to target creature, where X is the number of instant and sorcery cards in your graveyard. Excess damage is dealt to that creature's controller instead.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -42,25 +38,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let inst = script::graveyard_matching(
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let x = script::graveyard_matching(
         state,
-        &ObjectFilter::new().with_types(TypeLine::INSTANT.into()),
+        &ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
         entry.controller,
         entry.controller,
     );
-    let sorc = script::graveyard_matching(
-        state,
-        &ObjectFilter::new().with_types(TypeLine::SORCERY.into()),
-        entry.controller,
-        entry.controller,
-    );
-    // "Excess damage to controller" rider is not expressible — damage only.
+    // GAP: excess-damage redirect not in catalog. Plain damage only.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
-        amount: inst + sorc,
+        amount: x,
     }]
 }

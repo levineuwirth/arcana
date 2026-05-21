@@ -1,7 +1,6 @@
 //! Bite Down — `{1}{G}` instant. "Target creature you control deals
 //! damage equal to its power to target creature or planeswalker you
-//! don't control." First target's current power is the damage dealt
-//! to the second target.
+//! don't control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -39,7 +38,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 },
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(
+                                TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                            ))
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -52,18 +55,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let TargetChoice::Object(src) = (match entry.targets.targets.first() {
-        Some(t) => t,
-        None => return Vec::new(),
-    }) else { return Vec::new(); };
-    let TargetChoice::Object(victim) = (match entry.targets.targets.get(1) {
-        Some(t) => t,
-        None => return Vec::new(),
-    }) else { return Vec::new(); };
-    let amount = script::power_of(state, *src).max(0) as u32;
+    let Some(TargetChoice::Object(source_id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(victim)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
+    let power = script::power_of(state, *source_id).max(0) as u32;
     vec![Effect::DealDamage {
-        source: entry.source,
+        source: *source_id,
         target: DamageTarget::Object(*victim),
-        amount,
+        amount: power,
     }]
 }

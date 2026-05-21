@@ -1,9 +1,5 @@
-//! Gloomlance — `{3}{B}{B}` sorcery. "Destroy target creature. If
-//! that creature was green or white, its controller discards a card."
-//!
-//! GAP: "if that creature was green or white" requires inspecting the
-//! pre-destruction colors and identifying its controller for a
-//! follow-up discard. Only the destroy is emitted.
+//! Gloomlance — `{3}{B}{B}` sorcery. "Destroy target creature. If that
+//! creature was green or white, its controller discards a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,10 +29,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: color-conditional discard rider.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: conditional on the destroyed creature's prior color requires a
+    // color predicate inside Effect::Conditional — not exposed.
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,14 +1,18 @@
-//! Liberate — `{1}{W}` instant. "Exile target creature you control. Return that card to the battlefield
-//! under its owner's control at the beginning of the next end step."
-//! GAP: "return at beginning of next end step" — no delayed triggered Effect for end-of-turn zone return.
+//! Liberate — `{1}{W}` instant. "Exile target creature you control.
+//! Return that card to the battlefield under its owner's control at
+//! the beginning of the next end step." Classic flicker: exile then
+//! schedule return on NextEndStep.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,7 +28,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Exile target creature you control. Return that card to the battlefield under its owner's control at the beginning of the next end step.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -36,9 +46,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "return that card to the battlefield at the beginning of the next end step" —
-    // no delayed-trigger Effect variant for end-step zone return
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::ExilePermanent { target: *id }]
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::ReturnFromExileToBattlefield,
+        },
+    ]
 }

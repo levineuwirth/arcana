@@ -1,8 +1,7 @@
 //! Dark Bargain — `{3}{B}` instant. "Look at the top three cards of your
-//! library. Put two of them into your hand and the other into your graveyard.
-//! Dark Bargain deals 2 damage to you." Closest catalog primitive for the
-//! library-peek-and-split is a Surveil-flavored shape we don't have; emit the
-//! self-damage and GAP the rest.
+//! library. Put two of them into your hand and the other into your
+//! graveyard. Dark Bargain deals 2 damage to you." Modeled as drawing two
+//! plus a mill of one, then 2 damage to the controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -33,10 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no Effect for "look at top N, put K into hand and the rest into graveyard".
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Player(entry.controller),
-        amount: 2,
-    }]
+    // "look at top 3, two to hand, one to graveyard" approximated as draw 2 + mill 1.
+    vec![
+        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::Mill { player: entry.controller, count: 1 },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(entry.controller),
+            amount: 2,
+        },
+    ]
 }

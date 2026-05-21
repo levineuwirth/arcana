@@ -1,5 +1,5 @@
-//! Soul Salvage — `{2}{B}` sorcery, "Return up to two target creature
-//! cards from your graveyard to your hand."
+//! Soul Salvage — `{2}{B}` sorcery. Return up to two target creature cards
+//! from your graveyard to your hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,15 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::ReturnFromGraveyardToHand { target: *id })
-            }
-            _ => None,
-        })
-        .collect()
+    entry.targets.targets.iter().filter_map(|t| match t {
+        TargetChoice::Object(id) => Some(Effect::ReturnFromGraveyardToHand { target: *id }),
+        _ => None,
+    }).collect()
 }

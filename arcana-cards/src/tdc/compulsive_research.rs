@@ -2,8 +2,8 @@
 //! cards. Then that player discards two cards unless they discard a
 //! land card."
 //!
-//! GAP: 'discard a land to skip the 2-card discard' branch isn't a
-//! catalog primitive. We model draw-3 + base 2-card discard.
+//! The draw and the two-card discard are expressed. The "unless they
+//! discard a land card" alternative is not expressible — GAP.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -34,8 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'discard a land to skip tax' branch.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: the "unless they discard a land card" alternative is not
+    // expressible.
     vec![
         Effect::DrawCards { player: *p, count: 3 },
         Effect::Discard {

@@ -1,9 +1,6 @@
-//! Barge In — `{R}` instant. "Target attacking creature gets +2/+2 until
-//! end of turn. Each attacking non-Human creature gains trample until
-//! end of turn."
-//! GAP: "attacking" filter not in ObjectFilter; creature subtype exclusion
-//! ("non-Human") for board-wide trample grant not expressible.
-//! Emits +2/+2 on the single target creature only.
+//! Barge In — `{R}` instant. "Target attacking creature gets +2/+2
+//! until end of turn. Each attacking non-Human creature gains trample
+//! until end of turn." Attacking-state filter not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target attacking creature gets +2/+2 until end of turn. Each attacking non-Human creature gains trample until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target attacking creature gets +2/+2 until end of turn. Each attacking non-Human creature gains trample until end of turn.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,7 +38,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking" filter and non-Human board-wide trample grant not in catalog
+    // GAP: attacking-state filter and "each attacking non-Human" trample-grant not in catalog.
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -26,3 +26,6 @@ pub mod the_fall_of_kroog;
 pub mod emergency_weld;
 pub mod sibling_rivalry;
 pub mod corrupt;
+pub mod fateful_handoff;
+pub mod lay_down_arms;
+pub mod flow_of_knowledge;

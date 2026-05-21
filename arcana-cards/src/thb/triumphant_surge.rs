@@ -1,5 +1,5 @@
-//! Triumphant Surge — `{3}{W}` instant. "Destroy target creature with
-//! power 4 or greater. You gain 3 life."
+//! Triumphant Surge — `{3}{W}` instant. "Destroy target creature
+//! with power 4 or greater. You gain 3 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,10 +43,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effs = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effs.push(Effect::DestroyPermanent { target: *id });
-    }
-    effs.push(Effect::GainLife { player: entry.controller, amount: 3 });
-    effs
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::GainLife { player: entry.controller, amount: 3 },
+    ]
 }

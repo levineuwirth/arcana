@@ -42,24 +42,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    let mut it = entry.targets.targets.iter();
-    if let Some(TargetChoice::Object(a)) = it.next() {
-        effects.push(Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*a),
-            amount: 6,
-        });
-    } else {
-        return Vec::new();
-    }
-    if let Some(TargetChoice::Object(b)) = it.next() {
-        effects.push(Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*b),
-            amount: 2,
-        });
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut iter = entry.targets.targets.iter();
+    let Some(t1) = iter.next() else { return Vec::new(); };
+    let TargetChoice::Object(id1) = t1 else { return Vec::new(); };
+    let mut effects = vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Object(*id1),
+        amount: 6,
+    }];
+    if let Some(t2) = iter.next() {
+        if let TargetChoice::Object(id2) = t2 {
+            effects.push(Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Object(*id2),
+                amount: 2,
+            });
+        }
     }
     effects
 }

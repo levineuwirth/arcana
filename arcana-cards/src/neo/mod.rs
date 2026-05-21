@@ -20,3 +20,4 @@ pub mod malicious_malfunction;
 pub mod planar_incision;
 pub mod ambitious_assault;
 pub mod master_s_rebuke;
+pub mod invoke_despair;

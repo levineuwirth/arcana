@@ -1,14 +1,10 @@
-//! Rain of Blades — `{W}` instant. "Rain of Blades deals 1 damage to each
-//! attacking creature."
-//!
-//! GAP: filtering specifically for attacking creatures (combat-state flag)
-//! is not expressible via ObjectFilter. Approximated as dealing 1 damage
-//! to each creature (all creatures, not just attackers).
+//! Rain of Blades — `{W}` instant. Deals 1 damage to each attacking
+//! creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -41,15 +37,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'attacking creature' combat-state filter not expressible; targeting all creatures
+    // GAP: no "attacking creature" filter — fall back to every creature.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    if ids.is_empty() { return Vec::new(); }
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DealDamage {
+    ids.into_iter()
+        .map(|id| Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
+            target: DamageTarget::Object(id),
             amount: 1,
-        }),
-    }]
+        })
+        .collect()
 }

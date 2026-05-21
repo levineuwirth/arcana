@@ -21,25 +21,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +2/+2 and gains flying until end of turn. You gain 2 life.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +2/+2 and gains flying until end of turn. You gain 2 life.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    vec![
-        Effect::Pump {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::Pump {
             target: *id,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::Flying],
-        },
-        Effect::GainLife { player: entry.controller, amount: 2 },
-    ]
+        });
+    }
+    effects.push(Effect::GainLife { player: entry.controller, amount: 2 });
+    effects
 }

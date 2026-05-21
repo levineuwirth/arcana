@@ -1,10 +1,9 @@
 //! Persist — `{1}{B}` sorcery. "Return target nonlegendary creature
 //! card from your graveyard to the battlefield with a -1/-1 counter
-//! on it."
-//!
-//! "Nonlegendary" target predicate is not in ObjectFilter; CounterKind
-//! has only PlusOnePlusOne (no Minus). Best-effort: reanimate any
-//! creature from graveyard; the -1/-1 counter rider is GAP'd.
+//! on it." Nonlegendary filter has no ObjectFilter refinement; -1/-1
+//! counter isn't in the CounterKind catalog (only PlusOnePlusOne).
+//! Emit the reanimate (without the nonlegendary restriction) and GAP
+//! the counter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,24 +27,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target nonlegendary creature card from your graveyard to the battlefield with a -1/-1 counter on it.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target nonlegendary creature card from your graveyard to the battlefield with a -1/-1 counter on it.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: nonlegendary predicate; -1/-1 counter not in CounterKind surface.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'nonlegendary' ObjectFilter refinement; -1/-1 counter
+    // CounterKind variant.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

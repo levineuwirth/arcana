@@ -1,8 +1,6 @@
 //! Lay Bare — `{2}{U}{U}` instant. "Counter target spell. Look at
-//! its controller's hand."
-//!
-//! "Look at its controller's hand" has no catalog Effect; only the
-//! counter is expressed.
+//! its controller's hand." We emit the counter; the look-at-hand
+//! information effect isn't in the catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +23,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Look at its controller's hand.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Look at its controller's hand.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'look at its controller's hand' info effect not in catalog.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
     };
-    // GAP: "Look at its controller's hand" has no catalog Effect.
-    vec![Effect::Counter { target: *id }]
+    vec![Effect::Counter { target: stack_id }]
 }

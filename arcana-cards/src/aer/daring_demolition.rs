@@ -1,7 +1,6 @@
-//! Daring Demolition — `{2}{B}{B}` sorcery. "Destroy target creature or
-//! Vehicle." Vehicle is an artifact subtype; we filter as creature OR
-//! artifact-Vehicle. ObjectFilter has no OR-of-subtypes, so we widen to
-//! creature-or-artifact and rely on the spell text — closest catalog shape.
+//! Daring Demolition — `{2}{B}{B}` sorcery. "Destroy target creature
+//! or Vehicle." Vehicle subtype is on artifact cards; we approximate
+//! as 'creature or artifact' to be permissive, with a GAP note.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,24 +23,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature or Vehicle.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types(TypeLine::CREATURE.into())
-                        .with_types_any(TypeLine::ARTIFACT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature or Vehicle.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::ARTIFACT)),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'Vehicle' subtype filter — using 'artifact' as the proxy
+    // since all Vehicles are artifacts (permissive over-approximation).
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

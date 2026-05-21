@@ -1,5 +1,6 @@
-//! Naturalize 2 — `{1}{G}` instant. "Destroy target artifact,
-//! enchantment, emblem, or gameplay tracker."
+//! Naturalize 2 — `{1}{G}` instant. Destroy target artifact,
+//! enchantment, emblem, or gameplay tracker. (Emblems/trackers not
+//! permanents; approximate as artifact-or-enchantment.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,20 +23,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target artifact, enchantment, emblem, or gameplay tracker.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
-                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target artifact, enchantment, emblem, or gameplay tracker.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,9 +44,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "emblem" and "gameplay tracker" (monarch / dungeons / blessing) not modeled.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "emblem or gameplay tracker" targets not expressible; artifact /
-    // enchantment is handled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -10,7 +10,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Deduce");
-    let _clue = reg.interner_mut().intern("Clue");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{U}").expect("valid cost")),
@@ -28,8 +27,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // "Investigate" creates a Clue token with an activated ability,
-    // not expressible via the plain TokenDefinition; emit the draw.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
+    // GAP: "Investigate" creates a Clue artifact token carrying an
+    // activated ability ("{2}, Sacrifice this token: Draw a card"),
+    // which TokenDefinition.abilities cannot express; the Clue is
+    // omitted.
 }

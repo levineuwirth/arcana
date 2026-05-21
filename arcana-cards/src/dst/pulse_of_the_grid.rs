@@ -1,9 +1,6 @@
-//! Pulse of the Grid — `{1}{U}{U}` instant. "Draw two cards, then discard a
-//! card. Then if an opponent has more cards in hand than you, return Pulse of
-//! the Grid to its owner's hand."
-//! GAP: conditional return of the resolving spell itself (hand-size comparison
-//! across players; returning a resolving spell from stack to hand) not in
-//! engine Effect catalog.
+//! Pulse of the Grid — `{1}{U}{U}` instant. "Draw two cards, then
+//! discard a card. Then if an opponent has more cards in hand than
+//! you, return Pulse of the Grid to its owner's hand."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -38,9 +35,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional return of the spell itself based on hand-size comparison not in engine
+    // GAP: 'Then if an opponent has more cards in hand than you, return Pulse
+    // of the Grid to its owner's hand' — an instant returning ITSELF (a stack
+    // object) to hand on resolution is not expressible; ReturnToHand operates
+    // on permanents, not on the resolving spell. The hand-comparison condition
+    // also lacks an Effect::Conditional condition variant in the catalog.
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: entry.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

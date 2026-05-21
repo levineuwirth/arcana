@@ -5,3 +5,4 @@ pub mod armored_griffin;
 pub mod arc_trail;
 pub mod see_beyond;
 pub mod three_dreams;
+pub mod hellion_eruption;

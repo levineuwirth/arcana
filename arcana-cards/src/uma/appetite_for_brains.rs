@@ -1,10 +1,6 @@
-//! Appetite for Brains — `{B}` sorcery. "Target opponent reveals their hand.
-//! You choose a card from it with mana value 4 or greater and exile that card."
-//!
-//! # GAP: "target opponent reveals hand, you choose a card with mana value ≥4
-//! to exile" — targeted hand inspection with controller-chooses-a-specific-card
-//! exile is not expressible; only random/opponent-chooses discard variants exist.
-//! Best effort: forced discard (opponent chooses) with no exile.
+//! Appetite for Brains — `{B}` sorcery. "Target opponent reveals their
+//! hand. You choose a card from it with mana value 4 or greater and
+//! exile that card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -27,6 +23,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
+                // GAP: the chosen card is exiled (not discarded) and is
+                // restricted to mana value 4+ — there is no targeted-
+                // hand-exile primitive and the MV filter can't be
+                // applied. Rendered as a controller-chooses discard.
                 text: "Target opponent reveals their hand. You choose a card from it with mana value 4 or greater and exile that card.".into(),
                 target_requirements: vec![TargetRequirement::target_player()],
                 modal: None,
@@ -40,8 +40,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: hand-inspection + controller-chooses card with CMC ≥4 to exile from hand
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::ControllerChooses }]
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::OpponentChooses,
+    }]
 }

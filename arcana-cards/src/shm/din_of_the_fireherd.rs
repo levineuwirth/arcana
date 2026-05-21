@@ -11,7 +11,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -48,33 +50,39 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
         keywords: vec![],
         abilities: vec![],
     };
-    let mut effects = vec![Effect::CreateToken { controller: entry.controller, token }];
-    let Some(TargetChoice::Player(opp)) = entry.targets.targets.first() else {
-        return effects;
-    };
-    let black = script::count_matching(
+    let mut effects = vec![Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    }];
+    let black_count = script::count_matching(
         state,
-        &ObjectFilter::creature().with_colors(ColorSet::black()),
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::black()),
         entry.controller,
     );
-    let red = script::count_matching(
+    let red_count = script::count_matching(
         state,
-        &ObjectFilter::creature().with_colors(ColorSet::red()),
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::red()),
         entry.controller,
     );
-    if black > 0 {
-        effects.push(Effect::Sacrifice {
-            player: *opp,
-            filter: ObjectFilter::creature(),
-            count: black,
-        });
-    }
-    if red > 0 {
-        effects.push(Effect::Sacrifice {
-            player: *opp,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            count: red,
-        });
+    if let Some(TargetChoice::Player(p)) = entry.targets.targets.first() {
+        if black_count > 0 {
+            effects.push(Effect::Sacrifice {
+                player: *p,
+                filter: ObjectFilter::creature(),
+                count: black_count,
+            });
+        }
+        if red_count > 0 {
+            effects.push(Effect::Sacrifice {
+                player: *p,
+                filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                count: red_count,
+            });
+        }
     }
     effects
 }

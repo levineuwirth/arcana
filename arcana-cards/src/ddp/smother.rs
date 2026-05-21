@@ -1,8 +1,5 @@
-//! Smother — `{1}{B}` instant. "Destroy target creature with mana value
-//! 3 or less. It can't be regenerated."
-//! The "can't be regenerated" rider has no Effect variant; DestroyPermanent
-//! is the best-effort representation (the engine's regeneration prevention
-//! is not in the catalog).
+//! Smother — `{1}{B}` instant. Destroy target creature with mana value
+//! 3 or less; it can't be regenerated (filter handles the cmc gate).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -46,5 +45,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'can't be regenerated' rider — no destroy-without-regen primitive.
     vec![Effect::DestroyPermanent { target: *id }]
 }

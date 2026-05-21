@@ -23,34 +23,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target artifact, creature, or land. Aftershock deals 3 damage to you.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::CREATURE.into())
-                        .with_types_any(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target artifact, creature, or land. Aftershock \
+                       deals 3 damage to you.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(TypeLine(
+                            TypeLine::ARTIFACT
+                                | TypeLine::CREATURE
+                                | TypeLine::LAND,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Player(entry.controller),
-            amount: 3,
-        },
-    ]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DestroyPermanent { target: *id });
+    }
+    effects.push(Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Player(entry.controller),
+        amount: 3,
+    });
+    effects
 }

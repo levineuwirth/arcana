@@ -22,3 +22,4 @@ pub mod ray_of_enfeeblement;
 pub mod burning_hands;
 pub mod feign_death;
 pub mod split_the_party;
+pub mod spoils_of_the_hunt;

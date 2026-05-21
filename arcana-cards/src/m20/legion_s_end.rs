@@ -1,8 +1,8 @@
 //! Legion's End — `{1}{B}` sorcery. "Exile target creature an
 //! opponent controls with mana value 2 or less and all other
 //! creatures that player controls with the same name as that
-//! creature. Then that player reveals their hand and exiles all cards
-//! with that name from their hand and graveyard."
+//! creature. Then that player reveals their hand and exiles all
+//! cards with that name from their hand and graveyard."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -29,7 +30,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Exile target creature an opponent controls with mana value 2 or less and all other creatures that player controls with the same name as that creature. Then that player reveals their hand and exiles all cards with that name from their hand and graveyard.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().with_max_cmc(2),
+                    ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::Opponent)
+                        .with_max_cmc(2),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -40,10 +43,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The same-name sweep across battlefield/hand/graveyard is not
-    // expressible; emit the single-target exile.
     vec![Effect::ExilePermanent { target: *id }]
+    // GAP: "all other creatures with the same name" and "exile all
+    // cards with that name from hand and graveyard" both require
+    // enumerating objects by a shared name, which no helper supports;
+    // only the single targeted creature is exiled.
 }

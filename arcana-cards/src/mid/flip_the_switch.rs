@@ -1,9 +1,7 @@
-//! Flip the Switch — `{2}{U}` instant. "Counter target spell unless its
-//! controller pays {4}. Create a 2/2 black Zombie creature token with
-//! decayed."
-//!
-//! GAP: no KeywordAbility::Decayed; token is created without the decayed
-//! ability.
+//! Flip the Switch — `{2}{U}` instant. "Counter target spell unless
+//! its controller pays {4}. Create a 2/2 black Zombie creature token
+//! with decayed." Decayed isn't in the keyword surface; emit plain
+//! Zombie token + the soft counter.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -47,10 +45,7 @@ fn resolve(
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
+    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
     let zombie = reg.interner().lookup("Zombie").expect("Zombie interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
@@ -64,9 +59,10 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: "decayed" keyword (can't block; sacrifice when it attacks) is not in the keyword surface.
     vec![
         Effect::CounterUnlessPays {
-            target: stack_id,
+            target: *stack_id,
             cost: ManaCost::parse("{4}").expect("valid cost"),
         },
         Effect::CreateToken { controller: entry.controller, token },

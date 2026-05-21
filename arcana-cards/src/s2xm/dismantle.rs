@@ -1,6 +1,6 @@
 //! Dismantle — `{2}{R}` sorcery. "Destroy target artifact. If that
-//! artifact had counters on it, put that many +1/+1 counters or charge
-//! counters on an artifact you control."
+//! artifact had counters on it, put that many +1/+1 counters or
+//! charge counters on an artifact you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,8 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target artifact. If that artifact had counters on it, put that many +1/+1 counters or charge counters on an artifact you control.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .with_types(TypeLine::ARTIFACT.into()),
+                    ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -39,15 +38,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The counter-transfer rider depends on the destroyed artifact's
-    // counter count, which is not available post-destroy; only the
-    // destroy is implemented.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if that artifact had counters, move that many" requires
+    // reading the destroyed artifact's counter total — no helper for
+    // counter counts. Only the destroy is emitted.
     vec![Effect::DestroyPermanent { target: *id }]
 }

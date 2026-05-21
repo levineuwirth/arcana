@@ -1,9 +1,5 @@
-//! Depressurize — `{1}{B}` instant. "Target creature gets -3/-0 until
-//! end of turn. Then if that creature's power is 0 or less, destroy
-//! it."
-//!
-//! The dynamic check on resulting power runs at resolution time via
-//! script::power_of (post-pump value is current power - 3).
+//! Depressurize — `{1}{B}` instant. "Target creature gets -3/-0 until end
+//! of turn. Then if that creature's power is 0 or less, destroy it."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,20 +31,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let mut effects = vec![Effect::Pump {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let post_power = script::power_of(state, *id) - 3;
+    let mut out = vec![Effect::Pump {
         target: *id,
         power: -3,
         toughness: 0,
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }];
-    let post = script::power_of(state, *id) - 3;
-    if post <= 0 {
-        effects.push(Effect::DestroyPermanent { target: *id });
+    if post_power <= 0 {
+        out.push(Effect::DestroyPermanent { target: *id });
     }
-    effects
+    out
 }

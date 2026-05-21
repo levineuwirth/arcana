@@ -1,5 +1,5 @@
-//! Jace's Defeat — `{1}{U}` instant. "Counter target blue spell. If it
-//! was a Jace planeswalker spell, scry 2."
+//! Jace's Defeat — `{1}{U}` instant. "Counter target blue spell. If
+//! it was a Jace planeswalker spell, scry 2."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,15 +37,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The conditional scry-2 if the countered spell was a Jace
-    // planeswalker has no catalog predicate; only the counter is
-    // implemented.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it was a Jace planeswalker spell, scry 2" — cannot test
+    // the countered spell's name/type. Only the counter is emitted.
     vec![Effect::Counter { target: *id }]
 }

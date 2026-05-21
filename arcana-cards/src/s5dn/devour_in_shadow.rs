@@ -22,21 +22,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature. It can't be regenerated. You lose life equal to that creature's toughness.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature. It can't be regenerated. You lose life equal to that creature's toughness.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let amount = script::toughness_of(state, *id).max(0) as u32;
-    // GAP: 'can't be regenerated' rider.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let toughness = script::toughness_of(state, *id).max(0) as u32;
     vec![
         Effect::DestroyPermanent { target: *id },
-        Effect::LoseLife { player: entry.controller, amount },
+        Effect::LoseLife { player: entry.controller, amount: toughness },
     ]
 }

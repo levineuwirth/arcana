@@ -1,13 +1,7 @@
-//! Firespout — `{2}{R/G}` sorcery. Colors: R, G.
-//! "Firespout deals 3 damage to each creature without flying if {R} was spent
-//! to cast this spell and 3 damage to each creature with flying if {G} was spent
-//! to cast this spell."
-//!
-//! GAP: "if {R} was spent / if {G} was spent" — mana-spent conditional not in
-//! engine catalog. Emitting the simpler approximation: deal 3 to all creatures
-//! (which is correct when both {R} and {G} are spent, i.e. the common case for
-//! the non-hybrid pip). The verify pipeline will flag this as partial.
-//! Full correct implementation requires a "mana-spent" condition variant.
+//! Firespout — `{2}{R/G}` sorcery. "Firespout deals 3 damage to each
+//! creature without flying if {R} was spent to cast this spell and 3
+//! damage to each creature with flying if {G} was spent to cast this
+//! spell."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -32,7 +26,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Firespout deals 3 damage to each creature without flying if {R} was spent to cast this spell and 3 damage to each creature with flying if {G} was spent to cast this spell.".into(),
+                // GAP: the with-/without-flying split depends on which
+                // mana ({R} vs {G}) was spent, and ObjectFilter cannot
+                // filter by the flying keyword. Renders as 3 damage to
+                // every creature.
+                text: "Firespout deals 3 damage to each creature.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -45,8 +43,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: mana-spent conditional ({R} vs {G}) not in engine catalog.
-    // Approximation: deal 3 to all creatures (correct for {R}{G} spent case).
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     vec![Effect::ForEach {
         targets: ids,

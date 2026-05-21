@@ -1,8 +1,8 @@
 //! Rampage of the Clans — `{3}{G}` instant. "Destroy all artifacts and
 //! enchantments. For each permanent destroyed this way, its controller
-//! creates a 3/3 green Centaur creature token." We ForEach-destroy the
-//! artifact-or-enchantment set; the controller-keyed token rider has no
-//! catalog support — GAP.
+//! creates a 3/3 green Centaur creature token." The destruction is
+//! expressible; the per-destroyed-permanent token (whose count and
+//! controller depend on what was destroyed) is gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,16 +35,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(
+    // GAP: the per-destroyed-permanent Centaur token (its count and per-permanent
+    // controller) cannot be derived from a post-destruction state snapshot.
+    let targets = script::ids_matching(
         state,
-        &ObjectFilter::new()
-            .with_types(TypeLine::ARTIFACT.into())
-            .with_types_any(TypeLine::ENCHANTMENT.into()),
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
         entry.controller,
     );
-    // GAP: no "for each destroyed permanent, its controller creates a token" Effect.
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

@@ -1,5 +1,5 @@
-//! Violent Ultimatum — `{B}{B}{R}{R}{R}{G}{G}` sorcery. "Destroy three
-//! target permanents."
+//! Violent Ultimatum — `{B}{B}{R}{R}{R}{G}{G}` sorcery. "Destroy
+//! three target permanents."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,35 +23,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
-    let perm_req = || TargetRequirement {
-        filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-        count: TargetCount::Exactly(1),
-        controller: None,
-    };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy three target permanents.".into(),
-            target_requirements: vec![perm_req(), perm_req(), perm_req()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                count: TargetCount::Exactly(3),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::DestroyPermanent { target: *id })
-            }
-            _ => None,
-        })
-        .collect()
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for target in &entry.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::DestroyPermanent { target: *id });
+        }
+    }
+    effects
 }

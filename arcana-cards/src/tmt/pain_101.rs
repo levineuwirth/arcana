@@ -1,7 +1,7 @@
 //! Pain 101 — `{1}{B}` instant. "Until end of turn, target creature gains
 //! deathtouch and 'When this creature dies, return it to the battlefield
-//! tapped under its owner's control.'" Grant deathtouch via `GrantKeyword`;
-//! the granted die-trigger ability is not expressible — GAP that rider.
+//! tapped under its owner's control.'" Only the deathtouch grant is
+//! expressible; the granted dies-trigger is gapped.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -33,10 +33,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: granting a triggered "when this dies, reanimate self tapped" ability
-    // is not expressible — only the deathtouch grant is emitted.
+    // GAP: granting a triggered ability ("when this dies, return it...") to a
+    // creature is not expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Deathtouch,

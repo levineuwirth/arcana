@@ -1,6 +1,6 @@
-//! Revelation of Power — `{1}{W}` instant. "Target creature gets +2/+2
-//! until end of turn. If it has a counter on it, it also gains flying
-//! and lifelink until end of turn."
+//! Revelation of Power — `{1}{W}` instant. "Target creature gets
+//! +2/+2 until end of turn. If it has a counter on it, it also gains
+//! flying and lifelink until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -31,16 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if it has a counter on it" predicate (flying + lifelink) —
-    // no catalog test for counters on a target; only the unconditional
-    // pump is applied.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it has a counter on it" cannot be tested — the
+    // conditional flying/lifelink is omitted.
     vec![Effect::Pump {
         target: *id,
         power: 2,

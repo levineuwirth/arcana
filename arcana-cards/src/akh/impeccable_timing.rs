@@ -1,8 +1,7 @@
-//! Impeccable Timing — `{1}{W}` instant. "Impeccable Timing deals 3 damage
-//! to target attacking or blocking creature."
-//!
-//! GAP: no attacking-or-blocking filter; falling back to plain
-//! target_creature().
+//! Impeccable Timing — `{1}{W}` instant. "Impeccable Timing deals 3
+//! damage to target attacking or blocking creature." The
+//! "attacking/blocking" target restriction is not in the ObjectFilter
+//! catalog; emit as plain creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

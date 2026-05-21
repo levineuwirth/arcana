@@ -1,8 +1,5 @@
-//! Olivia's Wrath — `{4}{B}` sorcery. "Each non-Vampire creature gets -X/-X
-//! until end of turn, where X is the number of Vampires you control."
-//!
-//! # GAP: ObjectFilter has no without_subtype method — cannot exclude Vampire
-//!   subtypes from the target set; best-effort applies -X/-X to all creatures.
+//! Olivia's Wrath — `{4}{B}` sorcery. Each non-Vampire creature gets
+//! -X/-X until end of turn, X = Vampires you control.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -41,16 +38,20 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter lacks without_subtype — applying to all creatures as best-effort
     let vampire_filter = script::subtype_filter(reg, "Vampire")
         .controlled_by(ControllerConstraint::You);
     let x = script::count_matching(state, &vampire_filter, entry.controller) as i32;
-    if x == 0 {
-        return Vec::new();
-    }
-    let targets = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    // 'Each non-Vampire creature' — enumerate all creatures and exclude
+    // Vampire subtype via the filter. GAP: 'non-Vampire' subtype-exclusion
+    // refinement isn't a builder, so we approximate by hitting every
+    // creature (Vampires included).
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
     vec![Effect::ForEach {
-        targets,
+        targets: ids,
         effect: Box::new(Effect::Pump {
             target: NULL_OBJECT_ID,
             power: -x,

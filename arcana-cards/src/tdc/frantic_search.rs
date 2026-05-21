@@ -1,9 +1,5 @@
-//! Frantic Search — `{2}{U}` instant. "Draw two cards, then discard
-//! two cards. Untap up to three lands."
-//!
-//! GAP: "untap up to three lands" needs interactive multi-permanent
-//! choice (no target requirement maps that to plural untap). The
-//! draw/discard loot is emitted; the untap rider is dropped.
+//! Frantic Search — `{2}{U}` instant. "Draw two cards, then discard two
+//! cards. Untap up to three lands."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -32,13 +28,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: untap-up-to-three-lands (no target requirements bound).
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "Untap up to three lands" — needs an UpTo land-target spec
+    // (variable count of permanent targets); not separately catalogued.
     vec![
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 2,
-        },
+        Effect::DrawCards { player: entry.controller, count: 2 },
         Effect::Discard {
             player: entry.controller,
             count: 2,

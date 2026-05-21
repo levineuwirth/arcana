@@ -1,8 +1,6 @@
 //! Cruel Tutor — `{2}{B}` sorcery. "Search your library for a card,
-//! then shuffle and put that card on top. You lose 2 life."
-//!
-//! No catalog Effect models "search library, put on top"; only the
-//! life loss is expressed.
+//! then shuffle and put that card on top. You lose 2 life." Tutor-to-
+//! top-of-library is not in catalog; emit the life loss only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,12 +20,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a card, then shuffle and put that card on top. You lose 2 life.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a card, then shuffle and put that card on top. You lose 2 life.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -36,6 +35,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "search library and put card on top" not expressible (no tutor-to-top Effect).
+    // GAP: tutor-to-top-of-library is not a catalog primitive (only TutorToHand / TutorToBattlefield).
     vec![Effect::LoseLife { player: entry.controller, amount: 2 }]
 }

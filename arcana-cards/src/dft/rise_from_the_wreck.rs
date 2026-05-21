@@ -24,12 +24,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
-    // The Mount / Vehicle / no-abilities sub-targets are not
-    // expressible as distinct filters; modeled as up to one creature
-    // card from a graveyard.
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Return up to one target creature card, up to one target Mount card, up to one target Vehicle card, and up to one target creature card with no abilities from your graveyard to your hand.".into(),
+            // The Mount / Vehicle / no-abilities sub-filters are not
+            // expressible; use a single up-to-one creature target.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
@@ -44,20 +43,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::ReturnFromGraveyardToHand { target: *id })
-            }
-            _ => None,
-        })
-        .collect()
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: the Mount, Vehicle and no-abilities targets are not
+    // expressible — only the creature-card return is emitted.
+    let mut effects = Vec::new();
+    for target in &entry.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
+        }
+    }
+    effects
 }

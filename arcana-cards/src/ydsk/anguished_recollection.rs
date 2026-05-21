@@ -1,9 +1,7 @@
-//! Anguished Recollection — `{1}{R}` sorcery. "Discard a card. If
-//! you do, seek two cards that don't share a card type with the
-//! discarded card."
-//!
-//! "Seek" (and the type-exclusion clause) has no catalog Effect; the
-//! discard is emitted, the seek is GAP'd.
+//! Anguished Recollection — `{1}{R}` sorcery. "Discard a card. If you
+//! do, seek two cards that don't share a card type with the discarded
+//! card." 'Seek' isn't a catalog primitive, nor is 'doesn't share a
+//! card type with X'. We emit the discard and GAP the seek.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,17 +21,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Discard a card. If you do, seek two cards that don't share a card type with the discarded card.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Discard a card. If you do, seek two cards that don't share a card type with the discarded card.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "seek" mechanic has no catalog Effect.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'seek' primitive and 'doesn't share a card type with'
+    // filter.
     vec![Effect::Discard {
         player: entry.controller,
         count: 1,

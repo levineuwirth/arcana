@@ -1,10 +1,7 @@
 //! Rhystic Tutor — `{2}{B}` sorcery. "Unless any player pays {2},
 //! search your library for a card, put that card into your hand,
-//! then shuffle."
-//!
-//! "Unless any player pays" optional opt-out cost is not in catalog;
-//! best-effort: unconditional tutor-to-hand. The pay-to-prevent rider
-//! is GAP'd.
+//! then shuffle." The 'unless any player pays' rider isn't in the
+//! catalog — best effort: tutor unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,17 +22,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Unless any player pays {2}, search your library for a card, put that card into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Unless any player pays {2}, search your library for a card, put that card into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "unless any player pays {2}" opt-out cost-prompt not in catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'unless any player pays {2}' rhystic-tax rider is not in the catalog.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new(),

@@ -1,9 +1,6 @@
 //! Reenact the Crime — `{1}{U}{U}{U}` instant. "Exile target nonland
 //! card in a graveyard that was put there from anywhere this turn.
 //! Copy it. You may cast the copy without paying its mana cost."
-//!
-//! Copy-and-cast-for-free of an exiled card is not expressible with
-//! the catalog. We honor the exile of the targeted graveyard card.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,30 +24,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target nonland card in a graveyard that was put there from anywhere this turn. Copy it. You may cast the copy without paying its mana cost.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::new().without_types(TypeLine::LAND.into()),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target nonland card in a graveyard that was put \
+                       there from anywhere this turn. Copy it. You may cast \
+                       the copy without paying its mana cost.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new()
+                            .without_types(TypeLine::LAND.into()),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: "Copy it. You may cast the copy without paying its mana
-    // cost." has no catalog Effect; only the exile is expressed.
+    // GAP: copying the exiled card and casting the copy for free is not
+    // expressible; emit the exile from graveyard.
     vec![Effect::ExileFromGraveyard { target: *id }]
 }

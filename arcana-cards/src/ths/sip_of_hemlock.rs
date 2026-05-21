@@ -1,10 +1,11 @@
-//! Sip of Hemlock — `{4}{B}{B}` sorcery. "Destroy target creature. Its
-//! controller loses 2 life."
+//! Sip of Hemlock — `{4}{B}{B}` sorcery. "Destroy target creature.
+//! Its controller loses 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -31,20 +32,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "Its controller loses 2 life" — the destroyed creature's controller. Since we cannot
-    // retrieve the target permanent's controller from the resolver, we use the opponent
-    // (the non-controller) as best effort. GAP: no script helper to get a permanent's
-    // controller id at resolve time — using entry.controller as the caster would be wrong;
-    // LoseLife player is left as the opposing player heuristically via GAP.
-    // Full GAP for the LoseLife assignment:
+    let id = *id;
+    let controller = script::target_controller(state, id, entry.controller);
     vec![
-        Effect::DestroyPermanent { target: *id },
-        // GAP: cannot retrieve the target creature's controller id to apply LoseLife
+        Effect::DestroyPermanent { target: id },
+        Effect::LoseLife { player: controller, amount: 2 },
     ]
 }

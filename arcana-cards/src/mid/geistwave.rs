@@ -5,6 +5,7 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -37,11 +38,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The "if you controlled that permanent, draw" rider needs a
-    // controller predicate on the target; not expressible. Emit the
-    // bounce.
-    vec![Effect::ReturnToHand { target: *id }]
+    let owner_controller = script::target_controller(state, *id, entry.controller);
+    let mut out = vec![Effect::ReturnToHand { target: *id }];
+    if owner_controller == entry.controller {
+        out.push(Effect::DrawCards { player: entry.controller, count: 1 });
+    }
+    out
 }

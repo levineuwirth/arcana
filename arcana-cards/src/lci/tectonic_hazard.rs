@@ -1,12 +1,5 @@
-//! Tectonic Hazard — `{R}` sorcery, "Tectonic Hazard deals 1 damage to each
-//! opponent and each creature they control."
-//!
-//! GAP: dealing damage to each opponent (not all players, only opponents)
-//! requires iterating over opponent PlayerIds, which is not directly
-//! available. script::ids_matching can get opponent creatures for ForEach,
-//! but dealing 1 to each opponent player has no helper. Best-effort:
-//! ForEach on opponent creatures for 1 damage each; opponent player hits
-//! are a GAP.
+//! Tectonic Hazard — `{R}` sorcery. "Deals 1 damage to each opponent
+//! and each creature they control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -44,18 +37,25 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponent_creatures = script::ids_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-        entry.controller,
-    );
-    // GAP: dealing 1 damage to each opponent (player) not expressible without opponent PlayerIds
-    vec![Effect::ForEach {
-        targets: opponent_creatures,
-        effect: Box::new(Effect::DealDamage {
+    let mut effects = Vec::new();
+    for opp in script::opponents(state, entry.controller) {
+        effects.push(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(arcana_core::objects::NULL_OBJECT_ID),
+            target: DamageTarget::Player(opp),
             amount: 1,
-        }),
-    }]
+        });
+        let ids = script::ids_matching(
+            state,
+            &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            opp,
+        );
+        for id in ids {
+            effects.push(Effect::DealDamage {
+                source: entry.source,
+                target: DamageTarget::Object(id),
+                amount: 1,
+            });
+        }
+    }
+    effects
 }

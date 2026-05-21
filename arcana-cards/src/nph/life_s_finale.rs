@@ -1,10 +1,14 @@
 //! Life's Finale — `{4}{B}{B}` sorcery. "Destroy all creatures, then
-//! search target opponent's library for up to three creature cards and
-//! put them into their graveyard."
+//! search target opponent's library for up to three creature cards
+//! and put them into their graveyard. Then that player shuffles."
+//! 'Search a player's library and put cards INTO THEIR GRAVEYARD' is
+//! a graveyard-tutor with no catalog primitive (TutorToHand /
+//! TutorToBattlefield are the only tutors); only the board wipe is
+//! modeled.
 
 use arcana_core::effects::Effect;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::mana::ManaCost;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -22,21 +26,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all creatures, then search target opponent's library for up to three creature cards and put them into their graveyard. Then that player shuffles.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all creatures, then search target opponent's library for up to three creature cards and put them into their graveyard. Then that player shuffles.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "search target opponent's library for up to 3 creature
-    // cards into their graveyard" — no library-to-graveyard search
-    // primitive; only the board wipe is modeled.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    // GAP: 'search target opponent's library for creature cards and
+    // put them into their graveyard' has no catalog primitive.
     vec![Effect::ForEach {
-        targets: script::ids_matching(state, &ObjectFilter::creature(), entry.controller),
+        targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

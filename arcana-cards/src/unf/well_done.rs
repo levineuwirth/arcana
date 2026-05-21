@@ -1,7 +1,7 @@
-//! Well Done — `{2}{R}{R}` sorcery.
-//! "Well Done deals 5 damage to target creature. If that creature is
-//! rare or mythic rare, Well Done deals 3 damage to that creature's
-//! controller."
+//! Well Done — `{2}{R}{R}` sorcery. "Well Done deals 5 damage to
+//! target creature. If that creature is rare or mythic rare, Well
+//! Done deals 3 damage to that creature's controller." Rarity is not
+//! in catalog; emit the 5 damage and GAP the rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -32,12 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // The "if rare or mythic, 3 damage to controller" rider has no
-    // rarity helper; the 5 damage is dealt.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: card rarity check not in catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

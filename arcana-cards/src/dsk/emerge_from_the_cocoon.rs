@@ -1,6 +1,5 @@
-//! Emerge from the Cocoon — `{4}{W}` sorcery. "Return target
-//! creature card from your graveyard to the battlefield. You gain 3
-//! life."
+//! Emerge from the Cocoon — `{4}{W}` sorcery. "Return target creature
+//! card from your graveyard to the battlefield. You gain 3 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,31 +23,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature card from your graveyard to the battlefield. You gain 3 life.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target creature card from your graveyard to the \
+                       battlefield. You gain 3 life.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 3,
-        },
-    ]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
+    }
+    effects.push(Effect::GainLife { player: entry.controller, amount: 3 });
+    effects
 }

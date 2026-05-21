@@ -1,8 +1,6 @@
-//! Kodama's Reach — `{2}{G}` sorcery — Arcane. "Search your library for up
-//! to two basic land cards, reveal those cards, put one onto the battlefield
-//! tapped and the other into your hand, then shuffle." Catalog has tutor-to-
-//! battlefield(tapped) and tutor-to-hand on separate basic-land filters; we
-//! emit one of each.
+//! Kodama's Reach — `{2}{G}` Sorcery — Arcane. "Search your library for up
+//! to two basic land cards, reveal those cards, put one onto the
+//! battlefield tapped and the other into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,17 +35,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no "basic-only" supertype refinement on ObjectFilter; using plain Land.
-    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    // Note: "basic" land qualifier is not separately filterable; uses a land
+    // filter. One land enters tapped, the other goes to hand.
     vec![
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: land.clone(),
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             tapped: true,
         },
         Effect::TutorToHand {
             player: entry.controller,
-            filter: land,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             reveal: true,
         },
     ]

@@ -1,9 +1,8 @@
 //! Hurkyl's Recall — `{1}{U}` instant. "Return all artifacts target
 //! player owns to their hand."
 //!
-//! GAP: 'owns' is not an ObjectFilter constraint — `controlled_by` is
-//! the closest available knob, so only artifacts that player controls
-//! are returned (ownership-vs-control nuance lost).
+//! Modeled as a board-wide bounce of artifacts controlled by the
+//! target player. (Engine ownership is approximated by control.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,13 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(_p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'owns' nuance — using controller as proxy for ownership.
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::permanent().with_types(arcana_core::types::TypeLine::ARTIFACT.into()),
-        entry.controller,
-    );
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let filter = ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into());
+    let ids = script::ids_matching(state, &filter, *p);
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

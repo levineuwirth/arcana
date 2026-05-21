@@ -1,9 +1,5 @@
 //! Shoot Down — `{3}{G}` sorcery. "Exile target artifact,
 //! enchantment, or creature with flying."
-//!
-//! The composite "artifact OR enchantment OR creature-with-flying"
-//! target filter is not expressible; we use the artifact-or-
-//! enchantment portion via with_types_any.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,28 +22,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target artifact, enchantment, or creature with flying.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target artifact, enchantment, or creature with \
+                       flying.".into(),
+                // GAP: cannot express the disjunctive "artifact OR
+                // enchantment OR creature-with-flying" target filter;
+                // the "with flying" sub-clause in particular has no
+                // keyword-filter builder. Target any artifact or
+                // enchantment via with_types_any.
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types_any(TypeLine(
+                            TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "creature with flying" not included in the target filter
-    // (composite type-or-keyword target not expressible).
     vec![Effect::ExilePermanent { target: *id }]
 }

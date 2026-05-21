@@ -32,35 +32,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn token(reg: &CardRegistry, subtype: &str, p: i32) -> TokenDefinition {
-    let s = reg.interner().lookup(subtype).expect("subtype interned");
+fn make_token(reg: &CardRegistry, subtype_name: &str, p: i32, t: i32) -> TokenDefinition {
+    let st = reg.interner().lookup(subtype_name)
+        .expect("subtype interned during register()");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(s);
+    subtypes.0.insert(st);
     TokenDefinition {
-        name: s,
+        name: st,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(p)),
-        toughness: Some(PtValue::Fixed(p)),
+        toughness: Some(PtValue::Fixed(t)),
         keywords: vec![],
         abilities: vec![],
     }
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: token(reg, "Snake", 1),
-        },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: token(reg, "Wolf", 2),
-        },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: token(reg, "Elephant", 3),
-        },
+        Effect::CreateToken { controller: entry.controller, token: make_token(reg, "Snake", 1, 1) },
+        Effect::CreateToken { controller: entry.controller, token: make_token(reg, "Wolf", 2, 2) },
+        Effect::CreateToken { controller: entry.controller, token: make_token(reg, "Elephant", 3, 3) },
     ]
 }

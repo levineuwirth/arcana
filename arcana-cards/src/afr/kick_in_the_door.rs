@@ -1,9 +1,6 @@
-//! Kick in the Door — `{R}` sorcery.
-//! "Put a +1/+1 counter on target creature. That creature gains haste until
-//! end of turn and can't be blocked by Walls this turn. Venture into the dungeon."
-//!
-//! GAP: "Can't be blocked by Walls this turn" — no evasion-vs-subtype Effect.
-//! GAP: "Venture into the dungeon" — dungeon mechanic not in engine catalog.
+//! Kick in the Door — `{R}` sorcery. "Put a +1/+1 counter on target
+//! creature. That creature gains haste until end of turn and can't be
+//! blocked by Walls this turn. Venture into the dungeon."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -27,7 +24,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature. That creature gains haste until end of turn and can't be blocked by Walls this turn. Venture into the dungeon.".into(),
+                // GAP: "can't be blocked by Walls" and "Venture into the
+                // dungeon" — no Effect variant supports a conditional
+                // block restriction or the dungeon-venture mechanic.
+                text: "Put a +1/+1 counter on target creature. That creature gains haste until end of turn.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -42,10 +42,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "can't be blocked by Walls this turn" — no evasion-vs-subtype Effect
-    // GAP: "Venture into the dungeon" — dungeon mechanic not in engine catalog
     vec![
         Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
     ]
 }

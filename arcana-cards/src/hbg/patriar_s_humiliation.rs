@@ -1,8 +1,8 @@
 //! Patriar's Humiliation — `{W}` instant. "Target creature
 //! perpetually loses all abilities, then Patriar's Humiliation deals
-//! damage to it equal to the number of creatures you control." The
-//! perpetual ability-stripping has no catalog primitive; the dynamic
-//! damage (equal to creatures you control) is emitted.
+//! damage to it equal to the number of creatures you control."
+//! Perpetual ability loss is not in the catalog; we emit the damage
+//! and GAP the ability loss.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -12,7 +12,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -46,9 +48,7 @@ fn resolve(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    // GAP: "perpetually loses all abilities" — perpetual ability
-    // removal has no catalog primitive; only the damage clause is
-    // emitted.
+    // GAP: perpetual loss of all abilities not in catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

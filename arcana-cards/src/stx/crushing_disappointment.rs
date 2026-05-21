@@ -20,20 +20,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player loses 2 life. You draw two cards.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player loses 2 life. You draw two cards.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = script::all_players(state)
-        .into_iter()
-        .map(|p| Effect::LoseLife { player: p, amount: 2 })
-        .collect();
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for p in script::all_players(state) {
+        effects.push(Effect::LoseLife { player: p, amount: 2 });
+    }
     effects.push(Effect::DrawCards { player: entry.controller, count: 2 });
     effects
 }

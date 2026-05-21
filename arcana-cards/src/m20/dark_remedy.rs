@@ -1,5 +1,5 @@
-//! Dark Remedy — `{1}{B}` instant. "Target creature gets +1/+3 until end
-//! of turn."
+//! Dark Remedy — `{1}{B}` instant. "Target creature gets +1/+3 until
+//! end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

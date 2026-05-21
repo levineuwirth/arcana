@@ -1,9 +1,5 @@
-//! Pointed Discussion — `{2}{B}` sorcery. "You draw two cards, lose
-//! 2 life, then create a Blood token."
-//!
-//! The Blood token's activated ability is not expressible via
-//! TokenDefinition; the draw and life loss are honored, the Blood
-//! token creation is gapped (no plain Blood token primitive).
+//! Pointed Discussion — `{2}{B}` sorcery. "You draw two cards, lose 2
+//! life, then create a Blood token."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,26 +19,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You draw two cards, lose 2 life, then create a Blood token.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You draw two cards, lose 2 life, then create a Blood \
+                       token.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: Blood token (artifact token with a sacrifice/draw activated
-    // ability) is not expressible via TokenDefinition.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: the Blood token is a predefined artifact token with a
+    // built-in activated ability that TokenDefinition cannot express;
+    // emit the draw and life loss only.
     vec![
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 2,
-        },
-        Effect::LoseLife {
-            player: entry.controller,
-            amount: 2,
-        },
+        Effect::DrawCards { player: entry.controller, count: 2 },
+        Effect::LoseLife { player: entry.controller, amount: 2 },
     ]
 }

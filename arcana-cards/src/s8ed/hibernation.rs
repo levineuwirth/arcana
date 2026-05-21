@@ -1,9 +1,9 @@
-//! Hibernation — `{2}{U}` instant, "Return all green permanents to
-//! their owners' hands."
+//! Hibernation — `{2}{U}` instant. Return all green permanents to their
+//! owners' hands.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -41,8 +41,7 @@ fn resolve(
         &ObjectFilter::permanent().with_colors(ColorSet::green()),
         entry.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
-    }]
+    ids.into_iter()
+        .map(|id| Effect::ReturnToHand { target: id })
+        .collect()
 }

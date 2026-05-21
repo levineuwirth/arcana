@@ -1,5 +1,5 @@
-//! Ironwright's Cleansing — `{2}{W}` sorcery. "Exile target artifact or
-//! enchantment."
+//! Ironwright's Cleansing — `{2}{W}` sorcery. "Exile target artifact
+//! or enchantment."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,8 +27,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Exile target artifact or enchantment.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
-                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
+                        ObjectFilter::permanent().with_types_any(TypeLine(
+                            TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                        )),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

@@ -1,9 +1,6 @@
-//! Shatter the Sky — `{2}{W}{W}` sorcery. "Each player who controls
-//! a creature with power 4 or greater draws a card. Then destroy all
+//! Shatter the Sky — `{2}{W}{W}` sorcery. "Each player who controls a
+//! creature with power 4 or greater draws a card. Then destroy all
 //! creatures."
-//!
-//! The conditional per-player draw (controls a power-4+ creature) is
-//! not expressible; we express the board wipe.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +22,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player who controls a creature with power 4 or greater draws a card. Then destroy all creatures.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player who controls a creature with power 4 or \
+                       greater draws a card. Then destroy all creatures.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    // Each player controlling a power-4+ creature draws a card.
+    let big = ObjectFilter::creature().with_min_power(4);
+    for p in script::all_players(state) {
+        if script::count_matching(state, &big, p) > 0 {
+            effects.push(Effect::DrawCards { player: p, count: 1 });
+        }
+    }
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: conditional per-player draw (controls a power-4+ creature)
-    // is not expressible.
-    vec![Effect::ForEach {
+    effects.push(Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: NULL_OBJECT_ID,
-        }),
-    }]
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+    });
+    effects
 }

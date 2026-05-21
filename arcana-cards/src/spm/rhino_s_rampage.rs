@@ -1,10 +1,10 @@
-//! Rhino's Rampage — `{R/G}` sorcery. "Target creature you control gets +1/+0 until end of
-//! turn. It fights target creature an opponent controls. When excess damage is dealt to the
-//! creature an opponent controls this way, destroy up to one target noncreature artifact with
-//! mana value 3 or less."
-//!
-//! GAP: excess-damage triggered destroy and mana-value filter on artifact target are not
-//! in the catalog. Pump + Fight are expressible.
+//! Rhino's Rampage — `{R/G}` sorcery. "Target creature you control
+//! gets +1/+0 until end of turn. It fights target creature an
+//! opponent controls. When excess damage is dealt to the creature an
+//! opponent controls this way, destroy up to one target noncreature
+//! artifact with mana value 3 or less." We can express the pump and
+//! the fight; the excess-damage trigger and chained artifact target
+//! aren't expressible as a single-ability spell — GAP that rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -13,7 +13,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,13 +28,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: 'when excess damage is dealt, destroy artifact' chained-target rider.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Target creature you control gets +1/+0 until end of turn. It fights target creature an opponent controls. When excess damage is dealt to the creature an opponent controls this way, destroy up to one target noncreature artifact with mana value 3 or less.".into(),
                 target_requirements: vec![
-                    TargetRequirement::target_creature(),
-                    TargetRequirement::target_creature(),
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
                 ],
                 modal: None,
                 effect: resolve,
@@ -44,10 +60,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: excess-damage trigger and mana-value artifact destroy not in catalog
-    let mut targets = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(a)) = targets.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(b)) = targets.next() else { return Vec::new(); };
+    let ts = &entry.targets.targets;
+    if ts.len() < 2 { return Vec::new(); }
+    let (TargetChoice::Object(a), TargetChoice::Object(b)) = (&ts[0], &ts[1]) else {
+        return Vec::new();
+    };
     vec![
         Effect::Pump {
             target: *a,

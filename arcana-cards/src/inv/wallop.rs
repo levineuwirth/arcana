@@ -1,8 +1,9 @@
 //! Wallop — `{1}{G}` sorcery. "Destroy target blue or black creature
-//! with flying."
-//!
-//! GAP: 'with flying' has no catalog filter refinement; only the
-//! blue-or-black creature filter is enforced.
+//! with flying." Color disjunction (blue OR black) + flying-keyword
+//! filter combine awkwardly: `with_colors(blue|black)` matches
+//! creatures that have ANY of those colors (the ColorSet OR), which
+//! is the intended semantics. The 'with flying' filter is not in the
+//! ObjectFilter primitive set — GAP that constraint.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,25 +25,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: 'with flying' keyword filter on target — no ObjectFilter primitive.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target blue or black creature with flying.".into(),
-            // GAP: with_colors OR for blue|black is approximated as ColorSet::blue() | ColorSet::black();
-            // GAP: 'with flying' not in catalog.
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().with_colors(ColorSet::blue() | ColorSet::black()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target blue or black creature with flying.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .with_colors(ColorSet::blue() | ColorSet::black()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

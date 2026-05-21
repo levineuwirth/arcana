@@ -1,6 +1,8 @@
-//! Nullify — `{U}{U}` instant. "Counter target creature or Aura spell."
-//! Best-effort: TargetFilter::Spell cannot filter for "creature or Aura"
-//! subtypes independently, so uses unfiltered Spell target.
+//! Nullify — `{U}{U}` instant. "Counter target creature or Aura
+//! spell." Aura is a subtype of Enchantment, not separately filterable
+//! in ObjectFilter without a subtype helper for arbitrary subtypes;
+//! we constrain by creature-or-enchantment as the closest expressible
+//! superset.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,9 +27,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
+                // GAP: 'Aura' subtype filter is not exposed — using
+                // creature-or-enchantment as the closest superset.
                 text: "Counter target creature or Aura spell.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::default().with_types_any(
+                            arcana_core::types::TypeLine(
+                                TypeLine::CREATURE | TypeLine::ENCHANTMENT,
+                            ),
+                        ),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

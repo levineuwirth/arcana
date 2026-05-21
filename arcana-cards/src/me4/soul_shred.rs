@@ -39,14 +39,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 3,
-        },
-        Effect::GainLife { player: entry.controller, amount: 3 },
-    ]
+        });
+    }
+    effects.push(Effect::GainLife {
+        player: entry.controller,
+        amount: 3,
+    });
+    effects
 }

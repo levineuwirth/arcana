@@ -1,6 +1,6 @@
-//! Hunt the Hunter — `{G}` sorcery. "Target green creature you control
-//! gets +2/+2 until end of turn. It fights target green creature an
-//! opponent controls."
+//! Hunt the Hunter — `{G}` sorcery. "Target green creature you
+//! control gets +2/+2 until end of turn. It fights target green
+//! creature an opponent controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -10,8 +10,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -53,22 +53,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(a)) = it.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(b)) = it.next() else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut targets = entry.targets.targets.iter();
+    let Some(TargetChoice::Object(own)) = targets.next() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(foe)) = targets.next() else {
+        return Vec::new();
+    };
     vec![
         Effect::Pump {
-            target: *a,
+            target: *own,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
-        Effect::Fight { a: *a, b: *b },
+        Effect::Fight { a: *own, b: *foe },
     ]
 }

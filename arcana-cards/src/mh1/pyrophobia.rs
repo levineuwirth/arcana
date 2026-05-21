@@ -1,8 +1,5 @@
-//! Pyrophobia — `{1}{R}` sorcery. "Pyrophobia deals 3 damage to
-//! target creature. Cowards can't block this turn."
-//!
-//! GAP: "Cowards can't block this turn" — no global block-restriction
-//! Effect by subtype. Only the damage is emitted.
+//! Pyrophobia — `{1}{R}` sorcery. "Pyrophobia deals 3 damage to target
+//! creature. Cowards can't block this turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -33,11 +30,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: subtype-scoped block restriction.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: tribe-scoped "can't block this turn" restriction not in the
+    // catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

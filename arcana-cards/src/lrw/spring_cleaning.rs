@@ -1,6 +1,7 @@
-//! Spring Cleaning — `{1}{G}` instant.
-//! "Destroy target enchantment. Clash with an opponent. If you win,
-//! destroy all enchantments your opponents control."
+//! Spring Cleaning — `{1}{G}` instant. "Destroy target enchantment.
+//! Clash with an opponent. If you win, destroy all enchantments your
+//! opponents control." Clash and conditional follow-on wipe not in
+//! catalog; emit the single-target destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,11 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // Clash and its conditional mass destroy have no catalog
-    // representation; the targeted destroy is performed.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: clash + conditional opponent-enchantment wipe not in catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

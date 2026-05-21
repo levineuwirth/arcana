@@ -1,6 +1,5 @@
-//! Dark Temper — `{2}{R}` instant. "Dark Temper deals 2 damage to
-//! target creature. If you control a black permanent, destroy the
-//! creature instead."
+//! Dark Temper — `{2}{R}` instant. Deals 2 damage to target creature.
+//! If you control a black permanent, destroy the creature instead.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -34,22 +33,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let black_perms = script::count_matching(
+    let id = *id;
+    let has_black = script::count_matching(
         state,
         &ObjectFilter::permanent()
             .controlled_by(ControllerConstraint::You)
             .with_colors(ColorSet::black()),
         entry.controller,
-    );
-    if black_perms > 0 {
-        vec![Effect::DestroyPermanent { target: *id }]
+    ) > 0;
+    if has_black {
+        vec![Effect::DestroyPermanent { target: id }]
     } else {
         vec![Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(*id),
+            target: DamageTarget::Object(id),
             amount: 2,
         }]
     }

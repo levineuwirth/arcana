@@ -1,5 +1,5 @@
-//! Queen's Commission — `{2}{W}` sorcery. "Create two 1/1 white Vampire
-//! creature tokens with lifelink."
+//! Queen's Commission — `{2}{W}` sorcery. "Create two 1/1 white
+//! Vampire creature tokens with lifelink."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -35,8 +35,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let vampire = reg.interner().lookup("Vampire")
-        .expect("Vampire interned during register()");
+    let vampire = reg.interner().lookup("Vampire").expect("Vampire interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(vampire);
     let token = TokenDefinition {

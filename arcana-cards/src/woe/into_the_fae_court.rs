@@ -1,14 +1,11 @@
-//! Into the Fae Court — `{3}{U}{U}` sorcery. "Draw three cards.
-//! Create a 1/1 blue Faerie creature token with flying and 'This
-//! token can block only creatures with flying.'" The blocking
-//! restriction ability isn't modelable as a token ability; the token
-//! is created with flying and the restriction is noted as a partial.
+//! Into the Fae Court — `{3}{U}{U}` sorcery. Draw three cards. Create a
+//! 1/1 blue Faerie creature token with flying. (Restricted-blocking
+//! clause on token not modeled.)
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
-use arcana_core::effects::KeywordAbility;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
@@ -25,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw three cards. Create a 1/1 blue Faerie creature token with flying and \"This token can block only creatures with flying.\"".into(),
+            text: "Draw three cards. Create a 1/1 blue Faerie creature token with flying.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -33,10 +30,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: token's "can block only creatures with flying" restriction
-    // ability is not modelable; the token is otherwise complete.
-    let faerie = reg.interner().lookup("Faerie").expect("Faerie interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let faerie = reg
+        .interner()
+        .lookup("Faerie")
+        .expect("Faerie interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(faerie);
     let token = TokenDefinition {
@@ -50,7 +52,13 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         abilities: vec![],
     };
     vec![
-        Effect::DrawCards { player: entry.controller, count: 3 },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 3,
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

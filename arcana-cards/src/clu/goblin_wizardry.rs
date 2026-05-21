@@ -1,8 +1,8 @@
-//! Goblin Wizardry — `{3}{R}` instant, "Create two 1/1 red Goblin
-//! Wizard creature tokens with prowess."
+//! Goblin Wizardry — `{3}{R}` instant. "Create two 1/1 red Goblin Wizard
+//! creature tokens with prowess."
 //!
-//! GAP note: prowess is not in the usable keyword surface, so the
-//! tokens are created without it.
+//! Prowess is not in the engine's KeywordAbility enum — emit tokens without it
+//! and GAP the prowess rider.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -14,8 +14,8 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Goblin Wizardry");
-    let _goblin = reg.interner_mut().intern("Goblin");
-    let _wizard = reg.interner_mut().intern("Wizard");
+    let _ = reg.interner_mut().intern("Goblin");
+    let _ = reg.interner_mut().intern("Wizard");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{R}").expect("valid cost")),
@@ -24,28 +24,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create two 1/1 red Goblin Wizard creature tokens with prowess.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create two 1/1 red Goblin Wizard creature tokens with prowess.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned");
-    let wizard = reg.interner().lookup("Wizard").expect("Wizard interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned during register()");
+    let wizard = reg.interner().lookup("Wizard").expect("Wizard interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(wizard);
     let token = TokenDefinition {
-        name: reg.interner().lookup("Goblin Wizardry").expect("name interned"),
+        name: goblin,
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
+        // GAP: prowess is not in KeywordAbility enum.
         keywords: vec![],
         abilities: vec![],
     };

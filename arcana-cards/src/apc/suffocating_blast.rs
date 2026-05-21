@@ -8,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,15 +40,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut iter = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(spell)) = iter.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(crea)) = iter.next() else { return Vec::new(); };
-    vec![
-        Effect::Counter { target: *spell },
-        Effect::DealDamage {
+    let Some(TargetChoice::Object(spell)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let mut effects = vec![Effect::Counter { target: *spell }];
+    if let Some(TargetChoice::Object(creature)) = entry.targets.targets.get(1) {
+        effects.push(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(*crea),
+            target: DamageTarget::Object(*creature),
             amount: 3,
-        },
-    ]
+        });
+    }
+    effects
 }

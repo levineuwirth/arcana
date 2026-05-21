@@ -1,8 +1,7 @@
-//! Executioner's Swing — `{W}{B}` instant. "Target creature that
-//! dealt damage this turn gets -5/-5 until end of turn."
-//!
-//! "that dealt damage this turn" isn't an ObjectFilter refinement;
-//! the target is an ordinary creature and the -5/-5 is emitted.
+//! Executioner's Swing — `{W}{B}` instant. "Target creature that dealt
+//! damage this turn gets -5/-5 until end of turn." The 'dealt damage
+//! this turn' filter isn't expressible — we approximate with target
+//! creature and apply the -5/-5 pump.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -24,17 +23,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature that dealt damage this turn gets -5/-5 until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature that dealt damage this turn gets -5/-5 until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: no script-side 'dealt damage this turn' filter on targets;
+    // accept any creature for the targeting predicate.
     vec![Effect::Pump {
         target: *id,
         power: -5,

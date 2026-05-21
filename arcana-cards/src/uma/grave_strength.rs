@@ -1,6 +1,6 @@
-//! Grave Strength — `{1}{B}` sorcery. "Choose target creature. Mill
-//! three cards, then put a +1/+1 counter on that creature for each
-//! creature card in your graveyard."
+//! Grave Strength — `{1}{B}` sorcery. Choose target creature. Mill three
+//! cards, then put a +1/+1 counter on that creature for each creature
+//! card in your graveyard.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Choose target creature. Mill three cards, then put a +1/+1 counter on that creature for each creature card in your graveyard.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Choose target creature. Mill three cards, then put a +1/+1 counter on that creature for each creature card in your graveyard.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,20 +38,24 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // Count is read before the mill resolves; this slightly understates
-    // the count vs. true ordering, but the dynamic scaling is honored.
-    let n = script::graveyard_matching(
+    let id = *id;
+    // Count creature cards currently in your graveyard (the mill happens during resolution
+    // so the post-mill count is not observable from here; this is a pre-mill approximation).
+    let count = script::graveyard_matching(
         state,
         &ObjectFilter::creature(),
         entry.controller,
         entry.controller,
     );
     vec![
-        Effect::Mill { player: entry.controller, count: 3 },
+        Effect::Mill {
+            player: entry.controller,
+            count: 3,
+        },
         Effect::AddCounters {
-            target: *id,
+            target: id,
             kind: CounterKind::PlusOnePlusOne,
-            count: n,
+            count,
         },
     ]
 }

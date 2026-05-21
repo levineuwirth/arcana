@@ -2,9 +2,11 @@
 //! Poison the Well deals 2 damage to that land's controller."
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -37,10 +39,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "2 damage to that land's controller" cannot be expressed: no
-    // way to resolve the targeted land's controller into a PlayerId.
-    vec![Effect::DestroyPermanent { target: *id }]
+    let controller = script::target_controller(state, *id, entry.controller);
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(controller),
+            amount: 2,
+        },
+    ]
 }

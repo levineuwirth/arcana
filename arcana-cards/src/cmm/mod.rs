@@ -18,3 +18,4 @@ pub mod wrath_of_god;
 pub mod extinguish_all_hope;
 pub mod day_s_undoing;
 pub mod final_parting;
+pub mod ghostly_flicker;

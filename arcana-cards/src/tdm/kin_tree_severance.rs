@@ -1,8 +1,5 @@
-//! Kin-Tree Severance — `{2/W}{2/B}{2/G}` instant. "Exile target permanent
-//! with mana value 3 or greater."
-//!
-//! Hybrid 2-or-color pips → card is W, B, and G per the spec's Colors
-//! line.
+//! Kin-Tree Severance — `{2/W}{2/B}{2/G}` instant. "Exile target
+//! permanent with mana value 3 or greater."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,19 +22,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target permanent with mana value 3 or greater.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_min_cmc(3),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target permanent with mana value 3 or greater.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().with_min_cmc(3),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

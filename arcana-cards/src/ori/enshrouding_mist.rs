@@ -1,12 +1,14 @@
-//! Enshrouding Mist — `{W}` instant.
-//! "Target creature gets +1/+1 until end of turn. Prevent all damage
-//! that would be dealt to it this turn. If it's renowned, untap it."
+//! Enshrouding Mist — `{W}` instant. "Target creature gets +1/+1
+//! until end of turn. Prevent all damage that would be dealt to it
+//! this turn. If it's renowned, untap it."
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::replacement::ReplacementDuration;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -31,16 +33,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // Damage prevention this turn and the "if renowned, untap" rider
-    // are not expressible; the +1/+1 is applied.
-    vec![Effect::Pump {
-        target: *id,
-        power: 1,
-        toughness: 1,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    // GAP: "if it's renowned, untap it" conditional rider not in catalog.
+    vec![
+        Effect::Pump {
+            target: *id,
+            power: 1,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+        Effect::PreventDamage {
+            target: DamageTarget::Object(*id),
+            amount: None,
+            duration: ReplacementDuration::EndOfTurn,
+        },
+    ]
 }

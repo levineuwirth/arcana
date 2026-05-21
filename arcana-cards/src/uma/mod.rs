@@ -16,3 +16,4 @@ pub mod countersquall;
 pub mod appetite_for_brains;
 pub mod miming_slime;
 pub mod grave_strength;
+pub mod songs_of_the_damned;

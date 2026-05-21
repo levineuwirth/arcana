@@ -1,11 +1,7 @@
 //! Earth Rumble — `{3}{G}` sorcery. "Earthbend 2. When you do, up to
 //! one target creature you control fights target creature an opponent
-//! controls."
-//!
-//! Earthbend (turn a land into a creature with counters and a
-//! return-on-death trigger) is not expressible with the demonstrated
-//! API. Only the fight is emitted, with a controlled creature and an
-//! opponent's creature targeted.
+//! controls." Earthbend is not in catalog; emit a plain fight clause
+//! and GAP the earthbend ritual.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,15 +25,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Earthbend 2. When you do, up to one target creature you control fights target creature an opponent controls.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Earthbend 2. When you do, up to one target creature you control fights target creature an opponent controls.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::UpTo(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -43,12 +55,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(a)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let Some(TargetChoice::Object(b)) = entry.targets.targets.get(1) else {
-        return Vec::new();
-    };
-    // GAP: Earthbend 2 (land becomes counters'd creature with return trigger) not expressible.
+    // GAP: Earthbend (land becomes 0/0 + 2 +1/+1 counters with return-on-death) is not modeled.
+    let Some(first) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(a) = first else { return Vec::new(); };
+    let Some(second) = entry.targets.targets.get(1) else { return Vec::new(); };
+    let TargetChoice::Object(b) = second else { return Vec::new(); };
     vec![Effect::Fight { a: *a, b: *b }]
 }

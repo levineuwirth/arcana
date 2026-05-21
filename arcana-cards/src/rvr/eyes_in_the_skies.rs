@@ -1,7 +1,5 @@
 //! Eyes in the Skies — `{3}{W}` instant. "Create a 1/1 white Bird
-//! creature token with flying, then populate." Populate (copy a
-//! creature token you control) has no primitive; the base token is
-//! emitted.
+//! creature token with flying, then populate."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -45,7 +43,10 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    // GAP: populate (create a copy of a creature token you control)
-    // has no primitive.
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    // GAP: "then populate" (copy a creature token you control) is not in
+    // the catalog; only the Bird token creation is expressible.
+    vec![Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    }]
 }

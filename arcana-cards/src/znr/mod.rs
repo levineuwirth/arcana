@@ -21,3 +21,4 @@ pub mod sizzling_barrage;
 pub mod shadows_verdict;
 pub mod anticognition;
 pub mod adventure_awaits;
+pub mod practiced_tactics;

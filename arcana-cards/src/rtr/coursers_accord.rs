@@ -1,6 +1,5 @@
 //! Coursers' Accord — `{4}{G}{W}` sorcery. "Create a 3/3 green
-//! Centaur creature token, then populate." Populate has no primitive;
-//! the base token is emitted.
+//! Centaur creature token, then populate."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -44,7 +43,10 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: populate (copy a creature token you control) has no
-    // primitive.
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    // GAP: "then populate" (copy a creature token you control) is not in
+    // the catalog; only the Centaur token creation is expressible.
+    vec![Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    }]
 }

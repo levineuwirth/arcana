@@ -1,7 +1,5 @@
-//! Ground Assault — `{R}{G}` sorcery. "Ground Assault deals damage to
-//! target creature equal to the number of lands you control."
-//!
-//! Dynamic amount = count of lands you control.
+//! Ground Assault — `{R}{G}` sorcery. "Ground Assault deals damage
+//! to target creature equal to the number of lands you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,12 +24,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Ground Assault deals damage to target creature equal to the number of lands you control.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Ground Assault deals damage to target creature equal to the number of lands you control.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -40,12 +39,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let n = script::count_matching(
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let amount = script::count_matching(
         state,
-        &ObjectFilter::new()
+        &ObjectFilter::permanent()
             .with_types(TypeLine::LAND.into())
             .controlled_by(ControllerConstraint::You),
         entry.controller,
@@ -53,6 +51,6 @@ fn resolve(
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
-        amount: n,
+        amount,
     }]
 }

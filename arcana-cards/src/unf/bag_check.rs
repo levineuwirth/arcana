@@ -1,10 +1,5 @@
-//! Bag Check — `{1}{U}{U}` instant, "Counter target spell, then ask a
-//! person outside the game if that spell looks dangerous to them. If
-//! they say yes, draw a card, then discard a card."
-//!
-//! GAP: "ask a person outside the game" is an un-game-state input with
-//! no corresponding Effect; the conditional draw/discard cannot be
-//! modeled. Only the counter is emitted.
+//! Bag Check — `{1}{U}{U}` instant. Counter target spell, then ask outside
+//! the game; if yes, draw a card, discard a card.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -46,8 +41,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: outside-the-game query not in catalog. Counter only.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: outside-the-game ask / conditional draw-discard not expressible.
     vec![Effect::Counter { target: *id }]
 }

@@ -1,7 +1,6 @@
 //! Sheoldred's Terror — `{B}` instant. "Destroy target creature not
-//! originally printed in an Argentum expansion." The Argentum-set
-//! restriction is printing-provenance data not modeled by the engine;
-//! implemented as a plain destroy of target creature.
+//! originally printed in an Argentum expansion." The expansion-origin
+//! restriction is not modelable, so this targets any creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,6 +23,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target creature not originally printed in an Argentum expansion.".into(),
+            // GAP: "not printed in an Argentum expansion" set-origin filter
+            // is not expressible; targets any creature.
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,

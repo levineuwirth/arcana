@@ -1,9 +1,10 @@
-//! Call of the Death-Dweller — `{2}{B}` sorcery. "Return up to two target
-//! creature cards with total mana value 3 or less from your graveyard to the
-//! battlefield. Put a deathtouch counter on either of them. Then put a
-//! menace counter on either of them." No "total mana value" target
-//! constraint; no deathtouch/menace counter kinds in the CounterKind catalog
-//! (only PlusOnePlusOne). GAP the counters.
+//! Call of the Death-Dweller — `{2}{B}` sorcery. "Return up to two
+//! target creature cards with total mana value 3 or less from your
+//! graveyard to the battlefield. Put a deathtouch counter on either of
+//! them. Then put a menace counter on either of them."
+//!
+//! The reanimation is expressed. Deathtouch / menace counters are not
+//! supported (only +1/+1 counters) — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,11 +30,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Return up to two target creature cards with total mana value 3 or less from your graveyard to the battlefield. Put a deathtouch counter on either of them. Then put a menace counter on either of them.".into(),
-            // GAP: ObjectFilter expresses per-card max-cmc but not "total mana value 3 or less" across two targets.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature().with_max_cmc(3),
+                    filter: ObjectFilter::creature(),
                 },
                 count: TargetCount::UpTo(2),
                 controller: None,
@@ -45,12 +45,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    for t in entry.targets.targets.iter() {
-        if let TargetChoice::Object(id) = t {
-            out.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
+    // GAP: deathtouch / menace counters are not modeled (only +1/+1).
+    let mut effects = Vec::new();
+    for target in &entry.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
         }
     }
-    // GAP: CounterKind catalog only has PlusOnePlusOne; deathtouch/menace counters not available.
-    out
+    effects
 }

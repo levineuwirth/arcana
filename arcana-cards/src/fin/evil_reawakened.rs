@@ -1,6 +1,8 @@
-//! Evil Reawakened — `{4}{B}` sorcery. "Return target creature card from your
-//! graveyard to the battlefield with two additional +1/+1 counters on it."
-//! Reanimate + AddCounters on the same id.
+//! Evil Reawakened — `{4}{B}` sorcery. "Return target creature card from
+//! your graveyard to the battlefield with two additional +1/+1 counters on
+//! it." The two extra counters cannot be applied to the returned card
+//! (its id is not available after the move), so only the reanimation is
+//! emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +13,7 @@ use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
+use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,13 +43,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        Effect::AddCounters {
-            target: *id,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 2,
-        },
-    ]
+    // GAP: the two additional +1/+1 counters cannot be placed — the post-return
+    // battlefield id is not available to the resolver.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

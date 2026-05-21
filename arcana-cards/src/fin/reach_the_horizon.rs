@@ -1,6 +1,8 @@
 //! Reach the Horizon — `{3}{G}` sorcery. "Search your library for up
-//! to two basic land cards and/or Town cards with different names, put
-//! them onto the battlefield tapped, then shuffle."
+//! to two basic land cards and/or Town cards with different names,
+//! put them onto the battlefield tapped, then shuffle." The
+//! "different names" disjunctive tutor isn't expressible — best
+//! effort: tutor a single land.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,28 +23,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to two basic land cards and/or Town cards with different names, put them onto the battlefield tapped, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for up to two basic land cards and/or Town cards with different names, put them onto the battlefield tapped, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // Best effort: the basic/Town and different-names restrictions are
-    // not expressible via ObjectFilter; tutors up to two lands tapped.
-    vec![
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-            tapped: true,
-        },
-    ]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'up to two ... with different names' is not expressible — emit
+    // one Land tutor as best effort.
+    vec![Effect::TutorToBattlefield {
+        player: entry.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: true,
+    }]
 }

@@ -1,7 +1,11 @@
-//! Desperate Measures — `{B}` instant, "Target creature gets +1/-1
-//! until end of turn. When it dies under your control this turn, draw
-//! two cards." The delayed dies-triggered draw is not expressible
-//! (DelayedAction has no draw action); the pump is.
+//! Desperate Measures — `{B}` instant. "Target creature gets +1/-1
+//! until end of turn. When it dies under your control this turn,
+//! draw two cards."
+//!
+//! GAP: "when target dies under your control" rider (a one-shot
+//! delayed dies-trigger with a draw side effect) isn't expressible
+//! via DelayedAction (action set: Sacrifice / Exile / ReturnToHand /
+//! ReturnFromExileToBattlefield — no Draw); emit the pump only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -24,9 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +1/-1 until end of turn. When it \
-                   dies under your control this turn, draw two cards."
-                .into(),
+            text: "Target creature gets +1/-1 until end of turn. When it dies under your control this turn, draw two cards.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -39,11 +41,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "when it dies this turn, draw two cards" — DelayedAction
-    // only supports Sacrifice/Exile/ReturnToHand, no delayed draw.
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    // GAP: dies-trigger draw side effect not modeled.
     vec![Effect::Pump {
         target: *id,
         power: 1,

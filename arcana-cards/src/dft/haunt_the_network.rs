@@ -2,10 +2,6 @@
 //! Create two 1/1 colorless Thopter artifact creature tokens with
 //! flying. Then the chosen player loses X life and you gain X life,
 //! where X is the number of artifacts you control."
-//!
-//! Target an opponent. Create two Thopter tokens. X = number of
-//! artifacts you control (count_matching); the chosen player loses X
-//! life and you gain X life.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -14,7 +10,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,8 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    let thopter = reg.interner().lookup("Thopter").expect("Thopter interned during register()");
+    let thopter = reg
+        .interner()
+        .lookup("Thopter")
+        .expect("Thopter interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(thopter);
     let token = TokenDefinition {
@@ -59,10 +59,26 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
             .controlled_by(ControllerConstraint::You),
         entry.controller,
     );
+    let chosen = match entry.targets.targets.first() {
+        Some(TargetChoice::Player(p)) => *p,
+        _ => return Vec::new(),
+    };
     vec![
-        Effect::CreateToken { controller: entry.controller, token: token.clone() },
-        Effect::CreateToken { controller: entry.controller, token },
-        Effect::LoseLife { player: *p, amount: x },
-        Effect::GainLife { player: entry.controller, amount: x },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
+        Effect::LoseLife {
+            player: chosen,
+            amount: x,
+        },
+        Effect::GainLife {
+            player: entry.controller,
+            amount: x,
+        },
     ]
 }

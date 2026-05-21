@@ -1,8 +1,7 @@
-//! Helping Hand — `{W}` sorcery. "Return target creature card with mana
-//! value 3 or less from your graveyard to the battlefield tapped."
-//!
-//! GAP: ReturnFromGraveyardToBattlefield has no `tapped:` parameter.
-//! Returning untapped — flagging the missed tap rider.
+//! Helping Hand — `{W}` sorcery. "Return target creature card with
+//! mana value 3 or less from your graveyard to the battlefield
+//! tapped." "Enters tapped" rider is not in the catalog; reanimate
+//! and GAP the tapped rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +10,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -32,7 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature().with_max_cmc(3),
+                        filter: ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You)
+                            .with_max_cmc(3),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -50,6 +52,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no tapped:bool parameter on the reanimate primitive.
+    // GAP: "enters the battlefield tapped" rider for reanimation not expressible (no tapped flag on ReturnFromGraveyardToBattlefield).
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

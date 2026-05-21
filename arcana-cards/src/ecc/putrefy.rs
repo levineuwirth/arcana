@@ -1,9 +1,7 @@
-//! Putrefy — `{1}{B}{G}` instant. "Destroy target artifact or
-//! creature. It can't be regenerated."
-//!
-//! "Can't be regenerated" is a property of the destruction; the
-//! catalog has no regen-suppression flag, so a plain destroy is
-//! emitted.
+//! Putrefy — `{1}{B}{G}` instant. "Destroy target artifact or creature.
+//! It can't be regenerated." The "can't be regenerated" rider isn't a
+//! separate catalog primitive; the engine's destroy primitive is plain
+//! `DestroyPermanent`. Best effort: destroy the target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,24 +24,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target artifact or creature. It can't be regenerated.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::CREATURE.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target artifact or creature. It can't be regenerated.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(
+                            arcana_core::types::TypeLine(
+                                TypeLine::ARTIFACT | TypeLine::CREATURE,
+                            ),
+                        ),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,16 +1,12 @@
-//! Strix Serenade — `{U}` instant. "Counter target artifact,
-//! creature, or planeswalker spell. Its controller creates a 2/2
-//! blue Bird creature token with flying."
-//!
-//! Spell filter unions artifact and creature; planeswalker disjunct
-//! GAP'd (no TypeLine::PLANESWALKER in surface). "Its controller"
-//! creates token is modeled as the caster making the token (the
-//! catalog has no `controller_of(stack_id)` accessor).
+//! Strix Serenade — `{U}` instant. "Counter target artifact, creature,
+//! or planeswalker spell. Its controller creates a 2/2 blue Bird
+//! creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -29,27 +25,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target artifact, creature, or planeswalker spell. Its controller creates a 2/2 blue Bird creature token with flying.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::CREATURE.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target artifact, creature, or planeswalker spell. Its controller creates a 2/2 blue Bird creature token with flying.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new().with_types_any(TypeLine(
+                            TypeLine::ARTIFACT
+                                | TypeLine::CREATURE
+                                | TypeLine::PLANESWALKER,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let bird = reg.interner().lookup("Bird").expect("interned");
+    let id = *id;
+    let controller = script::target_controller(state, id, entry.controller);
+    let bird = reg
+        .interner()
+        .lookup("Bird")
+        .expect("Bird interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(bird);
     let token = TokenDefinition {
@@ -62,10 +70,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    // GAP: planeswalker disjunct; "its controller" creates token (no controller-of-spell
-    // accessor) — token created under the caster.
     vec![
-        Effect::Counter { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::Counter { target: id },
+        Effect::CreateToken { controller, token },
     ]
 }

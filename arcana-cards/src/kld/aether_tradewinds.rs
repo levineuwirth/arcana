@@ -1,6 +1,5 @@
-//! Aether Tradewinds — `{2}{U}` instant, "Return target permanent
-//! you control and target permanent you don't control to their
-//! owners' hands."
+//! Aether Tradewinds — `{2}{U}` instant. "Return target permanent you control
+//! and target permanent you don't control to their owners' hands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,36 +23,42 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target permanent you control and target permanent you don't control to their owners' hands.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target permanent you control and target permanent you don't control to their owners' hands.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::permanent().controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::permanent()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    for t in &entry.targets.targets {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = Vec::new();
+    for t in entry.targets.targets.iter() {
         if let TargetChoice::Object(id) = t {
-            out.push(Effect::ReturnToHand { target: *id });
+            effects.push(Effect::ReturnToHand { target: *id });
         }
     }
-    out
+    effects
 }

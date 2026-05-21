@@ -1,5 +1,6 @@
-//! Play with Fire — `{R}` instant. "Play with Fire deals 2 damage to
-//! any target. If a player is dealt damage this way, scry 1."
+//! Play with Fire — `{R}` instant. Deals 2 damage to any target. (If a
+//! player was dealt damage this way, scry 1 — conditional scry not
+//! modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Play with Fire deals 2 damage to any target. If a player is dealt damage this way, scry 1.".into(),
-                target_requirements: vec![TargetRequirement::any_target()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Play with Fire deals 2 damage to any target. If a player is dealt damage this way, scry 1.".into(),
+            target_requirements: vec![TargetRequirement::any_target()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -45,13 +45,16 @@ fn resolve(
             ObjectOrPlayer::Player(p) => (DamageTarget::Player(*p), true),
         },
     };
-    let mut out = vec![Effect::DealDamage {
+    let mut effects: Vec<Effect> = vec![Effect::DealDamage {
         source: entry.source,
         target: dt,
         amount: 2,
     }];
     if is_player {
-        out.push(Effect::Scry { player: entry.controller, count: 1 });
+        effects.push(Effect::Scry {
+            player: entry.controller,
+            count: 1,
+        });
     }
-    out
+    effects
 }

@@ -1,5 +1,5 @@
-//! Rending Flame — `{2}{R}` instant. "Rending Flame deals 5 damage to
-//! target creature or planeswalker. If that permanent is a Spirit,
+//! Rending Flame — `{2}{R}` instant. "Rending Flame deals 5 damage
+//! to target creature or planeswalker. If that permanent is a Spirit,
 //! Rending Flame also deals 2 damage to that permanent's controller."
 
 use arcana_core::effects::Effect;
@@ -9,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,22 +26,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Rending Flame deals 5 damage to target creature or planeswalker. If that permanent is a Spirit, Rending Flame also deals 2 damage to that permanent's controller.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The conditional "if Spirit" rider has no catalog predicate; only
-    // the 5 damage is implemented.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if that permanent is a Spirit" subtype check is not
+    // expressible — the conditional 2 damage to the controller is
+    // omitted.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

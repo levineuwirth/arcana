@@ -1,6 +1,6 @@
-//! Cone of Flame — `{3}{R}{R}` sorcery. "Cone of Flame deals 1
-//! damage to any target, 2 damage to another target, and 3 damage to
-//! a third target."
+//! Cone of Flame — `{3}{R}{R}` sorcery. "Cone of Flame deals 1 damage
+//! to any target, 2 damage to another target, and 3 damage to a third
+//! target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,38 +22,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Cone of Flame deals 1 damage to any target, 2 damage to another target, and 3 damage to a third target.".into(),
-            target_requirements: vec![
-                TargetRequirement::any_target(),
-                TargetRequirement::any_target(),
-                TargetRequirement::any_target(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Cone of Flame deals 1 damage to any target, 2 damage \
+                       to another target, and 3 damage to a third target.".into(),
+                target_requirements: vec![
+                    TargetRequirement::any_target(),
+                    TargetRequirement::any_target(),
+                    TargetRequirement::any_target(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn to_dt(t: &TargetChoice) -> Option<DamageTarget> {
-    Some(match t {
+fn to_dt(t: &TargetChoice) -> DamageTarget {
+    match t {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
             ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
-    })
+    }
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ts = &entry.targets.targets;
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let mut effects = Vec::new();
     for (i, amount) in [1u32, 2, 3].into_iter().enumerate() {
-        if let Some(dt) = ts.get(i).and_then(to_dt) {
+        if let Some(t) = entry.targets.targets.get(i) {
             effects.push(Effect::DealDamage {
                 source: entry.source,
-                target: dt,
+                target: to_dt(t),
                 amount,
             });
         }

@@ -1,4 +1,5 @@
-//! Rack and Ruin — `{2}{R}` instant. "Destroy two target artifacts."
+//! Rack and Ruin — `{2}{R}` instant. "Destroy two target
+//! artifacts."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +37,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     entry
         .targets
         .targets

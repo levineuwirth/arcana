@@ -1,9 +1,5 @@
 //! Twin Bolt — `{1}{R}` instant. "Twin Bolt deals 2 damage divided as
 //! you choose among one or two targets."
-//!
-//! GAP: "divided as you choose" damage has no Effect. We take up to
-//! two any-targets and deal a flat 1 damage to each selected target
-//! (matches the 1+1 division but not other distributions).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,39 +23,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Twin Bolt deals 2 damage divided as you choose among one or two targets.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::AnyTarget,
-                count: TargetCount::UpTo(2),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Twin Bolt deals 2 damage divided as you choose among one or two targets.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::AnyTarget,
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "divided as you choose" — proxy with flat 1 per chosen target.
-    entry
-        .targets
-        .targets
-        .iter()
-        .map(|t| {
-            let dt = match t {
-                TargetChoice::Object(id) => DamageTarget::Object(*id),
-                TargetChoice::Player(p) => DamageTarget::Player(*p),
-                TargetChoice::ObjectOrPlayer(o) => match o {
-                    ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
-                    ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
-                },
-            };
-            Effect::DealDamage {
-                source: entry.source,
-                target: dt,
-                amount: 1,
-            }
-        })
-        .collect()
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'damage divided as you choose' — the split of the 2 damage
+    // across the chosen targets has no catalog form. Emit 1 damage to
+    // each chosen target as a best-effort approximation.
+    let mut effects: Vec<Effect> = Vec::new();
+    for t in &entry.targets.targets {
+        let dt = match t {
+            TargetChoice::Object(id) => DamageTarget::Object(*id),
+            TargetChoice::Player(p) => DamageTarget::Player(*p),
+            TargetChoice::ObjectOrPlayer(o) => match o {
+                ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+                ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+            },
+        };
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 1,
+        });
+    }
+    effects
 }

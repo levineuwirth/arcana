@@ -1,9 +1,8 @@
 //! Lash Out — `{1}{R}` instant. "Lash Out deals 3 damage to target
-//! creature. Clash with an opponent. If you win, Lash Out deals 3 damage
-//! to that creature's controller."
-//!
-//! Damage to target is honest; clash + controller-of-target-on-win is
-//! not in the catalog.
+//! creature. Clash with an opponent. If you win, Lash Out deals 3
+//! damage to that creature's controller." Clash is not in the
+//! catalog; deal the unconditional 3 damage and GAP the clash
+//! conditional.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -42,7 +41,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no clash primitive; no controller-of-target accessor.
+    // GAP: clash mechanic + win-conditional damage to controller — no Clash primitive.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

@@ -1,4 +1,5 @@
-//! Glare of Heresy — `{1}{W}` sorcery. "Exile target white permanent."
+//! Glare of Heresy — `{1}{W}` sorcery. "Exile target white
+//! permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

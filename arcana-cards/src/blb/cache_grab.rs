@@ -1,10 +1,9 @@
 //! Cache Grab — `{1}{G}` instant. "Mill four cards. You may put a
-//! permanent card from among the cards milled this way into your hand.
-//! If you control a Squirrel or returned a Squirrel card to your hand
-//! this way, create a Food token."
-//!
-//! The post-mill optional return and the conditional Food token are
-//! not expressible; only the mill is emitted.
+//! permanent card from among the cards milled this way into your
+//! hand. If you control a Squirrel or returned a Squirrel card to
+//! your hand this way, create a Food token." Express only the mill;
+//! GAP the from-among return and Food token (no return-from-milled
+//! primitive, no Food token).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,12 +23,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Mill four cards. You may put a permanent card from among the cards milled this way into your hand. If you control a Squirrel or returned a Squirrel card to your hand this way, create a Food token.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Mill four cards. You may put a permanent card from among the cards milled this way into your hand. If you control a Squirrel or returned a Squirrel card to your hand this way, create a Food token.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,6 +38,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: post-mill optional return and conditional Food token not expressible.
+    // GAP: return-from-just-milled rider; Food token (sac-for-life ability).
     vec![Effect::Mill { player: entry.controller, count: 4 }]
 }

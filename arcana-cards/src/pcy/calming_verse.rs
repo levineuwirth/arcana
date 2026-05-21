@@ -1,24 +1,16 @@
-//! Calming Verse — `{3}{G}` sorcery. "Destroy all enchantments you don't
-//! control. If you control an untapped land, also destroy all enchantments
-//! you control."
-//!
-//! The first clause (destroy opponent enchantments) is expressed via
-//! ForEach + Opponent filter. The second clause requires a conditional
-//! check for untapped land, which is not available via script:: helpers
-//! (no untapped-permanent query).
-//!
-//! GAP: conditional check for controlling an untapped land (no
-//! script::has_untapped_land or equivalent).
+//! Calming Verse — `{3}{G}` sorcery. "Destroy all enchantments you
+//! don't control. Then if you control an untapped land, destroy all
+//! enchantments you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Calming Verse");
@@ -32,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all enchantments you don't control. If you control an untapped land, also destroy all enchantments you control.".into(),
+                text: "Destroy all enchantments you don't control. Then if you control an untapped land, destroy all enchantments you control.".into(),
                 target_requirements: vec![],
                 modal: None,
                 effect: resolve,
@@ -45,16 +37,37 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Destroy all enchantments controlled by opponents
-    let filter = ObjectFilter::new()
-        .with_types(TypeLine::ENCHANTMENT.into())
-        .controlled_by(ControllerConstraint::Opponent);
-    let targets = script::ids_matching(state, &filter, entry.controller);
+    let theirs = script::ids_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types(TypeLine::ENCHANTMENT.into())
+            .controlled_by(ControllerConstraint::Opponent),
+        entry.controller,
+    );
     let mut effects = vec![Effect::ForEach {
-        targets,
+        targets: theirs,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }];
-    // GAP: conditional "if you control an untapped land" (no script::has_untapped_land helper)
-    // Second clause (destroy own enchantments if condition met) is omitted
+    let untapped_lands = script::count_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types(TypeLine::LAND.into())
+            .controlled_by(ControllerConstraint::You)
+            .untapped_only(),
+        entry.controller,
+    );
+    if untapped_lands > 0 {
+        let mine = script::ids_matching(
+            state,
+            &ObjectFilter::permanent()
+                .with_types(TypeLine::ENCHANTMENT.into())
+                .controlled_by(ControllerConstraint::You),
+            entry.controller,
+        );
+        effects.push(Effect::ForEach {
+            targets: mine,
+            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
+        });
+    }
     effects
 }

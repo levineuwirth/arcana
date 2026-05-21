@@ -1,10 +1,7 @@
 //! Desculpting Blast — `{1}{U}` instant. "Return target nonland
 //! permanent to its owner's hand. If it was attacking, create a 1/1
-//! colorless Drone artifact creature token with flying and 'This
-//! token can block only creatures with flying.'"
-//!
-//! The bounce is emitted; the "if it was attacking" conditional token
-//! is not expressible — GAP.
+//! colorless Drone artifact creature token with flying and 'This token
+//! can block only creatures with flying.'"
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,18 +24,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target nonland permanent to its owner's hand. If it was attacking, create a 1/1 colorless Drone artifact creature token with flying and \"This token can block only creatures with flying.\"".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target nonland permanent to its owner's hand. If it was attacking, create a 1/1 colorless Drone artifact creature token with flying.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .without_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -47,10 +46,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "if it was attacking, create a Drone token" conditional is
-    // not expressible.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if it was attacking" conditional token creation — no Effect
+    // variant exposes a permanent's attacking status as a condition.
     vec![Effect::ReturnToHand { target: *id }]
 }

@@ -1,9 +1,5 @@
 //! Slash the Ranks — `{3}{W}{W}` sorcery. "Destroy all creatures and
 //! planeswalkers except for commanders."
-//!
-//! The "except for commanders" clause is inert outside the Commander format
-//! (no objects are commanders), so destroying all creatures and planeswalkers
-//! is faithful here.
 
 use arcana_core::effects::Effect;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
@@ -25,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy all creatures and planeswalkers except for commanders.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy all creatures and planeswalkers except for commanders.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -40,14 +35,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let targets = script::ids_matching(
-        state,
-        &ObjectFilter::permanent()
-            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
-        entry.controller,
-    );
+    // "Except for commanders" — ObjectFilter has no "is commander"
+    // predicate, so the carve-out can't be honored. Destroy each
+    // creature/planeswalker; the commander exception is GAP'd.
+    let filter = ObjectFilter::permanent()
+        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER));
+    let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
-        targets,
+        targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

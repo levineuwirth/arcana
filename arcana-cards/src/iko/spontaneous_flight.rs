@@ -1,10 +1,10 @@
 //! Spontaneous Flight — `{2}{W}` instant. "Target creature gets +2/+2
 //! until end of turn. Put a flying counter on it."
 //!
-//! GAP: CounterKind::Flying (only PlusOnePlusOne exists). Modeled as
-//! +2/+2 with Flying granted for the turn.
+//! The +2/+2 is expressed. A flying counter is not a supported
+//! counter kind (only +1/+1) — GAP.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -34,13 +34,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'flying counter' (only PlusOnePlusOne exists).
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: a flying counter is not a supported counter kind.
     vec![Effect::Pump {
         target: *id,
         power: 2,
         toughness: 2,
         duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Flying],
+        keywords: vec![],
     }]
 }

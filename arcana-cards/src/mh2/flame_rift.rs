@@ -1,5 +1,4 @@
-//! Flame Rift — `{1}{R}` sorcery. "Flame Rift deals 4 damage to each
-//! player."
+//! Flame Rift — `{1}{R}` sorcery. "Deals 4 damage to each player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,12 +20,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Flame Rift deals 4 damage to each player.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Flame Rift deals 4 damage to each player.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

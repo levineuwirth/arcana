@@ -7,9 +7,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -30,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     zone: Zone::Graveyard(0),
                     filter: ObjectFilter::creature(),
                 },
-                count: TargetCount::Exactly(1),
+                count: arcana_core::targets::TargetCount::Exactly(1),
                 controller: None,
             }],
             modal: None,

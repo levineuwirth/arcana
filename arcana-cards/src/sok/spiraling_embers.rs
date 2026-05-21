@@ -1,5 +1,7 @@
-//! Spiraling Embers — `{3}{R}` sorcery — Arcane, "Spiraling Embers deals
-//! damage to any target equal to the number of cards in your hand."
+//! Spiraling Embers — `{3}{R}` sorcery — Arcane. "Spiraling Embers
+//! deals damage to any target equal to the number of cards in your
+//! hand." Arcane subtype isn't selectable on the bitflag types ctor;
+//! emit plain SORCERY and GAP the Arcane subtype.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -19,6 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         mana_cost: Some(ManaCost::parse("{3}{R}").expect("valid cost")),
         colors: ColorSet::red(),
         types: TypeLine::SORCERY.into(),
+        // GAP: "Arcane" spell-type subtype — Characteristics.types is a bitflag without an Arcane variant.
         ..Default::default()
     };
     reg.register(
@@ -38,7 +41,6 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let amount = script::hand_size(state, entry.controller);
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -47,9 +49,10 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
+    let n = script::hand_size(state, entry.controller);
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,
-        amount,
+        amount: n,
     }]
 }

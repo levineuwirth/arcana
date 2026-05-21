@@ -1,9 +1,5 @@
-//! Chain Reaction — `{2}{R}{R}` sorcery. "Chain Reaction deals X
-//! damage to each creature, where X is the number of creatures on the
-//! battlefield."
-//!
-//! X is the total creature count; damage applied to each creature via
-//! ForEach.
+//! Chain Reaction — `{2}{R}{R}` sorcery. "Chain Reaction deals X damage to
+//! each creature, where X is the number of creatures on the battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,12 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 

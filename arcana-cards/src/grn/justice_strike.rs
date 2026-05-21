@@ -1,5 +1,5 @@
-//! Justice Strike — `{R}{W}` instant. "Target creature deals damage to
-//! itself equal to its power."
+//! Justice Strike — `{R}{W}` instant. "Target creature deals damage
+//! to itself equal to its power."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,19 +22,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature deals damage to itself equal to its power.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature deals damage to itself equal to its power.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     let amount = script::power_of(state, *id).max(0) as u32;
     vec![Effect::DealDamage {
         source: *id,

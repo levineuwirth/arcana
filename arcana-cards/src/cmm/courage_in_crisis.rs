@@ -1,6 +1,6 @@
 //! Courage in Crisis — `{2}{G}` sorcery. "Put a +1/+1 counter on target
-//! creature, then proliferate." Counter is direct; proliferate has no Effect
-//! variant in the catalog. GAP that.
+//! creature, then proliferate." Only the +1/+1 counter is expressible; the
+//! proliferate step has no catalog Effect.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,8 +31,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: no Effect variant for proliferate.
+    // GAP: Proliferate has no catalog Effect variant.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,

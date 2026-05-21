@@ -1,5 +1,5 @@
-//! Death in the Family — `{1}{B}` instant, "Exile target creature with
-//! mana value 3 or less."
+//! Death in the Family — `{1}{B}` instant. "Exile target creature
+//! with mana value 3 or less."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,11 +42,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,10 +1,6 @@
-//! Failed Fording — `{1}{U}` instant.
-//! "Return target nonland permanent to its owner's hand. If you control a Desert,
-//! surveil 1."
-//!
-//! GAP: "If you control a Desert" — subtype-conditional check not in script helpers;
-//! script::count_matching can use subtype_filter but the Desert subtype is a land
-//! subtype. Partial: emit the bounce; omit the conditional surveil.
+//! Failed Fording — `{1}{U}` instant. "Return target nonland
+//! permanent to its owner's hand. If you control a Desert, surveil
+//! 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,17 +23,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target nonland permanent to its owner's hand. If you control a Desert, surveil 1.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent().without_types(TypeLine::LAND.into())),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target nonland permanent to its owner's hand. If you control a Desert, surveil 1.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,7 +45,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "If you control a Desert" conditional surveil — Desert land-subtype
-    // conditional not expressible with available script helpers
     vec![Effect::ReturnToHand { target: *id }]
+    // GAP: "if you control a Desert, surveil 1" — Desert is a land
+    // subtype which the ObjectFilter builders cannot detect, so the
+    // conditional surveil cannot be gated and is omitted.
 }

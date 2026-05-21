@@ -1,6 +1,6 @@
-//! Tendrils of Corruption — `{3}{B}` instant. "Tendrils of Corruption deals X
-//! damage to target creature and you gain X life, where X is the number of
-//! Swamps you control."
+//! Tendrils of Corruption — `{3}{B}` instant. "Tendrils of Corruption
+//! deals X damage to target creature and you gain X life, where X is
+//! the number of Swamps you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Tendrils of Corruption deals X damage to target creature and you gain X life, where X is the number of Swamps you control.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Tendrils of Corruption deals X damage to target creature and you gain X life, where X is the number of Swamps you control.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -41,11 +40,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let x = script::count_matching(
-        state,
-        &script::subtype_filter(reg, "Swamp").controlled_by(ControllerConstraint::You),
-        entry.controller,
-    );
+    let swamp_filter =
+        script::subtype_filter(reg, "Swamp").controlled_by(ControllerConstraint::You);
+    let x = script::count_matching(state, &swamp_filter, entry.controller);
     vec![
         Effect::DealDamage {
             source: entry.source,

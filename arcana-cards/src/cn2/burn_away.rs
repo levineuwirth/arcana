@@ -1,11 +1,6 @@
 //! Burn Away — `{4}{R}` instant. "Burn Away deals 6 damage to target
 //! creature. When that creature dies this turn, exile its
 //! controller's graveyard."
-//!
-//! The delayed "exile its controller's graveyard on death" trigger
-//! is not expressible (DelayedAction supports only Sacrifice / Exile
-//! / ReturnToHand on the known id, not graveyard exile). Only the 6
-//! damage is expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -27,21 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Burn Away deals 6 damage to target creature. When that creature dies this turn, exile its controller's graveyard.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Burn Away deals 6 damage to target creature. When that \
+                       creature dies this turn, exile its controller's \
+                       graveyard.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "when that creature dies, exile its controller's graveyard"
-    // is not expressible via DelayedAction.
+    // GAP: the "when that creature dies, exile its controller's
+    // graveyard" delayed trigger has no DelayedAction for exiling a
+    // whole graveyard; emit the 6 damage only.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

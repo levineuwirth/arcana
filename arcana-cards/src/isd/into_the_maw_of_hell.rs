@@ -8,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,16 +47,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(t0) = entry.targets.targets.first() else { return Vec::new(); };
-    let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(land_id) = t0 else { return Vec::new(); };
-    let TargetChoice::Object(creature_id) = t1 else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *land_id },
-        Effect::DealDamage {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DestroyPermanent { target: *id });
+    }
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.get(1) {
+        effects.push(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(*creature_id),
+            target: DamageTarget::Object(*id),
             amount: 13,
-        },
-    ]
+        });
+    }
+    effects
 }

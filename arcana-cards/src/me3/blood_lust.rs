@@ -1,4 +1,4 @@
-//! Blood Lust — `{1}{R}` instant, "If target creature has toughness 5
+//! Blood Lust — `{1}{R}` instant. "If target creature has toughness 5
 //! or greater, it gets +4/-4 until end of turn. Otherwise, it gets
 //! +4/-X until end of turn, where X is its toughness minus 1."
 
@@ -40,12 +40,13 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let tough = script::toughness_of(state, *id);
-    let toughness_delta = if tough >= 5 { -4 } else { -((tough - 1).max(0)) };
+    let id = *id;
+    let t = script::toughness_of(state, id);
+    let neg = if t >= 5 { -4 } else { -(t - 1) };
     vec![Effect::Pump {
-        target: *id,
+        target: id,
         power: 4,
-        toughness: toughness_delta,
+        toughness: neg,
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]

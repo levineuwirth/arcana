@@ -1,10 +1,7 @@
-//! Jump Scare — `{W}` instant, "Until end of turn, target creature gets
-//! +2/+2, gains flying, and becomes a Horror enchantment creature in
-//! addition to its other types."
-//!
-//! The pump and flying grant are expressible. GAP: type-line modification
-//! ("becomes Horror enchantment creature in addition to") is not in the
-//! Effect catalog.
+//! Jump Scare — `{W}` instant. "Until end of turn, target creature
+//! gets +2/+2, gains flying, and becomes a Horror enchantment
+//! creature in addition to its other types." Express the pump+flying;
+//! GAP the type-becoming.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -41,9 +38,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'becomes a Horror enchantment creature in addition to its
+    // other types' (no type-grant effect surface).
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: type-line modification ("becomes Horror enchantment creature") not in Effect catalog.
     vec![Effect::Pump {
         target: *id,
         power: 2,

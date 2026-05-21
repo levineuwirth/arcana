@@ -20,3 +20,4 @@ pub mod death_begets_life;
 pub mod aggressive_negotiations;
 pub mod knockout_maneuver;
 pub mod twin_bolt;
+pub mod new_way_forward;

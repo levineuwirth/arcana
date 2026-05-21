@@ -19,3 +19,5 @@ pub mod slick_sequence;
 pub mod binding_negotiation;
 pub mod betrayal_at_the_vault;
 pub mod throw_from_the_saddle;
+pub mod desert_s_due;
+pub mod gold_rush;

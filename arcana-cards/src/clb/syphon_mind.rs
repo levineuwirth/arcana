@@ -1,7 +1,5 @@
-//! Syphon Mind — `{3}{B}` sorcery. "Each other player discards a
-//! card. You draw a card for each card discarded this way." Each
-//! opponent discards one; you draw one per opponent (the count of
-//! cards discarded this way).
+//! Syphon Mind — `{3}{B}` sorcery. "Each other player discards a card.
+//! You draw a card for each card discarded this way."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -33,15 +31,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let opponents = script::opponents(state, entry.controller);
-    let n = opponents.len() as u32;
-    let mut out: Vec<Effect> = opponents
-        .into_iter()
-        .map(|p| Effect::Discard {
+    // "for each card discarded this way" — each other player who can
+    // discard contributes one card; count discardable opponents as the draw
+    // amount. (Approximated as the opponent count.)
+    let mut effects: Vec<Effect> = opponents
+        .iter()
+        .map(|&p| Effect::Discard {
             player: p,
             count: 1,
             choice: DiscardChoice::ControllerChooses,
         })
         .collect();
-    out.push(Effect::DrawCards { player: entry.controller, count: n });
-    out
+    let draw = opponents.len() as u32;
+    if draw > 0 {
+        effects.push(Effect::DrawCards { player: entry.controller, count: draw });
+    }
+    effects
 }

@@ -1,23 +1,17 @@
-//! Immolating Gyre — `{4}{R}{R}` sorcery. "Immolating Gyre deals X damage to
-//! each creature and planeswalker you don't control, where X is the number of
-//! instant and sorcery cards in your graveyard."
-//!
-//! Note: planeswalkers are not a TypeLine in the current engine; targeting
-//! creatures you don't control. GAP: damage to planeswalkers opponent controls.
-//! GAP: graveyard_matching with instant+sorcery type filter (no
-//! ObjectFilter::with_types_any for graveyard_matching).
+//! Immolating Gyre — `{4}{R}{R}` sorcery. "Immolating Gyre deals X
+//! damage to each creature and planeswalker you don't control, where X
+//! is the number of instant and sorcery cards in your graveyard."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
-use arcana_core::script;
-use arcana_core::objects::NULL_OBJECT_ID;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Immolating Gyre");
@@ -44,13 +38,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: count instant+sorcery cards in graveyard (graveyard_matching needs type filter)
-    // GAP: also deal damage to planeswalkers
-    let x = script::graveyard_size(state, entry.controller);
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let ids = script::ids_matching(state, &filter, entry.controller);
+    let x = script::graveyard_matching(
+        state,
+        &ObjectFilter::new()
+            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+        entry.controller,
+        entry.controller,
+    );
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+            .controlled_by(ControllerConstraint::Opponent),
+        entry.controller,
+    );
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(NULL_OBJECT_ID),

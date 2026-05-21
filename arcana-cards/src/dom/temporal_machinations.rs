@@ -1,16 +1,16 @@
-//! Temporal Machinations — `{2}{U}` sorcery, "Return target creature to its
-//! owner's hand. If you control an artifact, draw a card."
-//!
-//! # GAP: conditional draw based on controlling an artifact (board-state check
-//! at resolution time) not expressible with static Effect variants
+//! Temporal Machinations — `{2}{U}` sorcery. "Return target creature
+//! to its owner's hand. If you control an artifact, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -34,12 +34,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional draw based on controlling an artifact not expressible
-    vec![Effect::ReturnToHand { target: *id }]
+    let mut effects = vec![Effect::ReturnToHand { target: *id }];
+    let artifacts = script::count_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types(TypeLine::ARTIFACT.into())
+            .controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    if artifacts > 0 {
+        effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
+    }
+    effects
 }

@@ -1,15 +1,14 @@
-//! Liturgy of Blood — `{3}{B}{B}` sorcery. "Destroy target creature.
-//! Add {B}{B}{B}." The mana-add rider is not expressible (no add-mana
-//! effect); we destroy the target creature.
+//! Liturgy of Blood — `{3}{B}{B}` sorcery. "Destroy target creature. Add
+//! {B}{B}{B}."
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Liturgy of Blood");
@@ -31,7 +30,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "Add {B}{B}{B}" — no add-mana effect in the catalog.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: *id }]
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::AddMana {
+            player: entry.controller,
+            mana: vec![ManaUnit::plain(ManaColor::Black, entry.source); 3],
+        },
+    ]
 }

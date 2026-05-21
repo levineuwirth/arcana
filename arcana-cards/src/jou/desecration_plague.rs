@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,7 +26,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target enchantment or land.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types_any(TypeLine::ENCHANTMENT.into()).with_types_any(TypeLine::LAND.into())),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::ENCHANTMENT | TypeLine::LAND)),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

@@ -1,5 +1,5 @@
-//! Riverguard's Reflexes — `{1}{W}` instant, "Target creature gets
-//! +2/+2 and gains first strike until end of turn. Untap it."
+//! Riverguard's Reflexes — `{1}{W}` instant. Target creature gets +2/+2 and
+//! gains first strike eot. Untap it.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -38,14 +38,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
     vec![
         Effect::Pump {
-            target: *id,
+            target: id,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::FirstStrike],
         },
-        Effect::Untap { target: *id },
+        Effect::Untap { target: id },
     ]
 }

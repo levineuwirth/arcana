@@ -1,11 +1,10 @@
 //! Long Road Home — `{1}{W}` instant. "Exile target creature. At the
-//! beginning of the next end step, return that card to the
-//! battlefield under its owner's control with a +1/+1 counter on it."
-//! DelayedAction supports only Sacrifice/Exile/ReturnToHand — a
-//! delayed return-to-battlefield with a counter is not expressible,
-//! so only the exile is emitted.
+//! beginning of the next end step, return that card to the battlefield
+//! under its owner's control with a +1/+1 counter on it." The "+1/+1
+//! counter on return" rider isn't expressible by DelayedAction; we
+//! emit exile + delayed return and GAP the counter.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -40,7 +39,14 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: delayed return-to-battlefield with a +1/+1 counter — the
-    // DelayedAction set is only Sacrifice/Exile/ReturnToHand.
-    vec![Effect::ExilePermanent { target: *id }]
+    // GAP: cannot attach "enters with a +1/+1 counter" to the delayed return.
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::ReturnFromExileToBattlefield,
+        },
+    ]
 }

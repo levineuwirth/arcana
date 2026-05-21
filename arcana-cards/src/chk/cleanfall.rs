@@ -1,4 +1,5 @@
-//! Cleanfall — `{2}{W}` sorcery — Arcane. "Destroy all enchantments."
+//! Cleanfall — `{2}{W}` sorcery — Arcane. "Destroy all
+//! enchantments."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,11 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),

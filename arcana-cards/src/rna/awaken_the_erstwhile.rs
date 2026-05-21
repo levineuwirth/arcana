@@ -22,12 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player discards all the cards in their hand, then creates that many 2/2 black Zombie creature tokens.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player discards all the cards in their hand, then creates that many 2/2 black Zombie creature tokens.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -36,7 +37,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned");
+    let zombie = reg.interner().lookup("Zombie")
+        .expect("Zombie interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
     let token = TokenDefinition {
@@ -58,10 +60,7 @@ fn resolve(
             choice: DiscardChoice::ControllerChooses,
         });
         for _ in 0..n {
-            effects.push(Effect::CreateToken {
-                controller: p,
-                token: token.clone(),
-            });
+            effects.push(Effect::CreateToken { controller: p, token: token.clone() });
         }
     }
     effects

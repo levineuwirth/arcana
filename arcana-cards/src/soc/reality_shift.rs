@@ -1,5 +1,7 @@
 //! Reality Shift — `{1}{U}` instant. "Exile target creature. Its
-//! controller manifests the top card of their library."
+//! controller manifests the top card of their library." The manifest
+//! (face-down 2/2) mechanic isn't in the catalog — best effort: exile
+//! the target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -20,20 +22,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target creature. Its controller manifests the top card of their library.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target creature. Its controller manifests the top card of their library.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "manifest the top card" (face-down 2/2) has no Effect
-    // variant; only the exile is emitted.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: manifest (top of library as face-down 2/2 creature) is not in the catalog.
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,10 +1,9 @@
-//! Scattering Stroke — `{2}{U}{U}` instant. "Counter target spell.
-//! Clash with an opponent. If you win, at the beginning of your next
-//! main phase, you may add an amount of {C} equal to that spell's
-//! mana value."
+//! Scattering Stroke — `{2}{U}{U}` instant. "Counter target spell. Clash with
+//! an opponent. If you win, at the beginning of your next main phase, you may
+//! add an amount of {C} equal to that spell's mana value."
 //!
-//! The counter is expressible. Clash and the delayed conditional
-//! mana addition have no catalog Effects and are GAPped.
+//! Counter expressible. Clash and the delayed-mana-on-next-main rider are not
+//! catalog primitives.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,16 +26,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Clash with an opponent. If you win, at the beginning of your next main phase, you may add an amount of {C} equal to that spell's mana value.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Clash with an opponent. If you win, at the beginning of your next main phase, you may add an amount of {C} equal to that spell's mana value.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -47,8 +47,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Counter { target: *id },
-        // GAP: Clash + delayed conditional mana addition not expressible.
-    ]
+    // GAP: Clash mechanic; delayed mana-add at beginning of next main phase.
+    vec![Effect::Counter { target: *id }]
 }

@@ -1,13 +1,11 @@
 //! Countermand — `{2}{U}{U}` instant. "Counter target spell. Its
 //! controller mills four cards."
-//!
-//! GAP: no controller-of-target accessor to wire the mill to the spell's
-//! controller. Emitting counter only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -40,12 +38,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no controller-of-target-spell accessor; emit counter only.
-    vec![Effect::Counter { target: *id }]
+    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
+    let ctrl = script::target_controller(state, *stack_id, entry.controller);
+    vec![
+        Effect::Counter { target: *stack_id },
+        Effect::Mill { player: ctrl, count: 4 },
+    ]
 }

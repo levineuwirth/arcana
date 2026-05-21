@@ -1,11 +1,9 @@
-//! Divest — `{B}` sorcery. "Target player reveals their hand. You
-//! choose an artifact or creature card from it. That player discards
-//! that card."
+//! Divest — `{B}` sorcery. "Target player reveals their hand. You choose an
+//! artifact or creature card from it. That player discards that card."
 //!
-//! Modeled as a targeted discard where the caster chooses
-//! (`DiscardChoice::OpponentChooses` from that player's POV → caster
-//! picks). The "artifact or creature card" restriction cannot be
-//! expressed on `Effect::Discard` (best-effort).
+//! Targeted hand-reveal + you-choose discard is closest to opponent-chooses
+//! discard. The 'you choose' rider is not in the catalog — emit a plain
+//! Discard against the target player (controller of spell chooses).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -26,23 +24,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target player reveals their hand. You choose an artifact or creature card from it. That player discards that card.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target player reveals their hand. You choose an artifact or creature card from it. That player discards that card.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
 fn resolve(
     _state: &GameState,
-    _entry: &StackEntry,
+    entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = _entry.targets.targets.first() else { return Vec::new(); };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: "artifact or creature card" restriction not expressible on Discard.
+    // GAP: 'you choose an artifact or creature card from their hand' targeted reveal-pick.
     vec![Effect::Discard {
         player: *p,
         count: 1,

@@ -1,8 +1,5 @@
-//! Wrench Mind — `{B}{B}` sorcery. "Target player discards two cards
-//! unless they discard an artifact card."
-//!
-//! GAP: no "discard A unless you discard a card of type X" choice; modeled
-//! as the target player discarding two cards.
+//! Wrench Mind — `{B}{B}` sorcery. Target player discards two cards
+//! unless they discard an artifact card.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -40,7 +37,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: "unless they discard an artifact" branch not modeled.
+    // GAP: "unless they discard an artifact" branch not expressible; emit the
+    // base discard-two effect.
     vec![Effect::Discard {
         player: *p,
         count: 2,

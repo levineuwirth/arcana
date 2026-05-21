@@ -1,10 +1,8 @@
 //! Oblivion's Hunger — `{1}{B}` instant. "Target creature you control
 //! gains indestructible until end of turn. Draw a card if that
-//! creature has a +1/+1 counter on it."
-//!
-//! The "draw a card if that creature has a +1/+1 counter" rider has
-//! no catalog Effect (no counter-presence Conditional condition);
-//! GAP'd.
+//! creature has a +1/+1 counter on it." The +1/+1-counter conditional
+//! draw isn't a script helper; emit the indestructible grant and GAP
+//! the conditional.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -29,24 +27,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature you control gains indestructible until end of turn. Draw a card if that creature has a +1/+1 counter on it.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature you control gains indestructible until end of turn. Draw a card if that creature has a +1/+1 counter on it.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "draw a card if it has a +1/+1 counter" condition not in Conditional surface.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'has a +1/+1 counter on it' predicate for the conditional
+    // draw.
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Indestructible,

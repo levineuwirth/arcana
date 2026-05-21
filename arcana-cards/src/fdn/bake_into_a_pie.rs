@@ -1,8 +1,5 @@
-//! Bake into a Pie — `{2}{B}{B}` instant.
-//! "Destroy target creature. Create a Food token."
-//!
-//! GAP: Food token activated ability "{2}, {T}, Sacrifice this token: You gain
-//! 3 life." is not expressible via TokenDefinition abilities field.
+//! Bake into a Pie — `{2}{B}{B}` instant. "Destroy target creature.
+//! Create a Food token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,14 +36,14 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-
-    let food = reg.interner().lookup("Food").expect("Food interned during register()");
+    let food = reg.interner().lookup("Food")
+        .expect("Food interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
-    // GAP: Food activated ability not expressible in TokenDefinition
-    let food_token = TokenDefinition {
+    // NOTE: the Food token's "{2}, {T}, Sacrifice: gain 3 life"
+    // activated ability is not expressible on a TokenDefinition — that
+    // rider is a GAP. The artifact Food token itself is created.
+    let token = TokenDefinition {
         name: food,
         colors: ColorSet::new(),
         types: TypeLine::ARTIFACT.into(),
@@ -56,9 +53,10 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        Effect::CreateToken { controller: entry.controller, token: food_token },
-    ]
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DestroyPermanent { target: *id });
+    }
+    effects.push(Effect::CreateToken { controller: entry.controller, token });
+    effects
 }

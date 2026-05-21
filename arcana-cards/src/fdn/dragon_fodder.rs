@@ -29,8 +29,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let goblin = reg.interner().lookup("Goblin").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     let token = TokenDefinition {

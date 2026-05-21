@@ -1,5 +1,5 @@
-//! Pulse of Murasa — `{2}{G}` instant. "Return target creature or land card
-//! from a graveyard to its owner's hand. You gain 6 life."
+//! Pulse of Murasa — `{2}{G}` instant. Return target creature or land
+//! card from a graveyard to its owner's hand. You gain 6 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,22 +23,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature or land card from a graveyard to its owner's hand. You gain 6 life.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::CREATURE | TypeLine::LAND),
-                        ),
-                    },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return target creature or land card from a graveyard to its owner's hand. You gain 6 life.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::new()
+                        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::LAND)),
+                },
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -47,10 +45,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::ReturnFromGraveyardToHand { target: *id },
-        Effect::GainLife { player: entry.controller, amount: 6 },
-    ]
+    let mut effects: Vec<Effect> = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
+    }
+    effects.push(Effect::GainLife {
+        player: entry.controller,
+        amount: 6,
+    });
+    effects
 }

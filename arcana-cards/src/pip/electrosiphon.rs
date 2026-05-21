@@ -1,8 +1,6 @@
-//! Electrosiphon — `{U}{U}{R}` instant. "Counter target spell. You get an
-//! amount of {E} (energy counters) equal to its mana value."
-//!
-//! GAP: no Effect variant to give energy counters. Only the counter is
-//! expressible.
+//! Electrosiphon — `{U}{U}{R}` instant. "Counter target spell. You get
+//! an amount of {E} (energy counters) equal to its mana value." Energy
+//! counters aren't in the catalog — best effort: counter the spell.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Counter target spell. You get an amount of {E} equal to its mana value.".into(),
+                text: "Counter target spell. You get an amount of {E} (energy counters) equal to its mana value.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Spell(ObjectFilter::default()),
                     count: TargetCount::Exactly(1),
@@ -43,10 +43,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: no Effect variant for energy counters
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: energy counters ({E}) are not in the engine catalog.
+    vec![Effect::Counter { target: *id }]
 }

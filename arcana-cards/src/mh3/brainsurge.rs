@@ -1,10 +1,5 @@
-//! Brainsurge — `{2}{U}` instant.
-//! "Draw four cards, then put two cards from your hand on top of your library
-//! in any order."
-//!
-//! GAP: "put two cards from your hand on top of your library in any order" —
-//! there is no Effect variant for the player choosing cards from hand to place
-//! on top of library. The draw-four portion is expressible.
+//! Brainsurge — `{2}{U}` instant. "Draw four cards, then put two
+//! cards from your hand on top of your library in any order."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,23 +19,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Draw four cards, then put two cards from your hand on top of your library in any order.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Draw four cards, then put two cards from your hand on top of your library in any order.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no Effect variant to choose cards from hand and put them on top of library.
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 4 },
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "put two cards from your hand on top of your library" has
+    // no catalog primitive — only the four-card draw is emitted.
+    vec![Effect::DrawCards {
+        player: entry.controller,
+        count: 4,
+    }]
 }

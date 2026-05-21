@@ -1,6 +1,4 @@
 //! Rebuke — `{2}{W}` instant. "Destroy target attacking creature."
-//! The "attacking" restriction has no ObjectFilter refinement; we
-//! target a creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,18 +19,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target attacking creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // NOTE: "attacking" restriction not expressible as an
+                // ObjectFilter refinement — using a plain creature target.
+                text: "Destroy target attacking creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // Note: "attacking" restriction has no ObjectFilter refinement;
-    // target is an unfiltered creature.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

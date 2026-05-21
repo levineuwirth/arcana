@@ -42,20 +42,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    for t in entry.targets.targets.iter() {
-        if let TargetChoice::Object(id) = t {
-            out.push(Effect::ReturnFromGraveyardToHand { target: *id });
-        }
-    }
-    let opp_seq = script::opponents(state, entry.controller)
-        .into_iter()
-        .map(|p| Effect::LoseLife { player: p, amount: 2 })
+    let mut effects: Vec<Effect> = entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::ReturnFromGraveyardToHand { target: *id }),
+            _ => None,
+        })
         .collect();
-    out.push(Effect::Sequence(opp_seq));
-    out.push(Effect::GainLife {
-        player: entry.controller,
-        amount: 2,
-    });
-    out
+    for opp in script::opponents(state, entry.controller) {
+        effects.push(Effect::LoseLife { player: opp, amount: 2 });
+    }
+    effects.push(Effect::GainLife { player: entry.controller, amount: 2 });
+    effects
 }

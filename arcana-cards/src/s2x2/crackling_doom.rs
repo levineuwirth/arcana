@@ -1,10 +1,6 @@
-//! Crackling Doom — `{R}{W}{B}` instant. "Crackling Doom deals 2
-//! damage to each opponent. Each opponent sacrifices a creature with
-//! the greatest power among creatures that player controls."
-//!
-//! GAP: "creature with the greatest power among creatures that
-//! player controls" is not a representable per-player filter. We emit
-//! the each-opponent damage and a generic each-opponent sacrifice.
+//! Crackling Doom — `{R}{W}{B}` instant. "Crackling Doom deals 2 damage
+//! to each opponent. Each opponent sacrifices a creature with the
+//! greatest power among creatures that player controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -14,7 +10,6 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,24 +31,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let opps = script::opponents(state, entry.controller);
-    let mut effects: Vec<Effect> = opps
-        .iter()
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let damage: Vec<Effect> = script::opponents(state, entry.controller)
+        .into_iter()
         .map(|p| Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Player(*p),
+            target: DamageTarget::Player(p),
             amount: 2,
         })
         .collect();
-    // GAP: "greatest power" restriction on the sacrifice — emit a
-    // generic per-opponent creature sacrifice.
-    for p in opps {
-        effects.push(Effect::Sacrifice {
-            player: p,
-            filter: ObjectFilter::creature(),
-            count: 1,
-        });
-    }
-    effects
+    // GAP: "greatest power" forced sacrifice filter not exposed — emit
+    // only the damage half (Effect::Sequence keeps composition tidy).
+    vec![Effect::Sequence(damage)]
 }

@@ -2,9 +2,8 @@
 //! +3/+3 until end of turn. If it's an artifact creature, it gains
 //! trample until end of turn."
 //!
-//! GAP: 'attacking creature' filter not in TargetFilter::Creature
-//! helper — accept any creature. GAP: 'if it's an artifact creature'
-//! conditional on the target's type is not expressible.
+//! The +3/+3 is expressed. The conditional trample (gated on the
+//! creature being an artifact) cannot be expressed at resolution — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -36,8 +35,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: conditional 'if it's an artifact creature' trample rider.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: cannot check "is an artifact creature" at resolution to
+    // conditionally grant trample; only the unconditional pump is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 3,

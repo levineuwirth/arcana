@@ -1,7 +1,7 @@
 //! Rise of the Witch-king — `{2}{B}{G}` sorcery. "Each player
 //! sacrifices a creature of their choice. If you sacrificed a
-//! creature this way, you may return another permanent card from your
-//! graveyard to the battlefield."
+//! creature this way, you may return another permanent card from
+//! your graveyard to the battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,17 +32,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The conditional "if you sacrificed, you may reanimate" rider is
-    // not expressible; emit the each-player sacrifice.
-    vec![Effect::Sequence(
-        script::all_players(state)
-            .into_iter()
-            .map(|p| Effect::Sacrifice {
-                player: p,
-                filter: ObjectFilter::creature(),
-                count: 1,
-            })
-            .collect(),
-    )]
+fn resolve(
+    state: &GameState,
+    _entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // Each player sacrifices a creature.
+    script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::creature(),
+            count: 1,
+        })
+        .collect()
+    // GAP: "if you sacrificed a creature, you may return another
+    // permanent card from your graveyard to the battlefield" — a
+    // conditional, optional, chooser-driven graveyard reanimation
+    // cannot be expressed (no graveyard-choice primitive, and the
+    // "did you sacrifice" condition is unobservable).
 }

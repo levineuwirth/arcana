@@ -1,8 +1,7 @@
-//! Outwit — `{U}` instant, "Counter target spell that targets a
-//! player."
+//! Outwit — `{U}` instant. "Counter target spell that targets a player."
 //!
-//! GAP note: the "that targets a player" restriction on the spell
-//! filter is not expressible; modeled as a plain hard counter.
+//! The 'targets a player' filter is a stack-introspection filter not in
+//! ObjectFilter. Fall back to plain spell target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,21 +24,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell that targets a player.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell that targets a player.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'spell that targets a player' filter not in ObjectFilter.
     vec![Effect::Counter { target: *id }]
 }

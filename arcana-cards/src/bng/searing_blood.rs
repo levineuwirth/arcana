@@ -1,8 +1,9 @@
-//! Searing Blood — `{R}{R}` instant.
-//! "Searing Blood deals 2 damage to target creature. When that creature dies
-//! this turn, Searing Blood deals 3 damage to the creature's controller."
+//! Searing Blood — `{R}{R}` instant. "Searing Blood deals 2 damage to
+//! target creature. When that creature dies this turn, Searing Blood deals
+//! 3 damage to the creature's controller." Only the 2 damage is
+//! expressible; the dies-trigger rider is gapped.
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -22,39 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Searing Blood deals 2 damage to target creature. When that creature dies this turn, Searing Blood deals 3 damage to the creature's controller.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Searing Blood deals 2 damage to target creature. When that creature dies this turn, Searing Blood deals 3 damage to the creature's controller.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The "deals 3 damage to the creature's controller" on-death rider cannot be
-    // expressed exactly: DelayedAction supports Sacrifice/Exile/ReturnToHand actions,
-    // not DealDamage. GAP: on-dies DealDamage to former controller not in DelayedAction catalog.
-    vec![
-        Effect::DealDamage {
-            source: entry.source,
-            target: DamageTarget::Object(*id),
-            amount: 2,
-        },
-        Effect::DelayedAction {
-            source: *id,
-            controller: entry.controller,
-            when: DelayedWhen::ThisDies,
-            action: DelayedAction::Sacrifice,
-        },
-        // GAP: on-dies trigger should deal 3 damage to creature's controller, not sacrifice.
-        //      No DealDamage action exists in DelayedAction.
-    ]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: the "when that creature dies this turn, deal 3 to its controller"
+    // delayed trigger is not expressible from a spell resolver.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: DamageTarget::Object(*id),
+        amount: 2,
+    }]
 }

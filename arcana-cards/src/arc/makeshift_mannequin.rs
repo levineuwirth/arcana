@@ -1,10 +1,10 @@
-//! Makeshift Mannequin — `{3}{B}` instant. "Return target creature card from
-//! your graveyard to the battlefield with a mannequin counter on it. For as
-//! long as that creature has a mannequin counter on it, it has 'When this
-//! creature becomes the target of a spell or ability, sacrifice it.'"
-//!
-//! GAP: no mannequin counter kind; no static-ability granting on a reanimated
-//! creature. Best effort: reanimate the creature.
+//! Makeshift Mannequin — `{3}{B}` instant. "Return target creature
+//! card from your graveyard to the battlefield with a mannequin
+//! counter on it. For as long as that creature has a mannequin
+//! counter on it, it has 'When this creature becomes the target of a
+//! spell or ability, sacrifice it.'" GAP: 'mannequin counter' kind
+//! and the associated becomes-target trigger aren't in catalog; emit
+//! the bare graveyard-to-battlefield return.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Return target creature card from your graveyard to the battlefield with a mannequin counter on it. For as long as that creature has a mannequin counter on it, it has 'When this creature becomes the target of a spell or ability, sacrifice it.'".into(),
+                text: "Return target creature card from your graveyard to the battlefield with a mannequin counter on it. For as long as that creature has a mannequin counter on it, it has \"When this creature becomes the target of a spell or ability, sacrifice it.\"".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
@@ -50,8 +50,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: 'mannequin counter' kind + becomes-target trigger rider not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'mannequin counter' kind and conditional ability grant not supported
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

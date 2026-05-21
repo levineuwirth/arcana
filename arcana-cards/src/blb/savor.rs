@@ -1,10 +1,9 @@
-//! Savor — `{1}{B}` instant. "Target creature gets -2/-2 until end of
-//! turn. Create a Food token."
+//! Savor — `{1}{B}` instant. "Target creature gets -2/-2 until end of turn.
+//! Create a Food token."
 //!
-//! The -2/-2 is expressible. The Food token is created as a colorless
-//! artifact named Food; its activated "{2}, {T}, Sacrifice: gain 3
-//! life" ability cannot be attached to a `TokenDefinition` and is
-//! omitted (best-effort).
+//! Food is a predefined token type; the engine's TokenDefinition can express
+//! its body (artifact subtype Food, 0 P/T omitted — Food is a noncreature
+//! artifact) but cannot model the activated ability text — GAP that rider.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -27,12 +26,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets -2/-2 until end of turn. Create a Food token.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets -2/-2 until end of turn. Create a Food token.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -43,7 +43,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let food = reg.interner().lookup("Food").expect("Food interned");
+    let food = reg.interner().lookup("Food").expect("Food interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
     let token = TokenDefinition {
@@ -56,6 +56,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: Food token's "{2}, {T}, Sacrifice this token: You gain 3 life." activated
+    // ability isn't expressible on a TokenDefinition.
     vec![
         Effect::Pump {
             target: *id,

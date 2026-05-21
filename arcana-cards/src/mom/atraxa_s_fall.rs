@@ -1,9 +1,5 @@
-//! Atraxa's Fall — `{1}{G}` sorcery. "Destroy target artifact,
-//! battle, enchantment, or creature with flying."
-//!
-//! GAP: TypeLine has no BATTLE bitflag in the catalog reference. We
-//! widen the filter to artifact/enchantment/creature and accept any —
-//! the flying-only restriction on the creature leg is dropped.
+//! Atraxa's Fall — `{1}{G}` sorcery. "Destroy target artifact, battle,
+//! enchantment, or creature with flying."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,12 +24,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target artifact, battle, enchantment, or creature with flying.".into(),
+            // GAP: battle type and "creature with flying" subfilter not
+            // exposed. Best-effort: target artifact or enchantment.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into())
-                        .with_types_any(TypeLine::CREATURE.into()),
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                    )),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -44,10 +41,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: BATTLE type and flying-only creature leg.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

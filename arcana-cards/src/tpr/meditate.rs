@@ -1,6 +1,5 @@
-//! Meditate — `{2}{U}` instant. "Draw four cards. You skip your next
-//! turn." The draw is expressible; "skip your next turn" has no
-//! primitive and is GAP-noted (partial).
+//! Meditate — `{2}{U}` instant. Draw four cards. You skip your next
+//! turn. (Skip-turn rider not modeled.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,7 +28,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "you skip your next turn" — no skip-turn effect primitive.
-    vec![Effect::DrawCards { player: entry.controller, count: 4 }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "You skip your next turn" — no skip-turn Effect.
+    vec![Effect::DrawCards {
+        player: entry.controller,
+        count: 4,
+    }]
 }

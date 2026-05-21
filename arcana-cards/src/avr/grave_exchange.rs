@@ -1,16 +1,16 @@
-//! Grave Exchange — `{4}{B}{B}` sorcery. "Return target creature card from
-//! your graveyard to your hand. Target player sacrifices a creature of
-//! their choice."
+//! Grave Exchange — `{4}{B}{B}` sorcery. Return target creature card
+//! from your graveyard to your hand. Target player sacrifices a
+//! creature of their choice.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::stack::StackEntry;
-use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -50,11 +50,10 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let targets = &entry.targets.targets;
-    if targets.len() < 2 { return Vec::new(); }
-    let TargetChoice::Object(card) = &targets[0] else { return Vec::new(); };
-    let TargetChoice::Player(p) = &targets[1] else { return Vec::new(); };
+    let Some(TargetChoice::Object(card_id)) = targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Player(p)) = targets.get(1) else { return Vec::new(); };
     vec![
-        Effect::ReturnFromGraveyardToHand { target: *card },
+        Effect::ReturnFromGraveyardToHand { target: *card_id },
         Effect::Sacrifice {
             player: *p,
             filter: ObjectFilter::creature(),

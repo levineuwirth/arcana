@@ -1,7 +1,5 @@
-//! Lessons from Life — `{2}{G}{U}` sorcery. "Draw three cards. You
-//! may put a land card from your hand onto the battlefield tapped."
-//! The optional play-a-land-from-hand rider is not expressible; we
-//! emit the draw.
+//! Lessons from Life — `{2}{G}{U}` sorcery. "Draw three cards. You may
+//! put a land card from your hand onto the battlefield tapped."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: optional "put a land from your hand onto the battlefield"
-    // is not expressible. Draw three emitted.
+    // GAP: "you may put a land from your hand onto the battlefield" (a
+    // play-from-hand effect) has no expressible Effect variant; only the
+    // draw is emitted.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

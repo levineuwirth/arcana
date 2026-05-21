@@ -1,9 +1,5 @@
-//! Thraben Exorcism — `{1}{W}` instant. "Exile target Spirit, creature
-//! with disturb, or enchantment."
-//!
-//! GAP: "creature with disturb" subset has no keyword filter. We target
-//! a Spirit (creature with the Spirit subtype) OR any enchantment, the
-//! two expressible legs.
+//! Thraben Exorcism — `{1}{W}` instant. "Exile target Spirit,
+//! creature with disturb, or enchantment."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,26 +21,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: 'Spirit OR creature with disturb OR enchantment' is a
+    // disjunctive target filter; ObjectFilter cannot express an
+    // OR across subtype/keyword/type. Approximated as 'enchantment'.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target Spirit, creature with disturb, or enchantment.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types_any(TypeLine::ENCHANTMENT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target Spirit, creature with disturb, or enchantment.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: Spirit subtype OR disturb-keyword union with enchantment in the filter.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

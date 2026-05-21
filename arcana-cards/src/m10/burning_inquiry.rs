@@ -30,15 +30,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let players = script::all_players(state);
-    let mut effects: Vec<Effect> = players
-        .iter()
-        .map(|p| Effect::DrawCards { player: *p, count: 3 })
-        .collect();
-    effects.extend(players.iter().map(|p| Effect::Discard {
-        player: *p,
-        count: 3,
-        choice: DiscardChoice::Random,
-    }));
-    vec![Effect::Sequence(effects)]
+    let mut effects = Vec::new();
+    for p in script::all_players(state) {
+        effects.push(Effect::DrawCards { player: p, count: 3 });
+    }
+    for p in script::all_players(state) {
+        effects.push(Effect::Discard {
+            player: p,
+            count: 3,
+            choice: DiscardChoice::Random,
+        });
+    }
+    effects
 }

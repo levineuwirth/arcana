@@ -1,8 +1,5 @@
 //! Filigree Fracture — `{2}{G}` instant. "Destroy target artifact or
 //! enchantment. If that permanent was blue or black, draw a card."
-//!
-//! GAP: cannot test the destroyed permanent's color after the fact;
-//! the cantrip is dropped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,9 +26,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target artifact or enchantment. If that permanent was blue or black, draw a card.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into()),
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                    )),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -42,10 +39,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: conditional cantrip on destroyed permanent's color.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: conditional "if that permanent was blue or black, draw a card"
+    // requires a color-predicate inside Effect::Conditional which is not
+    // exposed in the catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

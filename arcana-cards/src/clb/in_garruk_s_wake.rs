@@ -1,5 +1,5 @@
-//! In Garruk's Wake — `{7}{B}{B}` sorcery. "Destroy all creatures you
-//! don't control and all planeswalkers you don't control."
+//! In Garruk's Wake — `{7}{B}{B}` sorcery. "Destroy all creatures
+//! you don't control and all planeswalkers you don't control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,16 +30,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // Planeswalkers have no ObjectFilter type const in the catalog;
-    // the creature half ("you don't control") is implemented.
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+            .controlled_by(ControllerConstraint::Opponent),
         entry.controller,
     );
     vec![Effect::ForEach {

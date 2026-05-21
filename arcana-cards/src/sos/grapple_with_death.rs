@@ -1,5 +1,5 @@
-//! Grapple with Death — `{1}{B}{G}` sorcery.
-//! "Destroy target artifact or creature. You gain 1 life."
+//! Grapple with Death — `{1}{B}{G}` sorcery. "Destroy target artifact
+//! or creature. You gain 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -7,7 +7,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target artifact or creature. You gain 1 life.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
+                        ObjectFilter::permanent()
                             .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
                     ),
                     count: TargetCount::Exactly(1),

@@ -32,25 +32,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let lands = script::graveyard_matching(
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // Note: per CR 608.2 mill happens, THEN the count of land cards
+    // in graveyard is read. script::graveyard_matching reads live
+    // state, so the value is computed before the mill resolves — the
+    // resolver returns effects which the engine applies in order.
+    // Compute the count after-the-fact would require a deferred X;
+    // here we use the pre-mill count as a documented imprecision.
+    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    let x = script::graveyard_matching(
         state,
-        &ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+        &land_filter,
         entry.controller,
         entry.controller,
     ) as i32;
     vec![
-        Effect::Mill {
-            player: entry.controller,
-            count: 4,
-        },
+        Effect::Mill { player: entry.controller, count: 4 },
         Effect::Pump {
             target: *id,
-            power: -lands,
-            toughness: -lands,
+            power: -x,
+            toughness: -x,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },

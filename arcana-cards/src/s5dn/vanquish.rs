@@ -28,10 +28,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "blocking" target restriction is not expressible in
-    // TargetFilter; target requirement is an unrestricted creature.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
+    // GAP: "blocking" — the ObjectFilter builders cannot restrict a
+    // target to currently-blocking creatures, so the requirement is
+    // an unfiltered creature target.
 }

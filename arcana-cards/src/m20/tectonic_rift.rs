@@ -1,7 +1,8 @@
 //! Tectonic Rift — `{3}{R}` sorcery. "Destroy target land. Creatures
-//! without flying can't block this turn."
-//! GAP: "creatures without flying can't block this turn" effect not in catalog.
-//! Emits DestroyPermanent on target land only.
+//! without flying can't block this turn." The "can't block this turn"
+//! rider has no catalog primitive (no Pump-style 'creatures without
+//! flying lose blocking ability for the turn'); only the destroy is
+//! expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,6 +48,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "creatures without flying can't block this turn" not in catalog
+    // GAP: 'creatures without flying can't block this turn' — no catalog
+    // primitive to remove blocking ability for a filtered set of
+    // creatures for one turn.
     vec![Effect::DestroyPermanent { target: *id }]
 }

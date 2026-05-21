@@ -1,13 +1,11 @@
-//! Resculpt — `{1}{U}` instant. "Exile target artifact or creature.
-//! Its controller creates a 4/4 blue and red Elemental creature
-//! token." The token goes to the exiled permanent's controller, which
-//! is not derivable once the permanent is exiled; we exile and create
-//! the token under this spell's controller as a best effort.
+//! Resculpt — `{1}{U}` instant. "Exile target artifact or creature. Its
+//! controller creates a 4/4 blue and red Elemental creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -30,7 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Exile target artifact or creature. Its controller creates a 4/4 blue and red Elemental creature token.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types_any(TypeLine::ARTIFACT.into()),
+                    ObjectFilter::permanent()
+                        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -41,11 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::ExilePermanent { target: *id });
-    }
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     let elemental = reg.interner().lookup("Elemental").expect("Elemental interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elemental);
@@ -59,6 +56,11 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    out.push(Effect::CreateToken { controller: entry.controller, token });
-    out
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::CreateToken {
+            controller: script::target_controller(state, *id, entry.controller),
+            token,
+        },
+    ]
 }

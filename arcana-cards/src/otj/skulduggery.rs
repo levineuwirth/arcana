@@ -10,8 +10,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -30,8 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: vec![
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -51,24 +50,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(mine)) = it.next() else { return Vec::new(); };
-    let Some(TargetChoice::Object(theirs)) = it.next() else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut targets = entry.targets.targets.iter();
+    let Some(TargetChoice::Object(own)) = targets.next() else {
+        return Vec::new();
+    };
+    let Some(TargetChoice::Object(foe)) = targets.next() else {
+        return Vec::new();
+    };
     vec![
         Effect::Pump {
-            target: *mine,
+            target: *own,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,
             keywords: vec![],
         },
         Effect::Pump {
-            target: *theirs,
+            target: *foe,
             power: -1,
             toughness: -1,
             duration: Duration::EndOfTurn,

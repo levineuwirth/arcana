@@ -1,5 +1,5 @@
-//! Death's Duet — `{2}{B}` sorcery. "Return two target creature cards
-//! from your graveyard to your hand."
+//! Death's Duet — `{2}{B}` sorcery. "Return two target creature
+//! cards from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     entry
         .targets
         .targets

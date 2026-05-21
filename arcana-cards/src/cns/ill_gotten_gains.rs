@@ -1,9 +1,7 @@
 //! Ill-Gotten Gains — `{2}{B}{B}` sorcery. "Exile Ill-Gotten Gains. Each
 //! player discards their hand, then returns up to three cards from their
-//! graveyard to their hand." Exile-self has no Effect variant; the per-player
-//! graveyard-return is not expressible. We emit the per-player discard via
-//! Sequence over `script::all_players`, dynamically sized to each player's
-//! hand.
+//! graveyard to their hand." Only the per-player hand discard is
+//! expressible; the spell self-exile and graveyard return are gapped.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -34,15 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no Effect for "exile this spell from the stack on resolution" and no
-    // per-player graveyard tutor; only the each-player discards is emitted.
-    let seq = script::all_players(state)
+    // GAP: self-exile of the resolving spell and "return up to three cards from
+    // graveyard to hand" (player-chosen graveyard pick) are not expressible.
+    script::all_players(state)
         .into_iter()
         .map(|p| Effect::Discard {
             player: p,
             count: script::hand_size(state, p),
             choice: DiscardChoice::ControllerChooses,
         })
-        .collect();
-    vec![Effect::Sequence(seq)]
+        .collect()
 }

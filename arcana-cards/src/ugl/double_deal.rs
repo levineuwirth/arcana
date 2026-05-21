@@ -1,10 +1,8 @@
-//! Double Deal — `{4}{R}` sorcery. "Choose another player. Double
-//! Deal deals 3 damage to that player. At the beginning of the first
-//! upkeep in your next game with that player, Double Deal deals 3
-//! damage to the player."
-//!
-//! Cross-game delayed trigger has no catalog Effect; only the
-//! present-game damage is modeled.
+//! Double Deal — `{4}{R}` sorcery. "Choose another player. Double Deal
+//! deals 3 damage to that player. At the beginning of the first upkeep
+//! in your next game with that player, Double Deal deals 3 damage to
+//! the player." The cross-game upkeep rider is not expressible — best
+//! effort: deal 3 to the chosen target player now.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,18 +24,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Choose another player. Double Deal deals 3 damage to that player. At the beginning of the first upkeep in your next game with that player, Double Deal deals 3 damage to the player.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Choose another player. Double Deal deals 3 damage to that player. At the beginning of the first upkeep in your next game with that player, Double Deal deals 3 damage to the player.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: cross-game delayed trigger not in catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: 'at the beginning of the first upkeep in your next game' — no
+    // cross-game state in the catalog.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(*p),

@@ -22,3 +22,5 @@ pub mod poison_the_well;
 pub mod tyrannize;
 pub mod inquisitor_s_snare;
 pub mod din_of_the_fireherd;
+pub mod wild_swing;
+pub mod ember_gale;

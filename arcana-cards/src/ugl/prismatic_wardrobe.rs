@@ -1,10 +1,8 @@
 //! Prismatic Wardrobe — `{W}` sorcery. "Destroy target nonartifact,
 //! nonland permanent that doesn't share a color with clothing worn by
-//! its controller."
-//!
-//! The clothing-color clause is an out-of-game silver-bordered
-//! condition not modeled. We restrict the target to nonartifact,
-//! nonland permanents and emit a plain destroy.
+//! its controller." Silver-bordered 'clothing worn' is unmodellable;
+//! best-effort: target a nonartifact, nonland permanent and destroy
+//! it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,26 +24,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: "doesn't share a color with clothing worn by its controller" — silver-border.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target nonartifact, nonland permanent that doesn't share a color with clothing worn by its controller.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .without_types(TypeLine::ARTIFACT.into())
-                        .without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target nonartifact, nonland permanent that doesn't share a color with clothing worn by its controller.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .without_types(TypeLine::ARTIFACT.into())
+                            .without_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'doesn't share a color with clothing worn by its controller' unjudgeable.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,5 +1,5 @@
-//! Soul's Fire — `{2}{R}` instant. "Target creature you control deals
-//! damage equal to its power to any target."
+//! Soul's Fire — `{2}{R}` instant. "Target creature you control
+//! deals damage equal to its power to any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,8 +10,8 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice,
-    TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, ObjectOrPlayer, TargetChoice, TargetCount,
+    TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -30,8 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: vec![
                 TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -44,15 +43,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let Some(TargetChoice::Object(src)) = it.next() else { return Vec::new(); };
-    let Some(second) = it.next() else { return Vec::new(); };
-    let dt = match second {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut targets = entry.targets.targets.iter();
+    let Some(TargetChoice::Object(creature)) = targets.next() else {
+        return Vec::new();
+    };
+    let Some(victim) = targets.next() else {
+        return Vec::new();
+    };
+    let dt = match victim {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
@@ -60,10 +59,10 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    let pow = script::power_of(state, *src).max(0) as u32;
+    let power = script::power_of(state, *creature).max(0) as u32;
     vec![Effect::DealDamage {
-        source: *src,
+        source: *creature,
         target: dt,
-        amount: pow,
+        amount: power,
     }]
 }

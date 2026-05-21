@@ -18,3 +18,4 @@ pub mod galvanic_bombardment;
 pub mod otherworldly_outburst;
 pub mod turn_aside;
 pub mod take_inventory;
+pub mod spreading_flames;

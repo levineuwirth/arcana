@@ -1,9 +1,5 @@
-//! Disorder — `{1}{R}` sorcery. "Disorder deals 2 damage to each white
-//! creature and each player who controls a white creature."
-//!
-//! GAP: cannot enumerate "each player who controls a white creature"; the
-//! player-damage half is omitted. The damage to each white creature is
-//! emitted.
+//! Disorder — `{1}{R}` sorcery. Deals 2 damage to each white creature
+//! and each player who controls a white creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,18 +37,27 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().with_colors(ColorSet::white()),
-        entry.controller,
-    );
-    // GAP: "each player who controls a white creature" not enumerable.
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DealDamage {
+    let filter = ObjectFilter::creature().with_colors(ColorSet::white());
+    let ids = script::ids_matching(state, &filter, entry.controller);
+    let mut effects = Vec::new();
+    let mut hit_players = Vec::new();
+    for id in &ids {
+        let owner = script::target_controller(state, *id, entry.controller);
+        if !hit_players.contains(&owner) {
+            hit_players.push(owner);
+        }
+        effects.push(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(arcana_core::objects::NULL_OBJECT_ID),
+            target: DamageTarget::Object(*id),
             amount: 2,
-        }),
-    }]
+        });
+    }
+    for p in hit_players {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Player(p),
+            amount: 2,
+        });
+    }
+    effects
 }

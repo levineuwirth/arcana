@@ -1,10 +1,9 @@
-//! Heated Argument — `{4}{R}` instant. "Heated Argument deals 6 damage to
-//! target creature. You may exile a card from your graveyard. If you do,
-//! Heated Argument also deals 2 damage to that creature's controller."
-//!
-//! GAP: no Effect variant for optional-cost (exile a card from graveyard) with
-//! a bonus damage rider on the controller. The primary damage is expressible;
-//! the optional rider is not.
+//! Heated Argument — `{4}{R}` instant. "Heated Argument deals 6
+//! damage to target creature. You may exile a card from your
+//! graveyard. If you do, Heated Argument also deals 2 damage to that
+//! creature's controller." The 'may exile / if you do' player-choice
+//! gating isn't a catalog primitive — best-effort: deal 6 to the
+//! creature; GAP the optional exile + controller damage rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,6 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: 'may exile a card from your graveyard; if you do, also deal 2 to controller' player-choice rider.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
@@ -43,7 +43,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no Effect variant for optional graveyard-exile with bonus controller damage
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

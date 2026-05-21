@@ -1,9 +1,5 @@
-//! Vampires' Vengeance — `{2}{R}` instant. "Vampires' Vengeance deals
-//! 2 damage to each non-Vampire creature. Create a Blood token."
-//!
-//! GAP: "non-Vampire" needs a "without subtype" filter (not in the
-//! catalog). The sweep hits every creature; the Blood token's
-//! activated ability is also dropped — the token shell is created.
+//! Vampires' Vengeance — `{2}{R}` instant. "Vampires' Vengeance deals 2
+//! damage to each non-Vampire creature. Create a Blood token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
@@ -36,10 +32,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "non-Vampire" — emit damage to each creature.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "non-Vampire creature" needs an excludes-subtype refinement on
+    // ObjectFilter; not exposed. Best-effort: damage every creature.
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let blood = reg.interner().lookup("Blood").expect("interned");
+    let blood = reg.interner().lookup("Blood").expect("Blood interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(blood);
     let token = TokenDefinition {
@@ -61,9 +62,6 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
                 amount: 2,
             }),
         },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
+        Effect::CreateToken { controller: entry.controller, token },
     ]
 }

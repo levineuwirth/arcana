@@ -1,7 +1,5 @@
 //! Venser's Diffusion — `{2}{U}` instant. "Return target nonland
-//! permanent or suspended card to its owner's hand." Modeled as
-//! bouncing a target nonland permanent (the suspended-card mode is
-//! not modeled).
+//! permanent or suspended card to its owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,6 +24,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Return target nonland permanent or suspended card to its owner's hand.".into(),
+            // The "suspended card" target branch is not expressible; targets
+            // a nonland permanent.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
                     ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
@@ -40,6 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ReturnToHand { target: *id }]
 }

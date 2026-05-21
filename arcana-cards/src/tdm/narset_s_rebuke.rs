@@ -1,17 +1,17 @@
-//! Narset's Rebuke — `{4}{R}` instant. "Narset's Rebuke deals 5 damage to
-//! target creature. Add {U}{R}{W}. If that creature would die this turn,
-//! exile it instead." Damage is direct; mana production and replacement
-//! effects have no Effect variant — GAP those riders.
+//! Narset's Rebuke — `{4}{R}` instant. "Narset's Rebuke deals 5
+//! damage to target creature. Add {U}{R}{W}. If that creature would
+//! die this turn, exile it instead." 'Exile-instead-of-dying'
+//! replacement isn't in the catalog; emit the damage and the mana.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Narset's Rebuke");
@@ -23,21 +23,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Narset's Rebuke deals 5 damage to target creature. Add {U}{R}{W}. If that creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Narset's Rebuke deals 5 damage to target creature. Add {U}{R}{W}. If that creature would die this turn, exile it instead.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: no Effect to add mana directly, and no replacement effect for "would die, exile instead".
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 5,
-    }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'if that creature would die this turn, exile it instead'
+    // replacement effect not in catalog.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![
+        Effect::DealDamage { source: entry.source, target: DamageTarget::Object(*id), amount: 5 },
+        Effect::AddMana {
+            player: entry.controller,
+            mana: vec![
+                ManaUnit::plain(ManaColor::Blue, entry.source),
+                ManaUnit::plain(ManaColor::Red, entry.source),
+                ManaUnit::plain(ManaColor::White, entry.source),
+            ],
+        },
+    ]
 }

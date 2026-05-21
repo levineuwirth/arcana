@@ -1,13 +1,7 @@
 //! Brood Birthing — `{1}{R}` sorcery. "If you control an Eldrazi
 //! Spawn, create three 0/1 colorless Eldrazi Spawn creature tokens.
-//! They have 'Sacrifice this token: Add {C}.' Otherwise, create one of
-//! those tokens."
-//!
-//! "If you control an Eldrazi Spawn" is checked via subtype_filter
-//! count; create three tokens if so, else one.
-//!
-//! GAP: the token's "Sacrifice this token: Add {C}" activated ability
-//! is not expressible on a TokenDefinition.
+//! They have 'Sacrifice this token: Add {C}.' Otherwise, create one
+//! of those tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,7 +15,8 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Brood Birthing");
-    let _spawn = reg.interner_mut().intern("Eldrazi Spawn");
+    let _eldrazi = reg.interner_mut().intern("Eldrazi");
+    let _spawn = reg.interner_mut().intern("Spawn");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{R}").expect("valid cost")),
@@ -30,19 +25,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "If you control an Eldrazi Spawn, create three 0/1 colorless Eldrazi Spawn creature tokens. They have \"Sacrifice this token: Add {C}.\" Otherwise, create one of those tokens.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "If you control an Eldrazi Spawn, create three 0/1 colorless Eldrazi Spawn creature tokens. They have \"Sacrifice this token: Add {C}.\" Otherwise, create one of those tokens.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let spawn = reg.interner().lookup("Eldrazi Spawn").expect("Eldrazi Spawn interned during register()");
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let eldrazi = reg.interner().lookup("Eldrazi")
+        .expect("Eldrazi interned during register()");
+    let spawn = reg.interner().lookup("Spawn")
+        .expect("Spawn interned during register()");
     let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(eldrazi);
     subtypes.0.insert(spawn);
+    // NOTE: the token's "Sacrifice: Add {C}" activated ability is not
+    // expressible on a TokenDefinition — that rider is a GAP.
     let token = TokenDefinition {
         name: spawn,
         colors: ColorSet::new(),
@@ -53,19 +59,21 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
         keywords: vec![],
         abilities: vec![],
     };
-    let has_spawn = script::count_matching(
+    // "If you control an Eldrazi Spawn" — count creatures of the Spawn
+    // subtype you control.
+    let have = script::count_matching(
         state,
-        &script::subtype_filter(reg, "Eldrazi Spawn").controlled_by(ControllerConstraint::You),
+        &script::subtype_filter(reg, "Spawn")
+            .controlled_by(ControllerConstraint::You),
         entry.controller,
-    ) > 0;
-    // GAP: token's "Sacrifice this token: Add {C}" mana ability not expressible.
-    if has_spawn {
-        vec![
-            Effect::CreateToken { controller: entry.controller, token: token.clone() },
-            Effect::CreateToken { controller: entry.controller, token: token.clone() },
-            Effect::CreateToken { controller: entry.controller, token },
-        ]
-    } else {
-        vec![Effect::CreateToken { controller: entry.controller, token }]
+    );
+    let n = if have > 0 { 3 } else { 1 };
+    let mut effects = Vec::new();
+    for _ in 0..n {
+        effects.push(Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        });
     }
+    effects
 }

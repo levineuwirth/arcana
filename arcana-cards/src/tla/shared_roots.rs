@@ -1,5 +1,6 @@
-//! Shared Roots — `{1}{G}` sorcery — Lesson. "Search your library for a
-//! basic land card, put it onto the battlefield tapped, then shuffle."
+//! Shared Roots — `{1}{G}` sorcery (Lesson). "Search your library
+//! for a basic land card, put it onto the battlefield tapped, then
+//! shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,7 +36,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no 'basic-only' refinement on ObjectFilter; using land filter.
     vec![Effect::TutorToBattlefield {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

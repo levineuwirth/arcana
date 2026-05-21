@@ -17,3 +17,5 @@ pub mod ultima;
 pub mod self_destruct;
 pub mod prishe_s_wanderings;
 pub mod slash_of_light;
+pub mod judgment_bolt;
+pub mod swallowed_by_leviathan;

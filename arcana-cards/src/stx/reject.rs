@@ -1,5 +1,7 @@
-//! Reject — `{1}{U}` instant. "Counter target creature or
-//! planeswalker spell unless its controller pays {3}."
+//! Reject — `{1}{U}` instant. "Counter target creature or planeswalker
+//! spell unless its controller pays {3}. If that spell is countered
+//! this way, exile it instead of putting it into its owner's
+//! graveyard." Exile-on-countered rider isn't a catalog primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,27 +24,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target creature or planeswalker spell unless its controller pays {3}. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::new().with_types_any(TypeLine(
-                        TypeLine::CREATURE | TypeLine::PLANESWALKER,
-                    )),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target creature or planeswalker spell unless its controller pays {3}. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::default().with_types_any(
+                            arcana_core::types::TypeLine(
+                                TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                            ),
+                        ),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "exile instead of graveyard if countered this way" is not
-    // expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'exile instead of graveyard' rider on countered spell.
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{3}").expect("valid cost"),

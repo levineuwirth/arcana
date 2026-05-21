@@ -1,7 +1,7 @@
-//! Teachings of the Archaics — `{2}{U}` sorcery — Lesson. "If an
-//! opponent has more cards in hand than you, draw two cards. Draw three
-//! cards instead if an opponent has at least four more cards in hand
-//! than you."
+//! Teachings of the Archaics — `{2}{U}` sorcery. "If an opponent has
+//! more cards in hand than you, draw two cards. Draw three cards
+//! instead if an opponent has at least four more cards in hand than
+//! you."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,26 +22,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "If an opponent has more cards in hand than you, draw two cards. Draw three cards instead if an opponent has at least four more cards in hand than you.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "If an opponent has more cards in hand than you, draw two cards. Draw three cards instead if an opponent has at least four more cards in hand than you.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let mine = script::hand_size(state, entry.controller) as i64;
-    let best = script::opponents(state, entry.controller)
-        .into_iter()
-        .map(|p| script::hand_size(state, p) as i64)
-        .max()
-        .unwrap_or(0);
-    let diff = best - mine;
-    let count: u32 = if diff >= 4 {
+    let mut best_diff: i64 = 0;
+    for opp in script::opponents(state, entry.controller) {
+        let diff = script::hand_size(state, opp) as i64 - mine;
+        if diff > best_diff {
+            best_diff = diff;
+        }
+    }
+    let count: u32 = if best_diff >= 4 {
         3
-    } else if diff >= 1 {
+    } else if best_diff > 0 {
         2
     } else {
         0
@@ -49,8 +55,5 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
     if count == 0 {
         return Vec::new();
     }
-    vec![Effect::DrawCards {
-        player: entry.controller,
-        count,
-    }]
+    vec![Effect::DrawCards { player: entry.controller, count }]
 }

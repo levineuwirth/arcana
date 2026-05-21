@@ -2,17 +2,14 @@
 //! don't control, then exile the top X cards of your library, where X
 //! is the number of artifacts that were put into graveyards from the
 //! battlefield this turn. You may put a creature card exiled this way
-//! onto the battlefield. It gains haste. Return it to your hand at
-//! the beginning of the next end step."
-//!
-//! The X-count over "artifacts that went to a graveyard this turn"
-//! is not in the script::* helper surface; exile-top-X and the
-//! conditional reanimate/return-to-hand-at-end-step coupling are not
-//! in catalog. Models only the opponent-artifacts wipe.
+//! onto the battlefield. It gains haste. Return it to your hand at the
+//! beginning of the next end step." The 'artifacts-died-this-turn'
+//! count + exile-top-X-with-conditional-play isn't catalog-shaped;
+//! emit the opponent-artifact wipe, GAP the rest.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -30,18 +27,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all artifacts you don't control, then exile the top X cards of your library, where X is the number of artifacts that were put into graveyards from the battlefield this turn. You may put a creature card exiled this way onto the battlefield. It gains haste. Return it to your hand at the beginning of the next end step.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all artifacts you don't control, then exile the top X cards of your library, where X is the number of artifacts that were put into graveyards from the battlefield this turn. You may put a creature card exiled this way onto the battlefield. It gains haste. Return it to your hand at the beginning of the next end step.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "artifacts put into graveyards this turn" count, exile-top-X library, and
-    // the may-cast-creature + return-at-EOT chain are not in catalog/script surface.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::permanent()
@@ -49,8 +49,12 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
             .controlled_by(ControllerConstraint::Opponent),
         entry.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
-    }]
+    let effects: Vec<Effect> = ids
+        .into_iter()
+        .map(|id| Effect::DestroyPermanent { target: id })
+        .collect();
+    // GAP: 'artifacts put into graveyards from the battlefield this
+    // turn' tally; exile-top-X-with-conditional-creature-play +
+    // delayed return-to-hand at next end step.
+    effects
 }

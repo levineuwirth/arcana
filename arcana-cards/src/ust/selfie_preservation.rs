@@ -1,9 +1,7 @@
-//! Selfie Preservation — `{1}{G}` sorcery. "Search your library for a basic
-//! land card and reveal it. If there's a tree in its art, put it onto the
-//! battlefield tapped. Otherwise, put it into your hand. Then shuffle."
-//!
-//! GAP: the "tree in its art" condition is not a modelable game property; the
-//! default (otherwise) branch — tutor a basic land to hand — is emitted.
+//! Selfie Preservation — `{1}{G}` sorcery. "Search your library for
+//! a basic land card and reveal it. If there's a tree in its art,
+//! put it onto the battlefield tapped. Otherwise, put it into your
+//! hand. Then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Search your library for a basic land card and reveal it. If there's a tree in its art, put it onto the battlefield tapped. Otherwise, put it into your hand. Then shuffle.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Search your library for a basic land card and reveal it. If there's a tree in its art, put it onto the battlefield tapped. Otherwise, put it into your hand. Then shuffle.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -39,7 +36,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "tree in its art" art condition is unmodelable; default branch only
+    // "Tree in its art" is metadata we cannot inspect, so the
+    // conditional collapses to the safer hand-tutor branch. The
+    // tapped-onto-battlefield half is GAP'd.
+    // GAP: no Basic-supertype filter and no "tree in art" predicate.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

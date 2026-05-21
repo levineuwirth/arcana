@@ -3,9 +3,9 @@
 //! shuffles up to four target cards from their graveyard into their
 //! library. Exile Rite of Renewal."
 //!
-//! Only the first clause is expressible (up to two graveyard permanent
-//! cards to hand); the opponent's graveyard-shuffle-back and the
-//! self-exile have no catalog primitive.
+//! GAP: 'shuffle target cards from graveyard into library' isn't
+//! modeled, and Rite-of-Renewal self-exile isn't either; emit the
+//! permanent returns only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,11 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to two target permanent cards from your \
-                   graveyard to your hand. Target player shuffles up to \
-                   four target cards from their graveyard into their \
-                   library. Exile Rite of Renewal."
-                .into(),
+            text: "Return up to two target permanent cards from your graveyard to your hand. Target player shuffles up to four target cards from their graveyard into their library. Exile Rite of Renewal.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
@@ -60,7 +56,6 @@ fn resolve(
             out.push(Effect::ReturnFromGraveyardToHand { target: *id });
         }
     }
-    // GAP: "target player shuffles up to four cards from their graveyard
-    // into their library" and "exile Rite of Renewal" not expressible.
+    // GAP: graveyard-to-library shuffle and self-exile aren't modeled.
     out
 }

@@ -1,8 +1,7 @@
-//! Permission Denied — `{W}{U}` instant. "Counter target noncreature spell.
-//! Your opponents can't cast noncreature spells this turn."
-//!
-//! GAP: no Effect variant to prevent opponents from casting spells for a turn.
-//! Only the counter is expressible.
+//! Permission Denied — `{W}{U}` instant. "Counter target noncreature
+//! spell. Your opponents can't cast noncreature spells this turn."
+//! The 'cant-cast' rider isn't in the catalog — best effort:
+//! conditional counter (noncreature spell).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Counter target noncreature spell. Your opponents can't cast noncreature spells this turn.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Spell(
-                        ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
+                        ObjectFilter::default().without_types(TypeLine::CREATURE.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -45,10 +46,8 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let stack_id = match target {
-        TargetChoice::Object(id) => *id,
-        _ => return Vec::new(),
-    };
-    // GAP: no Effect variant to prevent opponents casting spells for a turn
-    vec![Effect::Counter { target: stack_id }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'your opponents can't cast noncreature spells this turn' is a
+    // global cast-restriction effect not in the catalog.
+    vec![Effect::Counter { target: *id }]
 }

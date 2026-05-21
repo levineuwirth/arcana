@@ -1,11 +1,6 @@
-//! Nightsnare — `{3}{B}` sorcery. "Target opponent reveals their
-//! hand. You may choose a nonland card from it. If you do, that
-//! player discards that card. If you don't, that player discards two
-//! cards."
-//!
-//! GAP: optional choose-a-card / fallback-two-discards branching has
-//! no Effect form. We emit a single controller-chooses discard as the
-//! main-line outcome.
+//! Nightsnare — `{3}{B}` sorcery. "Target opponent reveals their hand.
+//! You may choose a nonland card from it. If you do, that player discards
+//! that card. If you don't, that player discards two cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,11 +30,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: optional pick + fallback-two-random branching.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: reveal-hand + "choose a nonland from revealed; else 2 discards"
+    // branching not modeled — best-effort emit a single targeted-discard
+    // (you choose). Reveal/branch is missing.
     vec![Effect::Discard {
         player: *p,
         count: 1,

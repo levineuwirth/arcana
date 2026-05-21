@@ -1,8 +1,5 @@
 //! Take into Custody — `{U}` instant. "Tap target creature. It
 //! doesn't untap during its controller's next untap step."
-//!
-//! Note: the "doesn't untap during its controller's next untap step"
-//! rider is not expressible; only the tap is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,11 +29,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "doesn't untap during next untap step" rider not
-    // expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "doesn't untap next untap step" replacement effect is not
+    // expressible via Effect::Tap alone.
     vec![Effect::Tap { target: *id }]
 }

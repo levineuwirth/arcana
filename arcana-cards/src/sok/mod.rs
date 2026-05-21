@@ -16,3 +16,4 @@ pub mod gaze_of_adamaro;
 pub mod cut_the_earthly_bond;
 pub mod kiku_s_shadow;
 pub mod oppressive_will;
+pub mod inner_fire;

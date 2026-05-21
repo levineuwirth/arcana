@@ -1,8 +1,8 @@
 //! Growth Spiral — `{G}{U}` instant. "Draw a card. You may put a land
 //! card from your hand onto the battlefield."
 //!
-//! Draw is expressible; "put a land card from your hand onto the
-//! battlefield" has no catalog primitive.
+//! GAP: "play a land from your hand outside the normal land-drop
+//! rules" is not in the catalog — emit the draw only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,9 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw a card. You may put a land card from your hand \
-                   onto the battlefield."
-                .into(),
+            text: "Draw a card. You may put a land card from your hand onto the battlefield.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -38,7 +36,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put a land card from your hand onto the battlefield" has no
-    // catalog primitive; emitting the card draw only.
+    // GAP: "put a land card from your hand onto the battlefield" extra
+    // land-drop isn't expressible.
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

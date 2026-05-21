@@ -1,5 +1,5 @@
-//! March of the Returned — `{3}{B}` sorcery. "Return up to two
-//! target creature cards from your graveyard to your hand."
+//! March of the Returned — `{3}{B}` sorcery. "Return up to two target
+//! creature cards from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

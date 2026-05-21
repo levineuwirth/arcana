@@ -1,6 +1,8 @@
-//! Patch Up — `{2}{W}` sorcery.
-//! "Return up to three target creature cards with total mana value 3
-//! or less from your graveyard to the battlefield."
+//! Patch Up — `{2}{W}` sorcery. "Return up to three target creature
+//! cards with total mana value 3 or less from your graveyard to the
+//! battlefield." Total-mana-value-bound across multiple targets isn't
+//! in catalog; we emit up-to-three reanimates and the engine prompts
+//! honestly without the total-mv constraint.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature(),
+                    filter: ObjectFilter::creature().with_max_cmc(3),
                 },
                 count: TargetCount::UpTo(3),
                 controller: None,
@@ -40,19 +42,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "total mana value 3 or less" aggregate constraint has no
-    // target-spec representation; each chosen creature card is
-    // reanimated.
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::ReturnFromGraveyardToBattlefield { target: *id })
-            }
-            _ => None,
-        })
-        .collect()
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: TOTAL mana value <= 3 across chosen set not expressible in TargetCount/ObjectFilter.
+    let mut effects = Vec::new();
+    for choice in &entry.targets.targets {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
+        }
+    }
+    effects
 }

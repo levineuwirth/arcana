@@ -1,11 +1,7 @@
 //! Pulling Teeth — `{1}{B}` sorcery. "Clash with an opponent. If you
 //! win, target player discards two cards. Otherwise, that player
-//! discards a card."
-//!
-//! Clash is not in the catalog; the "win/lose" branching count
-//! cannot be computed. Best-effort: a single-card targeted discard
-//! (the conservative branch). The clash and the 2-card branch are
-//! GAP'd.
+//! discards a card." Clash isn't in the catalog — best effort:
+//! resolve the otherwise branch (one discard) on the target player.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -26,18 +22,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Clash with an opponent. If you win, target player discards two cards. Otherwise, that player discards a card.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Clash with an opponent. If you win, target player discards two cards. Otherwise, that player discards a card.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: clash mechanic not in catalog; conditional 2-vs-1 discard branch unmodeled.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: Clash mechanic is not in the catalog — emit the 'otherwise'
+    // branch (one discard) as best-effort.
     vec![Effect::Discard {
         player: *p,
         count: 1,

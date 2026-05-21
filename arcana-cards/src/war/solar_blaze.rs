@@ -23,9 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each creature deals damage to itself equal to its \
-                   power."
-                .into(),
+            text: "Each creature deals damage to itself equal to its power.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -38,19 +36,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Per-creature damage scales on that creature's own power, so this
-    // can't use ForEach (single fixed inner effect); emit one
-    // DealDamage per id with its individually computed power.
-    let ids =
-        script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    let mut out = Vec::new();
-    for id in ids {
-        let amount = script::power_of(state, id).max(0) as u32;
-        out.push(Effect::DealDamage {
-            source: id,
-            target: DamageTarget::Object(id),
-            amount,
-        });
-    }
-    out
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    ids.into_iter()
+        .map(|id| {
+            let p = script::power_of(state, id).max(0) as u32;
+            Effect::DealDamage {
+                source: id,
+                target: DamageTarget::Object(id),
+                amount: p,
+            }
+        })
+        .collect()
 }

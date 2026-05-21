@@ -1,11 +1,7 @@
-//! Drive to Work — `{W}` instant. "Exile target creature or Vehicle.
-//! Return that card to the battlefield under its owner's control at
-//! the beginning of the next end step."
-//! GAP: TargetFilter cannot filter for "creature or Vehicle" (Vehicle
-//! is a subtype of Artifact, no combined type filter). Uses
-//! TargetFilter::Permanent for any permanent. The return is modeled
-//! as DelayedAction{NextEndStep, ReturnToHand} — note: ReturnToBattlefield
-//! is not a DelayedAction variant; best-effort uses ReturnToHand.
+//! Drive to Work — `{W}` instant. Exile target creature or Vehicle.
+//! At the beginning of the next end step, return that card to the
+//! battlefield under its owner's control. Then you may share a story
+//! or fun fact about that card. If you do, you gain 3 life.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,12 +24,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature or Vehicle. Return that card to the battlefield under its owner's control at the beginning of the next end step.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                text: "Exile target creature or Vehicle. At the beginning of the next end step, return that card to the battlefield under its owner's control. Then you may share a story or fun fact about that card. If you do, you gain 3 life.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
             }),
@@ -47,13 +39,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
+    // GAP: optional "share a story" social rider + conditional life gain.
     vec![
-        Effect::ExilePermanent { target: *id },
+        Effect::ExilePermanent { target: id },
         Effect::DelayedAction {
-            source: entry.source,
+            source: id,
             controller: entry.controller,
             when: DelayedWhen::NextEndStep,
-            action: DelayedAction::ReturnToHand,
+            action: DelayedAction::ReturnFromExileToBattlefield,
         },
     ]
 }

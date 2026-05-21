@@ -32,9 +32,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // "attacking or blocking" target restriction is not expressible;
-    // target is an unrestricted creature.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let n = script::count_matching(
@@ -47,4 +49,6 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
         target: DamageTarget::Object(*id),
         amount: n,
     }]
+    // GAP: "attacking or blocking creature" — the target cannot be
+    // restricted to combatants; an unfiltered creature target is used.
 }

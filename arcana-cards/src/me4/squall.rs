@@ -1,10 +1,14 @@
-//! Squall — `{2}{G}` sorcery, "Squall deals 2 damage to each creature with
+//! Squall — `{2}{G}` sorcery. "Squall deals 2 damage to each creature with
 //! flying."
+//!
+//! 'With flying' filter on ObjectFilter isn't catalogued (keyword-aware
+//! filter not in builders). Fall back to 'each creature'; GAP the flying
+//! restriction.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -35,19 +39,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     state: &GameState,
     entry: &StackEntry,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Use subtype_filter isn't right for keyword; ObjectFilter doesn't have a
-    // has_keyword filter. Using creature() as best approximation — deals 2 to
-    // all creatures (flying restriction is a GAP).
-    // GAP: ObjectFilter does not support filtering by keyword (Flying).
-    let filter = ObjectFilter::creature();
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    ids.into_iter()
-        .map(|id| Effect::DealDamage {
+    // GAP: 'with flying' keyword filter on ObjectFilter — restriction relaxed to
+    // 'each creature'.
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(id),
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 2,
-        })
-        .collect()
+        }),
+    }]
 }

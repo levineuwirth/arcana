@@ -1,5 +1,5 @@
-//! Hymn to Tourach — `{B}{B}` sorcery. "Target player discards two cards at
-//! random."
+//! Hymn to Tourach — `{B}{B}` sorcery. "Target player discards two
+//! cards at random."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

@@ -1,6 +1,6 @@
-//! Forbidden Friendship — `{1}{R}` sorcery. "Create a 1/1 red Dinosaur
+//! Forbidden Friendship — `{1}{R}` sorcery. Create a 1/1 red Dinosaur
 //! creature token with haste and a 1/1 white Human Soldier creature
-//! token."
+//! token.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Forbidden Friendship");
-    let _dino = reg.interner_mut().intern("Dinosaur");
+    let _dinosaur = reg.interner_mut().intern("Dinosaur");
     let _human = reg.interner_mut().intern("Human");
     let _soldier = reg.interner_mut().intern("Soldier");
     let chars = Characteristics {
@@ -38,14 +38,13 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let dino = reg.interner().lookup("Dinosaur").expect("Dinosaur interned");
-    let human = reg.interner().lookup("Human").expect("Human interned");
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned");
-
+    let dino_name = reg.interner().lookup("Dinosaur").expect("interned");
+    let human_name = reg.interner().lookup("Human").expect("interned");
+    let soldier = reg.interner().lookup("Soldier").expect("interned");
     let mut dino_subs = SubtypeSet::default();
-    dino_subs.0.insert(dino);
-    let dino_token = TokenDefinition {
-        name: dino,
+    dino_subs.0.insert(dino_name);
+    let dino = TokenDefinition {
+        name: dino_name,
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes: dino_subs,
@@ -54,12 +53,11 @@ fn resolve(
         keywords: vec![KeywordAbility::Haste],
         abilities: vec![],
     };
-
     let mut human_subs = SubtypeSet::default();
-    human_subs.0.insert(human);
+    human_subs.0.insert(human_name);
     human_subs.0.insert(soldier);
-    let human_token = TokenDefinition {
-        name: human,
+    let human = TokenDefinition {
+        name: human_name,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes: human_subs,
@@ -68,9 +66,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-
     vec![
-        Effect::CreateToken { controller: entry.controller, token: dino_token },
-        Effect::CreateToken { controller: entry.controller, token: human_token },
+        Effect::CreateToken { controller: entry.controller, token: dino },
+        Effect::CreateToken { controller: entry.controller, token: human },
     ]
 }

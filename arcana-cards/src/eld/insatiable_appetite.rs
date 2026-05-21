@@ -1,10 +1,6 @@
-//! Insatiable Appetite — `{1}{G}` instant. "You may sacrifice a
-//! Food. If you do, target creature gets +5/+5 until end of turn.
+//! Insatiable Appetite — `{1}{G}` instant. "You may sacrifice a Food.
+//! If you do, target creature gets +5/+5 until end of turn.
 //! Otherwise, that creature gets +3/+3 until end of turn."
-//!
-//! The optional Food sacrifice gating the pump size is not
-//! expressible (no "may" sacrifice with a conditional branch on
-//! whether it happened). We apply the baseline +3/+3.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,24 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You may sacrifice a Food. If you do, target creature gets +5/+5 until end of turn. Otherwise, that creature gets +3/+3 until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You may sacrifice a Food. If you do, target creature \
+                       gets +5/+5 until end of turn. Otherwise, that creature \
+                       gets +3/+3 until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: optional Food sacrifice with a branch on whether it
-    // happened (+5/+5 vs +3/+3) is not expressible; baseline +3/+3.
+    // GAP: the optional "sacrifice a Food" branch (which scales the
+    // pump from +3/+3 to +5/+5) cannot be expressed; emit the
+    // unconditional Otherwise case of +3/+3.
     vec![Effect::Pump {
         target: *id,
         power: 3,

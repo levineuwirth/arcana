@@ -1,9 +1,6 @@
-//! Sweep Away — `{2}{U}` instant. "Return target creature to its
-//! owner's hand. If that creature is attacking, you may put it on top
-//! of its owner's library instead."
-//!
-//! GAP: cannot test "is attacking" or branch the destination based on
-//! it. Only the plain bounce is emitted.
+//! Sweep Away — `{2}{U}` instant. "Return target creature to its owner's
+//! hand. If that creature is attacking, you may put it on top of its
+//! owner's library instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,10 +30,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: attacking-condition + top-of-library alternative.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if attacking, may put on top of library instead" — no
+    // attacking predicate inside Effect::Conditional and no
+    // player-may-choose replacement primitive.
     vec![Effect::ReturnToHand { target: *id }]
 }

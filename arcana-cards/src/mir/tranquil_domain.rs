@@ -1,7 +1,6 @@
-//! Tranquil Domain — `{1}{G}` instant. "Destroy all non-Aura enchantments."
-//!
-//! GAP: no ObjectFilter refinement for non-Aura subtype; emitting all
-//! enchantments as best effort.
+//! Tranquil Domain — `{1}{G}` instant. "Destroy all non-Aura
+//! enchantments." GAP: 'non-Aura' subtype filter (without_subtype)
+//! not in ObjectFilter refinements; destroy all enchantments.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,12 +37,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: without_subtype('Aura') filter not in ObjectFilter refinements.
     let ids = script::ids_matching(
         state,
         &ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
         entry.controller,
     );
-    // GAP: cannot exclude Aura subtype
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

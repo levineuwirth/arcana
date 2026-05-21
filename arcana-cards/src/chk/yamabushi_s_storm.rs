@@ -1,7 +1,9 @@
-//! Yamabushi's Storm — `{1}{R}` sorcery, "Yamabushi's Storm deals 1
+//! Yamabushi's Storm — `{1}{R}` sorcery. "Yamabushi's Storm deals 1
 //! damage to each creature. If a creature dealt damage this way would
-//! die this turn, exile it instead." The die→exile replacement is not
-//! expressible; the spread damage is.
+//! die this turn, exile it instead."
+//!
+//! GAP: 'would die this turn, exile instead' replacement rider isn't
+//! a primitive — emit the damage sweep.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,10 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Yamabushi's Storm deals 1 damage to each creature. If a \
-                   creature dealt damage this way would die this turn, \
-                   exile it instead."
-                .into(),
+            text: "Yamabushi's Storm deals 1 damage to each creature. If a creature dealt damage this way would die this turn, exile it instead.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -41,10 +40,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if it would die this turn, exile it instead" replacement is
-    // not expressible.
-    let ids =
-        script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     ids.into_iter()
         .map(|id| Effect::DealDamage {
             source: entry.source,

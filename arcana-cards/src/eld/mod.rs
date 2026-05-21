@@ -22,3 +22,5 @@ pub mod memory_theft;
 pub mod giant_opportunity;
 pub mod outflank;
 pub mod oko_s_hospitality;
+pub mod blow_your_house_down;
+pub mod sundering_stroke;

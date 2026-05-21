@@ -1,16 +1,19 @@
-//! Undercity Uprising — `{2}{B}{G}` sorcery. Colors: B, G.
-//! "Creatures you control gain deathtouch until end of turn. Then target creature
-//! you control fights target creature you don't control."
+//! Undercity Uprising — `{2}{B}{G}` sorcery. "Creatures you control
+//! gain deathtouch until end of turn. Then target creature you
+//! control fights target creature you don't control."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
+    TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,12 +31,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Creatures you control gain deathtouch until end of turn. Then target creature you control fights target creature you don't control.".into(),
                 target_requirements: vec![
                     TargetRequirement {
-                        filter: TargetFilter::Permanent(ObjectFilter::creature().controlled_by(ControllerConstraint::You)),
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
+                        ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
                     TargetRequirement {
-                        filter: TargetFilter::Permanent(ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent)),
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
                         count: TargetCount::Exactly(1),
                         controller: None,
                     },
@@ -49,29 +58,24 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let mut effects = Vec::new();
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let grant_deathtouch = Effect::ForEach {
+    effects.push(Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::GrantKeyword {
-            target: NULL_OBJECT_ID,
+            target: arcana_core::objects::NULL_OBJECT_ID,
             keyword: KeywordAbility::Deathtouch,
             duration: Duration::EndOfTurn,
         }),
-    };
-
-    let target_a = entry.targets.targets.first();
-    let target_b = entry.targets.targets.get(1);
-    match (target_a, target_b) {
-        (Some(TargetChoice::Object(id_a)), Some(TargetChoice::Object(id_b))) => {
-            vec![
-                grant_deathtouch,
-                Effect::Fight { a: *id_a, b: *id_b },
-            ]
-        }
-        _ => vec![grant_deathtouch],
+    });
+    if let (Some(TargetChoice::Object(a)), Some(TargetChoice::Object(b))) =
+        (entry.targets.targets.first(), entry.targets.targets.get(1))
+    {
+        effects.push(Effect::Fight { a: *a, b: *b });
     }
+    effects
 }

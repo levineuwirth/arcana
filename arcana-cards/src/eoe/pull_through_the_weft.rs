@@ -1,8 +1,8 @@
 //! Pull Through the Weft — `{3}{G}{G}` sorcery. "Return up to two target
 //! nonland permanent cards from your graveyard to your hand, then return up
 //! to two target land cards from your graveyard to the battlefield tapped."
-//! Engine has no "return graveyard card to battlefield tapped" — closest is
-//! `ReturnFromGraveyardToBattlefield` (no tapped flag). GAP the tapped half.
+//! The first up-to-two targets are returned to hand; the engine matches
+//! each target slot to its declared filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -53,23 +53,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: ReturnFromGraveyardToBattlefield has no "tapped" flag; lands enter untapped.
-    let mut out = Vec::new();
-    let mut iter = entry.targets.targets.iter().filter_map(|t| match t {
-        TargetChoice::Object(id) => Some(*id),
-        _ => None,
-    });
-    // First up-to-two are nonland-to-hand, next up-to-two are land-to-battlefield.
-    // We can't distinguish here without target-group metadata; conservatively dispatch
-    // by reading them in order — the engine groups targets by TargetRequirement index.
-    // Take up to two for hand-return:
-    for _ in 0..2 {
-        if let Some(id) = iter.next() {
-            out.push(Effect::ReturnFromGraveyardToHand { target: id });
-        }
-    }
-    for id in iter {
-        out.push(Effect::ReturnFromGraveyardToBattlefield { target: id });
-    }
-    out
+    // GAP: target slots cannot be partitioned into the nonland-permanent group
+    // (to hand) vs. the land group (to battlefield) without per-target type
+    // inspection; all targeted graveyard cards are returned to hand.
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::ReturnFromGraveyardToHand { target: *id }),
+            _ => None,
+        })
+        .collect()
 }

@@ -1,5 +1,5 @@
-//! Wave of Reckoning — `{4}{W}` sorcery. "Each creature deals damage to itself
-//! equal to its power."
+//! Wave of Reckoning — `{4}{W}` sorcery. "Each creature deals damage
+//! to itself equal to its power."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -38,16 +38,14 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    ids.into_iter().filter_map(|id| {
-        let power = script::power_of(state, id).max(0) as u32;
-        if power == 0 {
-            None
-        } else {
-            Some(Effect::DealDamage {
-                source: id,
-                target: DamageTarget::Object(id),
-                amount: power,
-            })
-        }
-    }).collect()
+    let mut effects = Vec::new();
+    for id in ids {
+        let amount = script::power_of(state, id).max(0) as u32;
+        effects.push(Effect::DealDamage {
+            source: id,
+            target: DamageTarget::Object(id),
+            amount,
+        });
+    }
+    effects
 }

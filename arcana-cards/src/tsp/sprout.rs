@@ -1,4 +1,5 @@
-//! Sprout — `{G}` instant, "Create a 1/1 green Saproling creature token."
+//! Sprout — `{G}` instant. "Create a 1/1 green Saproling creature
+//! token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,7 +35,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let saproling = reg.interner().lookup("Saproling").expect("Saproling interned during register()");
+    let saproling = reg.interner().lookup("Saproling").expect("Saproling interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(saproling);
     let token = TokenDefinition {

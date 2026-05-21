@@ -2,9 +2,6 @@
 //! For as long as any of those cards remain exiled, at the beginning
 //! of each player's upkeep, that player returns one of the exiled
 //! cards they own to the battlefield."
-//!
-//! GAP: long-lived 'exiled until each-player's-upkeep gradual return'
-//! rider isn't in the catalog. We model the mass exile.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,18 +23,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile all permanents. For as long as any of those cards remain exiled, at the beginning of each player's upkeep, that player returns one of the exiled cards they own to the battlefield.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile all permanents. For as long as any of those cards remain exiled, at the beginning of each player's upkeep, that player returns one of the exiled cards they own to the battlefield.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::permanent(), entry.controller);
-    // GAP: gradual-return upkeep rider on exiled cards.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // The board wipe (exile all permanents) is expressible.
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent(),
+        entry.controller,
+    );
+    // GAP: the staged per-upkeep return of exiled cards (a persistent
+    // delayed trigger that fires every player's upkeep for as long as
+    // cards remain exiled) is not expressible with the catalog.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),

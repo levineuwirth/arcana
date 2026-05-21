@@ -23,12 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +2/+2 until end of turn. If it's an enchanted creature or enchantment creature, it also gains hexproof and indestructible until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "if it's an enchanted creature or enchantment
+                // creature" conditional rider — no script helper reports
+                // whether a permanent is enchanted; only the +2/+2 is
+                // emitted.
+                text: "Target creature gets +2/+2 until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,9 +44,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: the conditional hexproof/indestructible grant depends on
-    // "is an enchanted/enchantment creature", which has no catalog
-    // condition; only the unconditional +2/+2 is modeled.
     vec![Effect::Pump {
         target: *id,
         power: 2,

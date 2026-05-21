@@ -21,23 +21,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You draw X cards and you lose X life, where X is the number of creatures you control.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You draw X cards and you lose X life, where X is the number of creatures you control.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let x = script::count_matching(
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let n = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
     vec![
-        Effect::DrawCards { player: entry.controller, count: x },
-        Effect::LoseLife { player: entry.controller, amount: x },
+        Effect::DrawCards { player: entry.controller, count: n },
+        Effect::LoseLife { player: entry.controller, amount: n },
     ]
 }

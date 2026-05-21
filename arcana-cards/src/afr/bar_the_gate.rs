@@ -1,8 +1,6 @@
 //! Bar the Gate — `{2}{U}` instant. "Counter target creature or
-//! planeswalker spell. Venture into the dungeon."
-//!
-//! GAP: Venture into the dungeon Effect not in catalog; emitting counter
-//! only.
+//! planeswalker spell. Venture into the dungeon." GAP: Venture / the
+//! dungeon mechanic not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,9 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Counter target creature or planeswalker spell. Venture into the dungeon.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Spell(
-                        ObjectFilter::new()
-                            .with_types_any(TypeLine::CREATURE.into())
-                            .with_types_any(TypeLine::PLANESWALKER.into()),
+                        ObjectFilter::default()
+                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -46,8 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: Venture / the dungeon not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Venture into the dungeon Effect not in catalog.
     vec![Effect::Counter { target: *id }]
 }

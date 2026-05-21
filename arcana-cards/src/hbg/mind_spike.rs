@@ -1,11 +1,9 @@
-//! Mind Spike — `{B}` sorcery, "Target opponent reveals each noncreature,
-//! nonland card in their hand. You choose a card revealed this way. That player
-//! discards that card. You lose 2 life. If they didn't reveal a card this way,
-//! you draw a card."
-//!
-//! GAP: reveal noncreature/nonland cards from opponent's hand then caster
-//! chooses which specific card to discard (no "caster-selects from revealed
-//! hand subset" discard variant); conditional draw if no card revealed.
+//! Mind Spike — `{B}` sorcery. "Target opponent reveals each
+//! noncreature, nonland card in their hand. You choose a card
+//! revealed this way. That player discards that card. You lose 2
+//! life. If they didn't reveal a card this way, you draw a card."
+//! Conditional discard-or-draw with filtered reveal not in catalog;
+//! emit life loss and discard as best effort, GAP the reveal/draw.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -43,11 +41,13 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: reveal noncreature/nonland subset and caster-selects-specific-card
-    // discard (no "reveal hand subset, caster chooses which card" variant);
-    // conditional draw if no card was revealed
+    // GAP: filtered hand-reveal + "if they didn't reveal a card, draw" conditional — not in catalog.
     vec![
-        Effect::Discard { player: *p, count: 1, choice: DiscardChoice::OpponentChooses },
+        Effect::Discard {
+            player: *p,
+            count: 1,
+            choice: DiscardChoice::OpponentChooses,
+        },
         Effect::LoseLife { player: entry.controller, amount: 2 },
     ]
 }

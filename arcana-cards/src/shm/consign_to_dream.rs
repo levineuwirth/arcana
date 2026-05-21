@@ -1,6 +1,6 @@
-//! Consign to Dream — `{2}{U}` instant. "Return target permanent to its
-//! owner's hand. If that permanent is red or green, put it on top of its
-//! owner's library instead."
+//! Consign to Dream — `{2}{U}` instant. Return target permanent to its
+//! owner's hand. If it's red or green, put it on top of its owner's library
+//! instead.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,19 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target permanent to its owner's hand. If that \
-                   permanent is red or green, put it on top of its owner's \
-                   library instead."
-                .into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target permanent to its owner's hand. If that permanent is red or green, put it on top of its owner's library instead.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -44,10 +42,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // Color-conditional library-vs-hand split not expressible — default
-    // to the bounce-to-hand branch.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: color-conditional alternate destination (top-of-library) not in
+    // catalog. Default to bouncing.
     vec![Effect::ReturnToHand { target: *id }]
 }

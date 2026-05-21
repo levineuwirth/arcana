@@ -1,14 +1,12 @@
-//! Come Back Wrong — `{2}{B}` sorcery. "Destroy target creature. If a creature
-//! card is put into a graveyard this way, return it to the battlefield under
-//! your control. Sacrifice it at the beginning of your next end step."
-//!
-//! GAP: the reanimation-after-destroy is conditional on the card going to the
-//! graveyard (i.e. not being indestructible). No Effect::Conditional condition
-//! for "card was put into graveyard by this effect" is available. Emitting the
-//! destroy + reanimate + sacrifice as unconditional best-effort (the verify
-//! pipeline will flag this).
+//! Come Back Wrong — `{2}{B}` sorcery. "Destroy target creature. If a
+//! creature card is put into a graveyard this way, return it to the
+//! battlefield under your control. Sacrifice it at the beginning of
+//! your next end step." The graveyard-bounce-back conditional on
+//! 'put into a graveyard this way' isn't expressible as a single
+//! catalog primitive — best effort: destroy now, then GAP the
+//! conditional reanimate-with-EOT-sac rider.
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -44,15 +42,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional on card actually dying; emitting unconditionally as best-effort
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        Effect::DelayedAction {
-            source: *id,
-            controller: entry.controller,
-            when: DelayedWhen::NextEndStep,
-            action: DelayedAction::Sacrifice,
-        },
-    ]
+    // GAP: 'if a creature card is put into a graveyard this way, return it
+    // to the battlefield under your control. Sacrifice it at the beginning
+    // of your next end step.' — the catalog has no conditional 'on
+    // graveyard-arrival from this destroy' hook to chain a steal+EOT-sac.
+    vec![Effect::DestroyPermanent { target: *id }]
 }

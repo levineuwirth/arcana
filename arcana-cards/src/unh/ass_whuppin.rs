@@ -1,9 +1,9 @@
 //! Ass Whuppin' — `{1}{W}{B}` sorcery. "Destroy target silver-bordered
 //! or acorn permanent in any game you can see from your seat."
 //!
-//! GAP: 'silver-bordered or acorn' / 'any game you can see' aren't
-//! catalog filters; modeled as a single permanent destroy on a normal
-//! target.
+//! "Silver-bordered / acorn" status and cross-game targeting are not
+//! modeled — treated as destroy target permanent, with the
+//! restriction noted as a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,7 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: silver-bordered/acorn/cross-game flavor filter.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: silver-bordered / acorn frame status and cross-game
+    // targeting are not modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

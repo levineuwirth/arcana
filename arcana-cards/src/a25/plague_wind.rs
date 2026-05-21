@@ -1,6 +1,5 @@
-//! Plague Wind — `{7}{B}{B}` sorcery. "Destroy all creatures you don't
-//! control. They can't be regenerated."
-//! GAP: "can't be regenerated" rider is not expressible as a catalog Effect.
+//! Plague Wind — `{7}{B}{B}` sorcery. "Destroy all creatures you
+//! don't control. They can't be regenerated."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,11 +31,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let ids = script::ids_matching(state, &filter, entry.controller);
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![Effect::ForEach {
-        targets: ids,
+        targets: script::ids_matching(
+            state,
+            &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+            entry.controller,
+        ),
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

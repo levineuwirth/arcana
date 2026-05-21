@@ -1,6 +1,6 @@
-//! Vanishing Verse — `{W}{B}` instant. "Exile target monocolored permanent."
-//! ObjectFilter has no "monocolored" predicate; the closest filter shape is
-//! plain Permanent. GAP the monocolor restriction.
+//! Vanishing Verse — `{W}{B}` instant. "Exile target monocolored
+//! permanent." The "monocolored" qualifier cannot be filtered, so the
+//! target is any permanent.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target monocolored permanent.".into(),
-            // GAP: ObjectFilter has no "monocolored" predicate; using plain Permanent.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(ObjectFilter::permanent()),
                 count: TargetCount::Exactly(1),
@@ -38,6 +37,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // Note: "monocolored" cannot be expressed as a target filter; any permanent.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ExilePermanent { target: *id }]
 }

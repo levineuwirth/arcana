@@ -1,10 +1,5 @@
-//! Unstable Experiment — `{1}{U}` instant.
-//! "Target player draws a card, then up to one target creature you control connives."
-//!
-//! GAP: "connives" mechanic (draw, discard, conditional +1/+1 counter if nonland
-//! discarded) is not a single Effect variant; connive requires interactive discard
-//! choice with conditional counter which is not expressible in the catalog.
-//! Partial: emit the draw for the target player only.
+//! Unstable Experiment — `{1}{U}` instant. "Target player draws a
+//! card, then up to one target creature you control connives."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +7,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,23 +23,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target player draws a card, then up to one target creature you control connives.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target player draws a card, then up to one target creature you control connives.".into(),
+            target_requirements: vec![
+                TargetRequirement::target_player(),
+                TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: connive mechanic (draw+discard+conditional counter) not in catalog
-    vec![Effect::DrawCards { player: *p, count: 1 }]
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Player(p)) = entry.targets.targets.first() {
+        effects.push(Effect::DrawCards {
+            player: *p,
+            count: 1,
+        });
+    }
+    // GAP: connive (draw, discard, conditionally add a +1/+1 counter to
+    // the creature) is not in the catalog; only the targeted draw is
+    // emitted.
+    effects
 }

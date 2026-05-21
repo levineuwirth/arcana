@@ -1,10 +1,8 @@
-//! Great Intelligence's Plan — `{4}{U}{B}` sorcery. "Draw three cards.
-//! Then target opponent faces a villainous choice — They discard three
-//! cards, or you may cast a spell from your hand without paying its mana
-//! cost."
-//!
-//! GAP: no villainous-choice (opponent picks one of two outcomes) nor
-//! cast-from-hand-for-free machinery; the draw three is emitted.
+//! Great Intelligence's Plan — `{4}{U}{B}` sorcery. "Draw three
+//! cards. Then target opponent faces a villainous choice — They
+//! discard three cards, or you may cast a spell from your hand
+//! without paying its mana cost." Express the draw; GAP the
+//! villainous-choice modal (no cast-without-paying primitive).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +38,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: villainous choice / cast-for-free branch not modeled.
+    // GAP: villainous-choice modal + cast-without-paying primitive.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

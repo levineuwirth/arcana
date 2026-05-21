@@ -1,5 +1,5 @@
-//! Swelter — `{3}{R}` sorcery. "Swelter deals 2 damage to each of
-//! two target creatures."
+//! Swelter — `{3}{R}` sorcery. "Swelter deals 2 damage to each of two target
+//! creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -8,7 +8,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,15 +21,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Swelter deals 2 damage to each of two target creatures.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Swelter deals 2 damage to each of two target creatures.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(2),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,17 +40,15 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::DealDamage {
+    let mut effects = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            effects.push(Effect::DealDamage {
                 source: entry.source,
                 target: DamageTarget::Object(*id),
                 amount: 2,
-            }),
-            _ => None,
-        })
-        .collect()
+            });
+        }
+    }
+    effects
 }

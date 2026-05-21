@@ -1,5 +1,8 @@
 //! Shelob's Ambush — `{B}` instant. "Target creature gets +1/+2 and
-//! gains deathtouch until end of turn. Create a Food token."
+//! gains deathtouch until end of turn. Create a Food token." The
+//! Food token's activated ability ({2}, {T}, Sacrifice: gain 3 life)
+//! isn't expressible in TokenDefinition.abilities — emit a plain
+//! artifact token named Food; GAP the activated ability.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -21,19 +24,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: Food token's '{2}, {T}, Sacrifice this token: You gain 3 life' activated ability.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +1/+2 and gains deathtouch until end of turn. Create a Food token.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +1/+2 and gains deathtouch until end of turn. Create a Food token.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let food = reg.interner().lookup("Food").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let food = reg.interner().lookup("Food").expect("Food interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
     let token = TokenDefinition {
@@ -43,7 +53,6 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         subtypes,
         power: None,
         toughness: None,
-        // GAP: '{2}, {T}, Sacrifice this token: You gain 3 life.' activated ability not encoded.
         keywords: vec![],
         abilities: vec![],
     };

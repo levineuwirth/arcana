@@ -1,10 +1,7 @@
-//! Hanabi Blast — `{1}{R}{R}` instant. "Hanabi Blast deals 2 damage to any
-//! target. Return Hanabi Blast to its owner's hand, then discard a card
-//! at random."
-//!
-//! GAP: no Return-this-spell-to-its-owner's-hand variant for an
-//! instant-on-the-stack; the engine has `ReturnToHand` for permanents
-//! only.
+//! Hanabi Blast — `{1}{R}{R}` instant. "Hanabi Blast deals 2 damage
+//! to any target. Return Hanabi Blast to its owner's hand, then
+//! discard a card at random." Returning a spell-as-it-resolves to
+//! hand isn't a catalog primitive; emit damage + random discard.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::events::DamageTarget;
@@ -50,8 +47,7 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: cannot return Hanabi Blast (a spell on the stack) to its
-    // owner's hand. Emitting damage + random discard.
+    // GAP: returning a resolving spell card to its owner's hand from the stack — no catalog primitive.
     vec![
         Effect::DealDamage { source: entry.source, target: dt, amount: 2 },
         Effect::Discard {

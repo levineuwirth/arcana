@@ -1,5 +1,5 @@
-//! Rush of Blood — `{2}{R}` instant.
-//! "Target creature gets +X/+0 until end of turn, where X is its power."
+//! Rush of Blood — `{2}{R}` instant. "Target creature gets +X/+0 until
+//! end of turn, where X is its power."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,21 +22,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +X/+0 until end of turn, where X is its power.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +X/+0 until end of turn, where X is its power.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let x = script::power_of(state, *id);

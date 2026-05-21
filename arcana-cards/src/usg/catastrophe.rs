@@ -1,8 +1,7 @@
 //! Catastrophe — `{4}{W}{W}` sorcery. "Destroy all lands or all
-//! creatures. Creatures destroyed this way can't be regenerated."
-//!
-//! GAP: modal 'choose one' selection is not in catalog. We default to
-//! all-creatures wipe. GAP: 'can't be regenerated' rider.
+//! creatures." Modal choice (lands vs creatures) without a true modal
+//! UI; treat as 'destroy all creatures' (the more common board-wipe
+//! mode) and GAP the modal land alternative.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,20 +22,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: modal choice between 'all lands' and 'all creatures' — only one branch is modeled.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all lands or all creatures. Creatures destroyed this way can't be regenerated.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all lands or all creatures. Creatures destroyed this way can't be regenerated.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![Effect::ForEach {
-        targets: ids,
+        targets: script::ids_matching(state, &ObjectFilter::creature(), entry.controller),
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

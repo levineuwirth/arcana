@@ -20,18 +20,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player discards three cards.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player discards three cards.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    _entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     script::all_players(state)
         .into_iter()
-        .map(|p| Effect::Discard { player: p, count: 3, choice: DiscardChoice::ControllerChooses })
+        .map(|p| Effect::Discard {
+            player: p,
+            count: 3,
+            choice: DiscardChoice::ControllerChooses,
+        })
         .collect()
 }

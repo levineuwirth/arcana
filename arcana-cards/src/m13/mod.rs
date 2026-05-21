@@ -13,3 +13,4 @@ pub mod rain_of_blades;
 pub mod ranger_s_path;
 pub mod worldfire;
 pub mod boundless_realms;
+pub mod fungal_sprouting;

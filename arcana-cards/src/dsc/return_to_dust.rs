@@ -1,9 +1,6 @@
 //! Return to Dust — `{2}{W}{W}` instant. "Exile target artifact or
 //! enchantment. If you cast this spell during your main phase, you may
-//! exile up to one other target artifact or enchantment." We model the
-//! optional second target as a second TargetRequirement (engine offers it as
-//! up-to-one). No phase-check helper — GAP the main-phase condition (we
-//! always allow the second exile).
+//! exile up to one other target artifact or enchantment."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,14 +13,6 @@ use arcana_core::targets::{
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
-fn artifact_or_enchantment_filter() -> TargetFilter {
-    TargetFilter::Permanent(
-        ObjectFilter::new()
-            .with_types(TypeLine::ARTIFACT.into())
-            .with_types_any(TypeLine::ENCHANTMENT.into()),
-    )
-}
-
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Return to Dust");
     let chars = Characteristics {
@@ -33,18 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    let art_ench = || TargetRequirement {
+        filter: TargetFilter::Permanent(
+            ObjectFilter::permanent()
+                .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
+        ),
+        count: TargetCount::Exactly(1),
+        controller: None,
+    };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target artifact or enchantment. If you cast this spell during your main phase, you may exile up to one other target artifact or enchantment.".into(),
-            // GAP: no helper for "cast during your main phase" gating; second target is always offered.
             target_requirements: vec![
+                art_ench(),
                 TargetRequirement {
-                    filter: artifact_or_enchantment_filter(),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: artifact_or_enchantment_filter(),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
+                    ),
                     count: TargetCount::UpTo(1),
                     controller: None,
                 },
@@ -56,11 +51,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    for t in entry.targets.targets.iter() {
-        if let TargetChoice::Object(id) = t {
-            out.push(Effect::ExilePermanent { target: *id });
-        }
-    }
-    out
+    // Note: the "during your main phase" gate on the second target is not
+    // checked; both targeted permanents are exiled if chosen.
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::ExilePermanent { target: *id }),
+            _ => None,
+        })
+        .collect()
 }

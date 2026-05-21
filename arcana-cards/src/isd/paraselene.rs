@@ -1,5 +1,5 @@
-//! Paraselene — `{2}{W}` sorcery, "Destroy all enchantments. You
-//! gain 1 life for each enchantment destroyed this way."
+//! Paraselene — `{2}{W}` sorcery. "Destroy all enchantments. You gain 1 life
+//! for each enchantment destroyed this way."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,17 +21,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all enchantments. You gain 1 life for each enchantment destroyed this way.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all enchantments. You gain 1 life for each enchantment destroyed this way.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let filter = ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into());
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into());
     let ids = script::ids_matching(state, &filter, entry.controller);
     let n = ids.len() as u32;
     vec![

@@ -18,3 +18,4 @@ pub mod mortal_s_resolve;
 pub mod fated_conflagration;
 pub mod fated_retribution;
 pub mod searing_blood;
+pub mod fated_infatuation;

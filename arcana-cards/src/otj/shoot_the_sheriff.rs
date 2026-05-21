@@ -1,7 +1,7 @@
 //! Shoot the Sheriff — `{1}{B}` instant. "Destroy target non-outlaw
-//! creature." Outlaws are Assassin/Mercenary/Pirate/Rogue/Warlock — there's no
-//! "without any of these subtypes" filter; closest expressible target is plain
-//! creature with a doc note. GAP the subtype exclusion.
+//! creature." The non-outlaw qualifier (excluding Assassins, Mercenaries,
+//! Pirates, Rogues, Warlocks) cannot be filtered, so the target is a plain
+//! creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +24,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target non-outlaw creature.".into(),
-            // GAP: ObjectFilter has no "without any of these subtypes" predicate (outlaw = Assassin/Mercenary/Pirate/Rogue/Warlock).
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -33,6 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    // Note: "non-outlaw" multi-subtype exclusion is not filterable; targets any creature.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

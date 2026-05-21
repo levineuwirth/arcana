@@ -1,7 +1,5 @@
-//! Pirate's Prize — `{3}{U}` sorcery. "Draw two cards. Create a
-//! Treasure token." The Treasure token's tap-sacrifice mana ability
-//! is not modeled; we draw two cards and create a vanilla Treasure
-//! artifact token as a best effort.
+//! Pirate's Prize — `{3}{U}` sorcery. "Draw two cards. Create a Treasure
+//! token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -35,6 +33,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
     let treasure = reg.interner().lookup("Treasure").expect("Treasure interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
+    // The Treasure token's mana-ability is not modeled; emit the artifact
+    // token shell.
     let token = TokenDefinition {
         name: treasure,
         colors: ColorSet::new(),

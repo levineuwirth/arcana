@@ -26,49 +26,59 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Choose target creature you control and target creature an opponent controls. Each of those creatures deals damage equal to its toughness to the other.".into(),
-            target_requirements: vec![
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-                TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                },
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Choose target creature you control and target creature \
+                       an opponent controls. Each of those creatures deals \
+                       damage equal to its toughness to the other.".into(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut it = entry.targets.targets.iter();
-    let (Some(TargetChoice::Object(a)), Some(TargetChoice::Object(b))) =
-        (it.next(), it.next())
-    else {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(mine)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    let a_tuf = script::toughness_of(state, *a).max(0) as u32;
-    let b_tuf = script::toughness_of(state, *b).max(0) as u32;
+    let Some(TargetChoice::Object(theirs)) = entry.targets.targets.get(1) else {
+        return Vec::new();
+    };
+    // Toughness-based "fight" — each deals its toughness to the other.
+    let mine_tou = script::toughness_of(state, *mine).max(0) as u32;
+    let theirs_tou = script::toughness_of(state, *theirs).max(0) as u32;
     vec![
         Effect::DealDamage {
-            source: *a,
-            target: DamageTarget::Object(*b),
-            amount: a_tuf,
+            source: *mine,
+            target: DamageTarget::Object(*theirs),
+            amount: mine_tou,
         },
         Effect::DealDamage {
-            source: *b,
-            target: DamageTarget::Object(*a),
-            amount: b_tuf,
+            source: *theirs,
+            target: DamageTarget::Object(*mine),
+            amount: theirs_tou,
         },
     ]
 }

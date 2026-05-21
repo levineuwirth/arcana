@@ -1,12 +1,12 @@
-//! Anger of the Gods — `{1}{R}{R}` sorcery. "Anger of the Gods deals 3 damage
-//! to each creature. If a creature dealt damage this way would die this turn,
-//! exile it instead."
-//! GAP: replacement effect "exile instead of dying" for creatures damaged this
-//! way not in engine Effect catalog.
+//! Anger of the Gods — `{1}{R}{R}` sorcery. Deals 3 damage to each
+//! creature; if a creature dealt damage this way would die this turn,
+//! exile it instead. The replacement clause is not expressible; we
+//! emit the damage-to-each-creature board hit and GAP the replacement.
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -39,14 +39,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
-    // GAP: "exile instead of dying" replacement effect for damaged creatures not in engine
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DealDamage {
+    // GAP: "if dealt damage would die, exile it instead" replacement is not modeled.
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        entry.controller,
+    );
+    ids.into_iter()
+        .map(|id| Effect::DealDamage {
             source: entry.source,
-            target: arcana_core::events::DamageTarget::Object(NULL_OBJECT_ID),
+            target: DamageTarget::Object(id),
             amount: 3,
-        }),
-    }]
+        })
+        .collect()
 }

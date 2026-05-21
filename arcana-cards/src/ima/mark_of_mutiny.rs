@@ -1,8 +1,6 @@
-//! Mark of Mutiny — `{2}{R}` sorcery. "Gain control of target
-//! creature until end of turn. Put a +1/+1 counter on it and untap
-//! it. That creature gains haste until end of turn." Threaten-style
-//! temporary control change is not modeled by the catalog; we apply
-//! the +1/+1 counter, untap, and grant haste to the target.
+//! Mark of Mutiny — `{2}{R}` sorcery. "Gain control of target creature
+//! until end of turn. Put a +1/+1 counter on it and untap it. That
+//! creature gains haste until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -34,15 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: temporary "gain control until end of turn" is not modeled.
-    // Counter + untap + haste are emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "gain control until end of turn" — only a permanent ChangeControl
+    // exists, so the temporary control is omitted; the expressible parts
+    // (counter, untap, haste) are emitted.
     vec![
-        Effect::AddCounters {
-            target: *id,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        },
+        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
         Effect::Untap { target: *id },
         Effect::GrantKeyword {
             target: *id,

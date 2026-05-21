@@ -1,5 +1,5 @@
-//! Dutiful Return — `{3}{B}` sorcery. "Return up to two target creature
-//! cards from your graveyard to your hand."
+//! Dutiful Return — `{3}{B}` sorcery. Return up to two target creature
+//! cards from your graveyard to your hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

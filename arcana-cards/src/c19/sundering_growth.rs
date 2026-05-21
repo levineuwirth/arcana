@@ -1,7 +1,6 @@
-//! Sundering Growth — `{G/W}{G/W}` instant. "Destroy target artifact or
-//! enchantment, then populate."
-//!
-//! GAP: no Populate primitive (copy-a-creature-token-you-control).
+//! Sundering Growth — `{G/W}{G/W}` instant. "Destroy target artifact
+//! or enchantment, then populate." Populate (token copy) is not in
+//! the catalog; destroy the target and GAP the populate.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,9 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target artifact or enchantment, then populate.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine(
-                            TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
-                        )),
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT),
+                        ),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -49,6 +48,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no Populate Effect.
+    // GAP: populate (create a token copy of a creature token you control) — no token-copy primitive in the catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

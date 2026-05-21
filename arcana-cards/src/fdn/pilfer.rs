@@ -1,7 +1,5 @@
 //! Pilfer — `{1}{B}` sorcery. "Target opponent reveals their hand.
-//! You choose a nonland card from it. That player discards that
-//! card." Modeled as a discard of one card by the target opponent
-//! (the nonland restriction has no discard-filter).
+//! You choose a nonland card from it. That player discards that card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -35,7 +33,10 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
     let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "nonland card" discard filter not expressible.
+    // The target opponent discards; OpponentChooses makes the discarding
+    // player's opponent (you, the caster) pick the card.
+    // GAP: the "reveal hand" step and the "nonland card" restriction on
+    // the choice are not modeled.
     vec![Effect::Discard {
         player: *p,
         count: 1,

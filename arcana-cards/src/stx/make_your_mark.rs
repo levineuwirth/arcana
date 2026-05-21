@@ -1,8 +1,6 @@
-//! Make Your Mark — `{R/W}` instant. "Target creature gets +1/+0
-//! until end of turn. When that creature dies this turn, create a 3/2
-//! red and white Spirit creature token." The delayed dies-trigger
-//! token is not expressible (DelayedAction has no token-create
-//! action); we emit the +1/+0 pump.
+//! Make Your Mark — `{R/W}` instant. "Target creature gets +1/+0 until
+//! end of turn. When that creature dies this turn, create a 3/2 red and
+//! white Spirit creature token."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,10 +32,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "when that creature dies this turn, create a token" — a
-    // delayed dies-triggered token; DelayedAction has no token-create
-    // action variant. Pump is emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the "when that creature dies this turn, create a token" delayed
+    // trigger (a token-creating dies rider) is not expressible; only the
+    // pump is emitted.
     vec![Effect::Pump {
         target: *id,
         power: 1,

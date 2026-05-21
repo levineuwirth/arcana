@@ -1,9 +1,5 @@
 //! Eureka Moment — `{2}{G}{U}` instant. "Draw two cards. You may put
 //! a land card from your hand onto the battlefield."
-//!
-//! Note: "put a land card from your hand onto the battlefield" is not
-//! expressible with the available effect catalog; only the two-card
-//! draw is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,11 +28,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: putting a land from hand onto the battlefield is not
-    // expressible; only the draw is emitted.
-    vec![Effect::DrawCards {
-        player: entry.controller,
-        count: 2,
-    }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "put a land from your hand onto the battlefield" — no
+    // PutFromHandToBattlefield primitive.
+    vec![Effect::DrawCards { player: entry.controller, count: 2 }]
 }

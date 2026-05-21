@@ -1,5 +1,5 @@
-//! Void Snare — `{U}` sorcery. "Return target nonland permanent to
-//! its owner's hand."
+//! Void Snare — `{U}` sorcery. "Return target nonland permanent to its
+//! owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,6 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::ReturnToHand { target: *id }]
 }

@@ -1,8 +1,5 @@
-//! Track Down — `{1}{G}` sorcery. "Scry 3, then reveal the top card
-//! of your library. If it's a creature or land card, draw a card."
-//! The conditional draw depends on revealing the post-scry top card,
-//! which the catalog cannot inspect; we emit Scry 3 and GAP the
-//! conditional draw.
+//! Track Down — `{1}{G}` sorcery. "Scry 3, then reveal the top card of
+//! your library. If it's a creature or land card, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,8 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "reveal the top card; if it's a creature or land, draw" —
-    // no effect to inspect/condition on the revealed top card. Scry 3
-    // is emitted.
+    // GAP: "reveal top card; if creature/land, draw" is a conditional on the
+    // revealed card's type, not expressible; only the Scry is emitted.
     vec![Effect::Scry { player: entry.controller, count: 3 }]
 }

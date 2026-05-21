@@ -1,5 +1,5 @@
-//! Incandescent Aria — `{R}{G}{W}` sorcery. "Incandescent Aria deals 3
-//! damage to each nontoken creature."
+//! Incandescent Aria — `{R}{G}{W}` sorcery. "Incandescent Aria deals
+//! 3 damage to each nontoken creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

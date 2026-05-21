@@ -1,5 +1,8 @@
-//! Leaf Arrow — `{G}` instant, "Leaf Arrow deals 3 damage to target
+//! Leaf Arrow — `{G}` instant. "Leaf Arrow deals 3 damage to target
 //! creature with flying."
+//!
+//! GAP: ObjectFilter has no has-keyword predicate (flying); target a
+//! creature instead.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,11 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            // The "with flying" restriction is not expressible via the
-            // demonstrated ObjectFilter builders; modeled as a creature
-            // target.
-            text: "Leaf Arrow deals 3 damage to target creature with flying."
-                .into(),
+            text: "Leaf Arrow deals 3 damage to target creature with flying.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -39,9 +38,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

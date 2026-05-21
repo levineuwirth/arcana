@@ -1,9 +1,6 @@
-//! Absorb Energy — `{1}{U}{U}` instant. "Counter target spell. Cards in
-//! your hand that share a card type with that spell perpetually gain 'This
-//! spell costs {1} less to cast.'"
-//!
-//! GAP: no perpetual cost-reduction effect; the counter is emitted as
-//! best-effort.
+//! Absorb Energy — `{1}{U}{U}` instant. Counter target spell. Cards in
+//! your hand that share a card type with that spell perpetually gain
+//! "This spell costs {1} less to cast."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,6 +44,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: perpetual "costs {1} less" rider not modeled.
+    // GAP: "perpetual cost reduction on shared-type cards in hand" not in catalog.
     vec![Effect::Counter { target: *id }]
 }

@@ -1,7 +1,7 @@
 //! Sowing Salt — `{2}{R}{R}` sorcery. "Exile target nonbasic land.
-//! Search its controller's graveyard, hand, and library for all cards
-//! with the same name as that land and exile them. Then that player
-//! shuffles."
+//! Search its controller's graveyard, hand, and library for all
+//! cards with the same name as that land and exile them. Then that
+//! player shuffles."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,8 +23,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
-    // "nonbasic" is not an ObjectFilter refinement; restricted to a
-    // land.
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target nonbasic land. Search its controller's graveyard, hand, and library for all cards with the same name as that land and exile them. Then that player shuffles.".into(),
@@ -41,14 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The same-name search-and-exile across zones has no catalog
-    // effect; only the exile of the targeted land is implemented.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the cross-zone same-name search-and-exile is not
+    // expressible — only the exile of the target land is emitted.
     vec![Effect::ExilePermanent { target: *id }]
 }

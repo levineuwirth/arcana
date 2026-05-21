@@ -1,10 +1,8 @@
-//! Relive the Past — `{5}{G}{W}` sorcery. "Return up to one target artifact card, up to one
-//! target land card, and up to one target non-Aura enchantment card from your graveyard to the
-//! battlefield. They are 5/5 Elemental creatures in addition to their other types."
-//!
-//! GAP: Post-return type-change (become 5/5 Elementals in addition to other types) not in catalog;
-//! multi-filter graveyard targeting (artifact OR land OR non-Aura enchantment) not expressible.
-//! Emitting ReturnFromGraveyardToBattlefield for each of up to 3 targets as best-effort.
+//! Relive the Past — `{5}{G}{W}` sorcery. "Return up to one target
+//! artifact card, up to one target land card, and up to one target
+//! non-Aura enchantment card from your graveyard to the battlefield.
+//! They are 5/5 Elemental creatures in addition to their other
+//! types."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -26,38 +26,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return up to one target artifact card, up to one target land card, and up to one target non-Aura enchantment card from your graveyard to the battlefield. They are 5/5 Elemental creatures in addition to their other types.".into(),
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
-                        },
-                        count: TargetCount::UpTo(1),
-                        controller: None,
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return up to one target artifact card, up to one target land card, and up to one target non-Aura enchantment card from your graveyard to the battlefield. They are 5/5 Elemental creatures in addition to their other types.".into(),
+            target_requirements: vec![
+                TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                     },
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-                        },
-                        count: TargetCount::UpTo(1),
-                        controller: None,
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
                     },
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
-                        },
-                        count: TargetCount::UpTo(1),
-                        controller: None,
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+                TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new()
+                            .with_types(TypeLine::ENCHANTMENT.into()),
                     },
-                ],
-                modal: None,
-                effect: resolve,
-            }),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                },
+            ],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -66,12 +66,19 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: post-return type-change to 5/5 Elemental creature in addition to other types
-    entry.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t {
-            Some(Effect::ReturnFromGraveyardToBattlefield { target: *id })
-        } else {
-            None
-        }
-    }).collect()
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => {
+                Some(Effect::ReturnFromGraveyardToBattlefield { target: *id })
+            }
+            _ => None,
+        })
+        .collect()
+    // GAP: "they are 5/5 Elemental creatures in addition to their
+    // other types" — a continuous type/P-T-adding effect on the
+    // returned permanents cannot be applied (SetBasePT targets an
+    // existing id, and adding the Creature type is unexpressible).
 }

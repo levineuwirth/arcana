@@ -1,15 +1,14 @@
-//! Torment of Venom — `{2}{B}{B}` instant, "Put three -1/-1 counters on
-//! target creature. Its controller loses 3 life unless they sacrifice
-//! another nonland permanent of their choice or discard a card."
-//!
-//! GAP: "loses 3 life unless sacrifices another permanent OR discards" —
-//! a player-choice between two alternative costs is not in the Effect
-//! catalog. Only the counter placement is modeled.
+//! Torment of Venom — `{2}{B}{B}` instant. "Put three -1/-1 counters
+//! on target creature. Its controller loses 3 life unless they
+//! sacrifice another nonland permanent of their choice or discard a
+//! card." The unless-choice rider is not expressible; emit the
+//! counters and a flat 3 life loss as a best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -36,17 +35,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "its controller loses 3 life unless sacrifices or discards" —
-    // player-choice alternative cost not in Effect catalog.
+    let ctrl = script::target_controller(state, *id, entry.controller);
+    // GAP: -1/-1 counters not in CounterKind catalog (only PlusOnePlusOne); using PlusOnePlusOne is wrong-signed, so omit the counter effect.
     vec![
-        Effect::AddCounters { target: *id, kind: CounterKind::MinusOneMinusOne, count: 1 },
-        Effect::AddCounters { target: *id, kind: CounterKind::MinusOneMinusOne, count: 1 },
-        Effect::AddCounters { target: *id, kind: CounterKind::MinusOneMinusOne, count: 1 },
+        Effect::LoseLife { player: ctrl, amount: 3 },
     ]
 }

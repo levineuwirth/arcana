@@ -1,9 +1,5 @@
-//! Blazing Hope — `{W}` instant. "Exile target creature with power
-//! greater than or equal to your life total."
-//!
-//! The "power >= your life total" target restriction is dynamic and
-//! not expressible as a static `ObjectFilter`; the target is a plain
-//! creature and the exile is emitted.
+//! Blazing Hope — `{W}` instant. "Exile target creature with power greater
+//! than or equal to your life total."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,12 +20,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target creature with power greater than or equal to your life total.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target creature with power greater than or equal to your life total.".into(),
+                // GAP: target restriction "power >= your life total" depends on a dynamic
+                // life value; ObjectFilter has only a static with_min_power. Targets any creature.
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,10 +37,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: dynamic "power >= your life total" target restriction not
-    // expressible in a static ObjectFilter.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

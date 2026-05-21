@@ -1,5 +1,5 @@
-//! Undying Evil — `{B}` instant. "Target creature gains undying
-//! until end of turn."
+//! Undying Evil — `{B}` instant. Target creature gains undying until
+//! end of turn. (Granted via GrantKeyword Undying.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,7 +30,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::GrantKeyword {

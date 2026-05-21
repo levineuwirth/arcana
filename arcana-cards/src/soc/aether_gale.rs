@@ -21,30 +21,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    let nonland = || ObjectFilter::permanent().without_types(TypeLine::LAND.into());
+    let mut reqs: Vec<TargetRequirement> = Vec::with_capacity(6);
+    for _ in 0..6 {
+        reqs.push(TargetRequirement {
+            filter: TargetFilter::Permanent(nonland()),
+            count: TargetCount::Exactly(1),
+            controller: None,
+        });
+    }
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Return six target nonland permanents to their owners' hands.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(6),
-                controller: None,
-            }],
+            target_requirements: reqs,
             modal: None,
             effect: resolve,
         }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::ReturnToHand { target: *id }),
-            _ => None,
-        })
-        .collect()
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut out: Vec<Effect> = Vec::new();
+    for t in entry.targets.targets.iter().take(6) {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::ReturnToHand { target: *id });
+        }
+    }
+    out
 }

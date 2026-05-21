@@ -1,9 +1,7 @@
-//! Pigment Storm — `{3}{R}{R}` sorcery. "Pigment Storm deals 5 damage to
-//! target creature. Excess damage is dealt to that creature's controller
-//! instead."
-//!
-//! GAP: no 'excess damage to controller' replacement; emitting 5 damage to
-//! the targeted creature.
+//! Pigment Storm — `{3}{R}{R}` sorcery. "Pigment Storm deals 5
+//! damage to target creature. Excess damage is dealt to that
+//! creature's controller instead." GAP: excess-damage-to-controller
+//! rider not in catalog; emit the 5 damage to the creature only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,6 +38,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: excess-damage redirection rider not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

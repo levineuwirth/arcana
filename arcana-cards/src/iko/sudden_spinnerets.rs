@@ -1,11 +1,10 @@
 //! Sudden Spinnerets — `{G}` instant. "Target creature gets +1/+3
 //! until end of turn. Put a reach counter on it. Untap it."
 //!
-//! GAP: CounterKind::Reach (only PlusOnePlusOne is catalogued). The
-//! reach 'counter' is modeled as a direct GrantKeyword(Reach) for the
-//! turn instead.
+//! The +1/+3 and Untap are expressed. A reach counter is not a
+//! supported counter kind (only +1/+1) — GAP.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -35,16 +34,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'reach counter' (only PlusOnePlusOne kind exists) — model
-    // as until-end-of-turn reach grant.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: a reach counter is not a supported counter kind.
     vec![
         Effect::Pump {
             target: *id,
             power: 1,
             toughness: 3,
             duration: Duration::EndOfTurn,
-            keywords: vec![KeywordAbility::Reach],
+            keywords: vec![],
         },
         Effect::Untap { target: *id },
     ]

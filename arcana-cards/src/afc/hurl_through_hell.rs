@@ -1,8 +1,7 @@
 //! Hurl Through Hell — `{2}{B}{R}` instant. "Exile target creature.
 //! Until the end of your next turn, you may cast that card and you
 //! may spend mana as though it were mana of any color to cast that
-//! spell." The cast-from-exile grant has no primitive; the exile is
-//! emitted.
+//! spell."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,9 +31,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: cast-from-exile permission grant has no primitive.
     vec![Effect::ExilePermanent { target: *id }]
+    // GAP: "until the end of your next turn, you may cast that card
+    // (spending mana as any color)" — a temporary play-permission /
+    // mana-color grant has no catalog Effect variant; only the exile
+    // is expressed.
 }

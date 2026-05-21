@@ -1,8 +1,8 @@
-//! Full Steam Ahead — `{3}{G}{G}` sorcery.
-//! "Until end of turn, each creature you control gets +2/+2 and gains trample and
-//! 'This creature can't be blocked by more than one creature.'"
-//! The "can't be blocked by more than one creature" ability is not expressible via GrantKeyword.
-//! GAP: no Effect for granting "can't be blocked by more than one creature" to a set of permanents.
+//! Full Steam Ahead — `{3}{G}{G}` sorcery. "Until end of turn, each
+//! creature you control gets +2/+2 and gains trample and 'This
+//! creature can't be blocked by more than one creature.'" Granting
+//! the menace-style restriction text isn't a catalog Effect, but we
+//! emit ForEach over your creatures with +2/+2 + trample.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -12,7 +12,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,32 +25,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Until end of turn, each creature you control gets +2/+2 and gains trample and \"This creature can't be blocked by more than one creature.\"".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Until end of turn, each creature you control gets +2/+2 and gains trample and \"This creature can't be blocked by more than one creature.\"".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let filter = ObjectFilter::creature();
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    let mut effects = vec![
-        Effect::ForEach {
-            targets: ids.clone(),
-            effect: Box::new(Effect::Pump {
-                target: NULL_OBJECT_ID,
-                power: 2,
-                toughness: 2,
-                duration: Duration::EndOfTurn,
-                keywords: vec![KeywordAbility::Trample],
-            }),
-        },
-    ];
-    // GAP: no Effect for granting "can't be blocked by more than one creature"
-    let _ = ids;
-    effects
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    // GAP: granting an inline "can't be blocked by more than one creature" ability not in catalog.
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::Pump {
+            target: NULL_OBJECT_ID,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Trample],
+        }),
+    }]
 }

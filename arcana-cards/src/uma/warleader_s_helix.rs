@@ -1,5 +1,5 @@
-//! Warleader's Helix — `{2}{R}{W}` instant, "Warleader's Helix deals 4
-//! damage to any target and you gain 4 life."
+//! Warleader's Helix — `{2}{R}{W}` instant. Deals 4 damage to any target;
+//! you gain 4 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

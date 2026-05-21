@@ -1,4 +1,4 @@
-//! Fill with Fright — `{3}{B}` sorcery, "Target player discards two
+//! Fill with Fright — `{3}{B}` sorcery. "Target player discards two
 //! cards. Scry 2."
 
 use arcana_core::effects::{DiscardChoice, Effect};
@@ -34,18 +34,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let p = match t {
+        TargetChoice::Player(p) => *p,
+        _ => return Vec::new(),
     };
     vec![
         Effect::Discard {
-            player: *p,
+            player: p,
             count: 2,
             choice: DiscardChoice::ControllerChooses,
         },
-        Effect::Scry {
-            player: entry.controller,
-            count: 2,
-        },
+        Effect::Scry { player: entry.controller, count: 2 },
     ]
 }

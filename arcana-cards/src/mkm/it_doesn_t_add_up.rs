@@ -1,8 +1,8 @@
-//! It Doesn't Add Up — `{3}{B}{B}` instant. "Return target creature
-//! card from your graveyard to the battlefield. Suspect it."
+//! It Doesn't Add Up — `{3}{B}{B}` instant. "Return target creature card
+//! from your graveyard to the battlefield. Suspect it."
 //!
-//! The reanimation is expressible. "Suspect" (grants menace and
-//! can't-block) is not a catalog Effect and is omitted.
+//! Reanimation primitive expressible; the Suspect rider (menace + can't block
+//! marker on the returned creature) is not a catalog primitive — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,19 +26,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature card from your graveyard to the battlefield. Suspect it.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target creature card from your graveyard to the battlefield. Suspect it. (It has menace and can't block.)".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -49,8 +50,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        // GAP: "Suspect" (grant menace + can't-block) not expressible.
-    ]
+    // GAP: 'Suspect it' (menace + can't-block marker) — Suspect mechanic not modeled.
+    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

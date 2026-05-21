@@ -1,8 +1,8 @@
 //! Thirst for Meaning — `{2}{U}` instant. "Draw three cards. Then
 //! discard two cards unless you discard an enchantment card."
 //!
-//! GAP: 'discard an enchantment to skip the discard tax' isn't a
-//! catalog primitive. We model the draw + base discard-of-2.
+//! The draw and the two-card discard are expressed. The "unless you
+//! discard an enchantment card" alternative is not expressible — GAP.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -32,7 +32,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: 'discard an enchantment to skip the tax' branch.
+    // GAP: the "unless you discard an enchantment card" alternative is
+    // not expressible.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::Discard {

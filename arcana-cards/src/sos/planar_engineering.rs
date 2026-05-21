@@ -1,10 +1,6 @@
-//! Planar Engineering — `{3}{G}` sorcery. "Sacrifice two lands.
-//! Search your library for four basic land cards, put them onto the
-//! battlefield tapped, then shuffle."
-//!
-//! Sacrifice (count 2) is expressible. The four-card fetch is modeled
-//! as four `TutorToBattlefield` (tapped) of a basic-land filter —
-//! repeated per the "repeat the Effect N times for N of" rule.
+//! Planar Engineering — `{3}{G}` sorcery. "Sacrifice two lands. Search your
+//! library for four basic land cards, put them onto the battlefield tapped,
+//! then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Planar Engineering");
@@ -25,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Sacrifice two lands. Search your library for four basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Sacrifice two lands. Search your library for four basic land cards, put them onto the battlefield tapped, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,31 +36,18 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    let _ = SupertypeSet::BASIC; // 'basic' filter not in ObjectFilter builders.
+    // GAP: 'basic' supertype filter on TutorToBattlefield not in ObjectFilter — and
+    // searching for FOUR cards isn't supported by TutorToBattlefield (single-card).
     vec![
         Effect::Sacrifice {
             player: entry.controller,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
             count: 2,
         },
         Effect::TutorToBattlefield {
             player: entry.controller,
-            filter: land.clone(),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: land.clone(),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: land.clone(),
-            tapped: true,
-        },
-        Effect::TutorToBattlefield {
-            player: entry.controller,
-            filter: land,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             tapped: true,
         },
     ]

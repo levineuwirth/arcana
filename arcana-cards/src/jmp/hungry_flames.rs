@@ -1,5 +1,5 @@
-//! Hungry Flames — `{2}{R}` instant. "Hungry Flames deals 3 damage
-//! to target creature and 2 damage to target player or planeswalker."
+//! Hungry Flames — `{2}{R}` instant. "Hungry Flames deals 3 damage to
+//! target creature and 2 damage to target player or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,9 +23,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Hungry Flames deals 3 damage to target creature and 2 damage to target player or planeswalker.".into(),
+            // GAP: second requirement is "player or planeswalker"; modeled
+            // as any_target since there is no exact filter for it.
             target_requirements: vec![
                 TargetRequirement::target_creature(),
-                TargetRequirement::target_player(),
+                TargetRequirement::any_target(),
             ],
             modal: None,
             effect: resolve,
@@ -33,24 +35,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dt(t: &TargetChoice) -> Option<DamageTarget> {
-    match t {
-        TargetChoice::Object(id) => Some(DamageTarget::Object(*id)),
-        TargetChoice::Player(p) => Some(DamageTarget::Player(*p)),
-        TargetChoice::ObjectOrPlayer(o) => match o {
-            ObjectOrPlayer::Object(id) => Some(DamageTarget::Object(*id)),
-            ObjectOrPlayer::Player(p) => Some(DamageTarget::Player(*p)),
-        },
-    }
-}
-
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let mut effects = Vec::new();
-    if let Some(t) = entry.targets.targets.first().and_then(dt) {
-        effects.push(Effect::DealDamage { source: entry.source, target: t, amount: 3 });
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 3,
+        });
     }
-    if let Some(t) = entry.targets.targets.get(1).and_then(dt) {
-        effects.push(Effect::DealDamage { source: entry.source, target: t, amount: 2 });
+    if let Some(target) = entry.targets.targets.get(1) {
+        let dt = match target {
+            TargetChoice::Object(id) => DamageTarget::Object(*id),
+            TargetChoice::Player(p) => DamageTarget::Player(*p),
+            TargetChoice::ObjectOrPlayer(o) => match o {
+                ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+                ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+            },
+        };
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 2,
+        });
     }
     effects
 }

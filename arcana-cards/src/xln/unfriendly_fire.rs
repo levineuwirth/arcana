@@ -1,5 +1,5 @@
-//! Unfriendly Fire — `{4}{R}` instant, "Unfriendly Fire deals 4 damage
-//! to any target."
+//! Unfriendly Fire — `{4}{R}` instant. "Unfriendly Fire deals 4
+//! damage to any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -35,9 +35,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -46,9 +44,5 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 4,
-    }]
+    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 4 }]
 }

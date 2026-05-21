@@ -1,8 +1,6 @@
-//! Divine Arrow — `{1}{W}` instant. "Divine Arrow deals 4 damage to target
-//! attacking or blocking creature."
-//!
-//! GAP: no attacking-or-blocking filter; falling back to plain
-//! target_creature().
+//! Divine Arrow — `{1}{W}` instant. "Divine Arrow deals 4 damage to
+//! target attacking or blocking creature." Attacking/blocking filter
+//! not expressible; emit as plain creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

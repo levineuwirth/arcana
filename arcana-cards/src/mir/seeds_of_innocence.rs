@@ -22,12 +22,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all artifacts. They can't be regenerated. The controller of each of those artifacts gains life equal to its mana value.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all artifacts. They can't be regenerated. The \
+                       controller of each of those artifacts gains life equal \
+                       to its mana value.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -36,17 +39,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // The per-controller life-equal-to-mana-value rider has no catalog
-    // effect; the "destroy all artifacts" board wipe is implemented.
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
-        entry.controller,
-    );
+    let filter = ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into());
+    let ids = script::ids_matching(state, &filter, entry.controller);
+    // GAP: the life-gain rider keyed to each artifact's mana value and
+    // its controller cannot be expressed; emit only the destroy-all.
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: NULL_OBJECT_ID,
-        }),
+        effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }]
 }

@@ -1,5 +1,5 @@
-//! Swords to Plowshares — `{W}` instant.
-//! "Exile target creature. Its controller gains life equal to its power."
+//! Swords to Plowshares — `{W}` instant. "Exile target creature. Its
+//! controller gains life equal to its power."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,29 +21,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Exile target creature. Its controller gains life equal to its power.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Exile target creature. Its controller gains life equal to its power.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id).max(0) as u32;
-    // GAP: "its controller" — we don't have a script helper to get the controller of a permanent.
-    // We use the spell controller as the gain-life target; this is incorrect for opponent creatures.
-    // The exile is correct; the life gain recipient is partially wrong for targeted opponent creatures.
+    let amount = script::power_of(state, *id).max(0) as u32;
+    let controller = script::target_controller(state, *id, entry.controller);
     vec![
         Effect::ExilePermanent { target: *id },
-        Effect::GainLife { player: entry.controller, amount: power },
+        Effect::GainLife { player: controller, amount },
     ]
 }

@@ -1,9 +1,7 @@
 //! Thoughtweft Charge — `{1}{G}` instant. "Target creature gets +3/+3
 //! until end of turn. If a creature entered the battlefield under
-//! your control this turn, draw a card."
-//!
-//! "Creature entered the battlefield under your control this turn"
-//! is not in `script::*`; only the pump is modeled.
+//! your control this turn, draw a card." The this-turn-ETB predicate
+//! isn't a script helper; emit the pump and GAP the conditional draw.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,18 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +3/+3 until end of turn. If a creature entered the battlefield under your control this turn, draw a card.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +3/+3 until end of turn. If a creature entered the battlefield under your control this turn, draw a card.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "creature ETB under your control this turn" condition not in script::*.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'a creature entered under your control this turn' predicate.
     vec![Effect::Pump {
         target: *id,
         power: 3,

@@ -1,6 +1,5 @@
-//! Hornswoggle — `{2}{U}` instant, "Counter target creature spell.
-//! You create a Treasure token." The Treasure token (with its activated
-//! mana ability) is not expressible; the counter is.
+//! Hornswoggle — `{2}{U}` instant. Counter target creature spell. You
+//! create a Treasure token.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,24 +22,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target creature spell. You create a Treasure token.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(
-                    ObjectFilter::default().with_types(TypeLine::CREATURE.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target creature spell. You create a Treasure token.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: Treasure token with "{T}, Sacrifice: add one mana of any
-    // color" activated ability is not expressible.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: Treasure token (mana-tap activated ability) not expressible as a
+    // static TokenDefinition.
     vec![Effect::Counter { target: *id }]
 }

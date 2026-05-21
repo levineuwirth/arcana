@@ -1,6 +1,8 @@
 //! Molten Birth — `{1}{R}{R}` sorcery. "Create two 1/1 red Elemental
 //! creature tokens, then flip a coin. If you win the flip, return
-//! Molten Birth to its owner's hand."
+//! Molten Birth to its owner's hand." Coin-flip and 'return this spell
+//! to hand' aren't catalog primitives; only the token creation is
+//! modeled.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +14,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Molten Birth");
-    let _e = reg.interner_mut().intern("Elemental");
+    let _elemental = reg.interner_mut().intern("Elemental");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{R}{R}").expect("valid cost")),
@@ -21,17 +23,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create two 1/1 red Elemental creature tokens, then flip a coin. If you win the flip, return Molten Birth to its owner's hand.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create two 1/1 red Elemental creature tokens, then flip a coin. If you win the flip, return Molten Birth to its owner's hand.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let elemental = reg.interner().lookup("Elemental").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let elemental = reg
+        .interner()
+        .lookup("Elemental")
+        .expect("Elemental interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elemental);
     let token = TokenDefinition {
@@ -44,8 +54,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "flip a coin; if you win, return Molten Birth to hand" —
-    // coin flip and self-buyback are not expressible.
+    // GAP: coin-flip and 'return this spell to its owner's hand' have
+    // no catalog primitives.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

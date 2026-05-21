@@ -3,10 +3,8 @@
 //! library. Put one of those cards into your hand and the other on
 //! the bottom of your library."
 //!
-//! The 'look at top 2, keep 1, bottom 1' shape is closest to Scry 1
-//! then DrawCards 1 — modeled accordingly (slight semantic drift on
-//! the placement-vs-bottom step). The 'up to one target' is treated
-//! as exactly one target via target_creature.
+//! The damage is expressed. The look-at-top-two / one-to-hand /
+//! one-to-bottom selection has no engine primitive — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -15,7 +13,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,6 +42,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: look-at-top-two then one-to-hand / one-to-bottom selection
+    // is not expressible.
     let mut effects = Vec::new();
     if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
         effects.push(Effect::DealDamage {
@@ -50,8 +52,5 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             amount: 5,
         });
     }
-    // Modeling 'look at top 2, keep 1, bottom 1' as Scry 1 + Draw 1.
-    effects.push(Effect::Scry { player: entry.controller, count: 1 });
-    effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
     effects
 }

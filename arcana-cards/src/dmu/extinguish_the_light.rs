@@ -1,9 +1,7 @@
-//! Extinguish the Light — `{2}{B}{B}` instant. "Destroy target creature
-//! or planeswalker. If its mana value was 3 or less, you gain 3 life."
-//!
-//! GAP: conditional life gain based on target's mana value (runtime
-//! object property check) not directly expressible; emitting destroy and
-//! a best-effort life gain (the condition cannot be evaluated).
+//! Extinguish the Light — `{2}{B}{B}` instant. "Destroy target
+//! creature or planeswalker. If its mana value was 3 or less, you
+//! gain 3 life." GAP: branch on destroyed target's mana value not
+//! expressible at resolution; emit the destroy only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +28,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target creature or planeswalker. If its mana value was 3 or less, you gain 3 life.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types_any(TypeLine::CREATURE.into()).with_types_any(TypeLine::PLANESWALKER.into())),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -43,9 +46,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: post-destroy mana-value conditional lifegain not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional life gain "if mana value was 3 or less" requires
-    // runtime mana-value query; emitting destroy only.
     vec![Effect::DestroyPermanent { target: *id }]
 }

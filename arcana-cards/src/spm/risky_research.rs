@@ -1,5 +1,5 @@
-//! Risky Research — `{2}{B}` sorcery. "Surveil 2, then draw two cards.
-//! You lose 2 life."
+//! Risky Research — `{2}{B}` sorcery. "Surveil 2, then draw two
+//! cards. You lose 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,14 +28,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
-        Effect::Surveil { player: entry.controller, count: 2 },
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::LoseLife { player: entry.controller, amount: 2 },
+        Effect::Surveil {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::DrawCards {
+            player: entry.controller,
+            count: 2,
+        },
+        Effect::LoseLife {
+            player: entry.controller,
+            amount: 2,
+        },
     ]
 }

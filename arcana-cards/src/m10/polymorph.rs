@@ -1,11 +1,9 @@
 //! Polymorph — `{3}{U}` sorcery. "Destroy target creature. It can't
-//! be regenerated. Its controller reveals cards from the top of
-//! their library until they reveal a creature card. The player puts
-//! that card onto the battlefield, then shuffles all other cards
-//! revealed this way into their library."
-//!
-//! The reveal-until-creature-then-put-onto-battlefield rider is not
-//! expressible; only the destroy is emitted.
+//! be regenerated. Its controller reveals cards from the top of their
+//! library until they reveal a creature card. The player puts that
+//! card onto the battlefield, then shuffles all other cards revealed
+//! this way into their library." Reveal-until-creature is not in the
+//! catalog; emit the destroy and GAP the polymorph part.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,19 +24,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature. It can't be regenerated. Its controller reveals cards from the top of their library until they reveal a creature card. The player puts that card onto the battlefield, then shuffles all other cards revealed this way into their library.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature. It can't be regenerated. Its controller reveals cards from the top of their library until they reveal a creature card. The player puts that card onto the battlefield, then shuffles all other cards revealed this way into their library.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: reveal-until-creature replacement-onto-battlefield is not in catalog; emitting destroy only.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: reveal-until-creature then put onto battlefield is not in
-    // the effect catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

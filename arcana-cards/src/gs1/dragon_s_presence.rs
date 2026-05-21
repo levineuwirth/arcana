@@ -1,8 +1,5 @@
-//! Dragon's Presence — `{2}{W}` instant. "Dragon's Presence deals 5 damage to
-//! target attacking or blocking creature."
-//!
-//! GAP: ObjectFilter has no "attacking or blocking" refinement; the target is
-//! filtered only as a creature. Damage amount and shape are otherwise exact.
+//! Dragon's Presence — `{2}{W}` instant. "Dragon's Presence deals 5
+//! damage to target attacking or blocking creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,13 +21,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Dragon's Presence deals 5 damage to target attacking or blocking creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Dragon's Presence deals 5 damage to target attacking or blocking creature.".into(),
+            // GAP: ObjectFilter has no attacking/blocking predicate;
+            // closest expressible target is target creature.
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 

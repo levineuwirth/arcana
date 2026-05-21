@@ -27,3 +27,4 @@ pub mod blitz_of_the_thunder_raptor;
 pub mod convolute;
 pub mod zenith_flare;
 pub mod blazing_volley;
+pub mod dire_tactics;

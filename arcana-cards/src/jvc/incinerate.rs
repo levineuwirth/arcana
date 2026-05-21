@@ -1,6 +1,7 @@
 //! Incinerate — `{1}{R}` instant. "Incinerate deals 3 damage to any
 //! target. A creature dealt damage this way can't be regenerated this
-//! turn."
+//! turn." The 'can't be regenerated this turn' rider isn't a catalog
+//! primitive.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -22,16 +23,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Incinerate deals 3 damage to any target. A creature dealt damage this way can't be regenerated this turn.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Incinerate deals 3 damage to any target. A creature dealt damage this way can't be regenerated this turn.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -41,6 +47,9 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // "Can't be regenerated this turn" is a non-load-bearing rider.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 3 }]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 3,
+    }]
 }

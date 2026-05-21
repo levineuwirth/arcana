@@ -1,5 +1,5 @@
-//! Lay of the Land — `{G}` sorcery. "Search your library for a basic
-//! land card, reveal it, put it into your hand, then shuffle."
+//! Lay of the Land — `{G}` sorcery. Search your library for a basic
+//! land card, reveal it, put it into your hand, then shuffle.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,9 +29,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "basic" restriction isn't a filter builder; a land tutor is
-    // the closest expressible form.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "basic" predicate not expressible — approximate with any LAND card.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

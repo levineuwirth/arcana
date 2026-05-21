@@ -1,11 +1,6 @@
-//! Realms Uncharted — `{2}{G}` instant. "Search your library for up to
-//! four land cards with different names and reveal them. An opponent
-//! chooses two of those cards. Put the chosen cards into your graveyard
-//! and the rest into your hand. Then shuffle."
-//!
-//! GAP: opponent-chooses-two-from-revealed-set interaction not expressible.
-//! GAP: searching for up to 4 cards with different names not expressible.
-//! Approximated as tutoring a single land to hand.
+//! Realms Uncharted — `{2}{G}` instant. Search for up to four land cards
+//! with different names, reveal, opponent chooses two for graveyard, rest
+//! to hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,10 +36,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: multi-card search + opponent-chooses split not expressible
-    vec![Effect::TutorToHand {
-        player: entry.controller,
-        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-        reveal: true,
-    }]
+    // GAP: opponent-chooses split between graveyard and hand not in catalog.
+    // Best-effort tutor two lands to hand.
+    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
+    vec![
+        Effect::TutorToHand { player: entry.controller, filter: land_filter.clone(), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: land_filter, reveal: true },
+    ]
 }

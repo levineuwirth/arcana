@@ -1,7 +1,7 @@
 //! Pirate's Landing — `{R}` sorcery. "Draw a card. If mana from a Treasure
-//! was spent to cast this spell, seek a Pirate card instead." No tracking of
-//! "mana from Treasure spent" and no Seek Effect. We emit the base draw; GAP
-//! the conditional seek.
+//! was spent to cast this spell, seek a Pirate card instead." The
+//! Treasure-mana check and the seek mechanic have no catalog Effect, so
+//! only the base draw is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,9 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no "mana from Treasure" tracking and no Seek Effect; emitting only the base draw.
-    vec![Effect::DrawCards {
-        player: entry.controller,
-        count: 1,
-    }]
+    // GAP: the "mana from a Treasure was spent" condition and the seek mechanic
+    // have no catalog representation; only the base draw is emitted.
+    vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

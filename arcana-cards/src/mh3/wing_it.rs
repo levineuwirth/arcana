@@ -1,5 +1,8 @@
 //! Wing It — `{1}{W}` instant. "Target creature gets +2/+2 until end
-//! of turn. Put a flying counter on it. Scry 1."
+//! of turn. Put a flying counter on it. Scry 1." 'Flying counter' is
+//! a counter kind not exposed (only PlusOnePlusOne). We pump +2/+2,
+//! grant Flying via Pump.keywords (closest expressible analog), and
+//! Scry 1.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -21,20 +24,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +2/+2 until end of turn. Put a flying counter on it. Scry 1.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +2/+2 until end of turn. Put a flying counter on it. Scry 1.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // "Flying counter" grants flying; modeled as a keyword grant
-    // (no permanent flying-counter primitive — duration approximated
-    // as end of turn alongside the pump).
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'flying counter' (permanent flying) — only PlusOnePlusOne
+    // counters exist; we grant Flying via Pump.keywords (end-of-turn
+    // duration) as the closest expressible analog.
     vec![
         Effect::Pump {
             target: *id,

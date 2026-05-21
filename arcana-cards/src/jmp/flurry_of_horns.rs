@@ -20,17 +20,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create two 2/3 red Minotaur creature tokens with haste.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create two 2/3 red Minotaur creature tokens with haste.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let minotaur = reg.interner().lookup("Minotaur").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let minotaur = reg.interner().lookup("Minotaur")
+        .expect("Minotaur interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(minotaur);
     let token = TokenDefinition {
@@ -44,13 +50,7 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
+        Effect::CreateToken { controller: entry.controller, token: token.clone() },
+        Effect::CreateToken { controller: entry.controller, token },
     ]
 }

@@ -2,8 +2,8 @@
 //! planeswalker. If today's date is May 6th, scry 1. If today's date
 //! is May 7th, fateseal 1."
 //!
-//! Destroy is expressible; the calendar-date-conditional scry/fateseal
-//! has no catalog primitive (no real-date predicate; fateseal absent).
+//! GAP: real-world date gating and fateseal aren't modeled; emit the
+//! destroy only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,15 +27,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature or planeswalker. If today's \
-                   date is May 6th, scry 1. If today's date is May 7th, \
-                   fateseal 1."
-                .into(),
+            text: "Destroy target creature or planeswalker. If today's date is May 6th, scry 1. If today's date is May 7th, fateseal 1.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().with_types_any(TypeLine(
-                        TypeLine::CREATURE | TypeLine::PLANESWALKER,
-                    )),
+                    ObjectFilter::permanent().with_types_any(
+                        arcana_core::types::TypeLine(
+                            TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                        ),
+                    ),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -51,13 +50,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    // GAP: calendar-date-conditional scry/fateseal not expressible (no
-    // real-date predicate; fateseal absent from the catalog).
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    // GAP: real-world date gating + fateseal are not modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

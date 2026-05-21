@@ -1,8 +1,7 @@
-//! Echoing Calm — `{1}{W}` instant. "Destroy target enchantment and all
-//! other enchantments with the same name as that enchantment."
-//!
-//! GAP: no "with the same name as that enchantment" filter; falling back
-//! to destroying just the target enchantment.
+//! Echoing Calm — `{1}{W}` instant. "Destroy target enchantment and
+//! all other enchantments with the same name as that enchantment."
+//! "Same name as target" comparison not in catalog; emit destroy
+//! target only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target enchantment and all other enchantments with the same name as that enchantment.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+                        ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -48,6 +47,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no "same-name as target" filter.
+    // GAP: "all other permanents with the same name" — no name-equality ObjectFilter.
     vec![Effect::DestroyPermanent { target: *id }]
 }

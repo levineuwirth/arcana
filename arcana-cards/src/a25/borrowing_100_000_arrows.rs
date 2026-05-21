@@ -1,10 +1,6 @@
-//! Borrowing 100,000 Arrows — `{2}{U}` sorcery. "Draw a card for each tapped
-//! creature target opponent controls."
-//!
-//! GAP: cannot inspect the chosen target opponent's tapped creatures at
-//! resolution because count_matching takes the resolver's controller, not an
-//! arbitrary player. Best effort: count tapped creatures controlled by
-//! Opponent (any opponent) — strictly the same in 2-player games.
+//! Borrowing 100,000 Arrows — `{2}{U}` sorcery. "Draw a card for
+//! each tapped creature target opponent controls." Per-target-player
+//! count of tapped creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,15 +37,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
     let n = script::count_matching(
         state,
-        &ObjectFilter::creature()
-            .controlled_by(ControllerConstraint::Opponent)
-            .tapped_only(),
-        entry.controller,
+        &ObjectFilter::creature().tapped_only(),
+        *p,
     );
-    vec![Effect::DrawCards {
-        player: entry.controller,
-        count: n,
-    }]
+    vec![Effect::DrawCards { player: entry.controller, count: n }]
 }

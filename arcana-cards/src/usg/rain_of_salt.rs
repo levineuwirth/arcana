@@ -26,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy two target lands.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                        ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::Exactly(2),
                     controller: None,
@@ -42,11 +42,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effs = Vec::new();
+    let mut effects = Vec::new();
     for t in entry.targets.targets.iter() {
         if let TargetChoice::Object(id) = t {
-            effs.push(Effect::DestroyPermanent { target: *id });
+            effects.push(Effect::DestroyPermanent { target: *id });
         }
     }
-    effs
+    effects
 }

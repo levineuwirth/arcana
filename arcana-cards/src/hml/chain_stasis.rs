@@ -1,8 +1,9 @@
 //! Chain Stasis — `{U}` instant. "You may tap or untap target
 //! creature. Then that creature's controller may pay {2}{U}. If the
-//! player does, they may copy this spell..." The optional copy chain
-//! is not expressible; the tap/untap mode choice is not modeled (Tap
-//! is emitted as the representative effect).
+//! player does, they may copy this spell and may choose a new target
+//! for that copy." GAP: copy-spell-chain. Express only the optional
+//! tap/untap modal — pick untap as the canonical effect since we
+//! can't express the modal toggle.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,12 +24,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "You may tap or untap target creature. Then that creature's controller may pay {2}{U}. If the player does, they may copy this spell and may choose a new target for that copy.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "You may tap or untap target creature. Then that creature's controller may pay {2}{U}. If the player does, they may copy this spell and may choose a new target for that copy.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -37,10 +39,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: tap-OR-untap modal choice and spell-copy chain not in catalog.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: tap-or-untap mode choice and the optional
-    // pay-{2}{U}-to-copy chain are not expressible; Tap is emitted as
-    // the representative effect.
-    vec![Effect::Tap { target: *id }]
+    vec![Effect::Untap { target: *id }]
 }

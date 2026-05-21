@@ -1,9 +1,10 @@
-//! Storm the Citadel — `{4}{G}` sorcery. "Until end of turn, creatures you
-//! control get +2/+2 and gain 'Whenever this creature deals combat damage to
-//! a player or planeswalker, destroy target artifact or enchantment defending
-//! player controls.'"
-//! GAP: granting a triggered ability to each creature until end of turn is not
-//! expressible via the catalog. The board-wide +2/+2 Pump is implemented.
+//! Storm the Citadel — `{4}{G}` sorcery. "Until end of turn,
+//! creatures you control get +2/+2 and gain 'Whenever this creature
+//! deals combat damage to a player or planeswalker, destroy target
+//! artifact or enchantment defending player controls.'" The
+//! granted-triggered-ability with a chained target isn't expressible
+//! via GrantKeyword/Pump — best-effort: +2/+2 to creatures you
+//! control; GAP the granted trigger.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
+    // GAP: granted-triggered-ability ('whenever this deals combat damage, destroy target artifact/enchantment').
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
@@ -36,15 +38,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, entry.controller);
-    // GAP: granting a triggered ability (combat damage trigger) until end of turn is not expressible
-    ids.into_iter().map(|id| Effect::Pump {
-        target: id,
-        power: 2,
-        toughness: 2,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }).collect()
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ForEach {
+        targets: script::ids_matching(
+            state,
+            &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            entry.controller,
+        ),
+        effect: Box::new(Effect::Pump {
+            target: NULL_OBJECT_ID,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        }),
+    }]
 }

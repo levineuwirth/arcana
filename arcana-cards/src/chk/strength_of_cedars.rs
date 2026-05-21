@@ -1,6 +1,5 @@
-//! Strength of Cedars — `{4}{G}` instant — Arcane.
-//! "Target creature gets +X/+X until end of turn, where X is the number of
-//! lands you control."
+//! Strength of Cedars — `{4}{G}` instant (Arcane). "Target creature gets
+//! +X/+X until end of turn, where X is the number of lands you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -23,26 +22,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +X/+X until end of turn, where X is the number of lands you control.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +X/+X until end of turn, where X is the number of lands you control.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let x = script::count_matching(
         state,
-        &ObjectFilter::new().with_types(TypeLine::LAND.into()).controlled_by(ControllerConstraint::You),
+        &ObjectFilter::new()
+            .with_types(TypeLine::LAND.into())
+            .controlled_by(ControllerConstraint::You),
         entry.controller,
     ) as i32;
     vec![Effect::Pump {

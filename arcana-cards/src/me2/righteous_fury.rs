@@ -21,29 +21,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all tapped creatures. You gain 2 life for each creature destroyed this way.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all tapped creatures. You gain 2 life for each \
+                       creature destroyed this way.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let filter = ObjectFilter::creature().tapped_only();
     let ids = script::ids_matching(state, &filter, entry.controller);
-    let n = ids.len() as u32;
+    // Life gain scales: 2 per creature that will be destroyed.
+    let life = (ids.len() as u32) * 2;
     vec![
         Effect::ForEach {
             targets: ids,
-            effect: Box::new(Effect::DestroyPermanent {
-                target: NULL_OBJECT_ID,
-            }),
+            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
         },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 2 * n,
-        },
+        Effect::GainLife { player: entry.controller, amount: life },
     ]
 }

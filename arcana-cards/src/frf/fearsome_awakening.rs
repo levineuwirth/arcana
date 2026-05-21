@@ -1,9 +1,7 @@
-//! Fearsome Awakening — `{4}{B}` sorcery. "Return target creature card
-//! from your graveyard to the battlefield. If it's a Dragon, put two
-//! +1/+1 counters on it."
-//!
-//! GAP: no subtype-of-target predicate; emitting the reanimate
-//! unconditionally without the +1/+1 rider.
+//! Fearsome Awakening — `{4}{B}` sorcery. "Return target creature
+//! card from your graveyard to the battlefield. If it's a Dragon,
+//! put two +1/+1 counters on it." Conditional on subtype isn't
+//! cleanly composable; GAP the conditional and reanimate plainly.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +10,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -33,7 +32,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
+                        filter: ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -51,6 +51,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no subtype-of-target predicate to gate the +1/+1 counters.
+    // GAP: "if it's a Dragon, put two +1/+1 counters" — no per-id subtype-check Conditional in script::*.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

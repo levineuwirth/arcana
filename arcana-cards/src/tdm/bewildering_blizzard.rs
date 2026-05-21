@@ -1,5 +1,5 @@
-//! Bewildering Blizzard — `{4}{U}{U}` instant, "Draw three cards.
-//! Creatures your opponents control get -3/-0 until end of turn."
+//! Bewildering Blizzard — `{4}{U}{U}` instant. "Draw three cards. Creatures
+//! your opponents control get -3/-0 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -22,17 +22,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw three cards. Creatures your opponents control get -3/-0 until end of turn."
-                .into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw three cards. Creatures your opponents control get -3/-0 until end of turn.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),

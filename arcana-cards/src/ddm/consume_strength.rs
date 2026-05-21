@@ -22,39 +22,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +2/+2 until end of turn. Another target creature gets -2/-2 until end of turn.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +2/+2 until end of turn. Another target creature gets -2/-2 until end of turn.".into(),
+                target_requirements: vec![
+                    TargetRequirement::target_creature(),
+                    TargetRequirement::target_creature(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(a)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let Some(TargetChoice::Object(b)) = entry.targets.targets.get(1) else {
-        return Vec::new();
-    };
-    vec![
-        Effect::Pump {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let targets = &entry.targets.targets;
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(a)) = targets.first() {
+        effects.push(Effect::Pump {
             target: *a,
             power: 2,
             toughness: 2,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        },
-        Effect::Pump {
+        });
+    }
+    if let Some(TargetChoice::Object(b)) = targets.get(1) {
+        effects.push(Effect::Pump {
             target: *b,
             power: -2,
             toughness: -2,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        },
-    ]
+        });
+    }
+    effects
 }

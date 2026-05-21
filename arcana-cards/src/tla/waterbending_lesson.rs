@@ -1,8 +1,5 @@
 //! Waterbending Lesson — `{3}{U}` sorcery — Lesson. "Draw three
 //! cards. Then discard a card unless you waterbend {2}."
-//!
-//! The waterbend alternative cost is not expressible; we model the
-//! draw and the (unconditional) discard.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,23 +19,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw three cards. Then discard a card unless you waterbend {2}.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw three cards. Then discard a card unless you \
+                       waterbend {2}.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "unless you waterbend {2}" alternative cost is not
-    // expressible; discard applied unconditionally.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "unless you waterbend {2}" is an alternative-cost choice
+    // with no Effect; emit the unconditional draw-three plus the
+    // discard branch.
     vec![
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 3,
-        },
+        Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::Discard {
             player: entry.controller,
             count: 1,

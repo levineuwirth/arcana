@@ -1,10 +1,8 @@
 //! Perennation — `{3}{W}{B}{G}` sorcery. "Return target permanent
 //! card from your graveyard to the battlefield with a hexproof counter
-//! and an indestructible counter on it."
-//!
-//! The hexproof/indestructible counter riders are not expressible with
-//! the demonstrated API (no keyword-counter Effect), so only the
-//! reanimation is emitted.
+//! and an indestructible counter on it." Only +1/+1 counters supported;
+//! hexproof / indestructible counters are NOT in CounterKind; emit
+//! reanimate and GAP both counters.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,19 +26,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target permanent card from your graveyard to the battlefield with a hexproof counter and an indestructible counter on it.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::permanent(),
-                },
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return target permanent card from your graveyard to the battlefield with a hexproof counter and an indestructible counter on it.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::permanent(),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -49,8 +48,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: hexproof / indestructible counters not in CounterKind (only PlusOnePlusOne supported).
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: hexproof / indestructible keyword-counter riders not expressible.
+    let _ = entry.controller;
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

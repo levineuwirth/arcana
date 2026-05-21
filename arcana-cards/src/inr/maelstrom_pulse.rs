@@ -1,7 +1,10 @@
-//! Maelstrom Pulse — `{1}{B}{G}` sorcery. "Destroy target nonland permanent
-//! and all other permanents with the same name."
-//! GAP: no "same-name" filter in ObjectFilter; no way to enumerate all
-//! permanents sharing a name with the target.
+//! Maelstrom Pulse — `{1}{B}{G}` sorcery. "Destroy target nonland
+//! permanent and all other permanents with the same name as that
+//! permanent."
+//!
+//! GAP: 'all other permanents with the same name' wipe requires
+//! same-name reflection from the chosen target; not expressible.
+//! Emit the single-target destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,19 +27,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target nonland permanent and all other permanents with the same name.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target nonland permanent and all other permanents with the same name as that permanent.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -47,6 +49,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no same-name filter to enumerate all other permanents sharing the target's name
+    // GAP: same-name board sweep not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -21,19 +21,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Furious Reprisal deals 2 damage to each of two targets.".into(),
-            target_requirements: vec![
-                TargetRequirement::any_target(),
-                TargetRequirement::any_target(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Furious Reprisal deals 2 damage to each of two targets.".into(),
+                target_requirements: vec![
+                    TargetRequirement::any_target(),
+                    TargetRequirement::any_target(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn to_damage_target(t: &TargetChoice) -> Option<DamageTarget> {
+fn target_to_damage(t: &TargetChoice) -> Option<DamageTarget> {
     Some(match t {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -44,11 +45,19 @@ fn to_damage_target(t: &TargetChoice) -> Option<DamageTarget> {
     })
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let mut effects = Vec::new();
     for t in &entry.targets.targets {
-        if let Some(dt) = to_damage_target(t) {
-            effects.push(Effect::DealDamage { source: entry.source, target: dt, amount: 2 });
+        if let Some(dt) = target_to_damage(t) {
+            effects.push(Effect::DealDamage {
+                source: entry.source,
+                target: dt,
+                amount: 2,
+            });
         }
     }
     effects

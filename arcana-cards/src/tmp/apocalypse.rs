@@ -1,6 +1,5 @@
 //! Apocalypse — `{2}{R}{R}{R}` sorcery. "Exile all permanents. You discard
-//! your hand." ForEach over all permanents (using `script::ids_matching`
-//! with `ObjectFilter::permanent()`), then a hand-size discard.
+//! your hand."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -32,16 +31,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(state, &ObjectFilter::permanent(), entry.controller);
-    let n = script::hand_size(state, entry.controller);
+    let targets = script::ids_matching(state, &ObjectFilter::permanent(), entry.controller);
     vec![
         Effect::ForEach {
-            targets: ids,
+            targets,
             effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
         },
         Effect::Discard {
             player: entry.controller,
-            count: n,
+            count: script::hand_size(state, entry.controller),
             choice: DiscardChoice::ControllerChooses,
         },
     ]

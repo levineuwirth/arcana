@@ -1,12 +1,8 @@
-//! Send in the Pest — `{1}{B}` sorcery, "Each opponent discards a card.
-//! You create a 1/1 black and green Pest creature token with 'Whenever
-//! this token attacks, you gain 1 life.'"
-//!
-//! The token's triggered ability ("whenever this token attacks, you gain
-//! 1 life") is not expressible in TokenDefinition.abilities without a
-//! full TriggeredAbilityDef structure — GAP: token triggered ability.
-//! The discard and token creation are modeled; the attack trigger is
-//! omitted.
+//! Send in the Pest — `{1}{B}` sorcery. "Each opponent discards a
+//! card. You create a 1/1 black and green Pest creature token with
+//! 'Whenever this token attacks, you gain 1 life.'" The
+//! token-attack-trigger isn't expressible inside TokenDefinition;
+//! emit the discard + plain Pest token.
 
 use arcana_core::effects::{DiscardChoice, Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -43,7 +39,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let pest = reg.interner().lookup("Pest").expect("Pest interned during register()");
+    let pest = reg.interner().lookup("Pest").expect("Pest interned");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(pest);
     let token = TokenDefinition {
@@ -56,9 +52,14 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: token-printed triggered ability "Whenever this token attacks, you gain 1 life" not expressible in TokenDefinition.
     let mut effects: Vec<Effect> = script::opponents(state, entry.controller)
         .into_iter()
-        .map(|p| Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses })
+        .map(|p| Effect::Discard {
+            player: p,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        })
         .collect();
     effects.push(Effect::CreateToken { controller: entry.controller, token });
     effects

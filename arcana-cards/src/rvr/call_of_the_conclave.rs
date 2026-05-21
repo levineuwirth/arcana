@@ -1,5 +1,5 @@
-//! Call of the Conclave — `{G}{W}` sorcery. "Create a 3/3 green Centaur
-//! creature token."
+//! Call of the Conclave — `{G}{W}` sorcery. Create a 3/3 green Centaur
+//! creature token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -35,14 +35,14 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let centaur = reg.interner().lookup("Centaur").expect("Centaur interned");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(centaur);
+    let centaur = reg.interner().lookup("Centaur").expect("interned");
+    let mut subs = SubtypeSet::default();
+    subs.0.insert(centaur);
     let token = TokenDefinition {
         name: centaur,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: subs,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         keywords: vec![],

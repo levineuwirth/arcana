@@ -1,7 +1,5 @@
-//! Trostani's Judgment — `{5}{W}` instant. "Exile target creature, then
-//! populate."
-//! GAP: Populate mechanic (copy a creature token you control) not in engine
-//! Effect catalog.
+//! Trostani's Judgment — `{5}{W}` instant. Exile target creature, then
+//! populate.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +37,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: Populate (copy a creature token you control) not in engine Effect catalog
+    // GAP: populate (copy-a-creature-token-you-control) not in catalog.
     vec![Effect::ExilePermanent { target: *id }]
 }

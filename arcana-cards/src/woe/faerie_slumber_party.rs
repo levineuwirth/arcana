@@ -1,11 +1,11 @@
-//! Faerie Slumber Party — `{4}{U}{U}` sorcery. "Return all creatures
-//! to their owners' hands. For each opponent who controlled a
-//! creature returned this way, you create two 1/1 blue Faerie
-//! creature tokens with flying ..."
+//! Faerie Slumber Party — `{4}{U}{U}` sorcery. "Return all creatures to their
+//! owners' hands. For each opponent who controlled a creature returned this
+//! way, you create two 1/1 blue Faerie creature tokens with flying and 'This
+//! token can block only creatures with flying.'"
 //!
-//! The mass bounce is expressible via `ForEach`. The token count
-//! ("for each opponent who controlled a creature returned") is
-//! DYNAMIC with no `script::*` helper, so the token clause is GAPped.
+//! Mass bounce expressible via ForEach + ReturnToHand. The 'for each opponent
+//! who controlled a creature returned' token count and the can-only-block
+//! creatures-with-flying restriction are not in catalog — GAP both.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,6 +19,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Faerie Slumber Party");
+    let _ = reg.interner_mut().intern("Faerie");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{U}{U}").expect("valid cost")),
@@ -27,12 +28,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return all creatures to their owners' hands. For each opponent who controlled a creature returned this way, you create two 1/1 blue Faerie creature tokens with flying and \"This token can block only creatures with flying.\"".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return all creatures to their owners' hands. For each opponent who controlled a creature returned this way, you create two 1/1 blue Faerie creature tokens with flying and \"This token can block only creatures with flying.\"".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -42,10 +44,11 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    // GAP: token-creation-count driven by 'distinct opponents who controlled a returned
+    // creature' — that bookkeeping isn't expressible with available helpers; GAP rather
+    // than emit a fixed token count.
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
     }]
-    // GAP: token count "for each opponent who controlled a creature
-    // returned this way" not computable; Faerie tokens omitted.
 }

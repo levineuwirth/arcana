@@ -1,16 +1,13 @@
 //! Flare of Faith — `{1}{W}` instant. "Target creature gets +2/+2
 //! until end of turn. If it's a Human, instead it gets +3/+3 and gains
 //! indestructible until end of turn."
-//!
-//! The "if it's a Human" branch keys on the target's subtype, which is
-//! not queryable with the demonstrated script helpers; the base +2/+2
-//! is emitted and the Human branch GAP'd.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -26,29 +23,41 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +2/+2 until end of turn. If it's a Human, instead it gets +3/+3 and gains indestructible until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets +2/+2 until end of turn. If it's a Human, instead it gets +3/+3 and gains indestructible until end of turn.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "if it's a Human, instead +3/+3 and indestructible" — target subtype not queryable.
-    vec![Effect::Pump {
-        target: *id,
-        power: 2,
-        toughness: 2,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
+    // Determine if target is a Human by checking whether it appears in the Human filter.
+    let humans = script::ids_matching(state, &script::subtype_filter(reg, "Human"), entry.controller);
+    if humans.contains(&id) {
+        vec![Effect::Pump {
+            target: id,
+            power: 3,
+            toughness: 3,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Indestructible],
+        }]
+    } else {
+        vec![Effect::Pump {
+            target: id,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        }]
+    }
 }

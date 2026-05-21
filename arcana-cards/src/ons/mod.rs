@@ -18,3 +18,4 @@ pub mod profane_prayers;
 pub mod strongarm_tactics;
 pub mod unified_strike;
 pub mod ixidor_s_will;
+pub mod brightstone_ritual;

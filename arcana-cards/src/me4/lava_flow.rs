@@ -1,5 +1,4 @@
-//! Lava Flow — `{3}{R}{R}` sorcery. "Destroy target creature or land." Use a
-//! `TargetFilter::Permanent` with `with_types_any` to allow creature OR land.
+//! Lava Flow — `{3}{R}{R}` sorcery. "Destroy target creature or land."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,11 +24,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target creature or land.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types(TypeLine::CREATURE.into())
-                        .with_types_any(TypeLine::LAND.into()),
-                ),
+                filter: TargetFilter::Permanent(ObjectFilter::permanent().with_types_any(
+                    TypeLine(TypeLine::CREATURE | TypeLine::LAND),
+                )),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -40,7 +37,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

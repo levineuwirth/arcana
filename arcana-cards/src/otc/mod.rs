@@ -6,3 +6,4 @@ pub mod hour_of_promise;
 pub mod thrilling_discovery;
 pub mod windfall;
 pub mod heartless_conscription;
+pub mod predators_hour;

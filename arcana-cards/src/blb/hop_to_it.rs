@@ -1,5 +1,5 @@
-//! Hop to It — `{2}{W}` sorcery. "Create three 1/1 white Rabbit
-//! creature tokens."
+//! Hop to It — `{2}{W}` sorcery. "Create three 1/1 white Rabbit creature
+//! tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -29,8 +29,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let rabbit = reg.interner().lookup("Rabbit").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let rabbit = reg.interner().lookup("Rabbit").expect("Rabbit interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(rabbit);
     let token = TokenDefinition {
@@ -44,17 +48,8 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
+        Effect::CreateToken { controller: entry.controller, token: token.clone() },
+        Effect::CreateToken { controller: entry.controller, token: token.clone() },
+        Effect::CreateToken { controller: entry.controller, token },
     ]
 }

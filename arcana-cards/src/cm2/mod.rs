@@ -3,3 +3,6 @@ pub mod relic_crush;
 pub mod spell_crumple;
 pub mod whipflare;
 pub mod unnerve;
+pub mod grip_of_phyresis;
+pub mod fall_of_the_hammer;
+pub mod incite_rebellion;

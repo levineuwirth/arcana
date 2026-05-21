@@ -1,10 +1,8 @@
-//! Pinion Feast — `{4}{G}` instant. "Destroy target creature with
-//! flying. Bolster 2."
+//! Pinion Feast — `{4}{G}` instant. "Destroy target creature with flying.
+//! Bolster 2."
 //!
-//! The destroy is expressible. There is no keyword-based target
-//! filter, so "with flying" is dropped (best-effort). Bolster
-//! (auto-select the creature with least toughness you control and add
-//! two +1/+1 counters) has no catalog primitive and is GAPped.
+//! Destroy half expressible. Bolster (least-toughness pick + +1/+1 counters)
+//! is not a catalog primitive — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,13 +23,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature with flying. Bolster 2.".into(),
-            // GAP: no keyword target filter — "with flying" restriction dropped.
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target creature with flying. Bolster 2.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -42,8 +40,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DestroyPermanent { target: *id },
-        // GAP: Bolster 2 (least-toughness auto-select + counters) not expressible.
-    ]
+    // GAP: 'creature with flying' target filter and 'Bolster 2' (least-toughness pick)
+    // not modeled.
+    vec![Effect::DestroyPermanent { target: *id }]
 }

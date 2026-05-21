@@ -1,11 +1,6 @@
-//! Jace's Ruse — `{3}{U}{U}` sorcery. "Return up to two target
-//! creatures to their owner's hand. You may search your library
-//! and/or graveyard for a card named Jace, Arcane Strategist, reveal
-//! it, and put it into your hand. If you search your library this
-//! way, shuffle."
-//!
-//! The bounces are emitted; the optional named-card multi-zone tutor
-//! is not modeled — GAP.
+//! Jace's Ruse — `{3}{U}{U}` sorcery. "Return up to two target creatures to
+//! their owner's hand. You may search your library and/or graveyard for a card
+//! named Jace, Arcane Strategist, reveal it, and put it into your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,9 +8,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,16 +21,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to two target creatures to their owner's hand. You may search your library and/or graveyard for a card named Jace, Arcane Strategist, reveal it, and put it into your hand. If you search your library this way, shuffle.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::creature()),
-                count: TargetCount::UpTo(2),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Return up to two target creatures to their owner's hand. You may search your library and/or graveyard for a card named Jace, Arcane Strategist, reveal it, and put it into your hand.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -46,14 +40,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional named-card library/graveyard tutor is not modeled.
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::ReturnToHand { target: *id }),
-            _ => None,
-        })
-        .collect()
+    let mut effects = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            effects.push(Effect::ReturnToHand { target: *id });
+        }
+    }
+    // GAP: "search library/graveyard for a card with a specific name" — TutorToHand filters
+    // by ObjectFilter (type/color/cmc), not by card name. The named tutor is omitted.
+    effects
 }

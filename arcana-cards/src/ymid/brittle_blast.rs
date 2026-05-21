@@ -1,7 +1,8 @@
 //! Brittle Blast — `{2}{R}` instant. "Creatures and planeswalkers your
-//! opponents control perpetually gain '...exile if would die.' Brittle Blast
-//! deals 5 damage to target creature or planeswalker." Perpetual replacement
-//! grant has no Effect; we emit only the damage and GAP the rider.
+//! opponents control perpetually gain 'If this permanent would die, exile
+//! it instead.' Brittle Blast deals 5 damage to target creature or
+//! planeswalker." Only the damage is expressible; the perpetual
+//! die-replacement grant is gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -28,11 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Creatures and planeswalkers your opponents control perpetually gain \"If this permanent would die, exile it instead.\" Brittle Blast deals 5 damage to target creature or planeswalker.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types(TypeLine::CREATURE.into())
-                        .with_types_any(TypeLine::PLANESWALKER.into()),
-                ),
+                filter: TargetFilter::Permanent(ObjectFilter::permanent().with_types_any(
+                    TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER),
+                )),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -43,8 +42,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: perpetual "would die, exile instead" grant on opponents' creatures+planeswalkers not expressible.
+    // GAP: granting a perpetual "would die, exile instead" replacement to all
+    // opponent creatures/planeswalkers is not expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

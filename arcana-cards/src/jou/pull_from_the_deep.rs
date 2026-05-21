@@ -1,7 +1,8 @@
-//! Pull from the Deep — `{2}{U}{U}` sorcery, "Return up to one target
+//! Pull from the Deep — `{2}{U}{U}` sorcery. "Return up to one target
 //! instant card and up to one target sorcery card from your graveyard
-//! to your hand. Exile Pull from the Deep." The self-exile of the
-//! resolving spell is not expressible; the returns are.
+//! to your hand. Exile Pull from the Deep."
+//!
+//! GAP: self-exile-on-resolve isn't expressible — emit the returns.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,16 +27,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return up to one target instant card and up to one \
-                   target sorcery card from your graveyard to your hand. \
-                   Exile Pull from the Deep."
-                .into(),
+            text: "Return up to one target instant card and up to one target sorcery card from your graveyard to your hand. Exile Pull from the Deep.".into(),
             target_requirements: vec![
                 TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new()
-                            .with_types(TypeLine::INSTANT.into()),
+                        filter: ObjectFilter::new().with_types(TypeLine::INSTANT.into()),
                     },
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -43,8 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new()
-                            .with_types(TypeLine::SORCERY.into()),
+                        filter: ObjectFilter::new().with_types(TypeLine::SORCERY.into()),
                     },
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -61,17 +57,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Exile Pull from the Deep" — exiling the resolving spell
-    // itself is not expressible with the catalog.
-    entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => {
-                Some(Effect::ReturnFromGraveyardToHand { target: *id })
-            }
-            _ => None,
-        })
-        .collect()
+    let mut out = Vec::new();
+    for t in &entry.targets.targets {
+        if let TargetChoice::Object(id) = t {
+            out.push(Effect::ReturnFromGraveyardToHand { target: *id });
+        }
+    }
+    // GAP: self-exile-on-resolve not modeled.
+    out
 }

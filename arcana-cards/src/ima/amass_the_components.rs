@@ -1,8 +1,6 @@
-//! Amass the Components — `{3}{U}` sorcery. "Draw three cards, then put a
-//! card from your hand on the bottom of your library."
-//!
-//! GAP: no put-card-from-hand-on-bottom-of-library Effect. Emitting the
-//! draw honestly.
+//! Amass the Components — `{3}{U}` sorcery. "Draw three cards, then
+//! put a card from your hand on the bottom of your library." Choose-
+//! from-hand to bottom is not a single primitive; emit draw + GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +35,6 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no put-from-hand-on-bottom-of-library primitive.
+    // GAP: "put a card from your hand on the bottom of your library" — no hand-to-library primitive.
     vec![Effect::DrawCards { player: entry.controller, count: 3 }]
 }

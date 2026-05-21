@@ -1,7 +1,8 @@
 //! Kill Shot — `{2}{W}` instant. "Destroy target attacking creature."
 //!
-//! GAP: 'attacking' filter on the creature target is not an
-//! ObjectFilter refinement — accept any creature.
+//! The attacking restriction on the target is not expressible as a
+//! filter — modeled as destroy target creature, with the restriction
+//! noted as a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,6 +33,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "attacking" restriction on the target is not expressible.
     vec![Effect::DestroyPermanent { target: *id }]
 }

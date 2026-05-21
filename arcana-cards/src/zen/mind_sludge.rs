@@ -1,9 +1,5 @@
 //! Mind Sludge — `{4}{B}` sorcery. "Target player discards a card for
 //! each Swamp you control."
-//!
-//! X = number of Swamps you control, via count_matching over a
-//! subtype filter constrained to your control. The targeted player
-//! discards X cards.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -26,20 +22,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target player discards a card for each Swamp you control.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target player discards a card for each Swamp you control.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // Number of Swamps you control (Swamp is a land subtype).
     let n = script::count_matching(
         state,
-        &script::subtype_filter(reg, "Swamp").controlled_by(ControllerConstraint::You),
+        &script::subtype_filter(reg, "Swamp")
+            .controlled_by(ControllerConstraint::You),
         entry.controller,
     );
     vec![Effect::Discard {

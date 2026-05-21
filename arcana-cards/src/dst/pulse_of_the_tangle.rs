@@ -30,12 +30,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let beast = reg.interner().lookup("Beast").expect("Beast interned");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let beast = reg
+        .interner()
+        .lookup("Beast")
+        .expect("Beast interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(beast);
     let token = TokenDefinition {
@@ -48,7 +47,10 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // The conditional self-return clause is not expressible; only the
-    // token creation is implemented.
-    vec![Effect::CreateToken { controller: entry.controller, token }]
+    // GAP: "if an opponent controls more creatures than you, return
+    // this spell to hand" — a resolving spell cannot return itself.
+    vec![Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    }]
 }

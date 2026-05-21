@@ -4,7 +4,7 @@
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -22,30 +22,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Fire Tempest deals 6 damage to each creature and each player.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Fire Tempest deals 6 damage to each creature and each player.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = vec![Effect::ForEach {
-        targets: script::ids_matching(state, &ObjectFilter::creature(), entry.controller),
-        effect: Box::new(Effect::DealDamage {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    for id in script::ids_matching(state, &ObjectFilter::creature(), entry.controller) {
+        effects.push(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
+            target: DamageTarget::Object(id),
             amount: 6,
-        }),
-    }];
+        });
+    }
     for p in script::all_players(state) {
-        out.push(Effect::DealDamage {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Player(p),
             amount: 6,
         });
     }
-    out
+    effects
 }

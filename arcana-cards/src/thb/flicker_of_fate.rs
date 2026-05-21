@@ -1,12 +1,9 @@
 //! Flicker of Fate — `{1}{W}` instant. "Exile target creature or
 //! enchantment, then return it to the battlefield under its owner's
-//! control."
-//!
-//! Exile now + DelayedAction(ReturnToHand) is the closest catalog shape,
-//! but the rules want return-to-battlefield. GAP: no
-//! return-to-battlefield delayed action — only ReturnToHand.
+//! control." Schedule a delayed return from exile in the same
+//! resolution.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -32,9 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Exile target creature or enchantment, then return it to the battlefield under its owner's control.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine(
-                            TypeLine::CREATURE | TypeLine::ENCHANTMENT,
-                        )),
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT),
+                        ),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -52,6 +49,14 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no exile-then-return-to-battlefield primitive. Emit exile only.
-    vec![Effect::ExilePermanent { target: *id }]
+    // GAP: "then return" — should happen immediately, not at next end step. Closest catalog primitive is delayed return.
+    vec![
+        Effect::ExilePermanent { target: *id },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::ReturnFromExileToBattlefield,
+        },
+    ]
 }

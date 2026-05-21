@@ -1,16 +1,8 @@
-//! Stream of Unconsciousness — `{U}` Kindred Instant — Wizard. "Target
-//! creature gets -4/-0 until end of turn. If you control a Wizard,
-//! draw a card."
-//!
-//! # Implementation note
-//! Pump with negative power handles the -4/-0. The conditional draw
-//! (if you control a Wizard) is not expressible without a supported
-//! Conditional condition variant for subtype-on-battlefield check.
-//!
-//! # GAP
-//! Conditional draw (if you control a Wizard) not expressible.
+//! Stream of Unconsciousness — `{U}` Kindred Instant — Wizard.
+//! "Target creature gets -4/-0 until end of turn. If you control a
+//! Wizard, draw a card."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -22,6 +14,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Stream of Unconsciousness");
+    let _wizard = reg.interner_mut().intern("Wizard");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{U}").expect("valid cost")),
@@ -30,13 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets -4/-0 until end of turn. If you control a Wizard, draw a card.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets -4/-0 until end of turn. If you control a Wizard, draw a card.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -47,14 +39,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: -4,
-            toughness: 0,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        // GAP: conditional draw (if you control a Wizard) not expressible
-    ]
+    // GAP: conditional draw "if you control a Wizard" requires Effect::Conditional with a controller-side predicate not in catalog.
+    vec![Effect::Pump {
+        target: *id,
+        power: -4,
+        toughness: 0,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

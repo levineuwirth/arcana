@@ -1,9 +1,6 @@
-//! Psychic Miasma — `{1}{B}` sorcery. "Target player discards a card. If a
-//! land card is discarded this way, return Psychic Miasma to its owner's
-//! hand."
-//!
-//! GAP: no "if a land was discarded, return this spell to hand" rider; the
-//! discard is emitted as best-effort.
+//! Psychic Miasma — `{1}{B}` sorcery. Target player discards a card.
+//! If a land card is discarded this way, return Psychic Miasma to its
+//! owner's hand.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -41,7 +38,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: "if a land was discarded, return this to hand" rider not modeled.
+    // GAP: conditional "return this from graveyard if land was discarded" not
+    // expressible — discard outcome inspection isn't in script::*.
     vec![Effect::Discard {
         player: *p,
         count: 1,

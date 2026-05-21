@@ -1,8 +1,6 @@
-//! Regent's Authority — `{W}` instant. "Target creature gets +2/+2 until
-//! end of turn. If it's an enchantment creature or legendary, instead put
-//! a +1/+1 counter on it, then it gets +1/+1 until end of turn."
-//! GAP: conditional on enchantment-creature or legendary type check is not
-//! expressible in the catalog. Emits best-effort +2/+2 until EOT only.
+//! Regent's Authority — `{W}` instant. Target creature gets +2/+2
+//! until end of turn. If it's an enchantment creature or legendary
+//! creature, instead +1/+1 counter and +1/+1 until end of turn.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -26,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. If it's an enchantment creature or legendary, instead put a +1/+1 counter on it, then it gets +1/+1 until end of turn.".into(),
+                text: "Target creature gets +2/+2 until end of turn. If it's an enchantment creature or legendary creature, instead put a +1/+1 counter on it and it gets +1/+1 until end of turn.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -41,6 +39,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: enchantment-creature / legendary-creature inspection unavailable
+    // via script::*; emit the base +2/+2.
     vec![Effect::Pump {
         target: *id,
         power: 2,

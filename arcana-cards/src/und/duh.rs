@@ -1,6 +1,4 @@
-//! Duh — `{B}` instant. "Destroy target creature with reminder
-//! text." The "has reminder text" predicate has no ObjectFilter
-//! support; a creature target is used.
+//! Duh — `{B}` instant. "Destroy target creature with reminder text."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,6 +21,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target creature with reminder text.".into(),
+            // GAP: no ObjectFilter predicate for "has reminder text";
+            // target is an unfiltered creature.
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -31,8 +31,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "with reminder text" target restriction not expressible.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

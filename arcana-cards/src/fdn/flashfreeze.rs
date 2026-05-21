@@ -1,5 +1,4 @@
-//! Flashfreeze — `{1}{U}` instant. "Counter target red or green
-//! spell."
+//! Flashfreeze — `{1}{U}` instant. "Counter target red or green spell."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,19 +21,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target red or green spell.".into(),
-            // GAP: ObjectFilter cannot express "red OR green"; a single
-            // color filter would over-restrict, so the spell filter is
-            // left unconstrained.
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target red or green spell.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new().with_colors(ColorSet::red() | ColorSet::green()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -44,6 +43,9 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Counter { target: *id }]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    vec![Effect::Counter { target: stack_id }]
 }

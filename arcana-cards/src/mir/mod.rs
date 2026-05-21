@@ -23,3 +23,4 @@ pub mod reign_of_terror;
 pub mod soulshriek;
 pub mod seeds_of_innocence;
 pub mod serene_heart;
+pub mod superior_numbers;

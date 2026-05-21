@@ -1,9 +1,6 @@
 //! Spite of Mogis — `{R}` sorcery. "Spite of Mogis deals damage to
 //! target creature equal to the number of instant and sorcery cards
 //! in your graveyard. Scry 1."
-//!
-//! Dynamic damage = count of instant+sorcery cards in your graveyard.
-//! Computed via graveyard_matching with an instant/sorcery filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -26,41 +23,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Spite of Mogis deals damage to target creature equal to the number of instant and sorcery cards in your graveyard. Scry 1.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Spite of Mogis deals damage to target creature equal to the number of instant and sorcery cards in your graveyard. Scry 1.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let instants = script::graveyard_matching(
-        state,
-        &ObjectFilter::new().with_types(TypeLine::INSTANT.into()),
-        entry.controller,
-        entry.controller,
-    );
-    let sorceries = script::graveyard_matching(
-        state,
-        &ObjectFilter::new().with_types(TypeLine::SORCERY.into()),
-        entry.controller,
-        entry.controller,
-    );
-    let amount = instants + sorceries;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let filter = ObjectFilter::new()
+        .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY));
+    let n = script::graveyard_matching(state, &filter, entry.controller, entry.controller);
     vec![
         Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
-            amount,
+            amount: n,
         },
-        Effect::Scry {
-            player: entry.controller,
-            count: 1,
-        },
+        Effect::Scry { player: entry.controller, count: 1 },
     ]
 }

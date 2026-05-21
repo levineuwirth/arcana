@@ -32,10 +32,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // "Lose indestructible" and the planeswalker-damage clause are not
-    // expressible; emit the 5 damage to each creature.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // 5 damage to each creature and each planeswalker.
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {
@@ -44,4 +52,7 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
             amount: 5,
         }),
     }]
+    // GAP: "all creatures lose indestructible until end of turn" — no
+    // catalog Effect removes a keyword; and the "non-Bolas" planeswalker
+    // exclusion cannot be expressed, so all planeswalkers are hit.
 }

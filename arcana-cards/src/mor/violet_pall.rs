@@ -1,4 +1,4 @@
-//! Violet Pall — `{4}{B}` Kindred Instant — Faerie. "Destroy target
+//! Violet Pall — `{4}{B}` kindred instant — Faerie. "Destroy target
 //! nonblack creature. Create a 1/1 black Faerie Rogue creature token
 //! with flying."
 
@@ -25,25 +25,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target nonblack creature. Create a 1/1 black Faerie Rogue creature token with flying.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().without_colors(ColorSet::black()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target nonblack creature. Create a 1/1 black Faerie Rogue creature token with flying.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_colors(ColorSet::black()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     let faerie = reg.interner().lookup("Faerie").expect("Faerie interned");
     let rogue = reg.interner().lookup("Rogue").expect("Rogue interned");
     let mut subtypes = SubtypeSet::default();

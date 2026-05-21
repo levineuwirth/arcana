@@ -1,5 +1,7 @@
 //! A-Buy Your Silence — `{4}{W}` instant. "Exile target nonland
-//! permanent. Its controller creates a Treasure token."
+//! permanent. Its controller creates a Treasure token." Treasure
+//! activated ability isn't modelable on a token; emit the exile and
+//! GAP the Treasure rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,21 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Exile target nonland permanent. Its controller creates a \
-                   Treasure token."
-                .into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .without_types(TypeLine::LAND.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Exile target nonland permanent. Its controller creates a Treasure token.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -45,10 +45,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: cannot create a Treasure token for the exiled permanent's
-    // controller (no Treasure token primitive / controller-of-target).
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: Treasure token (token activated 'Sac, T: add any color').
     vec![Effect::ExilePermanent { target: *id }]
 }

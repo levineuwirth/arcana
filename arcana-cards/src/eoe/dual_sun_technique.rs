@@ -1,8 +1,8 @@
-//! Dual-Sun Technique — `{1}{W}` instant. "Target creature you control gains
-//! double strike until end of turn. If it has a +1/+1 counter on it, draw a card."
-//!
-//! GAP: no Effect variant or script helper to check whether a specific permanent
-//! has a +1/+1 counter on it for the conditional draw. The draw is omitted.
+//! Dual-Sun Technique — `{1}{W}` instant. "Target creature you control
+//! gains double strike until end of turn. If it has a +1/+1 counter on
+//! it, draw a card." Conditional rider on +1/+1 counter presence is
+//! not a script primitive we can read at resolve time — emit the
+//! double-strike grant and GAP the counter check.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -11,7 +11,10 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,7 +50,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no script helper to check if a permanent has a +1/+1 counter; conditional draw omitted
+    // GAP: conditional "if it has a +1/+1 counter on it, draw a card" — no
+    // script helper exposes per-target counter presence at resolve time.
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::DoubleStrike,

@@ -1,5 +1,5 @@
-//! End Hostilities — `{3}{W}{W}` sorcery. "Destroy all creatures and
-//! all permanents attached to creatures."
+//! End Hostilities — `{3}{W}{W}` sorcery. Destroy all creatures and all
+//! permanents attached to creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,14 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy all creatures and all permanents attached to \
-                   creatures."
-                .into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy all creatures and all permanents attached to creatures.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -37,13 +36,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "permanents attached to creatures" (auras/equipment) is not an
-    // ObjectFilter refinement — best-effort destroys all creatures.
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature(),
-        entry.controller,
-    );
+    // GAP: cannot enumerate "permanents attached to creatures"; do creatures.
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
     ids.into_iter()
         .map(|id| Effect::DestroyPermanent { target: id })
         .collect()

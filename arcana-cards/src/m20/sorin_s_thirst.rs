@@ -1,5 +1,5 @@
-//! Sorin's Thirst — `{B}{B}` instant.
-//! "Sorin's Thirst deals 2 damage to target creature and you gain 2 life."
+//! Sorin's Thirst — `{B}{B}` instant. "Sorin's Thirst deals 2 damage
+//! to target creature and you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -21,29 +21,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Sorin's Thirst deals 2 damage to target creature and you gain 2 life.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Sorin's Thirst deals 2 damage to target creature and you gain 2 life.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::DealDamage {
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 2,
-        },
-        Effect::GainLife { player: entry.controller, amount: 2 },
-    ]
+        });
+    }
+    effects.push(Effect::GainLife {
+        player: entry.controller,
+        amount: 2,
+    });
+    effects
 }

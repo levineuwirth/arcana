@@ -1,9 +1,6 @@
 //! Establishing Shot — `{R}` instant. "Establishing Shot deals 2
 //! damage to any target. If this is the first spell you've cast this
 //! game, it deals 3 damage instead."
-//!
-//! GAP: "if this is the first spell you've cast this game" has no
-//! tracker/helper; the base 2 damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,16 +22,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Establishing Shot deals 2 damage to any target. If this is the first spell you've cast this game, it deals 3 damage instead.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Establishing Shot deals 2 damage to any target. If this is the first spell you've cast this game, it deals 3 damage instead.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // NOTE: "first spell you've cast this game" is not testable from
+    // the catalog helpers — emitting the base 2 damage.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -44,6 +48,9 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: "first spell cast this game" boost not expressible; base 2 damage.
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 2 }]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 2,
+    }]
 }

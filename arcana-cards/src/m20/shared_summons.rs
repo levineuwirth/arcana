@@ -1,6 +1,6 @@
-//! Shared Summons — `{3}{G}{G}` instant. "Search your library for up to
-//! two creature cards with different names, reveal them, put them into
-//! your hand, then shuffle."
+//! Shared Summons — `{3}{G}{G}` instant. Search your library for up to two
+//! creature cards with different names, reveal them, put them into your
+//! hand, then shuffle.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,15 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to two creature cards with \
-                   different names, reveal them, put them into your hand, then \
-                   shuffle."
-                .into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for up to two creature cards with different names, reveal them, put them into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,18 +36,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "up to two ... with different names": two single tutors. The
-    // distinct-names constraint is not separately expressible.
+    // GAP: TutorToHand has no "different names" / "up to two" semantics —
+    // emit two single-creature tutors as a best-effort.
     vec![
-        Effect::TutorToHand {
-            player: entry.controller,
-            filter: ObjectFilter::creature(),
-            reveal: true,
-        },
-        Effect::TutorToHand {
-            player: entry.controller,
-            filter: ObjectFilter::creature(),
-            reveal: true,
-        },
+        Effect::TutorToHand { player: entry.controller, filter: ObjectFilter::creature(), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: ObjectFilter::creature(), reveal: true },
     ]
 }

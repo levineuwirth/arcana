@@ -1,7 +1,8 @@
-//! Sap Vitality — `{B}{B}` instant. "Sap Vitality deals 3 damage to target
-//! creature or planeswalker. Choose a creature card in your hand. It
-//! perpetually gets +3/+0." Damage is direct; perpetual hand-card pump has
-//! no Effect — GAP the rider.
+//! Sap Vitality — `{B}{B}` instant. "Sap Vitality deals 3 damage to
+//! target creature or planeswalker. Choose a creature card in your
+//! hand. It perpetually gets +3/+0." 'Perpetual' (Alchemy) buff in
+//! hand and choose-from-hand prompt aren't in the catalog. Emit the
+//! damage.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -25,29 +26,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Sap Vitality deals 3 damage to target creature or planeswalker. Choose a creature card in your hand. It perpetually gets +3/+0.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types(TypeLine::CREATURE.into())
-                        .with_types_any(TypeLine::PLANESWALKER.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Sap Vitality deals 3 damage to target creature or planeswalker. Choose a creature card in your hand. It perpetually gets +3/+0.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER)),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: no Effect for perpetual hand-card pump.
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 3,
-    }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'perpetually' (Alchemy) hand buff not in catalog.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::DealDamage { source: entry.source, target: DamageTarget::Object(*id), amount: 3 }]
 }

@@ -1,5 +1,5 @@
-//! Furious Bellow — `{1}{R}` instant. "Target creature gets +3/+0 and gains
-//! first strike until end of turn. Scry 1."
+//! Furious Bellow — `{1}{R}` instant. "Target creature gets +3/+0 and
+//! gains first strike until end of turn. Scry 1."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -22,8 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets +3/+0 and gains first strike until end of turn. Scry 1."
-                .into(),
+            text: "Target creature gets +3/+0 and gains first strike until end of turn. Scry 1.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -32,19 +31,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        out.push(Effect::Pump {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Pump {
             target: *id,
             power: 3,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::FirstStrike],
-        });
-    }
-    out.push(Effect::Scry {
-        player: entry.controller,
-        count: 1,
-    });
-    out
+        },
+        Effect::Scry { player: entry.controller, count: 1 },
+    ]
 }

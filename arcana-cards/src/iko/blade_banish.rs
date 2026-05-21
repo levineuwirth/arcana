@@ -1,5 +1,5 @@
-//! Blade Banish — `{3}{W}` instant. "Exile target creature with power 4
-//! or greater."
+//! Blade Banish — `{3}{W}` instant. "Exile target creature with
+//! power 4 or greater."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

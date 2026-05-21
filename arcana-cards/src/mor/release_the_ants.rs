@@ -31,12 +31,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -45,8 +43,8 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: Clash mechanic (reveal/win/return-to-hand) has no catalog
-    // effect; only the 1-damage portion is implemented.
+    // GAP: Clash and the "if you win, return this spell to hand" rider
+    // are not expressible — only the 1 damage is emitted.
     vec![Effect::DealDamage {
         source: entry.source,
         target: dt,

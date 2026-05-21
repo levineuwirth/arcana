@@ -3,9 +3,9 @@
 //! deals damage equal to that card's mana value to each creature your
 //! opponents control. Exile Volcanic Vision."
 //!
-//! GAP: 'mana value of the returned graveyard card' has no script
-//! helper; the self-exile-after-cast also has no primitive. Only the
-//! graveyard return is modeled.
+//! The return is expressed. The damage amount (the returned card's
+//! mana value) cannot be computed from the helpers, and there is no
+//! self-exile primitive — both are GAPs.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +13,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetFilter, TargetRequirement, TargetCount};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -46,8 +48,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: damage-to-each-opponent-creature equal to that card's mana
-    // value (no script helper for graveyard card CMC), and self-exile.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: damage equal to the returned card's mana value cannot be
+    // computed; no self-exile primitive for "Exile Volcanic Vision".
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

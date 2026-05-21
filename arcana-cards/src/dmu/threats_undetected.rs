@@ -3,9 +3,9 @@
 //! opponent chooses two of those cards. Shuffle the chosen cards into
 //! your library and put the rest into your hand."
 //!
-//! Only the search-to-hand portion is expressible; the
-//! different-powers constraint, the opponent's choice of two, and the
-//! shuffle-back are not modeled by the catalog.
+//! GAP: 'different powers' constraint, opponent-chooses split between
+//! shuffle and hand are not expressible — fall back to a plain creature
+//! tutor-to-hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,11 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to four creature cards with \
-                   different powers and reveal them. An opponent chooses \
-                   two of those cards. Shuffle the chosen cards into your \
-                   library and put the rest into your hand."
-                .into(),
+            text: "Search your library for up to four creature cards with different powers and reveal them. An opponent chooses two of those cards. Shuffle the chosen cards into your library and put the rest into your hand.".into(),
             target_requirements: vec![],
             modal: None,
             effect: resolve,
@@ -44,9 +40,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: cannot model "different powers" constraint nor the
-    // opponent-chooses-two-to-shuffle-back partition; emitting a single
-    // creature tutor-to-hand as the closest expressible approximation.
+    // GAP: distinct-powers picker + opponent-chooses split into library
+    // vs hand. Best-effort: tutor a creature card to hand.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::creature(),

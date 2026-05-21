@@ -1,9 +1,7 @@
-//! Walk with the Ancestors — `{4}{G}` sorcery. "Return up to one target
-//! permanent card from your graveyard to your hand. Discover 4."
-//!
-//! GAP: Discover mechanic (exile top cards until nonland with MV ≤ 4, cast
-//! free or put to hand) is not expressible with any catalog Effect variant.
-//! The graveyard-to-hand portion is expressible.
+//! Walk with the Ancestors — `{4}{G}` sorcery. "Return up to one
+//! target permanent card from your graveyard to your hand. Discover
+//! 4." Discover isn't in the catalog — best effort: bounce a
+//! permanent card from your graveyard to hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -47,10 +47,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Discover 4 mechanic not expressible
-    let Some(target) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: Discover N (exile-until-nonland-of-cmc-N-or-less and cast/hand)
+    // isn't in the engine catalog.
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

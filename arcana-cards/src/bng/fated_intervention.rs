@@ -1,8 +1,6 @@
-//! Fated Intervention — `{2}{G}{G}{G}` instant. "Create two 3/3 green Centaur
-//! enchantment creature tokens. If it's your turn, scry 2."
-//!
-//! GAP: no predicate for "if it's your turn", so the conditional Scry 2 is
-//! dropped. The two token creations are emitted.
+//! Fated Intervention — `{2}{G}{G}{G}` instant. "Create two 3/3
+//! green Centaur enchantment creature tokens. If it's your turn,
+//! scry 2."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -23,13 +21,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Create two 3/3 green Centaur enchantment creature tokens. If it's your turn, scry 2.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Create two 3/3 green Centaur enchantment creature tokens. If it's your turn, scry 2.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -38,7 +35,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let centaur = reg.interner().lookup("Centaur").expect("Centaur interned");
+    let centaur = reg.interner().lookup("Centaur")
+        .expect("Centaur interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(centaur);
     let token = TokenDefinition {
@@ -51,7 +49,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: conditional "if it's your turn, scry 2"
+    // GAP: "If it's your turn" predicate (active-player check) is
+    // not exposed by script::*; the conditional scry is omitted.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

@@ -1,4 +1,5 @@
-//! Deception — `{2}{B}` sorcery, "Target opponent discards two cards."
+//! Deception — `{2}{B}` sorcery. "Target opponent discards two
+//! cards."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

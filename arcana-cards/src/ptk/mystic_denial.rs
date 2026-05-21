@@ -26,9 +26,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Counter target creature or sorcery spell.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Spell(
-                    ObjectFilter::default()
-                        .with_types_any(TypeLine::CREATURE.into())
-                        .with_types_any(TypeLine::SORCERY.into()),
+                    ObjectFilter::default().with_types_any(TypeLine(
+                        TypeLine::CREATURE | TypeLine::SORCERY,
+                    )),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -39,9 +39,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Counter { target: *id }]
 }

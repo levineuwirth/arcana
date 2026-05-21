@@ -1,11 +1,7 @@
-//! Lost in the Spirit World — `{2}{U}` sorcery.
-//! "Return up to one target creature to its owner's hand. Create a 1/1 colorless
-//! Spirit creature token with 'This token can't block or be blocked by
-//! non-Spirit creatures.'"
-//!
-//! GAP: The Spirit token's special blocking restriction ability ("can't block
-//! or be blocked by non-Spirit creatures") cannot be expressed in TokenDefinition.abilities
-//! via the current API.
+//! Lost in the Spirit World — `{2}{U}` sorcery. "Return up to one
+//! target creature to its owner's hand. Create a 1/1 colorless Spirit
+//! creature token with \"This token can't block or be blocked by
+//! non-Spirit creatures.\""
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,28 +25,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return up to one target creature to its owner's hand. Create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: arcana_core::targets::TargetFilter::Creature,
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return up to one target creature to its owner's hand. Create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Creature,
+                count: TargetCount::UpTo(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned during register()");
+fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let spirit = reg
+        .interner()
+        .lookup("Spirit")
+        .expect("Spirit interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
+    // NOTE: the token's "can't block / can't be blocked" text ability
+    // is not expressible — the token is created without it.
     let token = TokenDefinition {
         name: spirit,
         colors: ColorSet::new(),
@@ -58,14 +56,14 @@ fn resolve(
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
-        // GAP: "can't block or be blocked by non-Spirit creatures" ability not expressible.
     };
     let mut effects = Vec::new();
-    if let Some(target) = entry.targets.targets.first() {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::ReturnToHand { target: *id });
-        }
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        effects.push(Effect::ReturnToHand { target: *id });
     }
-    effects.push(Effect::CreateToken { controller: entry.controller, token });
+    effects.push(Effect::CreateToken {
+        controller: entry.controller,
+        token,
+    });
     effects
 }

@@ -1,12 +1,6 @@
-//! A-Warm Welcome — `{3}{G}` sorcery, "Look at the top five cards of
-//! your library. You may reveal a creature card from among them and put
-//! it into your hand. Put the rest on the bottom of your library in a
-//! random order. Create two 1/1 green and white Citizen creature
-//! tokens."
-//!
-//! GAP: the "look at top five, reveal a creature to hand, rest to
-//! bottom" library-dig has no corresponding Effect. The two token
-//! creations are modeled.
+//! A-Warm Welcome — `{3}{G}` sorcery. Look at top 5; may reveal a creature
+//! card and put it in hand; rest on bottom in random order. Create two 1/1
+//! green-and-white Citizen tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -18,7 +12,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("A-Warm Welcome");
-    let _citizen = reg.interner_mut().intern("Citizen");
+    let _ = reg.interner_mut().intern("Citizen");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
@@ -42,7 +36,8 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let citizen = reg.interner().lookup("Citizen").expect("Citizen interned");
+    let citizen = reg.interner().lookup("Citizen")
+        .expect("Citizen interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(citizen);
     let token = TokenDefinition {
@@ -55,7 +50,8 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: top-five look / reveal-creature-to-hand not expressible.
+    // GAP: top-N lookup + reveal-and-keep-creature not in catalog. Emit
+    // tokens.
     vec![
         Effect::CreateToken { controller: entry.controller, token: token.clone() },
         Effect::CreateToken { controller: entry.controller, token },

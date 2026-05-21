@@ -1,5 +1,5 @@
-//! Mindculling — `{5}{U}` sorcery. "You draw two cards and target opponent
-//! discards two cards."
+//! Mindculling — `{5}{U}` sorcery. You draw two cards and target
+//! opponent discards two cards.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

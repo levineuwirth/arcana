@@ -1,11 +1,11 @@
 //! Phalanx Tactics — `{1}{W}` instant. "Target creature you control
-//! gets +2/+1 until end of turn. Each other creature you control gets
-//! +1/+1 until end of turn."
+//! gets +2/+1 until end of turn. Each other creature you control
+//! gets +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -29,7 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Target creature you control gets +2/+1 until end of turn. Each other creature you control gets +1/+1 until end of turn.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                ),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -39,34 +41,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(tid) = target else { return Vec::new(); };
-    let others: Vec<_> = script::ids_matching(
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(chosen)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let mut out = vec![Effect::Pump {
+        target: *chosen,
+        power: 2,
+        toughness: 1,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }];
+    // Each OTHER creature you control gets +1/+1.
+    let mine = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
-    )
-    .into_iter()
-    .filter(|id| id != tid)
-    .collect();
-    vec![
-        Effect::Pump {
-            target: *tid,
-            power: 2,
-            toughness: 1,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        Effect::ForEach {
-            targets: others,
-            effect: Box::new(Effect::Pump {
-                target: NULL_OBJECT_ID,
+    );
+    for id in mine {
+        if id != *chosen {
+            out.push(Effect::Pump {
+                target: id,
                 power: 1,
                 toughness: 1,
                 duration: Duration::EndOfTurn,
                 keywords: vec![],
-            }),
-        },
-    ]
+            });
+        }
+    }
+    out
 }

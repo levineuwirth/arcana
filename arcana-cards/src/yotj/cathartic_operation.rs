@@ -1,12 +1,6 @@
 //! Cathartic Operation — `{3}{U}{B}` instant. "Return up to two
 //! target creature cards from your graveyard to your hand, then seek
 //! two noncreature, nonland cards."
-//!
-//! Up to two graveyard creature-card targets are returned to hand.
-//!
-//! GAP: "seek" (find a card matching a description from your library
-//! at random without searching) has no catalog Effect; the two seeks
-//! are not emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,10 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "seek two noncreature, nonland cards" not expressible.
+    // GAP: "seek two noncreature, nonland cards" is not expressible
+    // (no seek primitive). Only the graveyard returns are emitted.
     let mut effects = Vec::new();
-    for t in &entry.targets.targets {
-        if let TargetChoice::Object(id) = t {
+    for target in &entry.targets.targets {
+        if let TargetChoice::Object(id) = target {
             effects.push(Effect::ReturnFromGraveyardToHand { target: *id });
         }
     }

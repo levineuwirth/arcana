@@ -1,9 +1,8 @@
-//! Radiant Strike — `{3}{W}` instant. "Destroy target artifact or tapped
-//! creature. You gain 3 life."
-//!
-//! GAP: "artifact OR tapped creature" needs a union filter the
-//! `ObjectFilter` builders cannot express; falling back to plain
-//! permanent target.
+//! Radiant Strike — `{3}{W}` instant. "Destroy target artifact or
+//! tapped creature. You gain 3 life." Single-target with cross-type
+//! filter (artifact OR tapped creature) needs a built filter that
+//! catches either; ObjectFilter cannot OR two distinct shapes — emit
+//! a permissive permanent target and GAP the precise constraint.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +29,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target artifact or tapped creature. You gain 3 life.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::new()),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+                        ),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -45,10 +48,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effs = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effs.push(Effect::DestroyPermanent { target: *id });
-    }
-    effs.push(Effect::GainLife { player: entry.controller, amount: 3 });
-    effs
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: tapped-creature-OR-artifact target — ObjectFilter doesn't OR two distinct conditions.
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::GainLife { player: entry.controller, amount: 3 },
+    ]
 }

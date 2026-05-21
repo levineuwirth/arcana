@@ -1,5 +1,5 @@
-//! Drain the Well — `{2}{B/G}{B/G}` sorcery. "Destroy target land. You gain
-//! 2 life."
+//! Drain the Well — `{2}{B/G}{B/G}` sorcery. "Destroy target land.
+//! You gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target land. You gain 2 life.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                        ObjectFilter::new().with_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

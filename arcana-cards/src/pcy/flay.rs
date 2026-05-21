@@ -2,10 +2,8 @@
 //! Then that player discards another card at random unless they pay
 //! {1}."
 //!
-//! Models the first random discard. The 'unless they pay {1}' tax on
-//! the second discard has no direct catalog primitive (it's not a
-//! spell counter cost), so it's GAP'd; we just resolve a second random
-//! discard.
+//! The first random discard is expressed. The second discard, gated
+//! on an unless-pay clause, is not expressible — GAP.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,18 +34,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'unless they pay {1}' tax on the second discard.
-    vec![
-        Effect::Discard {
-            player: *p,
-            count: 1,
-            choice: DiscardChoice::Random,
-        },
-        Effect::Discard {
-            player: *p,
-            count: 1,
-            choice: DiscardChoice::Random,
-        },
-    ]
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: the second "discards another card unless they pay {1}" is
+    // not expressible.
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::Random,
+    }]
 }

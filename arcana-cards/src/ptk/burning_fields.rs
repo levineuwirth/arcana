@@ -1,6 +1,5 @@
 //! Burning Fields — `{4}{R}` sorcery. "Burning Fields deals 5 damage
-//! to target opponent or planeswalker." A player target is used
-//! (planeswalker alternative not modeled).
+//! to target opponent or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,7 +23,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Burning Fields deals 5 damage to target opponent or planeswalker.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
+            // GAP: no exact filter for "opponent or planeswalker"; modeled
+            // as any_target.
+            target_requirements: vec![TargetRequirement::any_target()],
             modal: None,
             effect: resolve,
         }),
@@ -32,14 +33,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
     let dt = match target {
-        TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
             ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    vec![Effect::DealDamage { source: entry.source, target: dt, amount: 5 }]
+    vec![Effect::DealDamage {
+        source: entry.source,
+        target: dt,
+        amount: 5,
+    }]
 }

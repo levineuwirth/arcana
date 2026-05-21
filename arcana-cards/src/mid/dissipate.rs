@@ -1,9 +1,7 @@
-//! Dissipate — `{1}{U}{U}` instant, "Counter target spell. If that
-//! spell is countered this way, exile it instead of putting it into its
-//! owner's graveyard."
-//!
-//! GAP: the "exile instead of graveyard" replacement on the countered
-//! spell has no corresponding Effect. Only the counter is modeled.
+//! Dissipate — `{1}{U}{U}` instant. "Counter target spell. If that
+//! spell is countered this way, exile it instead of putting it into
+//! its owner's graveyard." We express the counter; the exile-instead
+//! rider is GAPped (no replacement-on-counter surface).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,8 +43,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "exile instead of going to graveyard" replacement on counter.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: exile-instead-of-graveyard replacement not expressible.
-    vec![Effect::Counter { target: *id }]
+    let stack_id = match target {
+        TargetChoice::Object(id) => *id,
+        _ => return Vec::new(),
+    };
+    vec![Effect::Counter { target: stack_id }]
 }

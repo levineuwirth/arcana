@@ -1,7 +1,7 @@
-//! Cut Propulsion — `{2}{R}` instant. "Target creature deals damage to itself
-//! equal to its power. If that creature has flying, it deals twice that much
-//! damage to itself instead." Power readable via script::power_of. "Has
-//! flying" check isn't in the script surface — GAP the doubling rider.
+//! Cut Propulsion — `{2}{R}` instant. "Target creature deals damage to
+//! itself equal to its power. If that creature has flying, it deals twice
+//! that much damage to itself instead." The flying-doubling cannot be
+//! checked; the creature deals damage equal to its power to itself.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -34,12 +34,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let power = script::power_of(state, *id).max(0) as u32;
-    // GAP: no script check for "has flying" — emitting only the base damage.
+    // Note: "if it has flying, twice" cannot be checked; uses base power once.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let amount = script::power_of(state, *id).max(0) as u32;
     vec![Effect::DealDamage {
         source: *id,
         target: DamageTarget::Object(*id),
-        amount: power,
+        amount,
     }]
 }

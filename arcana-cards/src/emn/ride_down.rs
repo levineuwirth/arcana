@@ -1,8 +1,7 @@
 //! Ride Down — `{R}{W}` instant. "Destroy target blocking creature.
 //! Creatures that were blocked by that creature this combat gain
-//! trample until end of turn." The blocking-creature target
-//! restriction and the trample rider have no catalog primitive; the
-//! target is a creature and the destroy is emitted.
+//! trample until end of turn." Combat-history is not in catalog; we
+//! emit the destroy and GAP the trample grant.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +38,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "blocking creature" target restriction and granting
-    // trample to creatures it blocked have no catalog primitive.
+    // GAP: "creatures blocked by that creature this combat" lookup and bulk trample-grant not in catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

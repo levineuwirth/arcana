@@ -2,20 +2,19 @@
 //! artifact, enchantment, or tapped creature. Then if you control an
 //! artifact and an enchantment, create a 2/2 white Samurai creature
 //! token with vigilance."
-//!
-//! The conditional "if you control an artifact and an enchantment"
-//! token rider has no catalog Effect (GAP'd); models only the destroy.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Banishing Slash");
@@ -28,29 +27,73 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy up to one target artifact, enchantment, or tapped creature. Then if you control an artifact and an enchantment, create a 2/2 white Samurai creature token with vigilance.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::ENCHANTMENT.into())
-                        .with_types_any(TypeLine::CREATURE.into()),
-                ),
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy up to one target artifact, enchantment, or tapped creature. Then if you control an artifact and an enchantment, create a 2/2 white Samurai creature token with vigilance.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(TypeLine(
+                            TypeLine::ARTIFACT | TypeLine::ENCHANTMENT,
+                        )),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: conditional token creation on "control artifact AND enchantment" not in catalog.
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'artifact, enchantment, OR tapped creature' three-way
+    // disjunction on the target filter (we restrict to
+    // artifact-or-enchantment so the tapped-creature option is missed).
     let mut effects = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        effects.push(Effect::DestroyPermanent { target: *id });
+    for choice in &entry.targets.targets {
+        if let TargetChoice::Object(id) = choice {
+            effects.push(Effect::DestroyPermanent { target: *id });
+        }
+    }
+    let artifacts = script::count_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types(TypeLine::ARTIFACT.into())
+            .controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    let enchantments = script::count_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types(TypeLine::ENCHANTMENT.into())
+            .controlled_by(ControllerConstraint::You),
+        entry.controller,
+    );
+    if artifacts > 0 && enchantments > 0 {
+        let samurai = reg
+            .interner()
+            .lookup("Samurai")
+            .expect("Samurai interned during register()");
+        let mut subtypes = SubtypeSet::default();
+        subtypes.0.insert(samurai);
+        let token = TokenDefinition {
+            name: samurai,
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            subtypes,
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            keywords: vec![KeywordAbility::Vigilance],
+            abilities: vec![],
+        };
+        effects.push(Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        });
     }
     effects
 }

@@ -1,11 +1,11 @@
-//! Assassin's Strike — `{4}{B}{B}` sorcery, "Destroy target creature.
-//! Its controller discards a card." The target's controller is not
-//! recoverable as a PlayerId via the catalog; the destroy is emitted.
+//! Assassin's Strike — `{4}{B}{B}` sorcery. "Destroy target creature.
+//! Its controller discards a card."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -22,8 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target creature. Its controller discards a card."
-                .into(),
+            text: "Destroy target creature. Its controller discards a card.".into(),
             target_requirements: vec![TargetRequirement::target_creature()],
             modal: None,
             effect: resolve,
@@ -32,14 +31,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "its controller discards a card" — no helper resolves the
-    // target permanent's controller to a PlayerId.
-    vec![Effect::DestroyPermanent { target: *id }]
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    let owner = script::target_controller(state, *id, entry.controller);
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::Discard {
+            player: owner,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
+    ]
 }

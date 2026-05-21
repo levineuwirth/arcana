@@ -1,9 +1,7 @@
 //! Undersimplify — `{1}{U}` instant. "Choose target spell. If it's a
-//! creature spell, it perpetually gets -2/-0. Counter that spell
-//! unless its controller pays {2}."
-//!
-//! The conditional perpetual -2/-0 has no catalog Effect; the soft
-//! counter is emitted.
+//! creature spell, it perpetually gets -2/-0. Counter that spell unless
+//! its controller pays {2}." 'Perpetual' modifications aren't in the
+//! catalog — we emit the soft-counter and GAP the perpetual debuff.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,22 +24,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Choose target spell. If it's a creature spell, it perpetually gets -2/-0. Counter that spell unless its controller pays {2}.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Choose target spell. If it's a creature spell, it perpetually gets -2/-0. Counter that spell unless its controller pays {2}.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: conditional perpetual -2/-0 on a creature spell.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: perpetual -2/-0 modifier on a creature card.
     vec![Effect::CounterUnlessPays {
         target: *id,
         cost: ManaCost::parse("{2}").expect("valid cost"),

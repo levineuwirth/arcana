@@ -1,8 +1,7 @@
-//! Surge of Righteousness — `{1}{W}` instant. "Destroy target black
-//! or red creature that's attacking or blocking. You gain 2 life."
-//!
-//! "Attacking or blocking" target refinement not in ObjectFilter;
-//! best-effort targets a black-or-red creature.
+//! Surge of Righteousness — `{1}{W}` instant. "Destroy target black or
+//! red creature that's attacking or blocking. You gain 2 life." The
+//! "attacking or blocking" target restriction isn't expressible via
+//! ObjectFilter — best effort: target a black or red creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,24 +24,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Destroy target black or red creature that's attacking or blocking. You gain 2 life.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().with_colors(ColorSet::black() | ColorSet::red()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Destroy target black or red creature that's attacking or blocking. You gain 2 life.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .with_colors(ColorSet::black() | ColorSet::red()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "attacking or blocking" target refinement not in catalog.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'that's attacking or blocking' restriction — no combat-state
+    // ObjectFilter refinement in the catalog.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::GainLife { player: entry.controller, amount: 2 },

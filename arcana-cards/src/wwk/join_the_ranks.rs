@@ -1,5 +1,5 @@
-//! Join the Ranks — `{3}{W}` instant. "Create two 1/1 white Soldier
-//! Ally creature tokens."
+//! Join the Ranks — `{3}{W}` instant. Create two 1/1 white Soldier
+//! Ally creature tokens.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,18 +21,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create two 1/1 white Soldier Ally creature tokens.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create two 1/1 white Soldier Ally creature tokens.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("interned");
-    let ally = reg.interner().lookup("Ally").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let ally = reg.interner().lookup("Ally").expect("Ally interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     subtypes.0.insert(ally);
@@ -47,13 +52,7 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken {
-            controller: entry.controller,
-            token: token.clone(),
-        },
-        Effect::CreateToken {
-            controller: entry.controller,
-            token,
-        },
+        Effect::CreateToken { controller: entry.controller, token: token.clone() },
+        Effect::CreateToken { controller: entry.controller, token },
     ]
 }

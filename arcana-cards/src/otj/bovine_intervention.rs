@@ -1,18 +1,17 @@
 //! Bovine Intervention — `{1}{W}` instant. "Destroy target artifact
-//! or creature. Its controller creates a 2/2 white Ox creature
-//! token." The destroyed permanent's controller isn't retrievable
-//! for the token rider; the destroy is emitted.
+//! or creature. Its controller creates a 2/2 white Ox creature token."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Bovine Intervention");
@@ -29,9 +28,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target artifact or creature. Its controller creates a 2/2 white Ox creature token.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new().with_types_any(
-                        TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
-                    ),
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::ARTIFACT | TypeLine::CREATURE,
+                    )),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -42,10 +41,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "its controller creates a 2/2 Ox" — the destroyed
-    // permanent's controller is not retrievable for the token rider.
-    vec![Effect::DestroyPermanent { target: *id }]
+fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let ox = reg.interner().lookup("Ox").expect("Ox interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(ox);
+    let token = TokenDefinition {
+        name: ox,
+        colors: ColorSet::white(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(2)),
+        toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![],
+        abilities: vec![],
+    };
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::CreateToken {
+            controller: script::target_controller(state, *id, entry.controller),
+            token,
+        },
+    ]
 }

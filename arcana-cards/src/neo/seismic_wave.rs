@@ -1,10 +1,10 @@
-//! Seismic Wave — `{2}{R}` instant. "Seismic Wave deals 2 damage to any
-//! target and 1 damage to each nonartifact creature target opponent controls."
+//! Seismic Wave — `{2}{R}` instant. "Deals 2 damage to any target and
+//! 1 damage to each nonartifact creature target opponent controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -42,8 +42,9 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(any_target) = entry.targets.targets.first() else { return Vec::new(); };
-    let damage_target = match any_target {
+    let mut effects = Vec::new();
+    let Some(first) = entry.targets.targets.first() else { return Vec::new(); };
+    let dt = match first {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
         TargetChoice::ObjectOrPlayer(o) => match o {
@@ -51,37 +52,23 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-
-    let Some(opp_target) = entry.targets.targets.get(1) else { return Vec::new(); };
-    let opp = match opp_target {
-        TargetChoice::Player(p) => *p,
-        _ => return Vec::new(),
-    };
-
-    let nonartifact_creatures = script::ids_matching(
+    effects.push(Effect::DealDamage { source: entry.source, target: dt, amount: 2 });
+    let Some(second) = entry.targets.targets.get(1) else { return effects; };
+    let TargetChoice::Player(opp) = second else { return effects; };
+    let opp = *opp;
+    let ids = script::ids_matching(
         state,
         &ObjectFilter::creature()
-            .without_types(TypeLine::ARTIFACT.into())
-            .controlled_by(ControllerConstraint::Opponent),
-        entry.controller,
+            .controlled_by(ControllerConstraint::You)
+            .without_types(TypeLine::ARTIFACT.into()),
+        opp,
     );
-
-    let mut effects = vec![Effect::DealDamage {
-        source: entry.source,
-        target: damage_target,
-        amount: 2,
-    }];
-
-    // The "target opponent" specifies whose creatures to hit; we use ids_matching
-    // which already filters by ControllerConstraint::Opponent for any opponent.
-    let _ = opp; // opp used to identify the target opponent; ForEach covers all opponents' nonartifact creatures
-    effects.push(Effect::ForEach {
-        targets: nonartifact_creatures,
-        effect: Box::new(Effect::DealDamage {
+    for id in ids {
+        effects.push(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(NULL_OBJECT_ID),
+            target: DamageTarget::Object(id),
             amount: 1,
-        }),
-    });
+        });
+    }
     effects
 }

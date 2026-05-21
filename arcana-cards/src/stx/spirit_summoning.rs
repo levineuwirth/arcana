@@ -1,5 +1,5 @@
-//! Spirit Summoning — `{1}{R/W}{R/W}` sorcery — Lesson. "Create a 3/2 red
-//! and white Spirit creature token."
+//! Spirit Summoning — `{1}{R/W}{R/W}` sorcery — Lesson. Create a 3/2
+//! red and white Spirit creature token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,11 +12,12 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Spirit Summoning");
     let _spirit = reg.interner_mut().intern("Spirit");
+    let _lesson = reg.interner_mut().intern("Lesson");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{R/W}{R/W}").expect("valid cost")),
         colors: ColorSet::red() | ColorSet::white(),
-        types: TypeLine(TypeLine::SORCERY),
+        types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
     reg.register(
@@ -35,14 +36,14 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(spirit);
+    let spirit = reg.interner().lookup("Spirit").expect("interned");
+    let mut subs = SubtypeSet::default();
+    subs.0.insert(spirit);
     let token = TokenDefinition {
         name: spirit,
         colors: ColorSet::red() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: subs,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         keywords: vec![],

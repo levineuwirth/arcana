@@ -1,5 +1,5 @@
-//! Take Inventory — `{1}{U}` sorcery. "Draw a card, then draw cards
-//! equal to the number of cards named Take Inventory in your graveyard."
+//! Take Inventory — `{1}{U}` sorcery. Draw a card, then draw cards equal to
+//! the number of cards named Take Inventory in your graveyard.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,6 +8,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -20,14 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Draw a card, then draw cards equal to the number of cards \
-                   named Take Inventory in your graveyard."
-                .into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Draw a card, then draw cards equal to the number of cards named Take Inventory in your graveyard.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -36,9 +36,17 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let n = script::graveyard_size(state, entry.controller);
-    vec![Effect::DrawCards {
-        player: entry.controller,
-        count: 1 + n,
-    }]
+    // GAP: cannot filter graveyard cards by name; use generic graveyard count
+    // of cards matching the all-permanents filter as a stand-in for the
+    // name-matched subset.
+    let n = script::graveyard_matching(
+        state,
+        &ObjectFilter::new(),
+        entry.controller,
+        entry.controller,
+    );
+    vec![
+        Effect::DrawCards { player: entry.controller, count: 1 },
+        Effect::DrawCards { player: entry.controller, count: n },
+    ]
 }

@@ -1,5 +1,7 @@
 //! Excavation Explosion — `{2}{R}` sorcery. "Excavation Explosion
 //! deals 3 damage to any target. Create a tapped Powerstone token."
+//! Powerstone's mana-restricted activated ability and 'enter tapped'
+//! rider aren't modeled on the token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
@@ -13,7 +15,7 @@ use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Excavation Explosion");
-    let _p = reg.interner_mut().intern("Powerstone");
+    let _powerstone = reg.interner_mut().intern("Powerstone");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}").expect("valid cost")),
@@ -22,16 +24,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Excavation Explosion deals 3 damage to any target. Create a tapped Powerstone token.".into(),
-            target_requirements: vec![TargetRequirement::any_target()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Excavation Explosion deals 3 damage to any target. Create a tapped Powerstone token.".into(),
+                target_requirements: vec![TargetRequirement::any_target()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let dt = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
@@ -41,11 +48,16 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    let ps = reg.interner().lookup("Powerstone").expect("interned");
+    let powerstone = reg
+        .interner()
+        .lookup("Powerstone")
+        .expect("Powerstone interned during register()");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(ps);
+    subtypes.0.insert(powerstone);
+    // GAP: 'enter tapped' rider and Powerstone activated mana ability
+    // are not modeled on the token.
     let token = TokenDefinition {
-        name: ps,
+        name: powerstone,
         colors: ColorSet::new(),
         types: TypeLine::ARTIFACT.into(),
         subtypes,
@@ -54,10 +66,12 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Powerstone's restricted "{T}: Add {C}" mana ability and the
-    // "tapped" entry state are not expressible.
     vec![
-        Effect::DealDamage { source: entry.source, target: dt, amount: 3 },
+        Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 3,
+        },
         Effect::CreateToken { controller: entry.controller, token },
     ]
 }

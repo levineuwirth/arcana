@@ -1,8 +1,8 @@
-//! Gimli's Fury — `{1}{R}` instant. "Target creature gets +3/+2 until
-//! end of turn. If it's legendary, it also gains trample until end of
-//! turn."
+//! Gimli's Fury — `{1}{R}` instant. "Target creature gets +3/+2
+//! until end of turn. If it's legendary, it also gains trample until
+//! end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -31,21 +31,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: the conditional "if it's legendary" gains trample — no
-    // catalog predicate for a target's supertype at resolution; the
-    // unconditional pump is still applied.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if it's legendary" supertype check is not expressible —
+    // the conditional trample is omitted; +3/+2 is unconditional.
     vec![Effect::Pump {
         target: *id,
         power: 3,
         toughness: 2,
         duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Trample],
+        keywords: vec![],
     }]
 }

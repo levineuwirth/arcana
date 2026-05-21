@@ -1,10 +1,6 @@
-//! Strongarm Tactics — `{1}{B}` sorcery.
-//! "Each player discards a card. Then each player who didn't discard a creature
-//! card this way loses 4 life."
-//!
-//! GAP: "each player who didn't discard a creature card" — conditional life loss
-//! based on what card type was discarded is not trackable with available script
-//! helpers. Partial: emit each-player discard; omit conditional life loss.
+//! Strongarm Tactics — `{1}{B}` sorcery. "Each player discards a
+//! card. Then each player who didn't discard a creature card this
+//! way loses 4 life."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -13,7 +9,6 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,26 +21,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Each player discards a card. Then each player who didn't discard a creature card this way loses 4 life.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Each player discards a card. Then each player who didn't discard a creature card this way loses 4 life.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
 fn resolve(
     state: &GameState,
-    entry: &StackEntry,
+    _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional life loss for players who didn't discard a creature — not in catalog
-    vec![Effect::Sequence(
-        script::all_players(state)
-            .into_iter()
-            .map(|p| Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses })
-            .collect(),
-    )]
+    // Each player discards a card.
+    script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Discard {
+            player: p,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        })
+        .collect()
+    // GAP: "each player who didn't discard a creature card loses 4
+    // life" — the engine cannot inspect what each player discarded,
+    // so the conditional life loss is omitted.
 }

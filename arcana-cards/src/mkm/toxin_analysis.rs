@@ -1,10 +1,8 @@
 //! Toxin Analysis — `{B}` instant. "Target creature gains deathtouch
-//! and lifelink until end of turn. Investigate."
-//!
-//! GAP: catalog has no Effect::Investigate and Pump grants multiple
-//! keywords in one bundle (so we use it); the Clue token is created
-//! as a plain artifact (its activated 'sac: draw a card' ability
-//! isn't expressible in TokenDefinition).
+//! and lifelink until end of turn. Investigate." Investigate creates
+//! a Clue token (artifact with activated draw-a-card). We emit the
+//! pump-with-keywords and create a plain Clue artifact token (no
+//! activated ability slot in TokenDefinition — GAP that).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -26,19 +24,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
+    // GAP: Clue token's '{2}, Sacrifice this token: Draw a card' activated ability.
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gains deathtouch and lifelink until end of turn. Investigate.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gains deathtouch and lifelink until end of turn. Investigate.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    let clue = reg.interner().lookup("Clue").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let clue = reg.interner().lookup("Clue").expect("Clue interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(clue);
     let token = TokenDefinition {
@@ -49,7 +54,6 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         power: None,
         toughness: None,
         keywords: vec![],
-        // GAP: '{2}, Sacrifice: draw a card' activated ability not encoded.
         abilities: vec![],
     };
     vec![

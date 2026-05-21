@@ -1,8 +1,5 @@
-//! Arrows of Justice — `{2}{R/W}` instant. "Arrows of Justice deals 4
-//! damage to target attacking or blocking creature."
-//!
-//! There is no attacking/blocking `ObjectFilter` refinement; the
-//! target is a plain creature and the restriction is a GAP.
+//! Arrows of Justice — `{2}{R/W}` instant. "Arrows of Justice deals 4 damage
+//! to target attacking or blocking creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,12 +21,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Arrows of Justice deals 4 damage to target attacking or blocking creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Arrows of Justice deals 4 damage to target attacking or blocking creature.".into(),
+                // GAP: no ObjectFilter refinement for "attacking or blocking"; targets any creature.
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,10 +37,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: no attacking/blocking target filter.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

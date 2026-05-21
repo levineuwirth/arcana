@@ -3,7 +3,7 @@
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -31,14 +31,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::permanent()
-            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
-        entry.controller,
-    );
+    let filter = ObjectFilter::permanent()
+        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT));
+    let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,
-        effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
+        effect: Box::new(Effect::ReturnToHand {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+        }),
     }]
 }

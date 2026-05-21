@@ -1,6 +1,6 @@
 //! You're Not Alone — `{W}` instant. "Target creature gets +2/+2
-//! until end of turn. If you control three or more creatures, it gets
-//! +4/+4 until end of turn instead."
+//! until end of turn. If you control three or more creatures, it
+//! gets +4/+4 until end of turn instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -10,9 +10,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -34,19 +32,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let n = script::count_matching(
+    let creatures = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    let amt = if n >= 3 { 4 } else { 2 };
+    let bonus = if creatures >= 3 { 4 } else { 2 };
     vec![Effect::Pump {
         target: *id,
-        power: amt,
-        toughness: amt,
+        power: bonus,
+        toughness: bonus,
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]

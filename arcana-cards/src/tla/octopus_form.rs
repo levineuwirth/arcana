@@ -1,6 +1,5 @@
-//! Octopus Form — `{U}` instant (Lesson). "Target creature you
-//! control gets +1/+1 and gains hexproof until end of turn. Untap
-//! it."
+//! Octopus Form — `{U}` instant. Target creature you control gets +1/+1
+//! and gains hexproof until end of turn. Untap it.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -40,17 +39,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
     vec![
         Effect::Pump {
-            target: *id,
+            target: id,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::Hexproof],
         },
-        Effect::Untap { target: *id },
+        Effect::Untap { target: id },
     ]
 }

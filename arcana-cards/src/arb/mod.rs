@@ -10,3 +10,4 @@ pub mod breath_of_malfegor;
 pub mod double_negative;
 pub mod drastic_revelation;
 pub mod soulquake;
+pub mod morbid_bloom;

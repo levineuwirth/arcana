@@ -1,10 +1,7 @@
-//! Taste of Death — `{4}{B}{B}` sorcery. "Each player sacrifices
-//! three creatures of their choice. You create three Food tokens."
-//!
-//! Food's activated "{2}, {T}, sacrifice: gain 3 life" mana ability is
-//! not constructable on a TokenDefinition from this surface; the
-//! `TokenDefinition` is emitted with empty abilities. The per-player
-//! sacrifice loop is modeled.
+//! Taste of Death — `{4}{B}{B}` sorcery. "Each player sacrifices three
+//! creatures of their choice. You create three Food tokens." The Food
+//! token's activated ability isn't expressible — we emit the tokens
+//! without their tap-sac ability.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -27,21 +24,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Each player sacrifices three creatures of their choice. You create three Food tokens.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Each player sacrifices three creatures of their choice. You create three Food tokens.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = script::all_players(state)
-        .into_iter()
-        .map(|p| Effect::Sacrifice { player: p, filter: ObjectFilter::creature(), count: 3 })
-        .collect();
-    let food = reg.interner().lookup("Food").expect("interned");
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let food = reg
+        .interner()
+        .lookup("Food")
+        .expect("Food interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(food);
     let token = TokenDefinition {
@@ -54,9 +55,21 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Food activated mana/life-gain ability not constructable on the token.
+    let mut effects: Vec<Effect> = script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::creature(),
+            count: 3,
+        })
+        .collect();
     for _ in 0..3 {
-        effects.push(Effect::CreateToken { controller: entry.controller, token: token.clone() });
+        effects.push(Effect::CreateToken {
+            controller: entry.controller,
+            token: token.clone(),
+        });
     }
+    // GAP: Food token's activated ability ({2},{T},Sacrifice: gain 3 life)
+    // can't be attached to a TokenDefinition through the catalog.
     effects
 }

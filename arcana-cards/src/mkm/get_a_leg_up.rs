@@ -1,6 +1,5 @@
-//! Get a Leg Up — `{G}` instant. "Until end of turn, target creature
-//! gets +1/+1 for each creature you control and gains reach." The
-//! pump amount is dynamic (number of creatures you control).
+//! Get a Leg Up — `{G}` instant. Until end of turn, target creature
+//! gets +1/+1 for each creature you control and gains reach.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -10,7 +9,9 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -32,16 +33,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
     let n = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         entry.controller,
-    ) as i32;
+    );
+    let n = n as i32;
     vec![Effect::Pump {
-        target: *id,
+        target: id,
         power: n,
         toughness: n,
         duration: Duration::EndOfTurn,

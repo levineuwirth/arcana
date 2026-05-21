@@ -1,7 +1,5 @@
-//! Pillage — `{1}{R}{R}` sorcery. "Destroy target artifact or land.
-//! It can't be regenerated."
-//!
-//! GAP: can't-be-regenerated rider has no flag.
+//! Pillage — `{1}{R}{R}` sorcery. "Destroy target artifact or land. It
+//! can't be regenerated."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,9 +26,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target artifact or land. It can't be regenerated.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::new()
-                        .with_types_any(TypeLine::ARTIFACT.into())
-                        .with_types_any(TypeLine::LAND.into()),
+                    ObjectFilter::permanent().with_types_any(TypeLine(
+                        TypeLine::ARTIFACT | TypeLine::LAND,
+                    )),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -41,9 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "can't be regenerated" rider not modeled in the effect catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

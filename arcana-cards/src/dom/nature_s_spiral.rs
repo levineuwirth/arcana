@@ -1,5 +1,5 @@
-//! Nature's Spiral — `{1}{G}` sorcery. "Return target permanent card from your
-//! graveyard to your hand."
+//! Nature's Spiral — `{1}{G}` sorcery. "Return target permanent card from
+//! your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +8,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -29,7 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::permanent(),
+                        filter: ObjectFilter::permanent()
+                            .controlled_by(ControllerConstraint::You),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,

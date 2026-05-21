@@ -1,6 +1,9 @@
 //! Tourach's Canticle — `{3}{B}` sorcery. "Target opponent reveals
 //! their hand. You choose a card from it. That player discards that
 //! card, then discards a card at random."
+//!
+//! GAP: reveal-hand + you-pick isn't modeled; emit a controller-chooses
+//! discard plus a random discard.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -22,10 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent reveals their hand. You choose a card \
-                   from it. That player discards that card, then discards \
-                   a card at random."
-                .into(),
+            text: "Target opponent reveals their hand. You choose a card from it. That player discards that card, then discards a card at random.".into(),
             target_requirements: vec![TargetRequirement::target_player()],
             modal: None,
             effect: resolve,
@@ -38,17 +38,24 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let p = match t {
+        TargetChoice::Player(p) => *p,
+        _ => return Vec::new(),
     };
+    // GAP: reveal-hand-and-pick — approximate with OpponentChooses
+    // first discard (the chooser of the discard being the spell's
+    // controller is not modeled distinctly; closest match is
+    // OpponentChooses since "you" choose from another player's hand).
+    let _ = entry;
     vec![
         Effect::Discard {
-            player: *p,
+            player: p,
             count: 1,
             choice: DiscardChoice::OpponentChooses,
         },
         Effect::Discard {
-            player: *p,
+            player: p,
             count: 1,
             choice: DiscardChoice::Random,
         },

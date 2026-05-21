@@ -1,9 +1,11 @@
-//! Return to Action — `{1}{B}` instant.
-//! "Until end of turn, target creature gets +1/+0 and gains lifelink
-//! and \"When this creature dies, return it to the battlefield tapped
-//! under its owner's control.\""
+//! Return to Action — `{1}{B}` instant. "Until end of turn, target
+//! creature gets +1/+0 and gains lifelink and 'When this creature
+//! dies, return it to the battlefield tapped under its owner's
+//! control.'" We emit the +1/+0 + lifelink pump and the
+//! "this-dies → return-from-graveyard" delayed action (tapped is
+//! GAPped — DelayedAction returns untapped).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -32,17 +34,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // The granted "when this dies, return it" triggered ability has
-    // no catalog representation; the +1/+0 and lifelink are applied.
-    vec![Effect::Pump {
-        target: *id,
-        power: 1,
-        toughness: 0,
-        duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Lifelink],
-    }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: the granted dies-trigger that returns *tapped* — DelayedAction returns from graveyard untapped; "tapped" rider lost.
+    vec![
+        Effect::Pump {
+            target: *id,
+            power: 1,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Lifelink],
+        },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::ThisDies,
+            action: DelayedAction::ReturnFromExileToBattlefield,
+        },
+    ]
 }

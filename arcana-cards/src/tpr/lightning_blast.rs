@@ -1,4 +1,5 @@
-//! Lightning Blast — `{3}{R}` instant. "Lightning Blast deals 4 damage to any target."
+//! Lightning Blast — `{3}{R}` instant. "Lightning Blast deals 4
+//! damage to any target."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;

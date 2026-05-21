@@ -1,9 +1,6 @@
-//! Lithomancer's Focus — `{W}` instant. "Target creature gets +2/+2 until end
-//! of turn. Prevent all damage that would be dealt to that creature this turn
-//! by colorless sources."
-//!
-//! GAP: no Effect variant for damage prevention from colorless sources.
-//! Only the pump is expressible.
+//! Lithomancer's Focus — `{W}` instant. "Target creature gets +2/+2
+//! until end of turn. Prevent all damage that would be dealt to that
+//! creature this turn by colorless sources."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -25,13 +22,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Target creature gets +2/+2 until end of turn. Prevent all damage that would be dealt to that creature this turn by colorless sources.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Target creature gets +2/+2 until end of turn. Prevent all damage that would be dealt to that creature this turn by colorless sources.".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -42,7 +38,9 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no Effect variant for damage prevention from colorless sources
+    // GAP: PreventDamage doesn't restrict by source color (no
+    // "colorless sources only" predicate); preventing all damage
+    // would be materially stronger. Omit the prevention half.
     vec![Effect::Pump {
         target: *id,
         power: 2,

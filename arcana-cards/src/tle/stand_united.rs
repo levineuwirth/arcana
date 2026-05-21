@@ -1,6 +1,6 @@
-//! Stand United — `{1}{G/W}` instant.
-//! "Target creature gets +2/+2 until end of turn. If it's an Ally,
-//! scry 2."
+//! Stand United — `{1}{G/W}` instant. "Target creature gets +2/+2
+//! until end of turn. If it's an Ally, scry 2." Conditional rider on
+//! subtype not in catalog; emit the pump.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -31,12 +31,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "If it's an Ally, scry 2" is a conditional rider keyed on the
-    // target's subtype with no catalog representation; the +2/+2 is
-    // applied.
+    // GAP: subtype-conditional Scry 2 rider.
     vec![Effect::Pump {
         target: *id,
         power: 2,

@@ -1,12 +1,9 @@
-//! Desynchronization — `{2}{U}{U}` instant. "Return each nonland permanent
-//! that's not historic to its owner's hand."
-//!
-//! GAP: "not historic" (artifact/legendary/Saga) is not an expressible
-//! ObjectFilter refinement; modeled as returning each nonland permanent.
+//! Desynchronization — `{2}{U}{U}` instant. Return each nonland
+//! permanent that's not historic to its owner's hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -39,14 +36,13 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "not historic" filter not expressible.
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-        entry.controller,
-    );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
-    }]
+    // Best-effort: nonland, nonartifact (artifacts are historic). Cannot
+    // exclude legendaries/Sagas via script filters. GAP: full historic filter.
+    let filter = ObjectFilter::permanent()
+        .without_types(TypeLine::LAND.into())
+        .without_types(TypeLine::ARTIFACT.into());
+    let ids = script::ids_matching(state, &filter, entry.controller);
+    ids.into_iter()
+        .map(|id| Effect::ReturnToHand { target: id })
+        .collect()
 }

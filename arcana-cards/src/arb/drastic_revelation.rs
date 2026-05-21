@@ -1,5 +1,5 @@
-//! Drastic Revelation — `{2}{U}{B}{R}` sorcery. "Discard your hand.
-//! Draw seven cards, then discard three cards at random."
+//! Drastic Revelation — `{2}{U}{B}{R}` sorcery. "Discard your hand. Draw
+//! seven cards, then discard three cards at random."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -37,10 +37,7 @@ fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Ef
             count: hand,
             choice: DiscardChoice::ControllerChooses,
         },
-        Effect::DrawCards {
-            player: entry.controller,
-            count: 7,
-        },
+        Effect::DrawCards { player: entry.controller, count: 7 },
         Effect::Discard {
             player: entry.controller,
             count: 3,

@@ -1,9 +1,8 @@
-//! Kami's Flare — `{1}{R}` instant. "Kami's Flare deals 3 damage to target
-//! creature or planeswalker. Kami's Flare also deals 2 damage to that
-//! permanent's controller if you control a modified creature."
-//!
-//! GAP: no controller-of-target accessor for the 2-damage rider; also
-//! no "modified" predicate. Only the 3 to target stays honest.
+//! Kami's Flare — `{1}{R}` instant. "Kami's Flare deals 3 damage to
+//! target creature or planeswalker. Kami's Flare also deals 2 damage
+//! to that permanent's controller if you control a modified creature."
+//! "Modified" status is not in the catalog; emit the 3 damage and
+//! GAP the conditional 2-to-controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -12,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +29,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Kami's Flare deals 3 damage to target creature or planeswalker. Kami's Flare also deals 2 damage to that permanent's controller if you control a modified creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER),
+                        ),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -42,7 +51,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no controller-of-target nor modified-creature predicate.
+    // GAP: "if you control a modified creature" condition (modified = equipment/auras/counters) not exposed via Conditional + script::*.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

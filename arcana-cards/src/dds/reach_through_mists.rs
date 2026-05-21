@@ -6,16 +6,19 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Reach Through Mists");
-    let _arcane = reg.interner_mut().intern("Arcane");
+    let arcane = reg.interner_mut().intern("Arcane");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(arcane);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{U}").expect("valid cost")),
         colors: ColorSet::blue(),
         types: TypeLine::INSTANT.into(),
+        subtypes,
         ..Default::default()
     };
     reg.register(
@@ -28,6 +31,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     vec![Effect::DrawCards { player: entry.controller, count: 1 }]
 }

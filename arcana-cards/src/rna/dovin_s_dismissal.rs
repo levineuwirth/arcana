@@ -1,10 +1,7 @@
 //! Dovin's Dismissal — `{2}{W}{U}` instant. "Put up to one target
-//! tapped creature on top of its owner's library. You may search
-//! your library and/or graveyard for a card named Dovin, Architect
-//! of Law..."
-//!
-//! The named-card library/graveyard search is not expressible (no
-//! by-name tutor). We honor the bounce-to-top-of-library portion.
+//! tapped creature on top of its owner's library. You may search your
+//! library and/or graveyard for a card named Dovin, Architect of
+//! Law, ..."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,24 +24,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Put up to one target tapped creature on top of its owner's library. You may search your library and/or graveyard for a card named Dovin, Architect of Law, reveal it, and put it into your hand. If you search your library this way, shuffle.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(ObjectFilter::creature().tapped_only()),
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Put up to one target tapped creature on top of its \
+                       owner's library. You may search your library and/or \
+                       graveyard for a card named Dovin, Architect of Law, \
+                       reveal it, and put it into your hand. If you search \
+                       your library this way, shuffle.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().tapped_only(),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: by-name search of library/graveyard for "Dovin, Architect
-    // of Law" is not expressible.
-    vec![Effect::PutOnTopOfLibrary { target: *id }]
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: the optional named-card search across library/graveyard is
+    // not expressible; emit the put-on-top-of-library only.
+    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
+        vec![Effect::PutOnTopOfLibrary { target: *id }]
+    } else {
+        Vec::new()
+    }
 }

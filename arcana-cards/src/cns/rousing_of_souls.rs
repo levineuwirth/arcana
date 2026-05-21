@@ -1,11 +1,7 @@
-//! Rousing of Souls — `{2}{W}` sorcery. "Parley — Each player reveals
-//! the top card of their library. For each nonland card revealed this
-//! way, you create a 1/1 white Spirit creature token with flying.
-//! Then each player draws a card."
-//!
-//! The reveal-and-count and the dynamically-scaled token creation are
-//! not modeled (no top-card reveal/count helper) — GAP. The trailing
-//! "each player draws a card" is emitted.
+//! Rousing of Souls — `{2}{W}` sorcery. "Parley — Each player reveals the top
+//! card of their library. For each nonland card revealed this way, you create
+//! a 1/1 white Spirit creature token with flying. Then each player draws a
+//! card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -18,7 +14,6 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rousing of Souls");
-    let _sp = reg.interner_mut().intern("Spirit");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{W}").expect("valid cost")),
@@ -27,12 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Parley — Each player reveals the top card of their library. For each nonland card revealed this way, you create a 1/1 white Spirit creature token with flying. Then each player draws a card.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Parley — Each player reveals the top card of their library. For each nonland card revealed this way, you create a 1/1 white Spirit creature token with flying. Then each player draws a card.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -41,8 +37,9 @@ fn resolve(
     _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: top-card reveal/count and the dynamically-scaled Spirit
-    // token creation are not modeled. The each-player draw is emitted.
+    // GAP: the Parley reveal and per-revealed-nonland token creation require inspecting
+    // the top card of each library — no such primitive. The "each player draws a card"
+    // tail IS expressible and is emitted.
     script::all_players(state)
         .into_iter()
         .map(|p| Effect::DrawCards { player: p, count: 1 })

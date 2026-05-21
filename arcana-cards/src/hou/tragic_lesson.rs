@@ -1,6 +1,6 @@
-//! Tragic Lesson — `{2}{U}` instant.
-//! "Draw two cards. Then discard a card unless you return a land you
-//! control to its owner's hand."
+//! Tragic Lesson — `{2}{U}` instant. "Draw two cards. Then discard a
+//! card unless you return a land you control to its owner's hand."
+//! "Discard unless you bounce a land" choice not in catalog.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -29,9 +29,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "discard unless you bounce a land" choice has no catalog
-    // representation; the draw plus discard branch is applied.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "discard a card unless you bounce a land" branch not in catalog.
     vec![
         Effect::DrawCards { player: entry.controller, count: 2 },
         Effect::Discard {

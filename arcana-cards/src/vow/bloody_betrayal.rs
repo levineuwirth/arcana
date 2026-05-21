@@ -1,8 +1,8 @@
 //! Bloody Betrayal — `{2}{R}` sorcery. "Gain control of target creature
-//! until end of turn. Untap that creature. It gains haste until end of turn.
-//! Create a Blood token." No Effect for temporary gain-control; we emit the
-//! untap and haste grant we can. Blood token activated ability isn't
-//! expressible — GAP that part.
+//! until end of turn. Untap that creature. It gains haste until end of
+//! turn. Create a Blood token." The temporary control change has no
+//! until-end-of-turn variant, so the expressible parts (untap, haste) are
+//! emitted and the temporary control is gapped. The Blood token is created.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -35,33 +35,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let mut out = Vec::new();
-    if let Some(TargetChoice::Object(id)) = entry.targets.targets.first() {
-        // GAP: no Effect for "gain control of target permanent until end of turn".
-        out.push(Effect::Untap { target: *id });
-        out.push(Effect::GrantKeyword {
+    // GAP: "gain control until end of turn" has no temporary-control Effect.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let blood = reg.interner().lookup("Blood").expect("Blood interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(blood);
+    let token = TokenDefinition {
+        name: blood,
+        colors: ColorSet::new(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
+    vec![
+        Effect::Untap { target: *id },
+        Effect::GrantKeyword {
             target: *id,
             keyword: KeywordAbility::Haste,
             duration: Duration::EndOfTurn,
-        });
-    }
-    let blood = reg.interner().lookup("Blood").expect("Blood interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(blood);
-    // GAP: Blood token's activated ability "{1}, {T}, discard a card, sacrifice: draw"
-    // is not expressible — token is created as a bare artifact stub.
-    out.push(Effect::CreateToken {
-        controller: entry.controller,
-        token: TokenDefinition {
-            name: blood,
-            colors: ColorSet::new(),
-            types: TypeLine::ARTIFACT.into(),
-            subtypes,
-            power: None,
-            toughness: None,
-            keywords: vec![],
-            abilities: vec![],
         },
-    });
-    out
+        Effect::CreateToken { controller: entry.controller, token },
+    ]
 }

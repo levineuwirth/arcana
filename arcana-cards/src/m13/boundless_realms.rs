@@ -1,6 +1,9 @@
 //! Boundless Realms — `{6}{G}` sorcery. "Search your library for up
 //! to X basic land cards, where X is the number of lands you control,
-//! put them onto the battlefield tapped, then shuffle."
+//! put them onto the battlefield tapped, then shuffle." X is the
+//! count of lands you control; TutorToBattlefield is a single-card
+//! primitive, so we repeat it X times. We can't constrain to 'basic'
+//! supertype (no helper), so the filter is LAND.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,32 +25,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for up to X basic land cards, where X is the number of lands you control, put them onto the battlefield tapped, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for up to X basic land cards, where X is the number of lands you control, put them onto the battlefield tapped, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let x = script::count_matching(
         state,
-        &ObjectFilter::new()
+        &ObjectFilter::permanent()
             .with_types(TypeLine::LAND.into())
             .controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    // X tutors of a land card (basic-land restriction approximated as
-    // a land-typed filter; "tapped: true" matches the printed text).
-    let mut out = Vec::new();
+    // GAP: cannot constrain TutorToBattlefield to the 'basic' supertype
+    // — filter is LAND.
+    let mut effects = Vec::with_capacity(x as usize);
     for _ in 0..x {
-        out.push(Effect::TutorToBattlefield {
+        effects.push(Effect::TutorToBattlefield {
             player: entry.controller,
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             tapped: true,
         });
     }
-    out
+    effects
 }

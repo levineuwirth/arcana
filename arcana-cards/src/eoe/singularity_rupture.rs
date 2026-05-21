@@ -1,6 +1,7 @@
-//! Singularity Rupture — `{3}{U}{B}{B}` sorcery.
-//! "Destroy all creatures, then any number of target players each
-//! mill half their library, rounded down."
+//! Singularity Rupture — `{3}{U}{B}{B}` sorcery. "Destroy all
+//! creatures, then any number of target players each mill half their
+//! library, rounded down." We emit board-wipe + mill of the chosen
+//! players; the half-library mill amount is dynamic and we GAP it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +11,7 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -37,17 +38,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    use arcana_core::targets::ObjectFilter;
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    // GAP: per-target "mill half their library" — dynamic amount derived from each player's library size; we approximate by computing for each chosen target player.
     let mut effects = vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
     }];
-    for t in &entry.targets.targets {
-        if let TargetChoice::Player(p) = t {
-            let n = script::library_size(state, *p) / 2;
-            effects.push(Effect::Mill { player: *p, count: n });
+    for choice in &entry.targets.targets {
+        if let arcana_core::targets::TargetChoice::Player(p) = choice {
+            let lib = script::library_size(state, *p);
+            effects.push(Effect::Mill { player: *p, count: lib / 2 });
         }
     }
     effects

@@ -1,19 +1,15 @@
-//! Sudden Disappearance — `{5}{W}` sorcery. "Exile all nonland permanents
-//! target player controls. Return the exiled cards to the battlefield
-//! under their owner's control at the beginning of the next end step."
-//!
-//! GAP: 'return exiled cards at beginning of next end step' delayed
-//! trigger not expressible. Exiles all nonland permanents of target player
-//! without the return rider.
+//! Sudden Disappearance — `{5}{W}` sorcery. Exile all nonland permanents
+//! target player controls. Return them at the beginning of the next end
+//! step.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,15 +37,23 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: return at next end step not expressible
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let p = *p;
     let ids = script::ids_matching(
         state,
         &ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-        entry.controller,
+        p,
     );
-    if ids.is_empty() { return Vec::new(); }
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
-    }]
+    let mut effects: Vec<Effect> = Vec::new();
+    for id in ids {
+        effects.push(Effect::ExilePermanent { target: id });
+        effects.push(Effect::DelayedAction {
+            source: id,
+            controller: entry.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::ReturnFromExileToBattlefield,
+        });
+    }
+    effects
 }

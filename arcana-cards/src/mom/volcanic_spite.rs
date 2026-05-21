@@ -1,10 +1,11 @@
-//! Volcanic Spite — `{1}{R}` instant. "Volcanic Spite deals 3 damage to
-//! target creature, planeswalker, or battle. You may put a card from your
-//! hand on the bottom of your library. If you do, draw a card."
-//!
-//! GAP: no TargetFilter for planeswalker or battle type, and no Effect variant
-//! for optional hand-to-bottom-of-library looting. Using creature target for
-//! the damage; optional draw rider omitted.
+//! Volcanic Spite — `{1}{R}` instant. "Volcanic Spite deals 3 damage
+//! to target creature, planeswalker, or battle. You may put a card
+//! from your hand on the bottom of your library. If you do, draw a
+//! card." 'Battle' is not in TypeLine; the hand-to-bottom-then-draw
+//! rider is also not catalog-shaped. Restrict the target to
+//! creature-or-planeswalker (a strict subset of the printed
+//! disjunction is still a legal target) and emit the damage; GAP the
+//! battle branch and the rider.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -13,7 +14,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,8 +32,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Volcanic Spite deals 3 damage to target creature, planeswalker, or battle. You may put a card from your hand on the bottom of your library. If you do, draw a card.".into(),
-                // GAP: no TargetFilter for planeswalker or battle; using creature only
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_types_any(TypeLine(
+                            TypeLine::CREATURE | TypeLine::PLANESWALKER,
+                        )),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -44,7 +54,8 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no Effect variant for optional hand-to-bottom loot rider
+    // GAP: 'battle' as a target type; 'put a card from your hand on the
+    // bottom of your library, if you do draw a card' loot rider.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

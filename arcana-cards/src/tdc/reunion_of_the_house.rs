@@ -1,8 +1,6 @@
-//! Reunion of the House — `{5}{W}{W}` sorcery. "Return any number of target creature cards with
-//! total power 10 or less from your graveyard to the battlefield. Exile Reunion of the House."
-//!
-//! GAP: UpTo(n) graveyard targets with aggregate power constraint not expressible; self-exile
-//! not in catalog. Using best-effort single ReturnFromGraveyardToBattlefield.
+//! Reunion of the House — `{5}{W}{W}` sorcery. "Return any number of
+//! target creature cards with total power 10 or less from your
+//! graveyard to the battlefield. Exile Reunion of the House."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,10 +8,11 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::targets::ObjectFilter;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Reunion of the House");
@@ -25,20 +24,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Return any number of target creature cards with total power 10 or less from your graveyard to the battlefield. Exile Reunion of the House.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
-                    },
-                    count: TargetCount::Any,
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Return any number of target creature cards with total power 10 or less from your graveyard to the battlefield. Exile Reunion of the House.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::creature(),
+                },
+                count: TargetCount::Any,
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -47,12 +45,22 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: aggregate power constraint across multiple targets; self-exile effect not in catalog
-    entry.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t {
-            Some(Effect::ReturnFromGraveyardToBattlefield { target: *id })
-        } else {
-            None
-        }
-    }).collect()
+    // Return each chosen creature card to the battlefield. The
+    // "total power 10 or less" constraint is on the *selection* of
+    // targets, which the engine validates at cast time.
+    entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => {
+                Some(Effect::ReturnFromGraveyardToBattlefield { target: *id })
+            }
+            _ => None,
+        })
+        .collect()
+    // GAP: "with total power 10 or less" — the aggregate-power cap on
+    // the multi-target selection cannot be expressed in TargetFilter;
+    // and "Exile Reunion of the House" (the spell exiling itself) has
+    // no catalog primitive.
 }

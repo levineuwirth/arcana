@@ -1,7 +1,7 @@
-//! Unified Strike — `{W}` instant. "Exile target attacking creature
-//! if its power is less than or equal to the number of Soldiers on
-//! the battlefield." The conditional compares the target's power to a
-//! dynamic Soldier count computed at resolution.
+//! Unified Strike — `{W}` instant. Exile target attacking creature if
+//! its power is less than or equal to the number of Soldiers on the
+//! battlefield. ("Attacking creature" filter not modeled; conditional
+//! exile is emitted.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,16 +33,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let id = *id;
+    // GAP: "attacking" predicate not expressible in the target filter — apply
+    // the power-vs-Soldier-count check, but accept any creature as target.
     let soldiers = script::count_matching(
         state,
         &script::subtype_filter(reg, "Soldier"),
         entry.controller,
-    ) as i32;
-    if script::power_of(state, *id) <= soldiers {
-        vec![Effect::ExilePermanent { target: *id }]
+    );
+    let power = script::power_of(state, id).max(0) as u32;
+    if power <= soldiers {
+        vec![Effect::ExilePermanent { target: id }]
     } else {
         Vec::new()
     }

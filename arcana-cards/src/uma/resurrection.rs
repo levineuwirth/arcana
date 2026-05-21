@@ -1,4 +1,4 @@
-//! Resurrection — `{2}{W}{W}` sorcery, "Return target creature card
+//! Resurrection — `{2}{W}{W}` sorcery. "Return target creature card
 //! from your graveyard to the battlefield."
 
 use arcana_core::effects::Effect;
@@ -24,9 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Return target creature card from your graveyard to the \
-                   battlefield."
-                .into(),
+            text: "Return target creature card from your graveyard to the battlefield.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Card {
                     zone: Zone::Graveyard(0),
@@ -46,8 +44,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

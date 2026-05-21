@@ -1,7 +1,7 @@
-//! Cruel Ultimatum — `{U}{U}{B}{B}{B}{R}{R}` sorcery. "Target
-//! opponent sacrifices a creature of their choice, discards three
-//! cards, then loses 5 life. You return a creature card from your
-//! graveyard to your hand, draw three cards, then gain 5 life."
+//! Cruel Ultimatum — `{U}{U}{B}{B}{B}{R}{R}` sorcery. "Target opponent
+//! sacrifices a creature of their choice, discards three cards, then
+//! loses 5 life. You return a creature card from your graveyard to
+//! your hand, draw three cards, then gain 5 life."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -16,20 +16,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cruel Ultimatum");
     let chars = Characteristics {
         name,
-        mana_cost: Some(
-            ManaCost::parse("{U}{U}{B}{B}{B}{R}{R}").expect("valid cost"),
-        ),
+        mana_cost: Some(ManaCost::parse("{U}{U}{B}{B}{B}{R}{R}").expect("valid cost")),
         colors: ColorSet::blue() | ColorSet::black() | ColorSet::red(),
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target opponent sacrifices a creature of their choice, discards three cards, then loses 5 life. You return a creature card from your graveyard to your hand, draw three cards, then gain 5 life.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                // GAP: "return a creature card from your graveyard to
+                // your hand" — that clause has no target and there is no
+                // no-target graveyard-recursion primitive; only the
+                // expressible clauses are emitted.
+                text: "Target opponent sacrifices a creature of their choice, discards three cards, then loses 5 life. You draw three cards, then gain 5 life.".into(),
+                target_requirements: vec![TargetRequirement::target_player()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,24 +41,12 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Player(opp)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    let opp = *opp;
-    // GAP: "return a creature card from your graveyard to your hand"
-    // requires a chosen graveyard card without a target; omitted.
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
     vec![
-        Effect::Sacrifice {
-            player: opp,
-            filter: ObjectFilter::creature(),
-            count: 1,
-        },
-        Effect::Discard {
-            player: opp,
-            count: 3,
-            choice: DiscardChoice::ControllerChooses,
-        },
-        Effect::LoseLife { player: opp, amount: 5 },
+        Effect::Sacrifice { player: *p, filter: ObjectFilter::creature(), count: 1 },
+        Effect::Discard { player: *p, count: 3, choice: DiscardChoice::ControllerChooses },
+        Effect::LoseLife { player: *p, amount: 5 },
         Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::GainLife { player: entry.controller, amount: 5 },
     ]

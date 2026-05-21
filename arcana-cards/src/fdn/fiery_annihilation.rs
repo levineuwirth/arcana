@@ -1,5 +1,5 @@
-//! Fiery Annihilation — `{2}{R}` instant. "Fiery Annihilation deals 5
-//! damage to target creature. Exile up to one target Equipment
+//! Fiery Annihilation — `{2}{R}` instant. "Fiery Annihilation deals
+//! 5 damage to target creature. Exile up to one target Equipment
 //! attached to that creature. If that creature would die this turn,
 //! exile it instead."
 
@@ -32,14 +32,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // The optional attached-Equipment exile and the dies->exile
-    // replacement are not expressible; emit the 5 damage.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),
         amount: 5,
     }]
+    // GAP: "exile up to one target Equipment attached to that
+    // creature" needs an attachment-relative target filter, and "if
+    // that creature would die this turn, exile it instead" is a
+    // death-replacement rider — neither has a catalog primitive.
 }

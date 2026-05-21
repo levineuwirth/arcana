@@ -1,5 +1,5 @@
-//! Statute of Denial — `{2}{U}{U}` instant, "Counter target spell. If
-//! you control a blue creature, draw a card, then discard a card."
+//! Statute of Denial — `{2}{U}{U}` instant. Counter target spell. If you
+//! control a blue creature, draw a card, discard a card.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -45,15 +45,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let mut effects = vec![Effect::Counter { target: *id }];
-    let blue_creatures = script::count_matching(
+    let has_blue = script::count_matching(
         state,
         &ObjectFilter::creature()
-            .controlled_by(ControllerConstraint::You)
-            .with_colors(ColorSet::blue()),
+            .with_colors(ColorSet::blue())
+            .controlled_by(ControllerConstraint::You),
         entry.controller,
-    );
-    if blue_creatures > 0 {
+    ) > 0;
+    let mut effects: Vec<Effect> = vec![Effect::Counter { target: *id }];
+    if has_blue {
         effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
         effects.push(Effect::Discard {
             player: entry.controller,

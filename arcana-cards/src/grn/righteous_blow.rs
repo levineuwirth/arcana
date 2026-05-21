@@ -1,7 +1,7 @@
 //! Righteous Blow — `{W}` instant. "Righteous Blow deals 2 damage to
-//! target attacking or blocking creature." The attacking/blocking
-//! target restriction has no ObjectFilter predicate; a creature
-//! target is used.
+//! target attacking or blocking creature." The attacking-or-blocking
+//! restriction is not directly expressible; we approximate as 'any
+//! creature' and GAP the predicate.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,19 +23,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Righteous Blow deals 2 damage to target attacking or blocking creature.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Righteous Blow deals 2 damage to target attacking or blocking creature.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: 'attacking or blocking' creature predicate not in filter set.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking or blocking" target restriction not expressible.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

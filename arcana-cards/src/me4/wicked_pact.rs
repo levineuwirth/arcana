@@ -37,19 +37,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = entry
-        .targets
-        .targets
-        .iter()
-        .filter_map(|t| match t {
-            TargetChoice::Object(id) => Some(Effect::DestroyPermanent { target: *id }),
-            _ => None,
-        })
-        .collect();
-    effects.push(Effect::LoseLife {
-        player: entry.controller,
-        amount: 5,
-    });
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = Vec::new();
+    for t in entry.targets.targets.iter() {
+        if let TargetChoice::Object(id) = t {
+            effects.push(Effect::DestroyPermanent { target: *id });
+        }
+    }
+    effects.push(Effect::LoseLife { player: entry.controller, amount: 5 });
     effects
 }

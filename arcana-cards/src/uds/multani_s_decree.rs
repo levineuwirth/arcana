@@ -30,20 +30,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let filter = ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into());
     let ids = script::ids_matching(state, &filter, entry.controller);
     let n = ids.len() as u32;
     vec![
         Effect::ForEach {
             targets: ids,
-            effect: Box::new(Effect::DestroyPermanent {
-                target: NULL_OBJECT_ID,
-            }),
+            effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
         },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 2 * n,
-        },
+        Effect::GainLife { player: entry.controller, amount: 2 * n },
     ]
 }

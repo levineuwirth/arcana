@@ -1,10 +1,12 @@
-//! Wild Magic Surge — `{R}{R}` instant, "Destroy target permanent an opponent controls.
-//! Its controller reveals cards from the top of their library until they reveal a permanent
-//! card that shares a card type with the destroyed permanent. That player puts that card onto
-//! the battlefield and shuffles the rest into their library."
+//! Wild Magic Surge — `{R}{R}` instant. "Destroy target permanent an
+//! opponent controls. Its controller reveals cards from the top of
+//! their library until they reveal a permanent card that shares a
+//! card type with that permanent. They put that card onto the
+//! battlefield and the rest on the bottom of their library in a
+//! random order."
 //!
-//! GAP: Reveal-until-matching mechanic (reveal from library until finding a permanent of
-//! matching type, put it onto battlefield, shuffle rest).
+//! GAP: reveal-until-shared-type put-onto-battlefield isn't a
+//! primitive; emit the destroy only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +15,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
@@ -27,17 +30,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Destroy target permanent an opponent controls. Its controller reveals cards from the top of their library until they reveal a permanent card that shares a card type with the destroyed permanent. That player puts that card onto the battlefield and shuffles the rest into their library.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Destroy target permanent an opponent controls. Its controller reveals cards from the top of their library until they reveal a permanent card that shares a card type with that permanent. They put that card onto the battlefield and the rest on the bottom of their library in a random order.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::permanent().controlled_by(ControllerConstraint::Opponent),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -46,8 +50,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: reveal-until mechanic (reveal from library until matching permanent type found, put onto battlefield)
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = t else { return Vec::new(); };
+    // GAP: reveal-until-shared-type replacement permanent isn't modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

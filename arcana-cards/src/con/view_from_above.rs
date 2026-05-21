@@ -1,8 +1,6 @@
 //! View from Above — `{1}{U}` instant. "Target creature gains flying
-//! until end of turn. If you control a white permanent, return View
-//! from Above to its owner's hand." The self-return rider is
-//! conditional on board state and not expressible (no
-//! return-this-spell effect); we grant flying.
+//! until end of turn. If you control a white permanent, return View from
+//! Above to its owner's hand."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -34,10 +32,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "if you control a white permanent, return this spell to
-    // hand" — no effect to return the resolving spell to its owner's
-    // hand. Flying grant is emitted.
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "if you control a white permanent, return this spell to hand"
+    // (returning the resolving spell itself to hand) is not expressible;
+    // only the flying grant is emitted.
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Flying,

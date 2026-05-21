@@ -1,12 +1,12 @@
-//! Cosmotronic Wave — `{3}{R}` sorcery.
-//! "Cosmotronic Wave deals 1 damage to each creature your opponents control.
-//! Creatures your opponents control can't block this turn."
-//! GAP: "can't block this turn" restriction has no Effect variant.
+//! Cosmotronic Wave — `{3}{R}` sorcery. "Cosmotronic Wave deals 1 damage
+//! to each creature your opponents control. Creatures your opponents
+//! control can't block this turn." The can't-block clause has no catalog
+//! Effect, so only the damage is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
@@ -24,29 +24,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Cosmotronic Wave deals 1 damage to each creature your opponents control. Creatures your opponents control can't block this turn.".into(),
-                target_requirements: vec![],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Cosmotronic Wave deals 1 damage to each creature your opponents control. Creatures your opponents control can't block this turn.".into(),
+            target_requirements: vec![],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
-fn resolve(
-    state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "can't block this turn" has no Effect variant
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let ids = script::ids_matching(state, &filter, entry.controller);
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "can't block this turn" has no catalog Effect variant.
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        entry.controller,
+    );
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Object(arcana_core::objects::NULL_OBJECT_ID),
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 1,
         }),
     }]

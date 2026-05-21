@@ -1,6 +1,7 @@
 //! Attune with Aether — `{G}` sorcery. "Search your library for a basic
 //! land card, reveal it, put it into your hand, then shuffle. You get
-//! {E}{E} (two energy counters)."
+//! {E}{E} (two energy counters)." Energy counters on a player aren't
+//! in the catalog — emit the tutor-to-hand and GAP the energy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,15 +22,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a basic land card, reveal it, put \
-                   it into your hand, then shuffle. You get {E}{E} (two \
-                   energy counters)."
-                .into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a basic land card, reveal it, put it into your hand, then shuffle. You get {E}{E} (two energy counters).".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -38,8 +37,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Energy counters are not modeled by any catalog Effect — only the
-    // basic-land tutor is expressible.
+    // GAP: energy counters on a player.
     vec![Effect::TutorToHand {
         player: entry.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

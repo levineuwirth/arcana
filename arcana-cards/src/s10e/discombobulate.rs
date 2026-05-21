@@ -1,9 +1,7 @@
 //! Discombobulate — `{2}{U}{U}` instant. "Counter target spell. Look
 //! at the top four cards of your library, then put them back in any
-//! order."
-//!
-//! GAP: 'look at top 4 and reorder' (no scry-to-bottom) has no exact
-//! catalog primitive; Scry 4 is the closest available approximation.
+//! order." The 'look + reorder top N' is a Scry-family op; closest
+//! catalog primitive is Scry 4 (which uses the same reorder UX).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,24 +24,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Look at the top four cards of your library, then put them back in any order.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Look at the top four cards of your library, then put them back in any order.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: 'look at top N and put back in any order' (no bottom option) — using Scry 4 as closest reorder primitive.
     vec![
         Effect::Counter { target: *id },
-        // GAP: 'look at top 4 and reorder' approximated by Scry 4.
         Effect::Scry { player: entry.controller, count: 4 },
     ]
 }

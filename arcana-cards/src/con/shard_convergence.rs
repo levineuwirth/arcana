@@ -1,6 +1,5 @@
-//! Shard Convergence — `{3}{G}` sorcery. "Search your library for a
-//! Plains card, an Island card, a Swamp card, and a Mountain card.
-//! Reveal those cards, put them into your hand, then shuffle."
+//! Shard Convergence — `{3}{G}` sorcery. Search your library for a
+//! Plains, an Island, a Swamp, and a Mountain. Put them into your hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,23 +24,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Search your library for a Plains card, an Island card, a Swamp card, and a Mountain card. Reveal those cards, put them into your hand, then shuffle.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Search your library for a Plains card, an Island card, a Swamp card, and a Mountain card. Reveal those cards, put them into your hand, then shuffle.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    // One TutorToHand per named basic land subtype.
-    ["Plains", "Island", "Swamp", "Mountain"]
-        .into_iter()
-        .map(|t| Effect::TutorToHand {
-            player: entry.controller,
-            filter: script::subtype_filter(reg, t),
-            reveal: true,
-        })
-        .collect()
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![
+        Effect::TutorToHand { player: entry.controller, filter: script::subtype_filter(reg, "Plains"), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: script::subtype_filter(reg, "Island"), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: script::subtype_filter(reg, "Swamp"), reveal: true },
+        Effect::TutorToHand { player: entry.controller, filter: script::subtype_filter(reg, "Mountain"), reveal: true },
+    ]
 }

@@ -1,6 +1,6 @@
-//! Structural Collapse — `{5}{R}` sorcery, "Target player sacrifices
-//! an artifact and a land of their choice. Structural Collapse deals 2
-//! damage to that player."
+//! Structural Collapse — `{5}{R}` sorcery. "Target player sacrifices
+//! an artifact and a land of their choice. Structural Collapse deals
+//! 2 damage to that player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,10 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target player sacrifices an artifact and a land of their \
-                   choice. Structural Collapse deals 2 damage to that \
-                   player."
-                .into(),
+            text: "Target player sacrifices an artifact and a land of their choice. Structural Collapse deals 2 damage to that player.".into(),
             target_requirements: vec![TargetRequirement::target_player()],
             modal: None,
             effect: resolve,
@@ -39,23 +36,25 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
+    let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
+    let p = match t {
+        TargetChoice::Player(p) => *p,
+        _ => return Vec::new(),
     };
     vec![
         Effect::Sacrifice {
-            player: *p,
-            filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+            player: p,
+            filter: ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
             count: 1,
         },
         Effect::Sacrifice {
-            player: *p,
+            player: p,
             filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
             count: 1,
         },
         Effect::DealDamage {
             source: entry.source,
-            target: DamageTarget::Player(*p),
+            target: DamageTarget::Player(p),
             amount: 2,
         },
     ]

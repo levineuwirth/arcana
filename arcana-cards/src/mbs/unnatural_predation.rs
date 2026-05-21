@@ -1,5 +1,5 @@
-//! Unnatural Predation — `{G}` instant. "Target creature gets +1/+1 and
-//! gains trample until end of turn."
+//! Unnatural Predation — `{G}` instant. "Target creature gets +1/+1
+//! and gains trample until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

@@ -1,9 +1,7 @@
-//! Counterlash — `{4}{U}{U}` instant. "Counter target spell. You may cast
-//! a spell that shares a card type with it from your hand without paying
-//! its mana cost."
-//!
-//! Counter is honest; cast-from-hand-without-paying with a
-//! shared-card-type predicate is not in the catalog — GAP that rider.
+//! Counterlash — `{4}{U}{U}` instant. "Counter target spell. You may
+//! cast a spell that shares a card type with it from your hand
+//! without paying its mana cost." Cast-without-paying rider not in
+//! catalog; counter only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -46,7 +44,7 @@ fn resolve(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no cast-from-hand-without-paying-shared-type primitive.
-    vec![Effect::Counter { target: *id }]
+    let TargetChoice::Object(stack_id) = target else { return Vec::new(); };
+    // GAP: "cast a spell from your hand without paying its mana cost" rider — no cast-from-hand primitive.
+    vec![Effect::Counter { target: *stack_id }]
 }

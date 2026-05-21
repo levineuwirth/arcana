@@ -1,15 +1,12 @@
-//! Dazzling Denial — `{1}{U}` instant. "Counter target spell unless
-//! its controller pays {2}. If you control a Bird, counter that spell
-//! unless its controller pays {4} instead."
-//!
-//! The Bird-control upgrade to {4} needs a resolution-time conditional
-//! whose condition variant isn't in the catalog; the base soft counter
-//! ({2}) is emitted.
+//! Dazzling Denial — `{1}{U}` instant. "Counter target spell unless its
+//! controller pays {2}. If you control a Bird, counter that spell unless
+//! its controller pays {4} instead."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -27,25 +24,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell unless its controller pays {2}. If you control a Bird, counter that spell unless its controller pays {4} instead.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell unless its controller pays {2}. If you control a Bird, counter that spell unless its controller pays {4} instead.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: "If you control a Bird ... {4} instead" — no catalog
-    // conditional condition for "you control a Bird".
-    vec![Effect::CounterUnlessPays {
-        target: *id,
-        cost: ManaCost::parse("{2}").expect("valid cost"),
-    }]
+fn resolve(
+    state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let bird_count = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Bird"),
+        entry.controller,
+    );
+    let cost = if bird_count > 0 {
+        ManaCost::parse("{4}").expect("valid cost")
+    } else {
+        ManaCost::parse("{2}").expect("valid cost")
+    };
+    vec![Effect::CounterUnlessPays { target: *id, cost }]
 }

@@ -3,10 +3,6 @@
 //! your hand. Put the rest into your graveyard. Create a 0/1
 //! colorless Eldrazi Spawn creature token with 'Sacrifice this token:
 //! Add {C}.'"
-//!
-//! GAP: top-N reveal + select-a-permanent-into-hand + rest-to-yard is
-//! not expressible in the catalog. The Eldrazi Spawn token (without
-//! its sacrifice mana ability) is emitted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -28,18 +24,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Reveal the top four cards of your library. You may put a permanent card from among them into your hand. Put the rest into your graveyard. Create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Reveal the top four cards of your library. You may put a permanent card from among them into your hand. Put the rest into your graveyard. Create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let eldrazi = reg.interner().lookup("Eldrazi").expect("interned");
-    let spawn = reg.interner().lookup("Spawn").expect("interned");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let eldrazi = reg.interner().lookup("Eldrazi")
+        .expect("Eldrazi interned during register()");
+    let spawn = reg.interner().lookup("Spawn")
+        .expect("Spawn interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(eldrazi);
     subtypes.0.insert(spawn);
@@ -53,10 +56,9 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: reveal-top-4-pick-permanent + rest-to-graveyard, and the
-    // token's "Sacrifice: Add {C}" activated mana ability.
-    vec![Effect::CreateToken {
-        controller: entry.controller,
-        token,
-    }]
+    // GAP: reveal-top-four then optionally take a permanent card (rest
+    // to graveyard) has no dig-from-top catalog Effect; the token's
+    // 'Sacrifice: Add {C}' ability is not expressible. The token
+    // creation is emitted.
+    vec![Effect::CreateToken { controller: entry.controller, token }]
 }

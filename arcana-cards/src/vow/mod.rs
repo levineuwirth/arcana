@@ -18,3 +18,4 @@ pub mod massive_might;
 pub mod change_of_fortune;
 pub mod end_the_festivities;
 pub mod bloody_betrayal;
+pub mod wolf_strike;

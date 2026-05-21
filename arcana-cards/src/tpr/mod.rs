@@ -30,3 +30,4 @@ pub mod repentance;
 pub mod tranquility;
 pub mod mogg_infestation;
 pub mod deadshot;
+pub mod shadowstorm;

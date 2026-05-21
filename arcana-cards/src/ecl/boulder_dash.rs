@@ -21,19 +21,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Boulder Dash deals 2 damage to any target and 1 damage to any other target.".into(),
-            target_requirements: vec![
-                TargetRequirement::any_target(),
-                TargetRequirement::any_target(),
-            ],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Boulder Dash deals 2 damage to any target and 1 damage to any other target.".into(),
+                target_requirements: vec![
+                    TargetRequirement::any_target(),
+                    TargetRequirement::any_target(),
+                ],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn to_damage_target(t: &TargetChoice) -> Option<DamageTarget> {
+fn target_to_damage(t: &TargetChoice) -> Option<DamageTarget> {
     Some(match t {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
@@ -44,14 +45,25 @@ fn to_damage_target(t: &TargetChoice) -> Option<DamageTarget> {
     })
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     let mut effects = Vec::new();
-    let targets = &entry.targets.targets;
-    if let Some(t0) = targets.first().and_then(to_damage_target) {
-        effects.push(Effect::DealDamage { source: entry.source, target: t0, amount: 2 });
+    if let Some(t) = entry.targets.targets.first().and_then(target_to_damage) {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: t,
+            amount: 2,
+        });
     }
-    if let Some(t1) = targets.get(1).and_then(to_damage_target) {
-        effects.push(Effect::DealDamage { source: entry.source, target: t1, amount: 1 });
+    if let Some(t) = entry.targets.targets.get(1).and_then(target_to_damage) {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: t,
+            amount: 1,
+        });
     }
     effects
 }

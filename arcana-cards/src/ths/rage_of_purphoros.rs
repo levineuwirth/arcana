@@ -1,7 +1,6 @@
-//! Rage of Purphoros — `{4}{R}` sorcery. "Rage of Purphoros deals 4 damage
-//! to target creature. It can't be regenerated this turn. Scry 1."
-//!
-//! GAP: no can't-be-regenerated rider; damage + scry are honest.
+//! Rage of Purphoros — `{4}{R}` sorcery. "Rage of Purphoros deals 4
+//! damage to target creature. It can't be regenerated this turn.
+//! Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,7 +39,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no can't-be-regenerated this turn rider.
     vec![
         Effect::DealDamage {
             source: entry.source,

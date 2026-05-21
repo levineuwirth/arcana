@@ -1,11 +1,9 @@
-//! Shackles of Treachery — `{2}{R}` sorcery. "Gain control of target creature
-//! until end of turn. Untap that creature. Until end of turn, it gains haste
-//! and 'Whenever this creature deals damage, destroy target Equipment attached
-//! to it.'"
-//!
-//! # GAP: temporary control change (Effect::GainControl) is not in the catalog.
-//! The untap and haste are implemented; the control change and triggered ability
-//! rider are omitted.
+//! Shackles of Treachery — `{2}{R}` sorcery. "Gain control of target
+//! creature until end of turn. Untap that creature. Until end of turn,
+//! it gains haste and 'Whenever this creature deals damage, destroy
+//! target Equipment attached to it.'" Temporary control isn't in the
+//! catalog (permanent ChangeControl only); per spec we emit Untap +
+//! GrantKeyword Haste and GAP the gain-control duration.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -27,13 +25,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Gain control of target creature until end of turn. Untap that creature. Until end of turn, it gains haste and \"Whenever this creature deals damage, destroy target Equipment attached to it.\"".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Gain control of target creature until end of turn. Untap that creature. Until end of turn, it gains haste and \"Whenever this creature deals damage, destroy target Equipment attached to it.\"".into(),
+            target_requirements: vec![TargetRequirement::target_creature()],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -44,10 +41,13 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: temporary control change not expressible (no Effect::GainControl)
-    // GAP: triggered "destroy Equipment on damage" ability not expressible
+    // GAP: "until end of turn" gain-control (no EOT duration on ChangeControl); GAP triggered destroy-Equipment ability grant.
     vec![
         Effect::Untap { target: *id },
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
     ]
 }

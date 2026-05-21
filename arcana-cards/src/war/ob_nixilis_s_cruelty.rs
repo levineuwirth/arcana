@@ -1,11 +1,7 @@
-//! Ob Nixilis's Cruelty — `{2}{B}` instant. "Target creature gets
-//! -5/-5 until end of turn. If that creature would die this turn,
-//! exile it instead."
-//!
-//! The replacement "exile instead of dies" rider is not expressible;
-//! only the -5/-5 is emitted.
+//! Ob Nixilis's Cruelty — `{2}{B}` instant. "Target creature gets -5/-5 until
+//! end of turn. If that creature would die this turn, exile it instead."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -25,12 +21,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Target creature gets -5/-5 until end of turn. If that creature would die this turn, exile it instead.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Target creature gets -5/-5 until end of turn. If that creature would die this turn, exile it instead.".into(),
+                target_requirements: vec![TargetRequirement::target_creature()],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
@@ -39,16 +36,16 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "if it would die this turn, exile it instead" replacement
-    // rider is not expressible.
-    vec![Effect::Pump {
-        target: *id,
-        power: -5,
-        toughness: -5,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "exile it instead if it would die" — approximated with a dies-trigger exile schedule.
+    vec![
+        Effect::Pump { target: *id, power: -5, toughness: -5, duration: Duration::EndOfTurn, keywords: vec![] },
+        Effect::DelayedAction {
+            source: *id,
+            controller: entry.controller,
+            when: DelayedWhen::ThisDies,
+            action: DelayedAction::Exile,
+        },
+    ]
 }

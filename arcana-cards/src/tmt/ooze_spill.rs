@@ -1,9 +1,6 @@
 //! Ooze Spill — `{1}{U}{U}` instant. "Counter target spell. Create a
-//! Mutagen token."
-//!
-//! Mutagen is an artifact token with a custom activated ability that
-//! cannot be constructed from this scripting surface (GAP'd); the
-//! `TokenDefinition` is emitted with empty abilities.
+//! Mutagen token." Mutagen token's '{1}, {T}, Sacrifice: +1/+1
+//! counter' isn't a token primitive; emit counter + bare Mutagen.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -27,23 +24,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Counter target spell. Create a Mutagen token.".into(),
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Spell(ObjectFilter::default()),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Counter target spell. Create a Mutagen token.".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(ObjectFilter::default()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let mutagen = reg.interner().lookup("Mutagen").expect("interned");
+    let mutagen = reg
+        .interner()
+        .lookup("Mutagen")
+        .expect("Mutagen interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(mutagen);
     let token = TokenDefinition {
@@ -56,9 +61,13 @@ fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Ef
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: Mutagen's activated +1/+1-counter ability not constructable on token here.
+    // GAP: Mutagen token's '{1}, {T}, Sacrifice: +1/+1 counter'
+    // activated ability (no activated-ability primitive on tokens).
     vec![
         Effect::Counter { target: *id },
-        Effect::CreateToken { controller: entry.controller, token },
+        Effect::CreateToken {
+            controller: entry.controller,
+            token,
+        },
     ]
 }

@@ -20,17 +20,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
-            text: "Create four 2/2 red and green Satyr creature tokens with haste.".into(),
-            target_requirements: vec![],
-            modal: None,
-            effect: resolve,
-        }),
+        CardDefinition::new(name, chars)
+            .with_spell_ability(SpellAbilityDef {
+                text: "Create four 2/2 red and green Satyr creature tokens with haste.".into(),
+                target_requirements: vec![],
+                modal: None,
+                effect: resolve,
+            }),
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let satyr = reg.interner().lookup("Satyr").expect("Satyr interned during register()");
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let satyr = reg
+        .interner()
+        .lookup("Satyr")
+        .expect("Satyr interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(satyr);
     let token = TokenDefinition {

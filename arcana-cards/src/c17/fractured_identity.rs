@@ -27,8 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Exile target nonland permanent. Each player other than its controller creates a token that's a copy of it.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent()
-                        .without_types(TypeLine::LAND.into()),
+                    ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -39,15 +38,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "each player creates a token that's a copy of it" — no
-    // catalog effect for copy-token creation; only the exile is
-    // implemented.
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "create a token that's a copy of it" (copy-token effect)
+    // has no catalog primitive — only the exile is emitted.
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,10 +1,6 @@
 //! Subcontract — `{B}` sorcery. "A person outside the game looks at
 //! target opponent's hand and chooses a nonland card from it. That
 //! player discards that card."
-//!
-//! Modelled as: target player discards one card (the
-//! outside-the-game chooser and nonland filter are not expressible;
-//! using opponent-chooses as the closest available choice mode).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -34,15 +30,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Player(p)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: outside-the-game chooser and nonland filter not
-    // expressible; modelled as a single opponent-chosen discard.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: outside-the-game chooser and "nonland card chosen" filter
+    // aren't modeled — fall back to a controller-chosen discard
+    // (loses the targeted-discard flavor; still expresses a single
+    // discard from that player).
     vec![Effect::Discard {
         player: *p,
         count: 1,
-        choice: DiscardChoice::OpponentChooses,
+        choice: DiscardChoice::ControllerChooses,
     }]
 }

@@ -1,7 +1,7 @@
-//! Chain of Acid — `{3}{G}` sorcery.
-//! "Destroy target noncreature permanent. Then that permanent's
-//! controller may copy this spell and may choose a new target for
-//! that copy."
+//! Chain of Acid — `{3}{G}` sorcery. "Destroy target noncreature
+//! permanent. Then that permanent's controller may copy this spell
+//! and may choose a new target for that copy." Optional copy is not
+//! in catalog; emit the destroy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,11 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
-        return Vec::new();
-    };
-    // The "controller may copy this spell" chain rider has no catalog
-    // representation; the destroy is performed.
+fn resolve(
+    _state: &GameState,
+    entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: optional spell-copy with new target chain not in catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

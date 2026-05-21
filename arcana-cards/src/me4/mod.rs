@@ -34,3 +34,4 @@ pub mod fire_tempest;
 pub mod devastation;
 pub mod tsunami;
 pub mod dakmor_plague;
+pub mod theft_of_dreams;

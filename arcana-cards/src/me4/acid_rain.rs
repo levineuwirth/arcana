@@ -1,4 +1,4 @@
-//! Acid Rain — `{3}{U}` sorcery, "Destroy all Forests."
+//! Acid Rain — `{3}{U}` sorcery. "Destroy all Forests."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,6 +11,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Acid Rain");
+    let _forest = reg.interner_mut().intern("Forest");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{U}").expect("valid cost")),
@@ -38,10 +39,7 @@ fn resolve(
         &script::subtype_filter(reg, "Forest"),
         entry.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DestroyPermanent {
-            target: arcana_core::objects::NULL_OBJECT_ID,
-        }),
-    }]
+    ids.into_iter()
+        .map(|id| Effect::DestroyPermanent { target: id })
+        .collect()
 }

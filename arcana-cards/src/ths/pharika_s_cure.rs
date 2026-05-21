@@ -1,5 +1,5 @@
-//! Pharika's Cure — `{B}{B}` instant. "Pharika's Cure deals 2 damage to target
-//! creature. You gain 2 life."
+//! Pharika's Cure — `{B}{B}` instant. Deals 2 damage to target creature; you
+//! gain 2 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -23,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                text: "Pharika's Cure deals 2 damage to target creature. You gain 2 life.".into(),
+                text: "Pharika's Cure deals 2 damage to target creature and you gain 2 life.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -44,9 +44,6 @@ fn resolve(
             target: DamageTarget::Object(*id),
             amount: 2,
         },
-        Effect::GainLife {
-            player: entry.controller,
-            amount: 2,
-        },
+        Effect::GainLife { player: entry.controller, amount: 2 },
     ]
 }

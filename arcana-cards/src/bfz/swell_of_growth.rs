@@ -1,9 +1,9 @@
 //! Swell of Growth — `{1}{G}` instant. "Target creature gets +2/+2
-//! until end of turn. You may put a land card from your hand onto
-//! the battlefield."
+//! until end of turn. You may put a land card from your hand onto the
+//! battlefield."
 //!
-//! GAP: 'put a land card from your hand onto the battlefield' has no
-//! catalog primitive (TutorToBattlefield works from library only).
+//! The +2/+2 is expressed. "You may put a land card from your hand
+//! onto the battlefield" has no engine primitive — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,8 +35,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: 'land from hand onto battlefield' (no hand-to-battlefield tutor).
+    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "put a land card from your hand onto the battlefield" has
+    // no engine primitive.
     vec![Effect::Pump {
         target: *id,
         power: 2,

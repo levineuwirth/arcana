@@ -1,6 +1,6 @@
-//! Biosynthic Burst — `{1}{G}` instant. "Put a +1/+1 counter on target
-//! creature you control. It gains reach, trample, and indestructible until end
-//! of turn. Untap it."
+//! Biosynthic Burst — `{1}{G}` instant. "Put a +1/+1 counter on
+//! target creature you control. It gains reach, trample, and
+//! indestructible until end of turn. Untap it."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -10,7 +10,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
@@ -24,19 +25,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_spell_ability(SpellAbilityDef {
-                text: "Put a +1/+1 counter on target creature you control. It gains reach, trample, and indestructible until end of turn. Untap it.".into(),
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-                modal: None,
-                effect: resolve,
-            }),
+        CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
+            text: "Put a +1/+1 counter on target creature you control. It gains reach, trample, and indestructible until end of turn. Untap it.".into(),
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: resolve,
+        }),
     )
 }
 
@@ -53,16 +53,20 @@ fn resolve(
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         },
-        Effect::Pump {
+        Effect::GrantKeyword {
             target: *id,
-            power: 0,
-            toughness: 0,
+            keyword: KeywordAbility::Reach,
             duration: Duration::EndOfTurn,
-            keywords: vec![
-                KeywordAbility::Reach,
-                KeywordAbility::Trample,
-                KeywordAbility::Indestructible,
-            ],
+        },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Trample,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
         },
         Effect::Untap { target: *id },
     ]
