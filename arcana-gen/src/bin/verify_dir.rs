@@ -386,7 +386,10 @@ fn outcomes_batched<'a>(
             for (slot, &si) in passers.iter().enumerate() {
                 let row = staged[si].0;
                 let src = staged[si].1.as_ref().unwrap();
-                let harness = render_harness(&Expected::from_row(row));
+                let harness = render_harness(&Expected::from_row(
+                    row,
+                    &oracle_text(&args.dir, row),
+                ));
                 write_batch_slot(slot, &format!("{src}\n{harness}"))
                     .context("writing L2 batch slot")?;
             }
@@ -576,7 +579,7 @@ fn verify_one(
     }
 
     // Layer 2: append the structural harness and `cargo test` it.
-    let harness = render_harness(&Expected::from_row(row));
+    let harness = render_harness(&Expected::from_row(row, oracle));
     let combined = format!("{source}\n{harness}");
     std::fs::write(scratch_path(cfg), &combined)
         .context("writing layer-2 scratch")?;

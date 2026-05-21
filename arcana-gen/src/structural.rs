@@ -31,6 +31,15 @@
 //! keywords like `Ward(_)`, ability bodies, non-integer P/T). A
 //! green layer 2 means "the card's bones match Scryfall", not "the
 //! rules text is correctly implemented".
+//!
+//! For T3 triggered cards it adds a *structural* trigger check: a
+//! card whose oracle text introduces a triggered ability must
+//! register at least that many `TriggeredAbilityDef`s, and — for
+//! oracle phrasings that map unambiguously to one `TriggerCondition`
+//! variant — at least one ability must carry that variant. This
+//! closes the dominant T3 failure (the trigger silently dropped, the
+//! card generated as a vanilla creature). It still does not verify
+//! the trigger's *effect* — that stays a job for the semantic audit.
 
 use crate::bakeoff::DumpRow;
 use crate::scryfall::type_part;
@@ -65,15 +74,35 @@ pub struct Expected {
     /// `KeywordAbility::Landwalk(<interned subtype>)`. Asserted with a
     /// guarded match that resolves the interned name back to a string.
     pub landwalk: Vec<&'static str>,
+    /// Lower bound on the card's `triggered_abilities` count, derived
+    /// from the number of trigger-introducing oracle lines. `0` for
+    /// cards with no triggered ability — no assertion is emitted.
+    /// Asserted as `>=` (never `==`): keyword-synthesised triggers can
+    /// only add to the count, so an exact check would false-fail.
+    pub min_triggered_abilities: usize,
+    /// `TriggerCondition` variant idents at least one registered
+    /// triggered ability must match. Populated only for oracle
+    /// phrasings that map unambiguously to a single variant
+    /// (self-dies, self-enters, "whenever you cast", upkeep). Ambiguous
+    /// phrasings (bare "attacks", "a creature enters") are dropped —
+    /// same discipline as parametrised keywords — and rely on the
+    /// `min_triggered_abilities` presence check alone.
+    pub trigger_kinds: Vec<&'static str>,
 }
 
 impl Expected {
     /// Derive the fingerprint from a manifest row. Mirrors
     /// `scryfall`'s type-line splitting so a subtype that shares a
     /// type's text can't false-positive.
-    pub fn from_row(row: &DumpRow) -> Self {
+    ///
+    /// `oracle` is the card's authoritative Scryfall oracle text (the
+    /// caller pulls it from the dumped prompt). An empty `oracle`
+    /// degrades cleanly to "no trigger assertions" — never a false
+    /// quarantine — matching the dynamic-literal gate's policy.
+    pub fn from_row(row: &DumpRow, oracle: &str) -> Self {
         let tp = type_part(&row.type_line);
         let has = |t: &str| tp.contains(t);
+        let trig_lines = trigger_lines(oracle);
 
         let color = |c: &str| row.colors.iter().any(|x| x == c);
 
@@ -115,6 +144,8 @@ impl Expected {
                 .iter()
                 .filter_map(|k| landwalk_subtype(k))
                 .collect(),
+            trigger_kinds: confident_trigger_kinds(&trig_lines, &row.name),
+            min_triggered_abilities: trig_lines.len(),
         }
     }
 }
@@ -237,6 +268,82 @@ fn landwalk_subtype(scryfall_kw: &str) -> Option<&'static str> {
     })
 }
 
+/// Strip `(reminder text)` from an oracle string. A local copy of
+/// `classifier::strip_reminder_text` — keeping this module standalone
+/// matters more than de-duplicating ten lines.
+fn strip_reminder(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut depth: u32 = 0;
+    for ch in s.chars() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => out.push(ch),
+            _ => {}
+        }
+    }
+    out
+}
+
+/// The lower-cased oracle lines that introduce a triggered ability.
+/// Mirrors `classifier::has_triggered_ability`'s per-line scan: MTG
+/// separates ability paragraphs with `\n`, and a trigger word only
+/// counts at the start of its line (so "destroy ~ when ..." riders
+/// and reminder text don't false-positive).
+fn trigger_lines(oracle: &str) -> Vec<String> {
+    let stripped = strip_reminder(oracle);
+    stripped
+        .lines()
+        .map(|l| l.trim_start().to_lowercase())
+        .filter(|l| {
+            ["when ", "whenever ", "at the beginning", "at the end"]
+                .iter()
+                .any(|t| l.starts_with(t))
+        })
+        .collect()
+}
+
+/// Map trigger lines to `TriggerCondition` variant idents, keeping
+/// only the phrasings that pin to exactly one variant. `card_name`
+/// disambiguates a *self* trigger ("When <name> enters") from a
+/// filtered one ("Whenever a creature enters"), which the engine
+/// models as `SelfEntersBattlefield` vs `ZoneChange` respectively.
+/// Anything ambiguous (bare "attacks" — `SelfAttacks` vs
+/// `CreatureAttacks`; "end step" — `StepBegins` vs `PhaseBegins`) is
+/// dropped: presence is still enforced via `min_triggered_abilities`.
+fn confident_trigger_kinds(lines: &[String], card_name: &str) -> Vec<&'static str> {
+    let name = card_name.to_lowercase();
+    let mut kinds: Vec<&'static str> = Vec::new();
+    let add = |k: &'static str, kinds: &mut Vec<&'static str>| {
+        if !kinds.contains(&k) {
+            kinds.push(k);
+        }
+    };
+    for line in lines {
+        let self_verb = |verb: &str| {
+            line.contains(&format!("{name} {verb}"))
+                || line.contains(&format!("this creature {verb}"))
+                || line.contains(&format!("this permanent {verb}"))
+        };
+        if self_verb("dies") {
+            add("SelfDies", &mut kinds);
+        }
+        if self_verb("enters") {
+            add("SelfEntersBattlefield", &mut kinds);
+        }
+        if line.contains("whenever you cast")
+            || line.contains("whenever an opponent casts")
+            || line.contains("whenever a player casts")
+        {
+            add("SpellCast", &mut kinds);
+        }
+        if line.starts_with("at the beginning of") && line.contains("upkeep") {
+            add("StepBegins", &mut kinds);
+        }
+    }
+    kinds
+}
+
 /// Render the `#[cfg(test)]` structural-assertion module to append
 /// to a candidate's source. Self-contained: uses only `arcana_core`
 /// and `std`. Collects every mismatch and fails once with the full
@@ -330,6 +437,34 @@ pub fn render_harness(exp: &Expected) -> String {
         ));
     }
 
+    // triggered abilities — presence (the trigger wasn't silently
+    // dropped) plus a confident-kind check. See module docs: this is
+    // structural, not a proof the trigger's effect is right.
+    if exp.min_triggered_abilities > 0 {
+        let m = exp.min_triggered_abilities;
+        a.push_str(&format!(
+            "        if def.triggered_abilities.len() < {m} {{\n\
+             \x20           bad.push(format!(\"triggered abilities: got {{}}, want >= {m}\", \
+             def.triggered_abilities.len()));\n\
+             \x20       }}\n",
+        ));
+    }
+    for kind in &exp.trigger_kinds {
+        let pat = match *kind {
+            "SelfDies" => "TriggerCondition::SelfDies",
+            "SelfEntersBattlefield" => "TriggerCondition::SelfEntersBattlefield",
+            "SpellCast" => "TriggerCondition::SpellCast { .. }",
+            "StepBegins" => "TriggerCondition::StepBegins { .. }",
+            _ => continue,
+        };
+        a.push_str(&format!(
+            "        if !def.triggered_abilities.iter()\n\
+             \x20           .any(|t| matches!(t.trigger_condition, {pat})) {{\n\
+             \x20           bad.push(\"trigger: no registered ability with condition {kind}\".into());\n\
+             \x20       }}\n",
+        ));
+    }
+
     format!(
         "\n\
         #[cfg(test)]\n\
@@ -340,6 +475,7 @@ pub fn render_harness(exp: &Expected) -> String {
         \x20   use arcana_core::registry::CardRegistry;\n\
         \x20   use arcana_core::types::{{Color, PtValue}};\n\
         \x20   use arcana_core::effects::KeywordAbility;\n\
+        \x20   use arcana_core::triggers::TriggerCondition;\n\
         \n\
         \x20   #[test]\n\
         \x20   fn structural() {{\n\
@@ -401,7 +537,7 @@ mod tests {
 
     #[test]
     fn vanilla_creature_fingerprint() {
-        let e = Expected::from_row(&row(|_| {}));
+        let e = Expected::from_row(&row(|_| {}), "");
         assert_eq!(e.name, "Grizzly Bears");
         assert_eq!(e.mana_value, Some(2));
         assert_eq!(e.colors, [false, false, false, false, true]);
@@ -422,7 +558,7 @@ mod tests {
             r.colors = vec!["R".into()];
             r.power = None;
             r.toughness = None;
-        }));
+        }), "");
         assert!(e.is_instant && !e.is_creature);
         assert_eq!(e.power, None, "non-creature P/T must not be asserted");
         assert_eq!(e.mana_value, Some(1));
@@ -433,7 +569,7 @@ mod tests {
         let e = Expected::from_row(&row(|r| {
             r.power = Some("*".into());
             r.toughness = Some("*".into());
-        }));
+        }), "");
         assert_eq!(e.power, None, "`*` P/T is not robustly checkable");
     }
 
@@ -447,7 +583,7 @@ mod tests {
             r.colors = vec![];
             r.power = None;
             r.toughness = None;
-        }));
+        }), "");
         assert_eq!(e.mana_value, None);
         assert!(e.is_land && !e.is_creature);
     }
@@ -458,14 +594,14 @@ mod tests {
             r.name = "Serra Angel".into();
             r.type_line = "Creature — Angel".into();
             r.keywords = vec!["Flying".into(), "Vigilance".into(), "Ward".into()];
-        }));
+        }), "");
         // Flying + Vigilance map; Ward is parametrised → dropped.
         assert_eq!(e.keywords, vec!["Flying", "Vigilance"]);
     }
 
     #[test]
     fn harness_is_self_contained_and_names_fields() {
-        let h = render_harness(&Expected::from_row(&row(|_| {})));
+        let h = render_harness(&Expected::from_row(&row(|_| {}), ""));
         assert!(h.contains("#[cfg(test)]"));
         assert!(h.contains("mod __structural"));
         assert!(h.contains("super::register"));
@@ -474,6 +610,95 @@ mod tests {
         // inside arcana-cards.
         assert!(!h.contains("arcana_gen"));
         assert!(!h.contains("arcana_cards"));
+    }
+
+    // --- trigger fingerprint --------------------------------------
+
+    #[test]
+    fn etb_trigger_fingerprint() {
+        let e = Expected::from_row(
+            &row(|r| {
+                r.name = "Elvish Visionary".into();
+                r.type_line = "Creature — Elf Shaman".into();
+            }),
+            "When Elvish Visionary enters, draw a card.",
+        );
+        assert_eq!(e.min_triggered_abilities, 1);
+        assert_eq!(e.trigger_kinds, vec!["SelfEntersBattlefield"]);
+    }
+
+    #[test]
+    fn dies_trigger_fingerprint() {
+        let e = Expected::from_row(
+            &row(|r| r.name = "Solemn Simulacrum".into()),
+            "When Solemn Simulacrum dies, draw a card.",
+        );
+        assert_eq!(e.min_triggered_abilities, 1);
+        assert_eq!(e.trigger_kinds, vec!["SelfDies"]);
+    }
+
+    #[test]
+    fn cast_trigger_fingerprint() {
+        let e = Expected::from_row(
+            &row(|r| r.name = "Young Pyromancer".into()),
+            "Whenever you cast an instant or sorcery spell, create a 1/1 red \
+             Elemental creature token.",
+        );
+        assert_eq!(e.min_triggered_abilities, 1);
+        assert_eq!(e.trigger_kinds, vec!["SpellCast"]);
+    }
+
+    #[test]
+    fn upkeep_trigger_fingerprint() {
+        let e = Expected::from_row(
+            &row(|r| r.name = "Howling Mine".into()),
+            "At the beginning of each player's upkeep, that player draws a card.",
+        );
+        assert_eq!(e.min_triggered_abilities, 1);
+        assert_eq!(e.trigger_kinds, vec!["StepBegins"]);
+    }
+
+    #[test]
+    fn ambiguous_trigger_kind_dropped_presence_kept() {
+        // "attacks" maps to SelfAttacks *or* CreatureAttacks{filter} —
+        // ambiguous, so no kind is asserted; presence still is.
+        let e = Expected::from_row(
+            &row(|r| r.name = "Rampaging Brontodon".into()),
+            "Whenever Rampaging Brontodon attacks, it gets +1/+0 until end of turn.",
+        );
+        assert_eq!(e.min_triggered_abilities, 1);
+        assert!(e.trigger_kinds.is_empty());
+    }
+
+    #[test]
+    fn enters_tapped_is_not_a_trigger_line() {
+        // "~ enters tapped" is a replacement effect, not a triggered
+        // ability: the line doesn't start with a trigger word, so it
+        // must not inflate the count or assert SelfEntersBattlefield.
+        let e = Expected::from_row(
+            &row(|r| r.name = "Drowned Catacomb".into()),
+            "Drowned Catacomb enters tapped unless you control an Island or a Swamp.",
+        );
+        assert_eq!(e.min_triggered_abilities, 0);
+        assert!(e.trigger_kinds.is_empty());
+    }
+
+    #[test]
+    fn vanilla_card_has_no_trigger_fingerprint() {
+        let e = Expected::from_row(&row(|_| {}), "");
+        assert_eq!(e.min_triggered_abilities, 0);
+        assert!(e.trigger_kinds.is_empty());
+    }
+
+    #[test]
+    fn harness_emits_trigger_assertions_for_etb() {
+        let h = render_harness(&Expected::from_row(
+            &row(|r| r.name = "Elvish Visionary".into()),
+            "When Elvish Visionary enters, draw a card.",
+        ));
+        assert!(h.contains("def.triggered_abilities.len() < 1"));
+        assert!(h.contains("TriggerCondition::SelfEntersBattlefield"));
+        assert!(h.contains("use arcana_core::triggers::TriggerCondition;"));
     }
 }
 
