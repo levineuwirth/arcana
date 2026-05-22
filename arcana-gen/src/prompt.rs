@@ -352,6 +352,134 @@ fn card_spec(card: &Card) -> String {
 }
 
 // =============================================================================
+// shared engine-effect catalog (binding-parameterised)
+// =============================================================================
+
+/// The `Effect`-construction + card-scripting reference. Resolver-bearing
+/// shapes (single-effect spells, triggered abilities) build the same
+/// `Vec<Effect>` from the same engine API — only the binding that carries
+/// `.controller` / `.source` / `.targets` differs (`entry: &StackEntry`
+/// for a spell, `trig: &PendingTrigger` for a triggered ability). The
+/// `{BINDING}` marker is resolved by [`effect_catalog`].
+///
+/// NOTE: `user_single_effect_spell` still carries its own inline copy of
+/// this material (it predates the extraction); migrating it onto this
+/// const is a clean, behaviour-neutral follow-up.
+const ENGINE_EFFECT_CATALOG: &str = r#"ENGINE EFFECT CATALOG — these `Effect` variants are part of the engine API. Construct each EXACTLY as written: use only the field names shown, never add a field (no `optional`, no `count` on `CreateToken`) and never rename one. For 'do this N times' / 'create N tokens', repeat the whole `Effect` value N times in the `vec!` — there is no count field. `p` means a `PlayerId` (use `{BINDING}.controller` for 'you'; for 'target player'/'target opponent' read it from the target — the `TargetChoice::Player` arm). `id` means an `ObjectId` read from `{BINDING}.targets.targets.first()` (single-target shape).
+
+Imports (use these EXACT paths): `Effect`, `TokenDefinition`, `DiscardChoice`, `KeywordAbility`, `DelayedWhen`, `DelayedAction` from `arcana_core::effects`; `Duration` from `arcana_core::layers`; `CounterKind`, `ManaColor` from `arcana_core::types`; `Zone` from `arcana_core::zones`; `ObjectFilter`, `TargetRequirement`, `TargetFilter`, `TargetCount`, `ControllerConstraint` from `arcana_core::targets`; `ManaUnit` from `arcana_core::mana`; `ReplacementDuration` from `arcana_core::replacement`; `script` from `arcana_core` (i.e. `use arcana_core::script;`). (`KeywordAbility` is in `arcana_core::effects`, NOT `arcana_core::types`. The registry module is `arcana_core::registry`, NOT `card_registry`.)
+
+TYPE-LINE RULE: `TypeLine::CREATURE` / `LAND` / `ARTIFACT` / `INSTANT` / `SORCERY` etc. are bitflag CONSTS, not `TypeLine` values. Anywhere a `TypeLine` is needed (an `ObjectFilter`'s `with_types` / `with_types_any`, a `TokenDefinition.types`) write `TypeLine::LAND.into()` for one type, or `TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)` to combine. Never pass a bare `TypeLine::LAND`, and NEVER a bare bitwise-or `TypeLine::INSTANT | TypeLine::SORCERY` (that's a `u16`) — wrap combined consts in `TypeLine(..)`.
+
+Card flow (no target — player is `{BINDING}.controller` or a target player):
+- `Effect::DrawCards { player: p, count: u32 }`
+- `Effect::Discard { player: p, count: u32, choice: DiscardChoice::ControllerChooses }`  (or `::OpponentChooses` / `::Random`)
+- `Effect::Mill { player: p, count: u32 }`  ·  `Effect::Surveil { player: p, count: u32 }`  ·  `Effect::Scry { player: p, count: u32 }`
+
+Life:
+- `Effect::GainLife { player: p, amount: u32 }`  ·  `Effect::LoseLife { player: p, amount: u32 }`
+- `Effect::SetLifeTotal { player: p, amount: u32 }`
+
+Single permanent / card target (`id` from the first target):
+- `Effect::DestroyPermanent { target: id }`  ·  `Effect::ExilePermanent { target: id }`
+- `Effect::ReturnToHand { target: id }`  (bounce a permanent)
+- `Effect::Tap { target: id }`  ·  `Effect::Untap { target: id }`
+- `Effect::PutOnTopOfLibrary { target: id }`  ·  `Effect::PutOnBottomOfLibrary { target: id }`
+- `Effect::ReturnFromGraveyardToHand { target: id }`  ·  `Effect::ReturnFromGraveyardToBattlefield { target: id }`
+- `Effect::ReturnFromExileToBattlefield { target: id }`  (blink/flicker return)
+- `Effect::ChangeControl { target: id, new_controller: {BINDING}.controller }`  (permanent gain-control; there is NO 'until end of turn' variant — `// GAP:` the duration for Threaten-style temporary control)
+- `Effect::ExileFromGraveyard { target: id }`
+- `Effect::AddCounters { target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }`  ·  `Effect::RemoveCounters { .. }`
+- `Effect::Pump { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }`  ('+X/+X until end of turn'; granted evergreen `KeywordAbility` values go in `keywords`)
+- `Effect::SetBasePT { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }`
+- `Effect::GrantKeyword { target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }`
+- `Effect::Regenerate { target: id }`  ·  `Effect::Transform { target: id }`
+
+Two-object / combat:
+- `Effect::Fight { a: id1, b: id2 }`
+
+Tokens:
+- `Effect::CreateToken { controller: p, token: TokenDefinition { .. } }`  (repeat the `Effect::CreateToken` for 'create N')
+- `Effect::CreateTokenSacEot { controller: p, token: TokenDefinition { .. } }`  — `CreateToken` plus a one-shot delayed destroy at the next end step (token-faithful 'create, then sacrifice at end of turn').
+
+Mana:
+- `Effect::AddMana { player: p, mana: vec![ManaUnit::plain(ManaColor::Red, {BINDING}.source); 3] }`  (one `ManaUnit::plain(color, source)` per pip; `source` is `{BINDING}.source`).
+
+Damage / prevention:
+- `Effect::DealDamage { target: DamageTarget::Object(id), amount: u32, source: {BINDING}.source }`  (`DamageTarget::Player(p)` for a player; import `DamageTarget` from `arcana_core::events`)
+- `Effect::PreventDamage { target: DamageTarget::Object(id), amount: Some(3), duration: ReplacementDuration::EndOfTurn }`  (`amount: None` prevents ALL)
+
+Sacrifice:
+- `Effect::Sacrifice { player: p, filter: ObjectFilter::creature(), count: u32 }`
+
+Search the library (shuffle is automatic):
+- `Effect::TutorToHand { player: p, filter: ObjectFilter::creature(), reveal: true }`
+- `Effect::TutorToBattlefield { player: p, filter: ObjectFilter::creature(), tapped: false }`
+
+Composites (wrap the above):
+- `Effect::ForEach { targets: vec![/* ObjectIds */], effect: Box::new(Effect::DestroyPermanent { target: arcana_core::objects::NULL_OBJECT_ID }) }`  — 'affect EACH/ALL matching': enumerate ids from `state` (see CARD SCRIPTING) and apply the inner effect once per id.
+- `Effect::Conditional { condition, then: Box::new(..), otherwise: Some(Box::new(..)) }`  ·  `Effect::Sequence(vec![..])`
+- `Effect::DelayedAction { source: id, controller: {BINDING}.controller, when: DelayedWhen::NextEndStep, action: DelayedAction::Sacrifice }`  — schedule a one-shot on a KNOWN id; when ∈ `NextEndStep` / `ThisDies`; action ∈ `Sacrifice` / `Exile` / `ReturnToHand` / `ReturnFromExileToBattlefield`.
+
+CARD SCRIPTING — when an amount or a board-wide set is computed at resolution ('equal to its power', 'for each creature you control', 'destroy all Goblins'), the handler's FIRST parameter is the live `&GameState` (name it `state`, not `_state`) and you may call ONLY these total, panic-free helpers from `arcana_core::script` (add `use arcana_core::script;`). Each returns a plain value — bind it to a `let`, then put it in an ordinary literal-amount `Effect`:
+- `script::count_matching(state, &filter, {BINDING}.controller) -> u32`  — battlefield permanents matching an `ObjectFilter`.
+- `script::ids_matching(state, &filter, {BINDING}.controller) -> Vec<ObjectId>`  — the matching ids; feed into `Effect::ForEach { targets: <this>, effect: Box::new(..) }`.
+- `script::subtype_filter(reg, "Goblin")`  — an `ObjectFilter` for a named creature subtype (resolver's 3rd param — name it `reg`, not `_reg`).
+- `ObjectFilter` refinements (chain onto `creature()` / `permanent()` / `subtype_filter(..)`): `.controlled_by(ControllerConstraint::You|Opponent)`, `.with_colors(ColorSet::black())`, `.without_colors(..)`, `.without_types(TypeLine::ARTIFACT.into())`, `.with_max_cmc(n)` / `.with_min_cmc(n)`, `.with_min_power(n)` / `.with_max_power(n)` / `.with_max_toughness(n)`, `.tokens_only()` / `.nontoken()`, `.tapped_only()` / `.untapped_only()`.
+- `script::power_of(state, id) -> i32` · `script::toughness_of(state, id) -> i32`.
+- `script::hand_size(state, p) -> u32` · `script::graveyard_size(state, p) -> u32` · `script::library_size(state, p) -> u32` · `script::life(state, p) -> i32`.
+- `script::all_players(state) -> Vec<PlayerId>` · `script::opponents(state, {BINDING}.controller) -> Vec<PlayerId>`  — for 'each player' / 'each opponent': build one inner `Effect` per player, wrap in `Effect::Sequence`.
+- `script::target_controller(state, id, {BINDING}.controller) -> PlayerId`  — for 'target's controller' / 'its owner'.
+MANDATORY: if the oracle says 'for each', 'for every', 'equal to the number of', 'equal to its power/toughness', or 'X is the number of', the amount is DYNAMIC — compute it with a `script::*` helper (or `Effect::ForEach` over `script::ids_matching`). Do NOT hardcode a literal and do NOT `// GAP` the scaling while emitting a fixed-size effect: a literal where the text is dynamic is a materially WRONG card, auto-quarantined by verify. If you genuinely cannot compute it, GAP the WHOLE effect (`Vec::new()`).
+
+No other `state` access is permitted (no field access, no other methods) — anything else is a GAP. Amount fields are `u32`; a possibly-negative `i32` (a power, a life total) becomes an amount via `.max(0) as u32`."#;
+
+/// [`ENGINE_EFFECT_CATALOG`] with the `{BINDING}` marker resolved to the
+/// shape's actual binding identifier (`entry` / `trig`).
+fn effect_catalog(binding: &str) -> String {
+    ENGINE_EFFECT_CATALOG.replace("{BINDING}", binding)
+}
+
+/// The `TriggerCondition` reference for the triggered-creature shape.
+/// The two few-shots only show `SelfEntersBattlefield` and `SpellCast`;
+/// this enumerates the rest so the model picks an existing variant
+/// instead of inventing one (the dominant T3 layer-1 failure).
+const TRIGGER_CONDITION_CATALOG: &str = r#"TRIGGER CONDITION CATALOG — `TriggeredAbilityDef.trigger_condition` is a `TriggerCondition`. Pick the ONE variant matching the oracle's trigger clause; these are the COMPLETE set. Import `TriggerCondition` (and `TriggerSelf` if used) from `arcana_core::triggers`, `Step` / `Phase` from `arcana_core::turn`, `ControllerConstraint` from `arcana_core::targets`. `ControllerConstraint` ∈ `You` / `Opponent` / `Any`.
+
+Self — the creature itself; unit variants, no fields:
+- `TriggerCondition::SelfEntersBattlefield` — "When ~ enters [the battlefield]". (Elvish Visionary reference.)
+- `TriggerCondition::SelfDies` — "When ~ dies".
+- `TriggerCondition::SelfAttacks` — "Whenever ~ attacks".
+
+Spell cast:
+- `TriggerCondition::SpellCast { filter: Option<ObjectFilter>, caster: ControllerConstraint }` — "Whenever you cast a spell" → `caster: ControllerConstraint::You, filter: None`. "an opponent casts" → `caster: ControllerConstraint::Opponent`. Filtered ("an instant or sorcery") → `filter: Some(ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)))`. (Young Pyromancer reference.)
+
+Turn structure:
+- `TriggerCondition::StepBegins { step: Step, whose: ControllerConstraint }` — "At the beginning of your upkeep" → `step: Step::Upkeep, whose: ControllerConstraint::You`; "each upkeep" → `whose: Any`. `Step` ∈ `Untap` `Upkeep` `Draw` `Main` `BeginCombat` `DeclareAttackers` `DeclareBlockers` `EndCombat` `End` `Cleanup` (end step = `Step::End`).
+- `TriggerCondition::PhaseBegins { phase: Phase, whose: ControllerConstraint }` — "At the beginning of combat on your turn" → `phase: Phase::Combat, whose: You`. `Phase` ∈ `Beginning` `PreCombatMain` `Combat` `PostCombatMain` `Ending`.
+
+Other permanents / events:
+- `TriggerCondition::ZoneChange { filter: ObjectFilter, from: Option<Zone>, to: Zone }` — "Whenever a creature enters under your control" → `filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You), from: None, to: Zone::Battlefield`; "whenever a creature dies" → `from: Some(Zone::Battlefield), to: Zone::Graveyard(0)`.
+- `TriggerCondition::CreatureAttacks { filter: ObjectFilter }` — "Whenever a creature you control attacks".
+- `TriggerCondition::DamageDealt { source_filter: ObjectFilter, target_filter: TargetFilter, combat_only: bool }` — "Whenever ~ deals combat damage to a player" → `target_filter: TargetFilter::Player, combat_only: true`.
+- `TriggerCondition::LifeGained { player: ControllerConstraint }` · `TriggerCondition::CardDrawn { player: ControllerConstraint }` · `TriggerCondition::CardDiscarded { player: ControllerConstraint }`.
+- `TriggerCondition::Sacrificed { filter: ObjectFilter }` — "Whenever you sacrifice a permanent".
+- `TriggerCondition::CounterAdded { on: TriggerSelf, kind: Option<CounterKind> }` — "Whenever a +1/+1 counter is put on ~" → `on: TriggerSelf::Source, kind: Some(CounterKind::PlusOnePlusOne)`.
+
+`TriggeredAbilityDef` always: `id` is a per-card `u32` from 1; `intervening_if: None` (unless the oracle has an "if" clause — then `// GAP:` it and use `None`); `trigger_zones: vec![Zone::Battlefield]`; `frequency: TriggerFrequency::EachTime` (or `OncePerTurn` for "once each turn"); `target_requirements: Vec::new()` unless the trigger targets. The effect fn does NOT need to inspect `trig.trigger_event` for the common cases — read `trig.controller` and `trig.source`. If the oracle's trigger truly matches no variant above, pick the closest, add `// GAP: trigger — <describe>`, and do NOT invent a variant or a `GameEvent` arm."#;
+
+/// Worked triggered-ability effect fn — shows the `&PendingTrigger`
+/// binding and the script-prelude pattern for a computed amount.
+const WORKED_TRIGGER_FN: &str = r#"fn on_trigger(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // "draw a card for each creature you control"
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        trig.controller);
+    vec![Effect::DrawCards { player: trig.controller, count: n }]
+}"#;
+
+// =============================================================================
 // per-shape user prompts
 // =============================================================================
 
@@ -529,23 +657,43 @@ Then the resolver returns the `Effect`s implementing the rules text, using the r
 
 fn user_triggered_ability_creature(card: &Card) -> String {
     format!(
-        "Generate a CREATURE WITH A TRIGGERED ABILITY — one `TriggeredAbilityDef` plus an `effect` fn that returns a `Vec<Effect>`.
+        "Generate a CREATURE WITH A TRIGGERED ABILITY — a `CardDefinition` carrying one `TriggeredAbilityDef`, plus a free `effect` fn (referenced as a fn pointer) that returns `Vec<Effect>`.
 
-REFERENCE — Elvish Visionary ({{1}}{{G}} 1/1 Elf Shaman, 'When ~ enters the battlefield, draw a card'):
+REFERENCE — Elvish Visionary ({{1}}{{G}} 1/1 Elf Shaman, 'When ~ enters the battlefield, draw a card' — the `TriggeredAbilityDef` shape and a no-target effect fn):
 ```rust
 {FS_ELVISH_VISIONARY}
 ```
 
-REFERENCE — Young Pyromancer ({{1}}{{R}} 2/1 Human Shaman, 'Whenever you cast an instant or sorcery spell, create a 1/1 red Elemental creature token'):
+REFERENCE — Young Pyromancer ({{1}}{{R}} 2/1 Human Shaman, 'Whenever you cast an instant or sorcery spell, create a 1/1 red Elemental creature token' — a filtered `SpellCast` condition and an effect fn that interns a token subtype via the `reg` param):
 ```rust
 {FS_YOUNG_PYROMANCER}
+```
+
+{trigcat}
+
+BINDING — your effect fn's signature is `fn(_: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect>` (see the references). The EFFECT CATALOG and CARD SCRIPTING sections below are shared with the spell generator; YOUR binding is `trig` — it carries `trig.controller` (the ability's controller — use for 'you'), `trig.source` (this creature's `ObjectId`), and `trig.targets` (declared targets). The catalog text already says `trig.<field>` — use exactly that.
+
+{cat}
+
+WORKED EFFECT FN — the trigger effect fn combining the catalog and the script prelude:
+```rust
+{worked}
 ```
 
 === TARGET CARD ===
 {spec}
 
-Use `TriggerFrequency::EachTime` unless the oracle text says 'only the first time' or similar. Set `trigger_zones` to `vec![Zone::Battlefield]` for on-battlefield triggers. Generate the Rust source. Output only the file contents.",
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference cards (those are for code structure only). Transcribe verbatim, never infer from the card's name:
+- `mana_cost`: the spec's `Mana cost` string EXACTLY into `ManaCost::parse(\"…\")`.
+- `colors`: exactly the colored pips of that cost (combine with `|`); never add a color the cost lacks.
+- `types`: exactly the spec's `Type line` (Creature → `TypeLine::CREATURE.into()`; an Enchantment Creature → `TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE)`).
+- power/toughness: exactly the spec's `Power/Toughness`, as `Some(PtValue::Fixed(n))`.
+
+Then build the ONE `TriggeredAbilityDef` whose `trigger_condition` matches the oracle's trigger clause and whose `effect` fn returns the `Effect`s for what follows it. If the effect genuinely cannot be expressed with any catalog variant, the effect fn returns `Vec::new()` with a `// GAP: <what is missing>` comment — never invent an `Effect` / `TriggerCondition` / `GameEvent` variant or a field not shown. Generate the Rust source. Output only the file contents.",
         spec = card_spec(card),
+        trigcat = TRIGGER_CONDITION_CATALOG,
+        cat = effect_catalog("trig"),
+        worked = WORKED_TRIGGER_FN,
     )
 }
 
@@ -858,6 +1006,33 @@ mod tests {
         let p = render_prompt(&c, Tier::Three).expect("ok");
         assert!(p.user.contains("Elvish Visionary"));
         assert!(p.user.contains("Young Pyromancer"));
+    }
+
+    #[test]
+    fn triggered_prompt_embeds_trigger_and_effect_catalogs() {
+        let c = mk_card(|c| {
+            c.name = "Phantom Helper".into();
+            c.type_line = "Creature — Spirit".into();
+            c.oracle_text = Some("When Phantom Helper dies, draw a card.".into());
+            c.power = Some("2".into());
+            c.toughness = Some("2".into());
+        });
+        let p = render_prompt(&c, Tier::Three).expect("ok");
+        // Trigger-condition catalog — so the model picks an existing
+        // variant instead of inventing one (the dominant T3 L1 failure).
+        assert!(p.user.contains("TRIGGER CONDITION CATALOG"));
+        for v in ["TriggerCondition::SelfDies", "TriggerCondition::StepBegins",
+                  "TriggerCondition::ZoneChange", "TriggerCondition::DamageDealt"] {
+            assert!(p.user.contains(v), "trigger catalog must list {v}");
+        }
+        // Shared effect catalog + script prelude, binding-resolved to `trig`.
+        assert!(p.user.contains("ENGINE EFFECT CATALOG"));
+        assert!(p.user.contains("CARD SCRIPTING"));
+        assert!(p.user.contains("Effect::CreateToken"));
+        assert!(p.user.contains("script::count_matching"));
+        assert!(p.user.contains("trig.controller"), "binding resolved to trig");
+        // The {BINDING} marker must be fully substituted — no leak.
+        assert!(!p.user.contains("{BINDING}"), "BINDING marker not substituted");
     }
 
     // --- retry prompt ---------------------------------------------------
