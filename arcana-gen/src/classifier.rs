@@ -175,7 +175,7 @@ fn has_multiple_ability_lines(text: &str) -> bool {
     text.lines().filter(|l| !l.trim().is_empty()).count() >= 2
 }
 
-fn has_triggered_ability(text: &str) -> bool {
+pub(crate) fn has_triggered_ability(text: &str) -> bool {
     let stripped = strip_reminder_text(text);
     // Iterate per-line: MTG separates ability paragraphs with `\n`,
     // and a trigger can appear on line 2+ ("Flying\nWhen ~ enters,

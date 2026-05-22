@@ -33,8 +33,9 @@
 //! Out of scope (returns `Err(Unsupported)` — see variants for
 //! bucketing):
 //!   * Basic lands — hand-written helpers, not LLM generation.
-//!   * Activated-only abilities on non-creature permanents — no
-//!     clean seed example yet; deferred until we add one.
+//!   * Activated-only abilities (mana dorks, `{T}:` creatures, and
+//!     non-creature permanents) — the triggered few-shot pack has no
+//!     trigger to anchor on; deferred to a later pass.
 //!   * T4 / T5 — structural complexity (planeswalkers, X costs,
 //!     modal, multi-line, unsupported layout) needs manual routing.
 
@@ -221,14 +222,27 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
             }
         }
         Tier::Three => {
-            // v1: triggered-ability creatures only. Activated-only
-            // permanents need a different few-shot pack; deferred.
-            if card.is_creature() {
+            // v1: triggered-ability creatures only. The triggered
+            // few-shot pack (Elvish Visionary, Young Pyromancer) has
+            // nothing to anchor on for a creature whose only ability
+            // is activated/static — a mana dork, a "{T}: …" creature.
+            // The classifier routes those to T3 via `has_activated_
+            // ability`; they need their own pack (a later pass), so
+            // defer them rather than emit a mismatched prompt.
+            // Non-creature permanents likewise.
+            if !card.is_creature() {
+                Err(Unsupported::NoFewShotForShape {
+                    tier,
+                    detail: "non-creature permanent (activated/triggered)",
+                })
+            } else if crate::classifier::has_triggered_ability(
+                &card.effective_oracle_text(),
+            ) {
                 Ok(PromptShape::TriggeredAbilityCreature)
             } else {
                 Err(Unsupported::NoFewShotForShape {
                     tier,
-                    detail: "non-creature permanent (activated/triggered)",
+                    detail: "activated-only creature (no triggered ability)",
                 })
             }
         }
@@ -670,6 +684,30 @@ mod tests {
         match render_prompt(&c, Tier::Three).unwrap_err() {
             Unsupported::NoFewShotForShape { tier, .. } => {
                 assert_eq!(tier, Tier::Three);
+            }
+            other => panic!("expected NoFewShotForShape, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn t3_activated_only_creature_returns_no_few_shot_for_shape() {
+        // A creature whose sole ability is activated (a mana dork) is
+        // classified T3 but has no trigger — the triggered few-shot
+        // pack can't serve it, so select_shape defers it.
+        let c = mk_card(|c| {
+            c.name = "Llanowar Elves".into();
+            c.type_line = "Creature — Elf Druid".into();
+            c.oracle_text = Some("{T}: Add {G}.".into());
+            c.power = Some("1".into());
+            c.toughness = Some("1".into());
+        });
+        match render_prompt(&c, Tier::Three).unwrap_err() {
+            Unsupported::NoFewShotForShape { tier, detail } => {
+                assert_eq!(tier, Tier::Three);
+                assert!(
+                    detail.contains("activated"),
+                    "detail should name the activated-only reason, got {detail:?}"
+                );
             }
             other => panic!("expected NoFewShotForShape, got {other:?}"),
         }
