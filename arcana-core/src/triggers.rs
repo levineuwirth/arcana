@@ -450,6 +450,87 @@ pub struct PendingTrigger {
     pub targets: crate::targets::TargetSelection,
 }
 
+impl PendingTrigger {
+    // --- typed event accessors ------------------------------------------
+    //
+    // These pull structured fields out of `trigger_event` so an effect
+    // fn never has to pattern-match `GameEvent` directly. They are the
+    // engine-side surface card-gen prompts advertise to model authors
+    // (see `arcana-gen::prompt::TRIGGER_PENDING_ACCESSORS`). Each
+    // returns `Option<…>` keyed on whether the originating event
+    // carries the requested datum.
+
+    /// The `ObjectId` of the creature that just died, if this trigger
+    /// fired on [`GameEvent::Dies`] or a [`GameEvent::ZoneChange`]
+    /// into any graveyard. For a `SelfDies` trigger this equals
+    /// [`Self::source`]; for graveyard-bound `ZoneChange` triggers
+    /// (e.g. "whenever a creature dies") it's the moved object.
+    pub fn dying_object(&self) -> Option<ObjectId> {
+        match &self.trigger_event {
+            GameEvent::Dies { object_id } => Some(*object_id),
+            GameEvent::ZoneChange { object_id, to: Zone::Graveyard(_), .. } =>
+                Some(*object_id),
+            _ => None,
+        }
+    }
+
+    /// Damage amount, if this trigger fired on
+    /// [`GameEvent::DamageDealt`].
+    pub fn damage_amount(&self) -> Option<u32> {
+        match &self.trigger_event {
+            GameEvent::DamageDealt { amount, .. } => Some(*amount),
+            _ => None,
+        }
+    }
+
+    /// The player who was dealt damage, if this trigger fired on a
+    /// [`GameEvent::DamageDealt`] whose target is a player.
+    pub fn damaged_player(&self) -> Option<PlayerId> {
+        match &self.trigger_event {
+            GameEvent::DamageDealt {
+                target: crate::events::DamageTarget::Player(p), ..
+            } => Some(*p),
+            _ => None,
+        }
+    }
+
+    /// The defending player of an attack, if this trigger fired on a
+    /// [`GameEvent::CreatureAttacks`] whose defender is a player (not
+    /// a planeswalker or battle).
+    pub fn defending_player(&self) -> Option<PlayerId> {
+        match &self.trigger_event {
+            GameEvent::CreatureAttacks {
+                defending: crate::combat::DefendingEntity::Player(p), ..
+            } => Some(*p),
+            _ => None,
+        }
+    }
+
+    /// The controller of the spell that triggered this ability, if
+    /// this trigger fired on [`GameEvent::SpellCast`].
+    pub fn triggering_caster(&self) -> Option<PlayerId> {
+        match &self.trigger_event {
+            GameEvent::SpellCast { controller, .. } => Some(*controller),
+            _ => None,
+        }
+    }
+
+    /// The `ObjectId` of the object that just entered the battlefield,
+    /// if this trigger fired on [`GameEvent::EntersBattlefield`] or a
+    /// battlefield-bound [`GameEvent::ZoneChange`]. For a
+    /// `SelfEntersBattlefield` trigger this equals [`Self::source`];
+    /// for filtered ETB `ZoneChange` triggers it's the entering
+    /// creature.
+    pub fn entering_object(&self) -> Option<ObjectId> {
+        match &self.trigger_event {
+            GameEvent::EntersBattlefield { object_id, .. } => Some(*object_id),
+            GameEvent::ZoneChange { object_id, to: Zone::Battlefield, .. } =>
+                Some(*object_id),
+            _ => None,
+        }
+    }
+}
+
 /// Sort `triggers` in-place by APNAP order of their `controller` —
 /// active player's triggers first, then each subsequent opponent in
 /// turn order (CR 603.3b). Stable within a player's own triggers, so
@@ -1184,5 +1265,109 @@ mod tests {
 
         let ts = TriggerSelf::AnyMatching(ObjectFilter::creature());
         assert!(ts.matches(c, 0, 0, &s));
+    }
+
+    // --- PendingTrigger accessors ------------------------------------------
+
+    fn pending(event: GameEvent) -> PendingTrigger {
+        PendingTrigger {
+            source: 42,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: event,
+            targets: crate::targets::TargetSelection::new(),
+        }
+    }
+
+    #[test]
+    fn pending_dying_object_from_dies_or_zone_change() {
+        let t = pending(GameEvent::Dies { object_id: 7 });
+        assert_eq!(t.dying_object(), Some(7));
+        let t = pending(GameEvent::ZoneChange {
+            object_id: 9, from: Zone::Battlefield, to: Zone::Graveyard(0),
+            new_id: 9, cause: crate::events::MoveCause::StateBasedAction,
+        });
+        assert_eq!(t.dying_object(), Some(9));
+        // ZoneChange to exile is not "dying".
+        let t = pending(GameEvent::ZoneChange {
+            object_id: 9, from: Zone::Battlefield, to: Zone::Exile,
+            new_id: 9, cause: crate::events::MoveCause::StateBasedAction,
+        });
+        assert_eq!(t.dying_object(), None);
+        // Non-zone event with no death — None.
+        let t = pending(GameEvent::TurnEnds { player: 0 });
+        assert_eq!(t.dying_object(), None);
+    }
+
+    #[test]
+    fn pending_damage_amount_and_damaged_player() {
+        let t = pending(GameEvent::DamageDealt {
+            source: 1,
+            target: crate::events::DamageTarget::Player(2),
+            amount: 5,
+            is_combat: true,
+        });
+        assert_eq!(t.damage_amount(), Some(5));
+        assert_eq!(t.damaged_player(), Some(2));
+        // Damage to an object: amount present, damaged_player None.
+        let t = pending(GameEvent::DamageDealt {
+            source: 1,
+            target: crate::events::DamageTarget::Object(99),
+            amount: 3,
+            is_combat: false,
+        });
+        assert_eq!(t.damage_amount(), Some(3));
+        assert_eq!(t.damaged_player(), None);
+        // Not a damage event: both None.
+        let t = pending(GameEvent::Dies { object_id: 1 });
+        assert_eq!(t.damage_amount(), None);
+        assert_eq!(t.damaged_player(), None);
+    }
+
+    #[test]
+    fn pending_defending_player_from_attack() {
+        let t = pending(GameEvent::CreatureAttacks {
+            attacker: 5,
+            defending: crate::combat::DefendingEntity::Player(1),
+        });
+        assert_eq!(t.defending_player(), Some(1));
+        // Planeswalker / battle defender: None.
+        let t = pending(GameEvent::CreatureAttacks {
+            attacker: 5,
+            defending: crate::combat::DefendingEntity::Planeswalker(99),
+        });
+        assert_eq!(t.defending_player(), None);
+    }
+
+    #[test]
+    fn pending_triggering_caster_from_spell_cast() {
+        let t = pending(GameEvent::SpellCast {
+            object_id: 5,
+            card_id: 10,
+            controller: 1,
+            targets: crate::targets::TargetSelection::new(),
+        });
+        assert_eq!(t.triggering_caster(), Some(1));
+        let t = pending(GameEvent::Dies { object_id: 1 });
+        assert_eq!(t.triggering_caster(), None);
+    }
+
+    #[test]
+    fn pending_entering_object() {
+        let t = pending(GameEvent::EntersBattlefield {
+            object_id: 7, from_zone: Zone::Hand(0), was_cast: true,
+        });
+        assert_eq!(t.entering_object(), Some(7));
+        let t = pending(GameEvent::ZoneChange {
+            object_id: 9, from: Zone::Hand(0), to: Zone::Battlefield,
+            new_id: 9, cause: crate::events::MoveCause::StateBasedAction,
+        });
+        assert_eq!(t.entering_object(), Some(9));
+        // ZoneChange to graveyard is not "entering" the battlefield.
+        let t = pending(GameEvent::ZoneChange {
+            object_id: 9, from: Zone::Battlefield, to: Zone::Graveyard(0),
+            new_id: 9, cause: crate::events::MoveCause::StateBasedAction,
+        });
+        assert_eq!(t.entering_object(), None);
     }
 }

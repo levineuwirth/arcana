@@ -495,6 +495,20 @@ const WORKED_TRIGGER_FN: &str = r#"fn on_trigger(state: &GameState, trig: &Pendi
     vec![Effect::DrawCards { player: trig.controller, count: n }]
 }"#;
 
+/// Typed `PendingTrigger` accessors — what the trigger fn can pull
+/// out of `trig` without pattern-matching `trig.trigger_event` (which
+/// is a footgun: invented `GameEvent` variants are a recurring L1
+/// fail). T3-only — spell resolvers receive a `&StackEntry` that
+/// doesn't have these.
+const TRIGGER_PENDING_ACCESSORS: &str = r#"PENDING-TRIGGER ACCESSORS — beyond `trig.controller` / `trig.source` / `trig.targets`, your effect fn can call typed accessors on `trig` that extract event-specific data without pattern-matching `trig.trigger_event` (DO NOT match on `GameEvent` directly — inventing variants is the #1 L1 fail). Each returns `Option<...>` keyed on the event the trigger fired on:
+- `trig.dying_object() -> Option<ObjectId>` — pairs with `SelfDies` and graveyard-bound `ZoneChange`. For "deals damage equal to its power" / dies-rider effects: `let n = script::power_of(state, trig.dying_object().unwrap_or(trig.source)).max(0) as u32;`.
+- `trig.damage_amount() -> Option<u32>` — pairs with `SelfIsDealtDamage` / `DamageDealt`. For "draw that many cards" / "deals X damage where X = damage taken": `let n = trig.damage_amount().unwrap_or(0);`.
+- `trig.damaged_player() -> Option<PlayerId>` — pairs with `DamageDealt`. For "that player discards" / "deals damage to a player → that player loses life": `let Some(p) = trig.damaged_player() else { return Vec::new(); };`.
+- `trig.defending_player() -> Option<PlayerId>` — pairs with `SelfAttacks` / `CreatureAttacks` / `SelfAttacksUnblocked`. For "the defending player loses 1 life": `let Some(p) = trig.defending_player() else { return Vec::new(); };`.
+- `trig.triggering_caster() -> Option<PlayerId>` — pairs with `SpellCast`. For "that player draws a card" / "that player loses life".
+- `trig.entering_object() -> Option<ObjectId>` — pairs with `SelfEntersBattlefield` and battlefield-bound `ZoneChange`. For "put X +1/+1 counters where X = power of the entering creature": `let id = trig.entering_object().unwrap_or(trig.source); let n = script::power_of(state, id).max(0) as u32;`.
+No imports beyond what's already in scope. These accessors are stable engine API — never pattern-match `trig.trigger_event` instead."#;
+
 // =============================================================================
 // per-shape user prompts
 // =============================================================================
@@ -687,7 +701,9 @@ REFERENCE — Young Pyromancer ({{1}}{{R}} 2/1 Human Shaman, 'Whenever you cast 
 
 {trigcat}
 
-BINDING — your effect fn's signature is `fn(_: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect>` (see the references). The EFFECT CATALOG and CARD SCRIPTING sections below are shared with the spell generator; YOUR binding is `trig` — it carries `trig.controller` (the ability's controller — use for 'you'), `trig.source` (this creature's `ObjectId`), and `trig.targets` (declared targets). The catalog text already says `trig.<field>` — use exactly that.
+{paccess}
+
+BINDING — your effect fn's signature is `fn(_: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect>` (see the references). The EFFECT CATALOG and CARD SCRIPTING sections below are shared with the spell generator; YOUR binding is `trig` — it carries `trig.controller` (the ability's controller — use for 'you'), `trig.source` (this creature's `ObjectId`), `trig.targets` (declared targets), and the typed accessors listed just above. The catalog text already says `trig.<field>` — use exactly that.
 
 {cat}
 
@@ -708,6 +724,7 @@ BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not fr
 Then build the ONE `TriggeredAbilityDef` whose `trigger_condition` matches the oracle's trigger clause and whose `effect` fn returns the `Effect`s for what follows it. If the effect genuinely cannot be expressed with any catalog variant, the effect fn returns `Vec::new()` with a `// GAP: <what is missing>` comment — never invent an `Effect` / `TriggerCondition` / `GameEvent` variant or a field not shown. Generate the Rust source. Output only the file contents.",
         spec = card_spec(card),
         trigcat = TRIGGER_CONDITION_CATALOG,
+        paccess = TRIGGER_PENDING_ACCESSORS,
         cat = effect_catalog("trig"),
         worked = WORKED_TRIGGER_FN,
     )
