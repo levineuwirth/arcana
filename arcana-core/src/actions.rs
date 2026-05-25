@@ -504,6 +504,15 @@ pub enum ChoiceKind {
         cost: crate::mana::ManaCost,
         on_decline: DeclineConsequence,
     },
+    /// "You may pay X. If you do, Y. (Otherwise, Z.)" — generic
+    /// optional-cost gate from [`crate::effects::Effect::OptionalPayment`].
+    /// Distinct from [`ChoiceKind::PayOrDecline`] because the cost
+    /// shape is richer (mana OR life OR other) and the dispatcher
+    /// branches on a follow-up effect rather than a [`DeclineConsequence`].
+    /// Answer: [`ChoiceResponse::OptionalCost`] (`true` = pay).
+    OptionalCost {
+        cost: OptionalPaymentKind,
+    },
     /// Binary yes/no prompt (e.g. "may cast for free — yes/no").
     /// Answer: [`ChoiceAction::ChooseYesNo`].
     YesNo {
@@ -555,6 +564,19 @@ pub enum DeclineConsequence {
     SkipEffect,
 }
 
+/// Cost shape for [`ChoiceKind::OptionalCost`] — the "pay X" half of a
+/// "you may pay X. If you do, …" / "do Y unless you pay X" effect.
+/// Lives on [`crate::effects::Effect::OptionalPayment`].
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OptionalPaymentKind {
+    /// Pay mana — uses the same auto-payment solver as Ward.
+    Mana(crate::mana::ManaCost),
+    /// Pay N life. Auto-deducted on pay; legal action filtered when the
+    /// payer has less than `amount` (CR 119.4 — can't pay life you don't
+    /// have).
+    Life(u32),
+}
+
 /// Agent reply to a [`PendingChoice`]. Paired 1:1 with [`ChoiceKind`];
 /// submitting a response whose variant doesn't match the pending
 /// [`ChoiceKind`] panics at the dispatcher (programmer / agent bug,
@@ -577,6 +599,10 @@ pub enum ChoiceResponse {
     DistributeDamage { distribution: Vec<(ObjectId, u32)> },
     /// Reply to [`ChoiceKind::PayOrDecline`]: `true` = pay.
     PayOrDecline { pay: bool },
+    /// Reply to [`ChoiceKind::OptionalCost`]: `true` = pay (and run the
+    /// stashed `then` follow-up); `false` = decline (and run
+    /// `else_effect` if present).
+    OptionalCost { pay: bool },
     /// Reply to [`ChoiceKind::YesNo`].
     YesNo { answer: bool },
     /// Reply to [`ChoiceKind::PickPlayer`].
@@ -691,6 +717,17 @@ pub enum ChoiceFollowUp {
     /// creature and record a `combat.must_block` requirement that it
     /// blocks `provoker` this combat if able. Empty pick = declined.
     Provoke { provoker: ObjectId },
+    /// Pair with a [`ChoiceKind::OptionalCost`] response: on pay,
+    /// execute `then`; on decline, execute `else_effect` if present
+    /// (no-op otherwise). The mana / life cost is auto-deducted by the
+    /// dispatcher before running `then`.
+    ///
+    /// `then` and `else_effect` are [`crate::effects::Effect`]s, which
+    /// is why `ChoiceFollowUp` doesn't derive Hash/Eq/Serialize.
+    OptionalPaymentBranch {
+        then: crate::effects::Effect,
+        else_effect: Option<crate::effects::Effect>,
+    },
 }
 
 // =============================================================================

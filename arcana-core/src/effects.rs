@@ -303,6 +303,28 @@ pub enum Effect {
         cost: crate::mana::ManaCost,
     },
 
+    /// "You may pay `cost`. If you do, `then`. (Otherwise, `else_effect`.)"
+    ///
+    /// Two-shape blocker for triggered abilities written
+    /// "you may pay X. If you do, Y" (positive optional — `else_effect`
+    /// is `None`) and "do Z unless you pay X" (penalty-with-escape —
+    /// `then` is the empty effect, `else_effect` is the penalty).
+    ///
+    /// Pushes a [`crate::actions::ChoiceKind::OptionalCost`] to `chooser`
+    /// and stashes the branches in
+    /// [`crate::state::GameState::pending_choice_follow_up`]. The
+    /// dispatcher auto-pays on `pay=true` then runs `then`; on
+    /// `pay=false` it runs `else_effect`.
+    ///
+    /// Costs supported in v1: mana, life. Future: sacrifice, discard,
+    /// exile-from-graveyard (each requires an inner `PickCards`).
+    OptionalPayment {
+        chooser: PlayerId,
+        cost: crate::actions::OptionalPaymentKind,
+        then: Box<Effect>,
+        else_effect: Option<Box<Effect>>,
+    },
+
     // --- mana / phases -----------------------------------------------------
     AddMana { player: PlayerId, mana: Vec<crate::mana::ManaUnit> },
     ExtraTurn { player: PlayerId },
@@ -901,6 +923,24 @@ impl Effect {
                         on_decline:
                             crate::actions::DeclineConsequence::CounterStackEntry(
                                 *target),
+                    },
+                );
+            }
+            Effect::OptionalPayment { chooser, cost, then, else_effect } => {
+                if !valid_player(state, *chooser) { return; }
+                let resolving = state.currently_resolving
+                    .expect("Effect::OptionalPayment: no currently_resolving \
+                             stack entry — must execute mid-resolution");
+                state.pending_choice_follow_up = Some(
+                    crate::actions::ChoiceFollowUp::OptionalPaymentBranch {
+                        then: (**then).clone(),
+                        else_effect: else_effect.as_deref().cloned(),
+                    });
+                state.push_pending_choice(
+                    *chooser,
+                    crate::actions::ChoiceContext::ResolvingStack(resolving),
+                    crate::actions::ChoiceKind::OptionalCost {
+                        cost: cost.clone(),
                     },
                 );
             }
@@ -1595,7 +1635,7 @@ fn owner_of(state: &GameState, id: ObjectId) -> Option<PlayerId> {
     state.objects.get(id).map(|o| o.owner)
 }
 
-fn lose_life(state: &mut GameState, p: PlayerId, amount: u32) {
+pub(crate) fn lose_life(state: &mut GameState, p: PlayerId, amount: u32) {
     if !valid_player(state, p) || amount == 0 { return; }
     state.player_mut(p).life -= amount as i32;
     state.emit(GameEvent::LifeLost { player: p, amount });
@@ -3655,6 +3695,59 @@ mod tests {
         // The spell is still on the stack — countering happens only
         // on a declined payment, handled by the choice dispatcher.
         assert_eq!(s.stack_size(), 1);
+    }
+
+    #[test]
+    fn optional_payment_pushes_optional_cost_and_stashes_branches() {
+        use crate::actions::{ChoiceFollowUp, ChoiceKind, OptionalPaymentKind};
+        let mut s = GameState::new(2, 0);
+        // Need a resolving stack entry; any will do.
+        let card = put_instant(&mut s, 0, Zone::Hand(0));
+        let entry = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
+        s.currently_resolving = Some(entry);
+
+        Effect::OptionalPayment {
+            chooser: 0,
+            cost: OptionalPaymentKind::Mana(
+                crate::mana::ManaCost::parse("{1}").unwrap()),
+            then: Box::new(Effect::GainLife { player: 0, amount: 3 }),
+            else_effect: None,
+        }.execute(&mut s);
+
+        let pc = s.pending_choice.as_ref().expect("OptionalCost pushed");
+        assert_eq!(pc.choosing_player, 0);
+        assert!(matches!(&pc.kind,
+            ChoiceKind::OptionalCost {
+                cost: OptionalPaymentKind::Mana(_) }));
+        // The branches are stashed for the dispatcher.
+        assert!(matches!(s.pending_choice_follow_up,
+            Some(ChoiceFollowUp::OptionalPaymentBranch {
+                then: Effect::GainLife { player: 0, amount: 3 },
+                else_effect: None,
+            })));
+    }
+
+    #[test]
+    fn optional_payment_life_cost_is_distinct_from_mana() {
+        use crate::actions::{ChoiceKind, OptionalPaymentKind};
+        let mut s = GameState::new(2, 0);
+        let card = put_instant(&mut s, 0, Zone::Hand(0));
+        let entry = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
+        s.currently_resolving = Some(entry);
+
+        Effect::OptionalPayment {
+            chooser: 0,
+            cost: OptionalPaymentKind::Life(2),
+            then: Box::new(Effect::Tap { target: 7 }),
+            else_effect: Some(Box::new(Effect::Tap { target: 8 })),
+        }.execute(&mut s);
+
+        let pc = s.pending_choice.as_ref().expect("OptionalCost pushed");
+        assert!(matches!(&pc.kind,
+            ChoiceKind::OptionalCost {
+                cost: OptionalPaymentKind::Life(2) }));
     }
 
     #[test]

@@ -169,6 +169,35 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 });
             }
         }
+        ChoiceKind::OptionalCost { cost } => {
+            // Decline is always available. Offer pay only if the
+            // chooser actually has the resources — CR 119.4 / mana
+            // solver legality.
+            let can_pay = match cost {
+                crate::actions::OptionalPaymentKind::Mana(mc) => {
+                    !crate::mana::enumerate_payment_plans(
+                        mc,
+                        &state.player(pending.choosing_player).mana_pool,
+                        /*x_value=*/ None,
+                        &crate::mana::SpendContext::unrestricted(),
+                    ).is_empty()
+                }
+                crate::actions::OptionalPaymentKind::Life(amount) => {
+                    state.player(pending.choosing_player).life
+                        >= *amount as i32
+                }
+            };
+            if can_pay {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::OptionalCost { pay: true },
+                });
+            }
+            out.push(Action::SubmitResolutionChoice {
+                id,
+                response: ChoiceResponse::OptionalCost { pay: false },
+            });
+        }
         ChoiceKind::YesNo { .. } => {
             for answer in [true, false] {
                 out.push(Action::SubmitResolutionChoice {

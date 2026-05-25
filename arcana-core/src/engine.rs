@@ -1224,6 +1224,33 @@ pub(crate) fn apply_resolution_choice(
             }
         }
 
+        // --- OptionalCost mid-resolution (Effect::OptionalPayment) ---
+        // Auto-pays the cost on `pay=true` then runs the stashed
+        // `then` effect; on decline runs `else_effect` if any.
+        (
+            ChoiceKind::OptionalCost { cost },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::OptionalCost { pay },
+        ) => {
+            let follow_up = state.pending_choice_follow_up.take()
+                .expect("apply_resolution_choice: OptionalCost needs a \
+                         pending_choice_follow_up stash");
+            let (then_eff, else_eff) = match follow_up {
+                crate::actions::ChoiceFollowUp::OptionalPaymentBranch {
+                    then, else_effect,
+                } => (then, else_effect),
+                other => panic!(
+                    "OptionalCost dispatch: unexpected follow-up {other:?}"),
+            };
+            if *pay {
+                apply_optional_cost_payment(
+                    state, pending.choosing_player, cost);
+                then_eff.execute(state);
+            } else if let Some(eff) = else_eff {
+                eff.execute(state);
+            }
+        }
+
         // --- YesNo mid-resolution: cascade may-cast (CR 702.85) ------
         (
             ChoiceKind::YesNo { .. },
@@ -1482,6 +1509,26 @@ fn auto_pay_ward_cost(
     spend_mana_plan(state, player, &plan);
 }
 
+/// Auto-pay an [`crate::actions::OptionalPaymentKind`] by deducting
+/// from `player`'s mana pool / life total. Called on the pay-branch
+/// of an OptionalCost dispatch; the legal-action filter has already
+/// confirmed `player` can pay.
+fn apply_optional_cost_payment(
+    state: &mut GameState,
+    player: PlayerId,
+    cost: &crate::actions::OptionalPaymentKind,
+) {
+    use crate::actions::OptionalPaymentKind;
+    match cost {
+        OptionalPaymentKind::Mana(mc) => {
+            auto_pay_ward_cost(state, player, mc);
+        }
+        OptionalPaymentKind::Life(amount) => {
+            crate::effects::lose_life(state, player, *amount);
+        }
+    }
+}
+
 /// Apply the decline consequence from a PayOrDecline. For Ward
 /// (CR 702.21a) the decline path counters the targeting spell/ability
 /// whose stack-entry id was stamped into
@@ -1673,6 +1720,17 @@ fn apply_choice_follow_up(
                         duration,
                     ));
             }
+        }
+        ChoiceFollowUp::OptionalPaymentBranch { .. } => {
+            // OptionalPaymentBranch is paired with
+            // `ChoiceKind::OptionalCost`, not with `PickCards` /
+            // `ChooseTargets`. Its dispatch lives inline at the
+            // OptionalCost arm in apply_resolution_choice; this
+            // function only runs for PickCards-style follow-ups.
+            panic!(
+                "apply_choice_follow_up: OptionalPaymentBranch should be \
+                 consumed at the ChoiceKind::OptionalCost dispatch arm, \
+                 not from PickCards");
         }
     }
 }
@@ -4790,6 +4848,80 @@ mod resolution_choice_framework_tests {
         assert!(s.pending_choice.is_none());
         assert!(s.pending_resolution.is_none());
         assert!(s.stack_is_empty());
+    }
+
+    #[test]
+    fn optional_payment_pay_branch_runs_then_effect() {
+        use crate::actions::{
+            ChoiceContext, ChoiceFollowUp, ChoiceKind, ChoiceResponse,
+            OptionalPaymentKind,
+        };
+        use crate::mana::ManaCost;
+        use crate::types::ManaColor;
+        let mut s = GameState::new(2, 0);
+        // Player 0 has {1} in pool and is solvent for the optional cost.
+        s.player_mut(0).mana_pool.add(
+            crate::mana::ManaUnit::plain(ManaColor::Red, 0));
+        let prev_life = s.player(0).life;
+        // Need a resolving context for the prompt.
+        let dummy_resolving = 999;
+        s.currently_resolving = Some(dummy_resolving);
+        s.pending_choice_follow_up = Some(
+            ChoiceFollowUp::OptionalPaymentBranch {
+                then: crate::effects::Effect::GainLife { player: 0, amount: 3 },
+                else_effect: None,
+            });
+        let pc_id = s.push_pending_choice(
+            0,
+            ChoiceContext::ResolvingStack(dummy_resolving),
+            ChoiceKind::OptionalCost {
+                cost: OptionalPaymentKind::Mana(
+                    ManaCost::parse("{1}").unwrap()),
+            });
+
+        apply_resolution_choice(
+            &mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::OptionalCost { pay: true });
+
+        assert_eq!(s.player(0).life, prev_life + 3,
+            "then-effect (GainLife 3) ran");
+        assert_eq!(s.player(0).mana_pool.total(), 0,
+            "mana was auto-deducted");
+        assert!(s.pending_choice.is_none());
+        assert!(s.pending_choice_follow_up.is_none());
+    }
+
+    #[test]
+    fn optional_payment_decline_runs_else_effect() {
+        use crate::actions::{
+            ChoiceContext, ChoiceFollowUp, ChoiceKind, ChoiceResponse,
+            OptionalPaymentKind,
+        };
+        let mut s = GameState::new(2, 0);
+        let prev_life = s.player(0).life;
+        let dummy_resolving = 999;
+        s.currently_resolving = Some(dummy_resolving);
+        s.pending_choice_follow_up = Some(
+            ChoiceFollowUp::OptionalPaymentBranch {
+                then: crate::effects::Effect::GainLife { player: 0, amount: 9 },
+                else_effect: Some(
+                    crate::effects::Effect::LoseLife { player: 0, amount: 2 }),
+            });
+        let pc_id = s.push_pending_choice(
+            0,
+            ChoiceContext::ResolvingStack(dummy_resolving),
+            ChoiceKind::OptionalCost {
+                cost: OptionalPaymentKind::Life(5),
+            });
+
+        apply_resolution_choice(
+            &mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::OptionalCost { pay: false });
+
+        assert_eq!(s.player(0).life, prev_life - 2,
+            "else-effect (LoseLife 2) ran; then-effect did NOT");
+        assert!(s.pending_choice.is_none());
+        assert!(s.pending_choice_follow_up.is_none());
     }
 
     #[test]
