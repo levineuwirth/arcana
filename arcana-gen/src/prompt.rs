@@ -412,6 +412,10 @@ Tokens:
 - `Effect::CreateToken { controller: p, token: TokenDefinition { .. } }`  (repeat the `Effect::CreateToken` for 'create N')
 - `Effect::CreateTokenSacEot { controller: p, token: TokenDefinition { .. } }`  — `CreateToken` plus a one-shot delayed destroy at the next end step (token-faithful 'create, then sacrifice at end of turn').
 
+Common token recipes — build via plain `Effect::CreateToken`. Pre-intern the subtype string at REGISTRATION time via `reg.interner_mut().intern("Treasure")`; at resolve time read it via `reg.interner().lookup("Treasure")`. The token's `name` field is its primary subtype's interner id.
+- Treasure / Clue / Food / Powerstone (commodity artifact tokens): `colors: ColorSet::colorless(), types: TypeLine::ARTIFACT.into(), power: None, toughness: None`, subtype set to the named string. The commodity activated abilities (Treasure → tap for one mana of any color, Clue → {{2}}+sac draw, Food → {{2}}+tap+sac gain 3 life, Powerstone → tap for {{C}}) are recognised by subtype but their ACTIVATION is deferred engine work — emit the token cleanly, do not try to author a `TriggeredAbilityDef` for the activation in the `abilities` field.
+- 1/1 creature tokens (Servo, Thopter, Soldier, Spirit, Saproling, Zombie, Cat, Bird, Snake, Squirrel, Goblin, Elemental, …): `colors` per oracle, `TypeLine::CREATURE.into()` for non-artifact, `TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)` for Servo / Thopter / Construct artifact creatures, subtype string interned + inserted into a `SubtypeSet`, `power/toughness: Some(PtValue::Fixed(N))`. Include `keywords` only for keywords printed on the token (Flying for Thopter/Spirit/Drake/Bird, Deathtouch for Snake, Lifelink for some Vampire/Cat tokens — read the oracle, do not invent).
+
 Mana:
 - `Effect::AddMana { player: p, mana: vec![ManaUnit::plain(ManaColor::Red, {BINDING}.source); 3] }`  (one `ManaUnit::plain(color, source)` per pip; `source` is `{BINDING}.source`).
 
@@ -425,6 +429,18 @@ Sacrifice:
 Search the library (shuffle is automatic):
 - `Effect::TutorToHand { player: p, filter: ObjectFilter::creature(), reveal: true }`
 - `Effect::TutorToBattlefield { player: p, filter: ObjectFilter::creature(), tapped: false }`
+- `Effect::Reanimate { player: p, filter: ObjectFilter::creature(), from_zone: Zone::Graveyard(p) }`  — non-targeted "return a creature from a graveyard"; for the targeted form prefer `ReturnFromGraveyardToBattlefield { target: id }` (above).
+
+Mechanics — named MTG primitives the engine implements. Use the named variant instead of trying to assemble the effect from primitives:
+- `Effect::Proliferate`  — "Proliferate." Adds another counter of an already-present kind to every permanent / player that has at least one counter.
+- `Effect::Manifest { player: p }`  — "Manifest the top card of your library." Face-down 2/2 creature, may be flipped face up by paying its mana cost.
+- `Effect::Goad { target: id, goader: {BINDING}.controller, duration: Duration::EndOfTurn }`  — "Goad target creature." The goaded creature must attack each combat, can't attack `goader`.
+- `Effect::ForbidAttacking { target: id, duration: Duration::EndOfTurn }`  — "Target creature can't attack" (counterpart to `Goad`).
+- `Effect::Cascade { source: {BINDING}.source, controller: {BINDING}.controller }`  — "Cascade" body (exile-until-lower-cost-card, free-cast it).
+- `Effect::CopySpell { target: id }`  — "Copy target spell" (`id` is the spell's stack-object id).
+- `Effect::CopyPermanent { target: id }`  — "Create a token that's a copy of target ..."
+- `Effect::Attach { equipment_or_aura: {BINDING}.source, target: id }`  — Equip / attach an Aura. For an ETB-Aura ("enchant target creature" — Auramancer's-class), pass `{BINDING}.source` as the Aura and `id` as the chosen target.
+- `Effect::BecomeRenowned { target: id }`  — "Target permanent becomes renowned" (CR 702.111).
 
 Composites (wrap the above):
 - `Effect::ForEach { targets: vec![/* ObjectIds */], effect: Box::new(Effect::DestroyPermanent { target: arcana_core::objects::NULL_OBJECT_ID }) }`  — 'affect EACH/ALL matching': enumerate ids from `state` (see CARD SCRIPTING) and apply the inner effect once per id.
