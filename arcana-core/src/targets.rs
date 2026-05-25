@@ -439,6 +439,18 @@ pub struct ObjectFilter {
     pub tapped: Option<bool>,
     /// Every subtype here must be on the object.
     pub subtypes: Option<Vec<SmallString>>,
+    /// At least one subtype here must be on the object (OR). Use for
+    /// "Human or Warrior creature", "Spirit or Arcane spell" — where
+    /// the AND-only [`Self::subtypes`] can't express the disjunction.
+    /// An empty Vec matches no object.
+    pub subtypes_any: Option<Vec<SmallString>>,
+    /// Every supertype here must be set on the object (AND). Use the
+    /// bit constants on [`SupertypeSet`]: `SupertypeSet::LEGENDARY`,
+    /// `SupertypeSet::BASIC`, `SupertypeSet::SNOW`, `SupertypeSet::WORLD`.
+    pub supertypes: Option<SupertypeSet>,
+    /// No supertype bit here may be set on the object. "nonlegendary
+    /// creature" = `not_supertypes: SupertypeSet(SupertypeSet::LEGENDARY)`.
+    pub not_supertypes: Option<SupertypeSet>,
     pub controller: Option<ControllerConstraint>,
     pub cmc_condition: Option<CmcCondition>,
     pub power_condition: Option<PtCondition>,
@@ -544,6 +556,24 @@ impl ObjectFilter {
         self.subtypes.get_or_insert_with(Vec::new).push(sym);
         self
     }
+    /// Builder: accept any of the given subtypes (OR). For
+    /// "Human or Warrior creature" pass `vec![human_sym, warrior_sym]`.
+    pub fn with_subtypes_any(mut self, syms: Vec<SmallString>) -> Self {
+        self.subtypes_any = Some(syms);
+        self
+    }
+    /// Builder: require supertype bits (AND). "Legendary creature" =
+    /// `creature().with_supertypes(SupertypeSet(SupertypeSet::LEGENDARY))`.
+    pub fn with_supertypes(mut self, st: SupertypeSet) -> Self {
+        self.supertypes = Some(st);
+        self
+    }
+    /// Builder: forbid supertype bits. "nonlegendary creature" =
+    /// `creature().without_supertypes(SupertypeSet(SupertypeSet::LEGENDARY))`.
+    pub fn without_supertypes(mut self, st: SupertypeSet) -> Self {
+        self.not_supertypes = Some(st);
+        self
+    }
     /// Builder: exclude a color ("nonblack creature" =
     /// `creature().without_colors(ColorSet::black())`).
     pub fn without_colors(mut self, colors: ColorSet) -> Self {
@@ -614,6 +644,25 @@ impl ObjectFilter {
                 if !obj.characteristics.subtypes.contains(*s) {
                     return false;
                 }
+            }
+        }
+        // --- subtypes_any: at least one must be present (OR).
+        // Empty Vec matches no object (consistent with types_any=0). ---
+        if let Some(any) = &self.subtypes_any {
+            if !any.iter().any(|s| obj.characteristics.subtypes.contains(*s)) {
+                return false;
+            }
+        }
+        // --- supertypes: every required supertype bit must be set ---
+        if let Some(required) = self.supertypes {
+            if (obj.characteristics.supertypes.0 & required.0) != required.0 {
+                return false;
+            }
+        }
+        // --- supertype exclusion: none of these bits may be set ---
+        if let Some(forbidden) = self.not_supertypes {
+            if obj.characteristics.supertypes.0 & forbidden.0 != 0 {
+                return false;
             }
         }
 
@@ -1142,6 +1191,73 @@ mod tests {
 
         let f = ObjectFilter { types_any: Some(TypeLine(0)), ..Default::default() };
         assert!(!f.matches(s.objects.get(creature).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_subtypes_any_disjunction() {
+        // "Human or Warrior creature" — neither subtype alone is a
+        // requirement; the object must have AT LEAST one.
+        let mut s = GameState::new(2, 0);
+        let mut reg = crate::registry::CardRegistry::new();
+        let human   = reg.interner_mut().intern("Human");
+        let warrior = reg.interner_mut().intern("Warrior");
+        let elf     = reg.interner_mut().intern("Elf");
+
+        let mk = |subs: &[SmallString], state: &mut GameState| -> ObjectId {
+            let id = state.allocate_object_id();
+            let mut subtypes = crate::types::SubtypeSet::default();
+            for s in subs { subtypes.0.insert(*s); }
+            let chars = Characteristics {
+                types: TypeLine::CREATURE.into(),
+                subtypes,
+                power: Some(crate::types::PtValue::Fixed(1)),
+                toughness: Some(crate::types::PtValue::Fixed(1)),
+                ..Default::default()
+            };
+            state.objects.insert(GameObject::new(id, 0, Zone::Battlefield, 1, chars));
+            id
+        };
+        let h_only = mk(&[human], &mut s);
+        let w_only = mk(&[warrior], &mut s);
+        let e_only = mk(&[elf], &mut s);
+
+        let f = ObjectFilter::creature()
+            .with_subtypes_any(vec![human, warrior]);
+        assert!( f.matches(s.objects.get(h_only).unwrap(), &s, 0));
+        assert!( f.matches(s.objects.get(w_only).unwrap(), &s, 0));
+        assert!(!f.matches(s.objects.get(e_only).unwrap(), &s, 0),
+            "elf has neither subtype in the disjunction");
+    }
+
+    #[test]
+    fn object_filter_supertypes_legendary_and_excluded() {
+        let mut s = GameState::new(2, 0);
+        let mk = |state: &mut GameState, legendary: bool| -> ObjectId {
+            let id = state.allocate_object_id();
+            let mut sts = SupertypeSet::default();
+            if legendary { sts = SupertypeSet::new().with(SupertypeSet::LEGENDARY); }
+            let chars = Characteristics {
+                types: TypeLine::CREATURE.into(),
+                supertypes: sts,
+                power: Some(crate::types::PtValue::Fixed(1)),
+                toughness: Some(crate::types::PtValue::Fixed(1)),
+                ..Default::default()
+            };
+            state.objects.insert(GameObject::new(id, 0, Zone::Battlefield, 1, chars));
+            id
+        };
+        let legendary_id = mk(&mut s, true);
+        let mundane_id   = mk(&mut s, false);
+
+        let legendary_only = ObjectFilter::creature()
+            .with_supertypes(SupertypeSet::new().with(SupertypeSet::LEGENDARY));
+        assert!( legendary_only.matches(s.objects.get(legendary_id).unwrap(), &s, 0));
+        assert!(!legendary_only.matches(s.objects.get(mundane_id).unwrap(), &s, 0));
+
+        let nonlegendary_only = ObjectFilter::creature()
+            .without_supertypes(SupertypeSet::new().with(SupertypeSet::LEGENDARY));
+        assert!(!nonlegendary_only.matches(s.objects.get(legendary_id).unwrap(), &s, 0));
+        assert!( nonlegendary_only.matches(s.objects.get(mundane_id).unwrap(), &s, 0));
     }
 
     #[test]
