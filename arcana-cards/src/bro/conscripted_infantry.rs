@@ -1,4 +1,4 @@
-//! Conscripted Infantry — `{2}{R}` 3/1 red Human Soldier.
+//! Conscripted Infantry — `{2}{R}` 3/1 red Human Soldier creature.
 //! "When this creature dies, create a 1/1 colorless Soldier artifact creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: create_soldier_token,
+                effect: dies_soldier_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_soldier_token(
+fn dies_soldier_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -56,7 +56,7 @@ fn create_soldier_token(
     let token = TokenDefinition {
         name: soldier,
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),

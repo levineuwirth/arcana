@@ -1,11 +1,10 @@
-//! Berg Strider — `{4}{U}` 4/4 blue Snow Giant Wizard. "When this creature
-//! enters, tap target artifact or creature an opponent controls. If {S} was
-//! spent to cast this spell, that permanent doesn't untap during its
+//! Berg Strider — `{4}{U}` 4/4 blue Snow Creature Giant Wizard.
+//! "When this creature enters, tap target artifact or creature an opponent controls.
+//! If {S} was spent to cast this spell, that permanent doesn't untap during its
 //! controller's next untap step."
 //!
-//! GAP: trigger — intervening-if "{S} was spent to cast" (snow mana) not
-//! expressible as condition predicate.
-//! GAP: type — Snow supertype not in SupertypeSet catalog.
+//! GAP: Snow supertype not a SupertypeSet variant; "if {S} was spent" conditional not expressible.
+//! Tap target only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{4}{U}").expect("valid cost")),
         colors: ColorSet::blue(),
-        // GAP: Snow supertype not in SupertypeSet catalog.
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet::default(),
@@ -49,8 +47,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
-                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
+                        ObjectFilter::permanent()
+                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into())
                     ),
                     count: TargetCount::Exactly(1),
                     controller: Some(ControllerConstraint::Opponent),
@@ -64,8 +62,7 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if {S} was spent" — skip-untap effect not applied conditionally.
+    // GAP: "if {S} was spent" conditional snow-mana check not expressible.
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Tap { target: *id }]
 }

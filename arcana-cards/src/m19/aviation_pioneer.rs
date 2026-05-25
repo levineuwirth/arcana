@@ -1,4 +1,4 @@
-//! Aviation Pioneer — `{2}{U}` 1/2 blue Creature — Human Artificer.
+//! Aviation Pioneer — `{2}{U}` 1/2 blue creature (Human Artificer).
 //! "When this creature enters, create a 1/1 colorless Thopter artifact
 //! creature token with flying."
 
@@ -27,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()

@@ -1,17 +1,17 @@
-//! Luminarch Aspirant — `{1}{W}` 1/1 white creature. "At the beginning of
-//! combat on your turn, put a +1/+1 counter on target creature you control."
+//! Luminarch Aspirant — `{1}{W}` 1/1 white creature. "At the beginning
+//! of combat on your turn, put a +1/+1 counter on target creature you
+//! control." Demonstrates a combat-phase triggered ability with a
+//! controlled-permanent target requirement.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter, TargetRequirement, TargetCount};
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetChoice, TargetFilter, TargetRequirement};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -41,12 +40,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: beginning_of_combat,
+                effect: add_counter_to_target,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You)
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -55,12 +54,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn beginning_of_combat(
+fn add_counter_to_target(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let arcana_core::targets::TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::AddCounters {
+        target: *id,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }

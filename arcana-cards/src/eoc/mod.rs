@@ -10,3 +10,4 @@ pub mod fumigate;
 pub mod satyr_wayfinder;
 pub mod loamcrafter_faun;
 pub mod jhoira_weatherlight_captain;
+pub mod surge_conductor;

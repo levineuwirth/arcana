@@ -33,3 +33,8 @@ pub mod morbid_opportunist;
 pub mod pawn_of_ulamog;
 pub mod jadar_ghoulcaller_of_nephalia;
 pub mod zulaport_cutthroat;
+pub mod zimone_all_questioning;
+pub mod blossoming_bogbeast;
+pub mod sram_senior_edificer;
+pub mod ajani_s_chosen;
+pub mod squee_goblin_nabob;

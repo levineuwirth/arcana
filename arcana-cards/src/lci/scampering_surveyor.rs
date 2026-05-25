@@ -1,9 +1,6 @@
-//! Scampering Surveyor — `{4}` colorless 3/2 Artifact Creature — Gnome. "When this
-//! creature enters, search your library for a basic land card or Cave card, put it
-//! onto the battlefield tapped, then shuffle."
-//!
-//! GAP: TutorToBattlefield filter cannot express "basic land or Cave card"; using
-//! basic land filter (TypeLine::LAND with basic supertype) as approximation.
+//! Scampering Surveyor — `{4}` 3/2 colorless artifact creature. "When this
+//! creature enters, search your library for a basic land card or Cave card,
+//! put it onto the battlefield tapped, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -26,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{4}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
@@ -39,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: tutor_land,
+                effect: search_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,13 +44,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tutor_land(
+fn search_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "basic land or Cave card" — filter cannot express this disjunction;
-    // using basic land (by type) as approximation
-    let filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
-    vec![Effect::TutorToBattlefield { player: trig.controller, filter, tapped: true }]
+    vec![Effect::TutorToBattlefield {
+        player: trig.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: true,
+    }]
 }

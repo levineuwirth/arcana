@@ -1,8 +1,10 @@
-//! Bulette — `{3}{G}` 3/3 green Beast.
-//! "At the beginning of your end step, if a creature died this turn, put a
-//! +1/+1 counter on this creature."
-//! GAP: intervening_if — "if a creature died this turn" condition not
-//! expressible; using None and emitting the counter unconditionally.
+//! Bulette — `{3}{G}` 3/3 Beast.
+//! "At the beginning of your end step, if a creature died this turn,
+//! put a +1/+1 counter on this creature."
+//!
+//! GAP: intervening-if "if a creature died this turn" — no catalog
+//! variant for intervening-if conditions. Using None; the condition
+//! cannot be checked at resolution.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,6 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
+                // GAP: intervening-if "if a creature died this turn" not supported
                 intervening_if: None,
                 effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
@@ -50,12 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_end_step(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: intervening_if — "if a creature died this turn" not checkable.
+fn on_end_step(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

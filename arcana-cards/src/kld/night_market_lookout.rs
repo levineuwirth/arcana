@@ -1,15 +1,12 @@
-//! Night Market Lookout — `{B}` 1/1 black Human Rogue. "Whenever this creature
-//! becomes tapped, each opponent loses 1 life and you gain 1 life."
-//!
-//! GAP: trigger — "becomes tapped" not in TriggerCondition catalog.
-//! Using SelfAttacks as partial approximation (tapping also occurs on attacking).
+//! Night Market Lookout — `{B}` 1/1 black Human Rogue.
+//! "Whenever this creature becomes tapped, each opponent loses 1 life and you gain 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::state::GameState;
 use arcana_core::script;
+use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,8 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes tapped" not in catalog.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
                 effect: on_tapped,
                 trigger_zones: vec![Zone::Battlefield],
@@ -54,7 +50,6 @@ fn on_tapped(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — correct trigger is "becomes tapped", not attacks.
     let mut effects = Vec::new();
     for opp in script::opponents(state, trig.controller) {
         effects.push(Effect::LoseLife { player: opp, amount: 1 });

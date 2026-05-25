@@ -1,11 +1,15 @@
-//! Dreamborn Muse — `{2}{U}{U}` 2/2 blue Spirit.
-//! "At the beginning of each player's upkeep, that player mills X cards, where X is the number
-//! of cards in their hand."
+//! Dreamborn Muse — `{2}{U}{U}` 2/2 blue Spirit creature.
+//! "At the beginning of each player's upkeep, that player mills X cards,
+//! where X is the number of cards in their hand."
+//! Dynamic X = hand size of the upkeep player; "that player" requires knowing which
+//! player's upkeep it is — GAP: no accessor for upkeep player identity from StepBegins
+//! trigger; using trig.controller as approximation (fires for each player's upkeep).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -14,7 +18,6 @@ use arcana_core::turn::Step;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dreamborn Muse");
@@ -41,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: mill_hand_size,
+                effect: upkeep_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,11 +52,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn mill_hand_size(
+fn upkeep_mill(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let count = script::hand_size(state, trig.controller);
-    vec![Effect::Mill { player: trig.controller, count }]
+    // GAP: no accessor for "that player" (the player whose upkeep it is);
+    // approximating with trig.controller.
+    let n = script::hand_size(state, trig.controller);
+    vec![Effect::Mill { player: trig.controller, count: n }]
 }

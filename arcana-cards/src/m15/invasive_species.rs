@@ -11,7 +11,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -36,26 +35,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: return_permanent_to_hand,
+                effect: etb_bounce,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::permanent().controlled_by(ControllerConstraint::You),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    }
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn return_permanent_to_hand(
+fn etb_bounce(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

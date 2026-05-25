@@ -1,17 +1,20 @@
-//! Howling Golem — `{3}` 2/3 colorless Artifact Creature — Golem.
-//! "Whenever this creature attacks or blocks, each player draws a card."
+//! Howling Golem — `{3}` 2/3 colorless artifact creature. "Whenever this
+//! creature attacks or blocks, each player draws a card."
+//!
+//! GAP: trigger — "attacks or blocks" is a compound trigger; only one
+//! TriggeredAbilityDef. Using SelfAttacks; SelfBlocks would need a second def.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Howling Golem");
@@ -31,12 +34,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
+            // GAP: trigger — "attacks or blocks"; only SelfAttacks captured here
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: no "attacks or blocks" compound trigger; using SelfAttacks as proxy
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_each_draw,
+                effect: attacks_or_blocks_draw,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: attacks_or_blocks_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,9 +56,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_each_draw(
+fn attacks_or_blocks_draw(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all_players = script::all_players(state);

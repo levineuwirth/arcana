@@ -1,5 +1,5 @@
-//! Burrowing Razormaw — `{2}{G}` 4/2 green Beast creature.
-//! "When this creature dies, mill four cards."
+//! Burrowing Razormaw — `{2}{G}` 4/2 green Beast. "When this creature dies, mill
+//! four cards." Keywords: Mill.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,7 +23,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(2)),
         keywords: vec![],

@@ -1,4 +1,4 @@
-//! Helpful Hunter — `{1}{W}` 1/1 white Cat.
+//! Helpful Hunter — `{1}{W}` 1/1 white Creature — Cat.
 //! "When this creature enters, draw a card."
 
 use arcana_core::effects::Effect;
@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: draw_a_card,
+                effect: etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,10 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_a_card(
+fn etb_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

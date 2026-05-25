@@ -1,5 +1,5 @@
-//! Hunted Witness — `{W}` 1/1 white Human creature.
-//! "When this creature dies, create a 1/1 white Soldier creature token with lifelink."
+//! Hunted Witness — `{W}` 1/1 white Human. "When this creature dies, create a 1/1
+//! white Soldier creature token with lifelink."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -9,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,10 +24,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -49,7 +47,8 @@ fn on_dies_create_soldier(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let soldier = reg.interner().lookup("Soldier")
+        .expect("Soldier interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {

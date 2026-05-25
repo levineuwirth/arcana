@@ -19,3 +19,7 @@ pub mod stika_playtestress;
 pub mod hero_s_uncle;
 pub mod the_joiner_of_cats;
 pub mod aggressive_detective;
+pub mod the_karfell_rocker;
+pub mod tricky_mage;
+pub mod simic_value_engine;
+pub mod growing_detective;

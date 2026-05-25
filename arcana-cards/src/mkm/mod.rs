@@ -36,3 +36,8 @@ pub mod rot_farm_mortipede;
 pub mod harried_dronesmith;
 pub mod vengeful_tracker;
 pub mod person_of_interest;
+pub mod innocent_bystander;
+pub mod seasoned_consultant;
+pub mod sample_collector;
+pub mod slimy_dualleech;
+pub mod marketwatch_phantom;

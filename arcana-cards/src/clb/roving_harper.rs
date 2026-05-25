@@ -1,5 +1,5 @@
-//! Roving Harper — `{2}{W}` 2/2 Elf Scout.
-//! "When this creature enters, draw a card."
+//! Roving Harper — `{2}{W}` 2/2 Elf Scout. "When this creature enters,
+//! draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

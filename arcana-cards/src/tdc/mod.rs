@@ -24,3 +24,5 @@ pub mod ogre_battledriver;
 pub mod nyx_fleece_ram;
 pub mod beetleback_chief;
 pub mod eshki_temur_s_roar;
+pub mod goldnight_commander;
+pub mod guttersnipe;

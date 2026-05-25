@@ -1,11 +1,11 @@
 //! Chieftain en-Dal — `{1}{W}{W}` 2/2 white Human Knight.
-//! "Whenever this creature attacks, attacking creatures gain first strike
-//! until end of turn."
+//! "Whenever this creature attacks, attacking creatures gain first strike until
+//! end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: grant_first_strike,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,13 +48,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn grant_first_strike(
+fn on_attacks(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "attacking creatures" — approximate with all your creatures on the battlefield
-    // GAP: no filter for "attacking" state; using all creatures you control.
+    // "attacking creatures" — approximate as all creatures you control.
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
@@ -64,7 +62,7 @@ fn grant_first_strike(
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::GrantKeyword {
-            target: NULL_OBJECT_ID,
+            target: arcana_core::objects::NULL_OBJECT_ID,
             keyword: KeywordAbility::FirstStrike,
             duration: Duration::EndOfTurn,
         }),

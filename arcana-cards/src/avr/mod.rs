@@ -28,3 +28,5 @@ pub mod havengul_skaab;
 pub mod soulcage_fiend;
 pub mod tyrant_of_discord;
 pub mod kessig_malcontents;
+pub mod polluted_dead;
+pub mod riot_ringleader;

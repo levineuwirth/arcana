@@ -38,3 +38,4 @@ pub mod carnophage;
 pub mod staunch_defenders;
 pub mod anarchist;
 pub mod scrivener;
+pub mod mogg_maniac;

@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: tutor_kithkin,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,13 +46,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tutor_kithkin(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put on top" rather than to hand; TutorToHand used as closest
-    // available (PutOnTopOfLibrary only applies to permanents in play).
+    // Oracle: search for Kithkin card and put on top (not to hand).
+    // TutorToHand is the closest available; PutOnTopOfLibrary is for a known
+    // object id, not a search-and-place. Using TutorToHand as best-effort.
+    // GAP: "put on top of library" after searching is not TutorToHand.
     let filter = script::subtype_filter(reg, "Kithkin");
     vec![Effect::TutorToHand {
         player: trig.controller,

@@ -1,10 +1,10 @@
-//! Wandering Champion — `{1}{W}` 3/1 Human Monk.
-//! "Whenever this creature deals combat damage to a player, if you
-//! control a blue or red permanent, you may discard a card. If you
-//! do, draw a card."
+//! Wandering Champion — `{1}{W}` 3/1 Human Monk. "Whenever this creature
+//! deals combat damage to a player, if you control a blue or red permanent,
+//! you may discard a card. If you do, draw a card."
 //!
-//! GAP: intervening-if "if you control a blue or red permanent" not
-//! expressible; optional discard-then-draw fires unconditionally.
+//! GAP: intervening-if "if you control a blue or red permanent" cannot be
+//! expressed as an intervening_if predicate; source_filter cannot scope to
+//! "this creature" specifically. Emitting discard + draw as best effort.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -41,12 +41,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::creature(),
+                    source_filter: ObjectFilter::new(),
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: combat_damage_loot,
+                effect: on_combat_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,12 +54,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn combat_damage_loot(
+fn on_combat_damage(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: intervening-if "control blue or red permanent" not expressible
+    // GAP: intervening-if "if you control a blue or red permanent" not
+    // expressible; emitting discard + draw as best effort.
     vec![
         Effect::Discard {
             player: trig.controller,

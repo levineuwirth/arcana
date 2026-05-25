@@ -1,6 +1,6 @@
-//! Eyeblight Assassin — `{2}{B}` 2/2 black Creature — Elf Assassin.
-//! "When this creature enters, target creature an opponent controls
-//! gets -1/-1 until end of turn."
+//! Eyeblight Assassin — `{2}{B}` 2/2 black creature (Elf Assassin).
+//! "When this creature enters, target creature an opponent controls gets
+//! -1/-1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb_debuff,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -56,13 +56,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb_debuff(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::Pump {
         target: *id,
         power: -1,

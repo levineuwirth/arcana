@@ -1,8 +1,10 @@
-//! Lotho, Corrupt Shirriff — `{W}{B}` 2/1 white/black Legendary Creature —
+//! Lotho, Corrupt Shirriff — `{W}{B}` 2/1 white-black Legendary Creature —
 //! Halfling Rogue.
 //! "Whenever a player casts their second spell each turn, you lose 1 life and
 //! create a Treasure token."
-//! GAP: trigger — no 'second spell each turn' variant; using SpellCast(Any) as closest.
+//! GAP: trigger condition "whenever a player casts their second spell each
+//! turn" — closest is SpellCast with Any caster; no "second spell" counter
+//! available. Using SpellCast/Any as best effort.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,13 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'second spell each turn' variant; using SpellCast(Any) as closest
+                // GAP: trigger — "player casts their second spell each turn" not expressible
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: spell_cast_lose_life_treasure,
+                effect: on_second_spell_treasure,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +55,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn spell_cast_lose_life_treasure(
+fn on_second_spell_treasure(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -64,7 +66,7 @@ fn spell_cast_lose_life_treasure(
     let token = TokenDefinition {
         name: treasure,
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT),
+        types: TypeLine::ARTIFACT.into(),
         subtypes,
         power: None,
         toughness: None,

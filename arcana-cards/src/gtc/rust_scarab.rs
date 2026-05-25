@@ -1,16 +1,13 @@
-//! Rust Scarab — `{4}{G}` 4/5 green Creature — Insect.
+//! Rust Scarab — `{4}{G}` 4/5 green Insect creature.
 //! "Whenever this creature becomes blocked, you may destroy target artifact or enchantment
 //! defending player controls."
-//!
-//! # GAP: trigger — "whenever this creature becomes blocked" has no variant;
-//! using SelfAttacks as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, ObjectFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,18 +34,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever this creature becomes blocked" has no variant;
-                // using SelfAttacks as approximation.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
                 effect: blocked_destroy_artifact_or_enchantment,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().with_types(
-                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)
-                        ),
+                        ObjectFilter::new().with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
                     ),
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -60,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn blocked_destroy_artifact_or_enchantment(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

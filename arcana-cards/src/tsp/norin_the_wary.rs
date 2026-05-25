@@ -2,8 +2,8 @@
 //! "When a player casts a spell or a creature attacks, exile Norin. Return it
 //! to the battlefield under its owner's control at the beginning of the next
 //! end step."
-//! GAP: trigger — no 'spell cast OR creature attacks' combined variant; using SpellCast(Any) as closest.
-//! GAP: 'exile then return at next end step' blink pattern not fully expressible without knowing the exile id.
+//! Two triggers. Using DelayedAction::ReturnFromExileToBattlefield for the
+//! return clause.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
@@ -39,13 +39,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'spell cast OR creature attacks' combined variant; using SpellCast(Any) as closest
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: spell_exile_norin,
+                effect: exile_and_return,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::CreatureAttacks {
+                    filter: arcana_core::targets::ObjectFilter::creature(),
+                },
+                intervening_if: None,
+                effect: exile_and_return,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +63,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn spell_exile_norin(
+fn exile_and_return(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,19 +1,16 @@
-//! Farrel's Zealot — `{1}{W}{W}` 2/2 white Human. "Whenever this creature
-//! attacks and isn't blocked, you may have it deal 3 damage to target
-//! creature. If you do, this creature assigns no combat damage this turn."
-//!
-//! GAP: "attacks and isn't blocked" trigger not expressible; using SelfAttacks
-//! as best-effort. GAP: "assigns no combat damage" replacement effect not
-//! expressible.
+//! Farrel's Zealot — `{1}{W}{W}` 2/2 white creature. "Whenever this creature
+//! attacks and isn't blocked, you may have it deal 3 damage to target creature.
+//! If you do, this creature assigns no combat damage this turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
-use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,14 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "attacks and isn't blocked" condition; SelfAttacks is best-effort
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfAttacksUnblocked,
                 intervening_if: None,
-                effect: deal_three,
+                effect: zealot_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -55,14 +51,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_three(
+fn zealot_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "assigns no combat damage" replacement effect not expressible
+    // GAP: "if you do, this creature assigns no combat damage this turn" —
+    // conditional combat damage suppression not in catalog
     vec![Effect::DealDamage {
         target: DamageTarget::Object(*id),
         amount: 3,

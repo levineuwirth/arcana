@@ -1,16 +1,23 @@
-//! Irma, Part-Time Mutant — `{2}{U}` 1/1 legendary blue Human Mutant Shapeshifter.
-//! "At the beginning of combat on your turn, Irma becomes a copy of up to one
-//! other target creature you control, except her name is Irma, Part-Time Mutant
-//! and she has this ability. Then put a +1/+1 counter on her."
-//! GAP: effect — copy-a-creature (Clone effect) is not in the Effect catalog;
-//! counter placement on self partially modeled.
+//! Irma, Part-Time Mutant — `{2}{U}` 1/1 Legendary Human Mutant Shapeshifter.
+//! "At the beginning of combat on your turn, Irma becomes a copy of
+//! up to one other target creature you control, except her name is
+//! Irma, Part-Time Mutant and she has this ability. Then put a +1/+1
+//! counter on her."
+//!
+//! GAP: "becomes a copy of ... except name and this ability" — the
+//! CopyPermanent effect creates a token copy; it cannot copy-in-place
+//! with name/ability exceptions. No catalog variant for partial copy
+//! of self.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -47,26 +54,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_combat,
+                effect: on_combat_begins,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::UpTo(1),
-                        controller: Some(ControllerConstraint::You),
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_combat(
+fn on_combat_begins(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — Clone/copy-a-creature not in Effect catalog.
+    // GAP: "becomes a copy of ... except name is Irma ... and she has
+    // this ability" — partial copy-in-place with name/ability exceptions
+    // is not expressible in the catalog.
+    // Emit only the +1/+1 counter portion.
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

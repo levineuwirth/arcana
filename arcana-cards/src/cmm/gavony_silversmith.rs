@@ -1,4 +1,4 @@
-//! Gavony Silversmith — `{3}{W}` 2/3 white Creature — Human Soldier.
+//! Gavony Silversmith — `{3}{W}` 2/3 white Human Soldier creature.
 //! "When this creature enters, put a +1/+1 counter on each of up to two target creatures."
 
 use arcana_core::effects::Effect;
@@ -6,7 +6,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,11 +37,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_counter_two_creatures,
+                effect: etb_counters_up_to_two,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: arcana_core::targets::TargetFilter::Creature,
+                    filter: TargetFilter::Creature,
                     count: TargetCount::UpTo(2),
                     controller: None,
                 }],
@@ -49,21 +49,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_counter_two_creatures(
+fn etb_counters_up_to_two(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let effects: Vec<Effect> = trig.targets.targets.iter().filter_map(|t| {
+    trig.targets.targets.iter().filter_map(|t| {
         if let TargetChoice::Object(id) = t {
-            Some(Effect::AddCounters {
-                target: *id,
-                kind: CounterKind::PlusOnePlusOne,
-                count: 1,
-            })
+            Some(Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 })
         } else {
             None
         }
-    }).collect();
-    vec![Effect::Sequence(effects)]
+    }).collect()
 }

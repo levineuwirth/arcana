@@ -1,10 +1,5 @@
-//! Patron of the Arts — `{2}{R}` 3/1 red Dragon Noble. "When this creature enters
+//! Patron of the Arts — `{2}{R}` 3/1 red creature. "When this creature enters
 //! or dies, create a Treasure token."
-//!
-//! Two triggers: ETB and Dies, each creating a Treasure token.
-//! GAP: no explicit Treasure token constructor; using a generic artifact token
-//! approximation. Treasure is an artifact token with "{T}, Sacrifice this: Add one
-//! mana of any color." The engine has no Treasure-specific token.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,7 +16,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Patron of the Arts");
     let dragon = reg.interner_mut().intern("Dragon");
     let noble = reg.interner_mut().intern("Noble");
-    let treasure = reg.interner_mut().intern("Treasure");
+    let _treasure = reg.interner_mut().intern("Treasure");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dragon);
     subtypes.0.insert(noble);

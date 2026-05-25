@@ -1,5 +1,5 @@
-//! Sailor of Means — `{2}{U}` 1/4 blue Human Pirate. "When this
-//! creature enters, create a Treasure token."
+//! Sailor of Means — `{2}{U}` 1/4 blue Human Pirate. "When this creature
+//! enters, create a Treasure token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -16,7 +16,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sailor of Means");
     let human = reg.interner_mut().intern("Human");
     let pirate = reg.interner_mut().intern("Pirate");
-    let treasure = reg.interner_mut().intern("Treasure");
+    let _treasure = reg.interner_mut().intern("Treasure");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(pirate);
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: create_treasure,
+                effect: etb_treasure,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,20 +45,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_treasure(
+fn etb_treasure(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let treasure = reg.interner().lookup("Treasure")
         .expect("Treasure interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(treasure);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(treasure);
     let token = TokenDefinition {
         name: treasure,
         colors: ColorSet::colorless(),
         types: TypeLine::ARTIFACT.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: None,
         toughness: None,
         keywords: vec![],

@@ -1,17 +1,17 @@
 //! Auriok Survivors — `{5}{W}` 4/6 white Human Soldier.
-//! "When this creature enters, you may return target Equipment card from
-//! your graveyard to the battlefield. If you do, you may attach it to this
-//! creature."
-//! GAP: "attach it to this creature" — no catalog Effect for attaching
-//! Equipment. ReturnFromGraveyardToBattlefield is implemented.
+//! "When this creature enters, you may return target Equipment card
+//! from your graveyard to the battlefield. If you do, you may attach
+//! it to this creature."
+//! GAP: "you may attach it to this creature" — Attach effect needs
+//! known equipment id at resolve time; using ReturnFromGraveyardToBattlefield
+//! for the main effect; attach step omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -48,8 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new()
-                            .with_types(TypeLine::ARTIFACT.into()),
+                        filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -61,10 +60,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_return_equipment(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attach it to this creature" — no catalog Effect for equipping.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "attach it to this creature" after returning — Attach requires
+    // both ids at resolve time; the attach step is omitted
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

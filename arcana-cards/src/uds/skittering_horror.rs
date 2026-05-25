@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,14 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::CREATURE)),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::new().with_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: sacrifice_self,
+                effect: on_creature_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,14 +48,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn sacrifice_self(
+fn on_creature_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // Sacrifice this specific creature; using filter that matches this object.
+    // The engine's Sacrifice picks controller's choice; no "specific object" filter,
+    // but emitting sacrifice of 1 creature you control is closest.
     vec![Effect::Sacrifice {
         player: trig.controller,
-        filter: ObjectFilter::creature(),
+        filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         count: 1,
     }]
 }

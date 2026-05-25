@@ -1,17 +1,20 @@
-//! Weed-Pruner Poplar — `{4}{B}` 3/3 black creature. "At the beginning
-//! of your upkeep, target creature other than this creature gets -1/-1
-//! until end of turn."
+//! Weed-Pruner Poplar — `{4}{B}` 3/3 black Treefolk Assassin.
+//! "At the beginning of your upkeep, target creature other than this
+//! creature gets -1/-1 until end of turn."
+//!
+//! GAP: the "other than this creature" target restriction is not
+//! expressible with the demonstrated `ObjectFilter` refinements
+//! (no "exclude source" predicate). The ability still targets any
+//! creature via `TargetRequirement::target_creature()`, but legal
+//! self-targeting is allowed where the oracle forbids it.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -26,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treefolk);
     subtypes.0.insert(assassin);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{B}").expect("valid cost")),
@@ -37,6 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
@@ -46,19 +51,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: upkeep_debuff_target,
+                effect: upkeep_shrink_target,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![TargetRequirement::target_creature()],
             }),
     )
 }
 
-fn upkeep_debuff_target(
+/// At-upkeep resolution: target creature gets -1/-1 until end of
+/// turn.
+fn upkeep_shrink_target(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,13 +1,13 @@
 //! Leonin Squire — `{1}{W}` 2/2 white Cat Soldier.
-//! "When this creature enters, return target artifact card with mana value
-//! 1 or less from your graveyard to your hand."
+//! "When this creature enters, return target artifact card with mana value 1 or
+//! less from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: return_artifact,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -50,13 +49,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                             .with_max_cmc(1),
                     },
                     count: TargetCount::Exactly(1),
-                    controller: None,
+                    controller: Some(ControllerConstraint::You),
                 }],
             }),
     )
 }
 
-fn return_artifact(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

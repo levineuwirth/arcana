@@ -1,5 +1,6 @@
-//! Mortician Beetle — `{B}` 1/1 black Insect creature.
-//! "Whenever a player sacrifices a creature, you may put a +1/+1 counter on this creature."
+//! Mortician Beetle — `{B}` 1/1 black Insect. "Whenever a player sacrifices a creature,
+//! you may put a +1/+1 counter on this creature."
+//! Sacrificed trigger (any player).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +11,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,10 +25,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(

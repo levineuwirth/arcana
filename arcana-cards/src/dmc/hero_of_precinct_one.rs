@@ -1,5 +1,5 @@
-//! Hero of Precinct One — `{1}{W}` 2/2 white creature. "Whenever you cast a
-//! multicolored spell, create a 1/1 white Human creature token."
+//! Hero of Precinct One — `{1}{W}` 2/2 white Human Warrior.
+//! "Whenever you cast a multicolored spell, create a 1/1 white Human creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -10,23 +10,24 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hero of Precinct One");
     let human = reg.interner_mut().intern("Human");
     let warrior = reg.interner_mut().intern("Warrior");
-    let _human_token = reg.interner_mut().intern("Human");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(warrior);
+    let _human_tok = reg.interner_mut().intern("Human");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -35,8 +36,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — ObjectFilter has no multicolor filter method.
-                // Using SpellCast with no filter as closest approximation.
+                // GAP: no multicolored filter in ObjectFilter; using filter: None as the
+                // closest approximation — triggers on any spell cast by you.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,

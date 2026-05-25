@@ -1,4 +1,4 @@
-//! Alaborn Cavalier — `{2}{W}{W}` 2/2 white Human Knight.
+//! Alaborn Cavalier — `{2}{W}{W}` 2/2 Human Knight.
 //! "Whenever this creature attacks, you may tap target creature."
 
 use arcana_core::effects::Effect;
@@ -40,27 +40,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::UpTo(1),
-                        controller: None,
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_attacks(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if let Some(target) = trig.targets.targets.first() {
-        if let TargetChoice::Object(id) = target {
-            effects.push(Effect::Tap { target: *id });
-        }
-    }
-    effects
+fn on_attacks(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    vec![Effect::Tap { target: *id }]
 }

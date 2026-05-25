@@ -1,5 +1,7 @@
-//! Endless Cockroaches — `{1}{B}{B}` 1/1 black creature. "When this
-//! creature dies, return it to its owner's hand."
+//! Endless Cockroaches — `{1}{B}{B}` 1/1 black Insect. "When this
+//! creature dies, return it to its owner's hand." Self-dies trigger;
+//! resolve the return from graveyard to hand using the dying
+//! object's id.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_return_to_hand,
+                effect: return_self_to_hand,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,10 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_return_to_hand(
+/// Dies trigger: return the dying object from its owner's graveyard
+/// back to its owner's hand.
+fn return_self_to_hand(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ReturnFromGraveyardToHand { target: trig.source }]
+    let id = trig.dying_object().unwrap_or(trig.source);
+    vec![Effect::ReturnFromGraveyardToHand { target: id }]
 }

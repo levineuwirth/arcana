@@ -1,7 +1,8 @@
 //! Warped Researcher — `{4}{U}` 3/4 blue Creature — Human Wizard Mutant.
 //! "Whenever a player cycles a card, this creature gains flying and shroud
 //! until end of turn."
-//! GAP: trigger — no 'player cycles' condition; using CardDiscarded(Any) as closest.
+//! GAP: trigger "whenever a player cycles a card" — no TriggerCondition for
+//! cycling; using CardDiscarded/Any as closest approximation.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -13,7 +14,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -40,12 +40,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'player cycles' condition; using CardDiscarded(Any) as closest
+                // GAP: trigger — "player cycles a card" not available; using
+                // CardDiscarded/Any as best effort
                 trigger_condition: TriggerCondition::CardDiscarded {
                     player: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: cycle_gain_flying_shroud,
+                effect: on_cycle_gain_evasion,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn cycle_gain_flying_shroud(
+fn on_cycle_gain_evasion(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

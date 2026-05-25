@@ -1,9 +1,8 @@
-//! Murmuring Mystic — `{3}{U}` 1/5 blue Creature — Human Wizard.
+//! Murmuring Mystic — `{3}{U}` 1/5 blue Human Wizard creature.
 //! "Whenever you cast an instant or sorcery spell, create a 1/1 blue Bird Illusion
 //! creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
-use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -65,22 +64,15 @@ fn create_bird_illusion_token(
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(bird);
     subtypes.0.insert(illusion);
-    match trig.trigger_event {
-        GameEvent::SpellCast { .. } => {
-            vec![Effect::CreateToken {
-                controller: trig.controller,
-                token: TokenDefinition {
-                    name: bird,
-                    colors: ColorSet::blue(),
-                    types: TypeLine::CREATURE.into(),
-                    subtypes,
-                    power: Some(PtValue::Fixed(1)),
-                    toughness: Some(PtValue::Fixed(1)),
-                    keywords: vec![KeywordAbility::Flying],
-                    abilities: vec![],
-                },
-            }]
-        }
-        _ => Vec::new(),
-    }
+    let token = TokenDefinition {
+        name: bird,
+        colors: ColorSet::blue(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(1)),
+        keywords: vec![KeywordAbility::Flying],
+        abilities: vec![],
+    };
+    vec![Effect::CreateToken { controller: trig.controller, token }]
 }

@@ -1,12 +1,14 @@
-//! Rambunctious Mutt — `{3}{W}{W}` 3/4 white Dog. "When this creature enters,
-//! destroy target artifact or enchantment an opponent controls."
+//! Rambunctious Mutt — `{3}{W}{W}` 3/4 white creature. "When this creature
+//! enters, destroy target artifact or enchantment an opponent controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,13 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: destroy_target,
+                effect: destroy_artifact_or_enchantment,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new()
-                            .with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT))
+                            .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT))
                             .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
@@ -51,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn destroy_target(
+fn destroy_artifact_or_enchantment(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,11 +1,13 @@
 //! Projektor Inspector — `{2}{U}` 3/2 blue Human Detective.
 //! "Whenever this creature or another Detective you control enters and
-//! whenever a Detective you control is turned face up, you may draw a card.
-//! If you do, discard a card."
-//! GAP: trigger — "turned face up" not in catalog; using ZoneChange(Creature enters)
-//! to cover the ETB clause. The face-up clause is a GAP.
+//! whenever a Detective you control is turned face up, you may draw a
+//! card. If you do, discard a card."
+//!
+//! GAP: trigger — "turned face up" event is not a TriggerCondition;
+//! using ZoneChange (entering battlefield) for the enters trigger only.
+//! The looting draw+discard is expressed; the face-up trigger is absent.
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -14,7 +16,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,7 +40,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: only the ETB portion is covered; "turned face up" clause is not in catalog
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature()
                         .controlled_by(ControllerConstraint::You),
@@ -58,8 +58,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn loot(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // "you may draw a card. If you do, discard a card." — expressed as draw+discard.
+    // GAP: the "you may" optional draw is not expressible; emitting both unconditionally.
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
         Effect::Discard {

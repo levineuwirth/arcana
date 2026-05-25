@@ -1,7 +1,6 @@
 //! Mechan Navigator — `{1}{U}` 2/1 blue Artifact Creature — Robot Pilot.
 //! "Whenever this creature becomes tapped, draw a card, then discard a card."
-//! GAP: trigger — "becomes tapped" is not a TriggerCondition variant; using SelfAttacks
-//! as closest approximation (the creature taps when it attacks).
+//! SelfBecomesTapped trigger; loot effect.
 
 use arcana_core::effects::{Effect, DiscardChoice};
 use arcana_core::mana::ManaCost;
@@ -11,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,20 +26,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
-    // GAP: trigger — "becomes tapped" not in TriggerCondition catalog; using SelfAttacks
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: on_tapped_loot,
+                effect: on_tap_loot,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_tapped_loot(
+fn on_tap_loot(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

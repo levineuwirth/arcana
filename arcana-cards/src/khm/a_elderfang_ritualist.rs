@@ -1,16 +1,21 @@
-//! A-Elderfang Ritualist — `{1}{B}` 3/1 black Elf Cleric.
-//! "When Elderfang Ritualist dies, you may exile it. If you do, return
-//! another target Elf or Tyvar card from your graveyard to your hand."
-//! GAP: effect — "you may exile it" conditional and the Tyvar type constraint
-//! (Tyvar is a planeswalker subtype) are not expressible; modeled as
-//! ReturnFromGraveyardToHand on a targeted Elf card.
+//! A-Elderfang Ritualist — `{1}{B}` 3/1 Elf Cleric.
+//! "When Elderfang Ritualist dies, you may exile it. If you do,
+//! return another target Elf or Tyvar card from your graveyard to
+//! your hand."
+//!
+//! GAP: "you may exile it. If you do" — optional self-exile as a cost
+//! gating a graveyard-return. Also "Elf or Tyvar card" requires
+//! subtype OR name filtering on graveyard cards. Cannot express the
+//! optional-exile gate.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -44,27 +49,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: arcana_core::targets::ObjectFilter::creature(),
-                        },
-                        count: TargetCount::Exactly(1),
-                        controller: None,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature(),
                     },
-                ],
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_dies(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "you may exile it" step not modeled; Tyvar subtype not filterable.
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn on_dies(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "you may exile it. If you do" — optional self-exile gate not
+    // expressible. Also filtering to "Elf or Tyvar" cards from graveyard
+    // — emitting unconditional return for targeted card.
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]
 }

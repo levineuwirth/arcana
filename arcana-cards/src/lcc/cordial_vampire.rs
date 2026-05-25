@@ -1,4 +1,4 @@
-//! Cordial Vampire — `{B}{B}` 1/1 black Vampire.
+//! Cordial Vampire — `{B}{B}` 1/1 black Vampire creature.
 //! "Whenever this creature or another creature dies, put a +1/+1 counter on each Vampire
 //! you control."
 
@@ -6,15 +6,14 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cordial Vampire");
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: counter_each_vampire,
+                effect: creature_dies_vampire_counters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,21 +49,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_each_vampire(
+fn creature_dies_vampire_counters(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let vampire_filter = script::subtype_filter(reg, "Vampire")
-        .controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &vampire_filter, trig.controller);
-    use arcana_core::objects::NULL_OBJECT_ID;
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::AddCounters {
-            target: NULL_OBJECT_ID,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        }),
-    }]
+    let ids = script::ids_matching(
+        state,
+        &script::subtype_filter(reg, "Vampire").controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    ids.into_iter().map(|id| Effect::AddCounters {
+        target: id,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }).collect()
 }

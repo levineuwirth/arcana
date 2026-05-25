@@ -1,16 +1,22 @@
 //! Wicker Warcrawler — `{5}` 6/6 Artifact Creature — Scarecrow.
-//! Colorless. "Whenever this creature attacks or blocks, put a -1/-1
-//! counter on it at end of combat."
+//! "Whenever this creature attacks or blocks, put a -1/-1 counter on it
+//! at end of combat."
 //!
-//! GAP: no TriggerCondition for "attacks or blocks"; using SelfAttacks
-//! for the attacks half; the blocks trigger is unhandled.
-//! GAP: "at end of combat" timing not expressible; counter applied immediately.
+//! GAP: trigger fires on BOTH attack and block; there is no single
+//! TriggerCondition combining both. Using SelfAttacks as the primary;
+//! a second TriggeredAbilityDef for SelfBlocks would be needed for full
+//! coverage. Emitting two separate triggered ability defs.
+//!
+//! Also GAP: "at end of combat" timing — TriggeredAbilityDef fires on
+//! the event but the counter lands immediately. Using EndCombat step
+//! trigger as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -26,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{5}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(6)),
@@ -37,10 +43,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — attacks OR blocks; only attacks modeled
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_minus_counter,
+                effect: on_attack_or_block,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: on_attack_or_block,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +62,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_minus_counter(
+fn on_attack_or_block(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at end of combat" timing not expressible; applied immediately
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::MinusOneMinusOne,

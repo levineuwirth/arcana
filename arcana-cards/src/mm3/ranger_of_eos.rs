@@ -1,9 +1,6 @@
 //! Ranger of Eos — `{3}{W}` 3/2 white Human Soldier Ranger.
-//! "When this creature enters, you may search your library for up to two
-//! creature cards with mana value 1 or less, reveal them, put them into
-//! your hand, then shuffle."
-//! GAP: TutorToHand fetches one card; "up to two" requires two separate calls
-//! or a multi-tutor not in the catalog. Modeled as two sequential tutors.
+//! "When this creature enters, you may search your library for up to two creature
+//! cards with mana value 1 or less, reveal them, put them into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -44,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,14 +48,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().with_max_cmc(1);
-    vec![
-        Effect::TutorToHand { player: trig.controller, filter: filter.clone(), reveal: true },
-        Effect::TutorToHand { player: trig.controller, filter, reveal: true },
-    ]
+    // TutorToHand supports a single tutor; "up to two" is not directly expressed.
+    // Best-effort: tutor one creature with mana value ≤ 1.
+    vec![Effect::TutorToHand {
+        player: trig.controller,
+        filter: ObjectFilter::creature().with_max_cmc(1),
+        reveal: true,
+    }]
 }

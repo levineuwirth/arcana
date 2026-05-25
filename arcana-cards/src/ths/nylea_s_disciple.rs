@@ -1,8 +1,5 @@
-//! Nylea's Disciple — `{2}{G}{G}` 3/3 green Centaur Archer. "When this creature
+//! Nylea's Disciple — `{2}{G}{G}` 3/3 green creature. "When this creature
 //! enters, you gain life equal to your devotion to green."
-//!
-//! GAP: "devotion to green" — no script helper to count green mana pips on
-//! permanents. Using count_matching with green color filter as proxy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: gain_life_devotion,
+                effect: etb_devotion_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,17 +46,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_life_devotion(
+fn etb_devotion_life(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "devotion to green" (count of {G} pips) not computable;
-    // approximating with count of green permanents you control
-    let filter = ObjectFilter::new()
-        .with_colors(ColorSet::green())
-        .controlled_by(ControllerConstraint::You);
-    let n = script::count_matching(state, &filter, trig.controller);
+    // Devotion = count green permanents (approximation: count green permanents you control)
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::permanent()
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::green()),
+        trig.controller,
+    );
     if n == 0 {
         return Vec::new();
     }

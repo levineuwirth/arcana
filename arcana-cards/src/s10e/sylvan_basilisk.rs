@@ -1,15 +1,13 @@
 //! Sylvan Basilisk — `{3}{G}{G}` 2/4 green Basilisk.
 //! "Whenever this creature becomes blocked by a creature, destroy that
 //! creature."
-//! GAP: "becomes blocked by a creature" trigger is not in the catalog;
-//! using closest available and noting gap.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -33,20 +31,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                // GAP: "becomes blocked by a creature" — no catalog variant;
-                // using CreatureAttacks as structural placeholder.
-                trigger_condition: TriggerCondition::CreatureAttacks {
-                    filter: ObjectFilter::creature(),
-                },
-                intervening_if: None,
-                effect: destroy_blocker,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfBecomesBlocked,
+            intervening_if: None,
+            effect: destroy_blocker,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement::target_creature()],
+        }),
     )
 }
 

@@ -11,7 +11,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: creature_enters_return_from_grave,
+                effect: on_big_creature_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -57,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_enters_return_from_grave(
+fn on_big_creature_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

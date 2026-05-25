@@ -17,3 +17,4 @@ pub mod sly_spy;
 pub mod jackknight;
 pub mod squirrel_dealer;
 pub mod it_that_gets_left_hanging;
+pub mod riveting_rigger;

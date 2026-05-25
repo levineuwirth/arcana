@@ -1,14 +1,25 @@
-//! Leyline Phantom — `{4}{U}` 5/5 blue Illusion.
-//! "When this creature deals combat damage, return it to its owner's hand."
-//! GAP: trigger — DamageDealt does not have a variant for "this creature deals
-//! damage (to anything)"; using DamageDealt with Player target as approximation.
+//! Leyline Phantom — `{4}{U}` 5/5 Illusion.
+//! "When this creature deals combat damage, return it to its owner's
+//! hand."
+//!
+//! Note: SelfIsDealtDamage fires when THIS creature is dealt damage.
+//! "deals combat damage" means this creature deals — use DamageDealt
+//! with source_filter matching this creature (self). Actually the
+//! catalog's DamageDealt fires on any damage dealt matching source/target
+//! filters, not necessarily self-as-source. Using SelfAttacksUnblocked
+//! is wrong. The DamageDealt trigger with source_filter=self is the
+//! correct approach — no SelfDealsCombatDamage variant exists.
+//! GAP: trigger — "when this creature deals combat damage" — DamageDealt
+//! requires source_filter as ObjectFilter; no way to filter to "self"
+//! specifically in ObjectFilter without knowing the card's ID at
+//! registration. Using closest match DamageDealt with source: any.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetFilter};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,9 +46,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "this creature deals combat damage";
+                // DamageDealt source_filter cannot be restricted to self.
                 trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::creature(),
-                    target_filter: TargetFilter::Player,
+                    source_filter: ObjectFilter::new()
+                        .controlled_by(ControllerConstraint::You),
+                    target_filter: TargetFilter::AnyTarget,
                     combat_only: true,
                 },
                 intervening_if: None,

@@ -1,7 +1,8 @@
 //! Saruli Gatekeepers — `{3}{G}` 2/4 green Creature — Elf Warrior.
-//! "When this creature enters, if you control two or more Gates, you gain 7
-//! life."
-//! GAP: intervening-if 'two or more Gates' not computable; using None.
+//! "When this creature enters, if you control two or more Gates, you gain
+//! 7 life."
+//! GAP: intervening-if "two or more Gates" condition not expressible;
+//! using intervening_if: None and emitting GainLife unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if 'two or more Gates' not computable
+                // GAP: "if you control two or more Gates" not expressible
                 intervening_if: None,
                 effect: etb_gain_life,
                 trigger_zones: vec![Zone::Battlefield],

@@ -38,3 +38,7 @@ pub mod garrison_cat;
 pub mod exuberant_wolfbear;
 pub mod snare_tactician;
 pub mod honey_mammoth;
+pub mod a_winota_joiner_of_forces;
+pub mod zagoth_mamba;
+pub mod nightsquad_commando;
+pub mod essence_symbiote;

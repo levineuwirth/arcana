@@ -1,7 +1,6 @@
 //! Rage Thrower — `{5}{R}` 4/2 red Human Shaman.
-//! "Whenever another creature dies, this creature deals 2 damage to target
-//! player or planeswalker."
-//! GAP: targeting a planeswalker is not in TargetFilter; using target_player.
+//! "Whenever another creature dies, this creature deals 2 damage to
+//! target player or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +8,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,12 +38,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature(),
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Any),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: creature_dies_damage,
+                effect: creature_dies_deal_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -52,10 +51,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_dies_damage(
+fn creature_dies_deal_damage(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };

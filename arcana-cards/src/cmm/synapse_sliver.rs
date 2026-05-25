@@ -1,9 +1,9 @@
-//! Synapse Sliver — `{4}{U}` 3/3 Sliver.
-//! "Whenever a Sliver deals combat damage to a player, its controller
-//! may draw a card."
+//! Synapse Sliver — `{4}{U}` 3/3 Sliver. "Whenever a Sliver deals combat
+//! damage to a player, its controller may draw a card."
 //!
-//! GAP: no TriggerCondition for "a Sliver deals combat damage" (filtered
-//! to specific subtype); using DamageDealt with creature filter.
+//! GAP: DamageDealt source_filter cannot specify "a Sliver" by subtype in
+//! the trigger condition; "its controller" (the Sliver's controller, not
+//! necessarily self.controller) is not accessible as a damage accessor.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,7 +16,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Synapse Sliver");
@@ -44,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: sliver_damage_draw,
+                effect: on_sliver_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,11 +51,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn sliver_damage_draw(
+fn on_sliver_damage(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger fires for any creature; Sliver subtype filter not in DamageDealt
+    // GAP: source_filter cannot restrict to Slivers; "its controller" is not
+    // accessible; best-effort draws for self.controller.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

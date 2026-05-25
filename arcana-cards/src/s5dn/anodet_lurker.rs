@@ -29,23 +29,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfDies,
-                intervening_if: None,
-                effect: on_dies,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfDies,
+            intervening_if: None,
+            effect: dies_gain_life,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn on_dies(
+fn dies_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::GainLife { player: trig.controller, amount: 3 }]
+    vec![Effect::GainLife {
+        player: trig.controller,
+        amount: 3,
+    }]
 }

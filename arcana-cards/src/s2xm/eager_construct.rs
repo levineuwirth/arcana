@@ -1,4 +1,4 @@
-//! Eager Construct — `{2}` colorless 2/2 Artifact Creature — Construct.
+//! Eager Construct — `{2}` 2/2 colorless Artifact Creature — Construct.
 //! "When this creature enters, each player may scry 1."
 
 use arcana_core::effects::Effect;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_all_scry,
+                effect: etb_each_player_scry,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_all_scry(
+fn etb_each_player_scry(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,8 +1,8 @@
 //! Rising Populace — `{2}{W}` 2/2 white Human.
 //! "Whenever another creature or planeswalker you control dies, put a +1/+1
 //! counter on this creature."
-//! GAP: planeswalker zone-change not covered by the creature filter; modeled
-//! as creature deaths only.
+//! GAP: ZoneChange filter for "creature or planeswalker" (OR of types) uses
+//! types_any on ObjectFilter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,12 +37,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::new()
+                        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+                        .controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: add_counter,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_counter(
+fn on_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

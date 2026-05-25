@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attack_create_dino,
+                effect: on_attack_dino_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,19 +48,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attack_create_dino(
+fn on_attack_dino_token(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature()
+    let big_filter = ObjectFilter::creature()
         .controlled_by(ControllerConstraint::You)
         .with_min_power(4);
-    let n = script::count_matching(state, &filter, trig.controller);
-    if n == 0 {
+    let count = script::count_matching(state, &big_filter, trig.controller);
+    if count == 0 {
         return Vec::new();
     }
-    let dinosaur = reg.interner().lookup("Dinosaur").expect("Dinosaur interned during register()");
+    let dinosaur = reg.interner().lookup("Dinosaur")
+        .expect("Dinosaur interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dinosaur);
     let token = TokenDefinition {

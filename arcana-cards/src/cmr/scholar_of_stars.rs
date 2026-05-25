@@ -5,7 +5,9 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -45,10 +47,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_draw_if_artifact(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // intervening-if "if you control an artifact" checked by engine
-    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+    let artifact_filter = ObjectFilter::new()
+        .with_types(TypeLine::ARTIFACT.into())
+        .controlled_by(ControllerConstraint::You);
+    let count = script::count_matching(state, &artifact_filter, trig.controller);
+    if count >= 1 {
+        vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+    } else {
+        Vec::new()
+    }
 }

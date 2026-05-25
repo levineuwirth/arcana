@@ -1,13 +1,13 @@
 //! Stoic Builder — `{2}{G}` 2/3 green Human.
-//! "When this creature enters, you may return target land card from your
-//! graveyard to your hand."
+//! "When this creature enters, you may return target land card from
+//! your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: return_land,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -45,14 +44,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         zone: Zone::Graveyard(0),
                         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
                     },
-                    count: TargetCount::UpTo(1),
-                    controller: None,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::You),
                 }],
             }),
     )
 }
 
-fn return_land(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

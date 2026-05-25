@@ -1,10 +1,10 @@
-//! Hamlet Captain — `{1}{G}` 2/2 green Human Warrior. "Whenever this creature
+//! Hamlet Captain — `{1}{G}` 2/2 green creature. "Whenever this creature
 //! attacks or blocks, other Humans you control get +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -39,7 +39,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: pump_humans,
+                effect: pump_other_humans,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: pump_other_humans,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,23 +56,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_humans(
+fn pump_other_humans(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Human")
+    let human_filter = script::subtype_filter(reg, "Human")
         .controlled_by(ControllerConstraint::You);
-    let mut ids = script::ids_matching(state, &filter, trig.controller);
-    // Remove self from the "other Humans" list
-    ids.retain(|id| *id != trig.source);
-    if ids.is_empty() {
-        return Vec::new();
-    }
+    let mut targets = script::ids_matching(state, &human_filter, trig.controller);
+    targets.retain(|&id| id != trig.source);
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
+            target: arcana_core::objects::NULL_OBJECT_ID,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,

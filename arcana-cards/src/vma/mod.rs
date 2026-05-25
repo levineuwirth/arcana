@@ -15,3 +15,6 @@ pub mod teroh_s_faithful;
 pub mod erhnam_djinn;
 pub mod pillaging_horde;
 pub mod goblin_settler;
+pub mod su_chi;
+pub mod stoic_champion;
+pub mod symbiotic_wurm;

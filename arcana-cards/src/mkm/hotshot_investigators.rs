@@ -1,9 +1,9 @@
-//! Hotshot Investigators — `{5}{U}` 4/4 blue Vedalken Detective. "When this
-//! creature enters, return up to one other target creature to its owner's hand.
+//! Hotshot Investigators — `{5}{U}` 4/4 blue Vedalken Detective.
+//! "When this creature enters, return up to one other target creature to its owner's hand.
 //! If you controlled it, investigate."
 //!
-//! GAP: effect — conditional investigate (Clue token) based on who controlled
-//! the returned creature not expressible in catalog.
+//! GAP: "if you controlled it, investigate" — conditional investigate not expressible.
+//! Using ReturnToHand for the main effect.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -58,9 +58,7 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: effect — conditional "if you controlled it, investigate" not
-    // expressible.
+    // GAP: "if you controlled it, investigate" — conditional investigate not expressible.
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]
 }

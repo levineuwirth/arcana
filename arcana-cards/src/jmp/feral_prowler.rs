@@ -1,4 +1,4 @@
-//! Feral Prowler — `{1}{G}` 1/3 green Cat.
+//! Feral Prowler — `{1}{G}` 1/3 Cat.
 //! "When this creature dies, draw a card."
 
 use arcana_core::effects::Effect;
@@ -42,10 +42,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_dies(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_dies(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

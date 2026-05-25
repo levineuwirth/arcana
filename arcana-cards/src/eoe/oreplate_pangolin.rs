@@ -1,8 +1,7 @@
 //! Oreplate Pangolin — `{1}{R}` 2/2 red Artifact Creature — Robot Pangolin.
 //! "Whenever another artifact you control enters, you may pay {1}. If you do,
 //! put a +1/+1 counter on this creature."
-//! GAP: optional pay-{1} cost at trigger resolution is not expressible.
-//! Modeled as unconditional counter addition.
+//! GAP: "you may pay {1}" optional mana payment not in engine effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -47,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: add_counter,
+                effect: on_artifact_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,12 +53,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_counter(
+fn on_artifact_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional pay-{1} cost not expressible; fires unconditionally.
+    // GAP: "you may pay {1}" optional cost not in engine. Best-effort: always counter.
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

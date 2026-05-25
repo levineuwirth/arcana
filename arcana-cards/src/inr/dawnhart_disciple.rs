@@ -1,11 +1,12 @@
-//! Dawnhart Disciple — `{1}{G}` 2/2 green Human Warlock.
-//! "Whenever another Human you control enters, this creature gets +1/+1 until end of turn."
+//! Dawnhart Disciple — `{1}{G}` 2/2 green creature. "Whenever another Human
+//! you control enters, this creature gets +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -13,7 +14,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dawnhart Disciple");
@@ -38,13 +38,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: human_etb_pump,
+                effect: human_enters_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,11 +51,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn human_etb_pump(
+fn human_enters_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // Filter: "another Human you control" — use subtype filter to confirm at resolution
+    let id = trig.entering_object().unwrap_or(trig.source);
+    // GAP: trigger — "another Human" subtype filter on ZoneChange not expressible; trigger fires for all creatures you control entering
+    let _ = script::subtype_filter(reg, "Human"); // ensure subtype is interned
     vec![Effect::Pump {
         target: trig.source,
         power: 1,

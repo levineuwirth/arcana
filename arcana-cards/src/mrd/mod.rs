@@ -25,3 +25,5 @@ pub mod wurmskin_forger;
 pub mod leonin_elder;
 pub mod moriok_scavenger;
 pub mod groffskithur;
+pub mod rustspore_ram;
+pub mod rustmouth_ogre;

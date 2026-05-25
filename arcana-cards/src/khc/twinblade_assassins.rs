@@ -1,6 +1,6 @@
-//! Twinblade Assassins — `{3}{B}{G}` 5/4 black-green Elf Assassin.
+//! Twinblade Assassins — `{3}{B}{G}` 5/4 black-green Elf Assassin creature.
 //! "At the beginning of your end step, if a creature died this turn, draw a card."
-//! GAP: intervening-if condition (creature died this turn) not supported; emitting None.
+//! The intervening-if condition (creature died this turn) is not expressible — GAP noted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,11 +37,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: intervening-if "if a creature died this turn" not expressible
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if a creature died this turn" not modeled
                 intervening_if: None,
                 effect: end_step_draw,
                 trigger_zones: vec![Zone::Battlefield],
@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn end_step_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

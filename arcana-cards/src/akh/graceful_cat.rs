@@ -1,5 +1,5 @@
-//! Graceful Cat — `{2}{W}` 2/2 white Cat.
-//! "Whenever this creature attacks, it gets +1/+1 until end of turn."
+//! Graceful Cat — `{2}{W}` 2/2 white Cat. "Whenever this creature attacks, it
+//! gets +1/+1 until end of turn." Attack trigger; pump self +1/+1.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: pump_self,
+                effect: on_attack_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_self(
+fn on_attack_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

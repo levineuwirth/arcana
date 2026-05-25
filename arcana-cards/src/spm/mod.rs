@@ -20,3 +20,4 @@ pub mod aunt_may;
 pub mod mob_lookout;
 pub mod living_brain_mechanical_marvel;
 pub mod mary_jane_watson;
+pub mod mysterio_master_of_illusion;

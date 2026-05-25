@@ -1,15 +1,15 @@
 //! Obscura Polymorphist — `{1}{W}{U}` 2/2 white/blue Octopus Wizard.
 //! "When this creature enters the battlefield, exile target creature. Its
 //! controller seeks a creature card."
-//! GAP: keyword Seek is not in the engine keyword surface.
-//! GAP: seek effect (random from library) not expressible.
+//! GAP: Seek mechanic (random card from library without revealing) not in
+//! engine effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,21 +40,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: exile_and_seek,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn exile_and_seek(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: seek effect (its controller seeks a creature card) not in catalog.
+    // GAP: Seek mechanic for target's controller not in engine effect catalog.
     vec![Effect::ExilePermanent { target: *id }]
 }

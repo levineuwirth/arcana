@@ -1,9 +1,5 @@
-//! Raging Gorilla — `{2}{R}` 2/3 Ape.
-//! "Whenever this creature blocks or becomes blocked, it gets +2/-2
-//! until end of turn."
-//!
-//! GAP: no TriggerCondition for "blocks or becomes blocked"; using
-//! SelfAttacks as closest available.
+//! Raging Gorilla — `{2}{R}` 2/3 Ape. "Whenever this creature blocks or
+//! becomes blocked, it gets +2/-2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -37,10 +33,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "blocks or becomes blocked" not in catalog
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
-                effect: blocks_pump,
+                effect: on_combat,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
+                intervening_if: None,
+                effect: on_combat,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocks_pump(
+fn on_combat(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

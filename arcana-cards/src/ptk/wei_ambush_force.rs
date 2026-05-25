@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_pump,
+                effect: on_attack_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump(
+fn on_attack_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

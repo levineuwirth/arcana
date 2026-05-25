@@ -1,19 +1,16 @@
-//! Sludge Strider — `{1}{W}{U}{B}` 3/3 white-blue-black Artifact Creature
-//! — Insect.
-//! "Whenever another artifact you control enters or leaves the battlefield,
-//! you may pay {1}. If you do, target player loses 1 life and you gain 1
-//! life."
-//! GAP: "you may pay {1}" optional mana payment rider is not expressible.
-//! GAP: trigger — "enters or leaves the battlefield" — ZoneChange covers
-//! enters (from: None, to: Battlefield); leaves is not a single ZoneChange.
-//! Using enters only.
+//! Sludge Strider — `{1}{W}{U}{B}` 3/3 white-blue-black Artifact Creature — Insect.
+//! "Whenever another artifact you control enters or leaves the
+//! battlefield, you may pay {1}. If you do, target player loses 1 life
+//! and you gain 1 life."
+//! GAP: the "you may pay {1}" optional cost is not in the effect catalog;
+//! the life loss/gain effects are emitted unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,7 +37,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: also triggers on leaving battlefield; only ETB modeled.
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::new()
                         .with_types(TypeLine::ARTIFACT.into())
@@ -48,8 +44,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     from: None,
                     to: Zone::Battlefield,
                 },
+                // GAP: "you may pay {1}" optional mana cost not in engine catalog
                 intervening_if: None,
-                effect: artifact_enters_drain,
+                effect: artifact_etb_drain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -57,12 +54,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn artifact_enters_drain(
+fn artifact_etb_drain(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may pay {1}" optional cost rider omitted.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
     vec![

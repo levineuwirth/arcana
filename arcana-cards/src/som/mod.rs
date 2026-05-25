@@ -19,3 +19,5 @@ pub mod ogre_geargrabber;
 pub mod lifesmith;
 pub mod tunnel_ignus;
 pub mod oxidda_scrapmelter;
+pub mod engulfing_slagwurm;
+pub mod vulshok_heartstoker;

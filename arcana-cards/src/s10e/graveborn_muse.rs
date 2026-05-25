@@ -20,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Graveborn Muse");
     let zombie = reg.interner_mut().intern("Zombie");
     let spirit = reg.interner_mut().intern("Spirit");
+    let _zombie2 = zombie;
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
     subtypes.0.insert(spirit);
@@ -35,19 +36,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::StepBegins {
-                    step: Step::Upkeep,
-                    whose: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: upkeep_draw_lose,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::StepBegins {
+                step: Step::Upkeep,
+                whose: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: upkeep_draw_lose,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
@@ -63,7 +63,13 @@ fn upkeep_draw_lose(
         return Vec::new();
     }
     vec![
-        Effect::DrawCards { player: trig.controller, count: x },
-        Effect::LoseLife { player: trig.controller, amount: x },
+        Effect::DrawCards {
+            player: trig.controller,
+            count: x,
+        },
+        Effect::LoseLife {
+            player: trig.controller,
+            amount: x,
+        },
     ]
 }

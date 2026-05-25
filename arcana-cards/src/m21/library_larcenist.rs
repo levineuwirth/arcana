@@ -1,5 +1,5 @@
-//! Library Larcenist — `{2}{U}` 1/2 blue Merfolk Rogue.
-//! "Whenever this creature attacks, draw a card."
+//! Library Larcenist — `{2}{U}` 1/2 blue creature. "Whenever this creature
+//! attacks, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_draw,
+                effect: attack_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_draw(
+fn attack_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

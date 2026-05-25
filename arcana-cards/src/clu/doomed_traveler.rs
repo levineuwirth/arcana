@@ -1,6 +1,5 @@
-//! Doomed Traveler — `{W}` 1/1 Human Soldier.
-//! "When this creature dies, create a 1/1 white Spirit creature token
-//! with flying."
+//! Doomed Traveler — `{W}` 1/1 Human Soldier. "When this creature dies,
+//! create a 1/1 white Spirit creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -15,9 +14,9 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Doomed Traveler");
+    let _spirit = reg.interner_mut().intern("Spirit");
     let human = reg.interner_mut().intern("Human");
     let soldier = reg.interner_mut().intern("Soldier");
-    let _spirit = reg.interner_mut().intern("Spirit");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(soldier);
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_spirit_token,
+                effect: on_dies_create_spirit,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,20 +45,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_spirit_token(
+fn on_dies_create_spirit(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let spirit = reg.interner().lookup("Spirit")
         .expect("Spirit interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(spirit);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(spirit);
     let token = TokenDefinition {
         name: spirit,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Flying],

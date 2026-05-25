@@ -1,7 +1,9 @@
-//! Rogue Kavu — `{1}{R}` 1/1 red Kavu.
+//! Rogue Kavu — `{1}{R}` 1/1 Kavu.
 //! "Whenever this creature attacks alone, it gets +2/+0 until end of turn."
-//! GAP: trigger — no variant for "attacks alone"; using SelfAttacks as
-//! closest approximation (the alone constraint is not checkable at trigger).
+//!
+//! GAP: trigger condition "attacks alone" — no catalog variant
+//! distinguishes attacking alone from SelfAttacks. Using SelfAttacks
+//! as closest match; effect fn always pumps (cannot verify alone condition).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,9 +37,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "attacks alone"; SelfAttacks used as closest match
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attacks_alone,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,11 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attacks_alone(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_attacks(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,
         power: 2,

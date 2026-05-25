@@ -1,16 +1,15 @@
 //! Goblin Firebug — `{1}{R}` 2/2 red Creature — Goblin.
 //! "When this creature leaves the battlefield, sacrifice a land."
-//!
-//! GAP: trigger — no TriggerCondition for "leaves the battlefield" (only
-//! SelfDies for graveyard; general LTB not available); using SelfDies as
-//! closest approximation.
+//! GAP: trigger — no TriggerCondition variant for "leaves the battlefield"
+//! (non-death zone changes: exile, bounce, etc.). SelfDies only covers
+//! battlefield→graveyard. Using SelfDies as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,10 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no general LTB condition; SelfDies used
+                // GAP: trigger — "leaves the battlefield" has no exact
+                // variant; SelfDies used as closest approximation.
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: ltb_sac_land,
+                effect: on_leaves_sac_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn ltb_sac_land(
+fn on_leaves_sac_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

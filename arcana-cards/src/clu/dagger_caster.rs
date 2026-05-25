@@ -1,11 +1,11 @@
-//! Dagger Caster — `{3}{R}` 2/3 red Lizard Rogue. "When this creature enters, it
-//! deals 1 damage to each opponent and 1 damage to each creature your opponents
-//! control."
+//! Dagger Caster — `{3}{R}` 2/3 red creature. "When this creature enters, it
+//! deals 1 damage to each opponent and 1 damage to each creature your
+//! opponents control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -53,24 +53,27 @@ fn etb_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    let mut effects: Vec<Effect> = opponents
-        .iter()
-        .map(|&p| Effect::DealDamage {
+    let mut effects = Vec::new();
+    // Damage each opponent
+    for p in script::opponents(state, trig.controller) {
+        effects.push(Effect::DealDamage {
             target: DamageTarget::Player(p),
             amount: 1,
             source: trig.source,
-        })
-        .collect();
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let creature_ids = script::ids_matching(state, &filter, trig.controller);
-    effects.push(Effect::ForEach {
-        targets: creature_ids,
-        effect: Box::new(Effect::DealDamage {
-            target: DamageTarget::Object(NULL_OBJECT_ID),
+        });
+    }
+    // Damage each creature opponents control
+    let opponent_creatures = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        trig.controller,
+    );
+    for id in opponent_creatures {
+        effects.push(Effect::DealDamage {
+            target: DamageTarget::Object(id),
             amount: 1,
             source: trig.source,
-        }),
-    });
+        });
+    }
     effects
 }

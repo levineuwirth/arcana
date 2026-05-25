@@ -1,7 +1,11 @@
-//! Razzle-Dazzler — `{1}{U}` 1/2 blue Human Wizard.
-//! "Whenever you cast your second spell each turn, put a +1/+1 counter on this creature. It can't be blocked this turn."
-//! GAP: no "second spell each turn" trigger condition; SpellCast You OncePerTurn used as proxy.
-//! GAP: "can't be blocked this turn" effect not in catalog.
+//! Razzle-Dazzler — `{1}{U}` 1/2 blue creature. "Whenever you cast your second
+//! spell each turn, put a +1/+1 counter on this creature. It can't be blocked
+//! this turn."
+//!
+//! GAP: trigger — "second spell each turn" tracking not supported; using
+//! SpellCast You OncePerTurn as best-effort.
+//! GAP: effect — "can't be blocked this turn" not expressible. Emitting counter
+//! only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "second spell each turn" variant; SpellCast You used as proxy
+                // GAP: "second spell" tracking; using SpellCast OncePerTurn
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
@@ -56,7 +60,7 @@ fn second_spell_counter(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "can't be blocked this turn" effect not in catalog
+    // GAP: "can't be blocked this turn" not expressible
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

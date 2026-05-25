@@ -1,5 +1,5 @@
-//! Council of Advisors — `{2}{U}` 1/1 blue Human Advisor. "When this creature
-//! enters, draw a card."
+//! Council of Advisors — `{2}{U}` 1/1 blue Human Advisor.
+//! "When this creature enters, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,8 +49,5 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
-    }]
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

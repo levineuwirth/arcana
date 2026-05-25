@@ -1,8 +1,5 @@
-//! Heartwood Storyteller — `{1}{G}{G}` 2/3 green Creature — Treefolk.
+//! Heartwood Storyteller — `{1}{G}{G}` 2/3 green Treefolk creature.
 //! "Whenever a player casts a noncreature spell, each of that player's opponents may draw a card."
-//!
-//! # GAP: "each of that player's opponents may draw a card" — identifying the caster's opponents
-//! requires knowing who cast the spell; using trig.controller's opponents as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,16 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(
-                            TypeLine::INSTANT | TypeLine::SORCERY | TypeLine::ENCHANTMENT | TypeLine::ARTIFACT | TypeLine::LAND
-                        )),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: noncreature_cast_opponents_draw,
+                effect: noncreature_opponents_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,15 +47,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn noncreature_cast_opponents_draw(
+fn noncreature_opponents_draw(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each of that player's opponents" — using controller's opponents as approximation.
-    let opponents = script::opponents(state, trig.controller);
-    let effects: Vec<Effect> = opponents.into_iter().map(|p| {
-        Effect::DrawCards { player: p, count: 1 }
-    }).collect();
-    vec![Effect::Sequence(effects)]
+    // "each of that player's opponents may draw a card" — using controller's opponents.
+    // GAP: should use the caster's opponents, not controller's; triggering_caster() not available
+    // in this context for "Any" caster; approximating with controller's opponents.
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|p| Effect::DrawCards { player: p, count: 1 })
+        .collect()
 }

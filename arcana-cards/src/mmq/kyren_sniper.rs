@@ -1,8 +1,8 @@
 //! Kyren Sniper — `{2}{R}` 1/1 red Goblin.
-//! "At the beginning of your upkeep, you may have this creature deal 1
-//! damage to target player or planeswalker."
-//! GAP: targeting a planeswalker is not supported by TargetFilter; using
-//! target_player only.
+//! "At the beginning of your upkeep, you may have this creature deal
+//! 1 damage to target player or planeswalker."
+//! GAP: targeting a planeswalker is not a separate TargetFilter;
+//! using target_player as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +10,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: upkeep_snipe,
+                effect: upkeep_deal_one,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -51,10 +51,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_snipe(
+fn upkeep_deal_one(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };

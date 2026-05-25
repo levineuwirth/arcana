@@ -1,4 +1,4 @@
-//! Viridian Shaman — `{2}{G}` 2/2 green Creature — Elf Shaman.
+//! Viridian Shaman — `{2}{G}` 2/2 green Elf Shaman creature.
 //! "When this creature enters, destroy target artifact."
 
 use arcana_core::effects::Effect;
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_destroy_artifact(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

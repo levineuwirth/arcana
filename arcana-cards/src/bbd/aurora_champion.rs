@@ -1,10 +1,8 @@
-//! Aurora Champion — `{2}{W}` 3/2 white Elf Warrior. "Whenever this creature
-//! attacks, if your team controls another Warrior, tap target creature."
+//! Aurora Champion — `{2}{W}` 3/2 white Elf Warrior.
+//! "Whenever this creature attacks, if your team controls another Warrior, tap target creature."
 //!
-//! GAP: trigger — intervening-if "if your team controls another Warrior" not
-//! expressible as condition predicate.
-//! GAP: target — "target creature" with no opponent constraint; emitting as
-//! unconditional tap.
+//! GAP: "if your team controls another Warrior" intervening-if not expressible.
+//! Using SelfAttacks with tap target as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,8 +39,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if — "if your team controls another Warrior"
-                // not expressible as condition predicate.
                 intervening_if: None,
                 effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
@@ -61,7 +57,7 @@ fn on_attacks(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "if your team controls another Warrior" intervening-if not expressible.
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Tap { target: *id }]
 }

@@ -1,24 +1,24 @@
-//! Curious Colossus — `{5}{W}{W}` 7/7 white Giant Warrior.
-//! "When this creature enters, each creature target opponent controls loses all
-//! abilities, becomes a Coward in addition to its other types, and has base
-//! power and toughness 1/1."
-//! GAP: "loses all abilities", "becomes a Coward type", and "base P/T 1/1" on
-//! multiple targets — no ForEach variant for SetBasePT or strip-abilities exists.
-//! Best-effort: SetBasePT on one target; strip abilities and subtype GAP'd.
+//! Curious Colossus — `{5}{W}{W}` 7/7 white creature. "When this creature
+//! enters, each creature target opponent controls loses all abilities, becomes a
+//! Coward in addition to its other types, and has base power and toughness 1/1."
+//!
+//! GAP: effect — "loses all abilities" and "becomes Coward subtype in addition"
+//! have no matching Effect variants. Emitting SetBasePT 1/1 for each opponent
+//! creature as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Curious Colossus");
@@ -44,32 +44,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_gap,
+                effect: etb_mass_debuff,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Player,
-                    count: TargetCount::Exactly(1),
-                    controller: Some(ControllerConstraint::Opponent),
-                }],
+                target_requirements: vec![TargetRequirement::target_player()],
             }),
     )
 }
 
-fn etb_gap(
+fn etb_mass_debuff(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opp) = target else { return Vec::new(); };
+    use arcana_core::targets::TargetChoice;
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(opp) = target else {
+        return Vec::new();
+    };
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-        trig.controller,
+        *opp,
     );
-    // GAP: "loses all abilities" and "becomes a Coward" not in catalog.
-    // Applying SetBasePT 1/1 to each creature that opponent controls.
+    // GAP: effect — "loses all abilities" and "becomes Coward" not expressible; emitting SetBasePT only
     ids.into_iter()
         .map(|id| Effect::SetBasePT {
             target: id,

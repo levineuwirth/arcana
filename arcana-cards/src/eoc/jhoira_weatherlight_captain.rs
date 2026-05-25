@@ -1,7 +1,8 @@
-//! Jhoira, Weatherlight Captain — `{2}{U}{R}` 3/3 blue-red Legendary Human Artificer.
-//! "Whenever you cast a historic spell, draw a card. (Artifacts, legendaries, and Sagas are historic.)"
-//! GAP: "historic" (artifact, legendary, or Saga) compound filter not expressible as single ObjectFilter;
-//! using ARTIFACT type as partial proxy (covers artifact but not legendary or Saga).
+//! Jhoira, Weatherlight Captain — `{2}{U}{R}` 3/3 red-blue Legendary creature.
+//! "Whenever you cast a historic spell, draw a card."
+//!
+//! GAP: trigger — "historic" (artifact, legendary, or Saga) compound filter not
+//! expressible as a single ObjectFilter. Using artifact filter as partial coverage.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,8 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "historic" (artifact + legendary + Saga) compound filter not expressible;
-                // using ARTIFACT type as proxy for artifact portion only
+                // GAP: "historic" = artifact OR legendary OR Saga; using artifact only
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter::new().with_types(TypeLine::ARTIFACT.into())),
                     caster: ControllerConstraint::You,

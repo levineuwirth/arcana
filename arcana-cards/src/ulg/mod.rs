@@ -5,3 +5,4 @@ pub mod peace_and_quiet;
 pub mod silk_net;
 pub mod rack_and_ruin;
 pub mod hope_and_glory;
+pub mod rank_and_file;

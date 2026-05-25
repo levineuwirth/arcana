@@ -1,8 +1,10 @@
 //! Leonin Warleader — `{2}{W}{W}` 4/4 white Cat Soldier.
-//! "Whenever this creature attacks, create two 1/1 white Cat creature tokens
-//! with lifelink that are tapped and attacking."
-//! GAP: effect — CreateToken does not support "enters tapped and attacking";
-//! tokens are created normally (without that state).
+//! "Whenever this creature attacks, create two 1/1 white Cat creature
+//! tokens with lifelink that are tapped and attacking."
+//!
+//! NOTE: The engine's CreateToken does not support creating tokens
+//! already tapped and attacking. Tokens are created normally.
+//! GAP: effect — no field on CreateToken to enter tapped and attacking.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,14 +14,13 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Leonin Warleader");
     let cat = reg.interner_mut().intern("Cat");
     let soldier = reg.interner_mut().intern("Soldier");
-    let _cat_token = reg.interner_mut().intern("Cat");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(cat);
     subtypes.0.insert(soldier);
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -57,7 +57,6 @@ fn create_cat_tokens(
         .expect("Cat interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(cat);
-    // GAP: tokens should enter tapped and attacking; CreateToken does not support that state
     let token = TokenDefinition {
         name: cat,
         colors: ColorSet::white(),
@@ -68,6 +67,7 @@ fn create_cat_tokens(
         keywords: vec![KeywordAbility::Lifelink],
         abilities: vec![],
     };
+    // GAP: effect — no field on CreateToken to enter tapped and attacking.
     vec![
         Effect::CreateToken { controller: trig.controller, token: token.clone() },
         Effect::CreateToken { controller: trig.controller, token },

@@ -1,7 +1,9 @@
 //! Courageous Goblin — `{1}{R}` 2/2 red Creature — Goblin.
-//! "Whenever this creature attacks while you control a creature with power 4
-//! or greater, this creature gets +1/+0 and gains menace until end of turn."
-//! GAP: intervening-if 'you control a creature with power 4+' not computable; using None.
+//! "Whenever this creature attacks while you control a creature with power
+//! 4 or greater, this creature gets +1/+0 and gains menace until end of turn."
+//! Note: "while you control a creature with power 4 or greater" is the
+//! intervening-if condition, not expressible; using intervening_if: None
+//! and checking at resolve time via script.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -9,11 +11,13 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Courageous Goblin");
@@ -26,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -36,9 +39,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if 'you control a creature with power 4+' not computable
+                // GAP: "while you control a creature with power 4 or greater"
+                // intervening-if not expressible
                 intervening_if: None,
-                effect: attacks_pump_menace,
+                effect: on_attacks_if_big_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,11 +50,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump_menace(
-    _state: &GameState,
+fn on_attacks_if_big_creature(
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_min_power(4),
+        trig.controller,
+    );
+    if n == 0 {
+        return Vec::new();
+    }
     vec![Effect::Pump {
         target: trig.source,
         power: 1,

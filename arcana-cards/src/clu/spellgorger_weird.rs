@@ -1,6 +1,6 @@
 //! Spellgorger Weird — `{2}{R}` 2/2 red Weird.
-//! "Whenever you cast a noncreature spell, put a +1/+1 counter on this
-//! creature."
+//! "Whenever you cast a noncreature spell, put a +1/+1 counter on
+//! this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,8 +11,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,12 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter::new()
-                        .without_types(TypeLine::CREATURE.into())),
+                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: noncreature_cast_counter,
+                effect: noncreature_spell_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,14 +47,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn noncreature_cast_counter(
+fn noncreature_spell_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

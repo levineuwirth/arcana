@@ -1,8 +1,8 @@
 //! Mage Hunter — `{3}{B}` 3/4 black Horror.
 //! "Whenever an opponent casts or copies an instant or sorcery spell,
 //! they lose 1 life."
-//! GAP: "or copies" — copy-trigger is not a distinct TriggerCondition variant;
-//! modeled as SpellCast only.
+//! GAP: "or copies" — copy events are not part of SpellCast trigger;
+//! best-effort covers the cast half only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,14 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::new().with_types_any(
+                        TypeLine(TypeLine::INSTANT | TypeLine::SORCERY),
+                    )),
                     caster: ControllerConstraint::Opponent,
                 },
                 intervening_if: None,
-                effect: opponent_loses_life,
+                effect: on_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,10 +51,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opponent_loses_life(
+fn on_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::LoseLife { player: trig.controller, amount: 1 }]
+    // GAP: "or copies" not captured — SpellCast only covers casting.
+    let Some(caster) = trig.triggering_caster() else { return Vec::new(); };
+    vec![Effect::LoseLife { player: caster, amount: 1 }]
 }

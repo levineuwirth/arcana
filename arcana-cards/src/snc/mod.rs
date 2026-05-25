@@ -37,3 +37,8 @@ pub mod raffine_s_informant;
 pub mod brokers_veteran;
 pub mod chrome_cat;
 pub mod psychic_pickpocket;
+pub mod mr_orfeo_the_boulder;
+pub mod soul_of_emancipation;
+pub mod a_mr_orfeo_the_boulder;
+pub mod forge_boss;
+pub mod a_civil_servant;

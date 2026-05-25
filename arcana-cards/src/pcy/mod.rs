@@ -18,3 +18,5 @@ pub mod whipstitched_zombie;
 pub mod darba;
 pub mod soul_charmer;
 pub mod thresher_beast;
+pub mod keldon_berserker;
+pub mod reveille_squad;

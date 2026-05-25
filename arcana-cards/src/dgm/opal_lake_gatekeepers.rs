@@ -1,9 +1,8 @@
-//! Opal Lake Gatekeepers — `{3}{U}` 2/4 Vedalken Soldier.
-//! "When this creature enters, if you control two or more Gates, you may
-//! draw a card."
+//! Opal Lake Gatekeepers — `{3}{U}` 2/4 Vedalken Soldier. "When this creature
+//! enters, if you control two or more Gates, you may draw a card."
 //!
-//! GAP: intervening-if "you control two or more Gates" not expressible;
-//! draw fires unconditionally.
+//! GAP: intervening-if "if you control two or more Gates" — no script helper
+//! to count permanents by subtype-as-land-type (Gate).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,9 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
-};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,14 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you control two or more Gates" not checked
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
-    }]
+    // GAP: cannot check "if you control two or more Gates" (no subtype count
+    // helper for land subtypes); emitting draw unconditionally as best effort.
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

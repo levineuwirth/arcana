@@ -1,9 +1,11 @@
-//! Aggressive Detective — `{3}{R}` 4/4 red Minotaur Detective.
-//! "Whenever Aggressive Detective attacks, if all your commanders have been revealed, Aggressive Detective deals 2 damage to each opponent."
-//! GAP: intervening-if "if all your commanders have been revealed" not expressible.
+//! Aggressive Detective — `{3}{R}` 4/4 red creature. "Whenever Aggressive
+//! Detective attacks, if all your commanders have been revealed, deals 2 damage
+//! to each opponent."
+//!
+//! GAP: intervening_if — "all commanders have been revealed" tracking not
+//! expressible. Emitting damage unconditionally as best-effort.
 
 use arcana_core::effects::Effect;
-use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -38,9 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "if all your commanders have been revealed" not expressible
-                intervening_if: None,
-                effect: attack_damage_opponents,
+                intervening_if: None, // GAP: "all commanders revealed" check
+                effect: attacks_damage_opponents,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,17 +49,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attack_damage_opponents(
+fn attacks_damage_opponents(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     script::opponents(state, trig.controller)
         .into_iter()
-        .map(|p| Effect::DealDamage {
-            target: DamageTarget::Player(p),
-            amount: 2,
-            source: trig.source,
-        })
+        .map(|p| Effect::LoseLife { player: p, amount: 2 })
         .collect()
 }

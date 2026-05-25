@@ -1,9 +1,6 @@
 //! Quickbeam, Upstart Ent — `{4}{G}{G}` 5/6 green Legendary Creature — Treefolk.
 //! "Whenever Quickbeam or another Treefolk you control enters, up to two target creatures
 //! each get +2/+2 and gain trample until end of turn."
-//!
-//! # GAP: multi-target Pump (up to two targets) — the Effect catalog's Pump takes a single
-//! target id. Both targets pumped by emitting two Effects.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -45,24 +42,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: treefolk_etb_pump_two,
+                effect: pump_up_to_two,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::UpTo(2),
-                        controller: None,
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn treefolk_etb_pump_two(
+fn pump_up_to_two(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     trig.targets.targets.iter().filter_map(|t| {
         if let TargetChoice::Object(id) = t {

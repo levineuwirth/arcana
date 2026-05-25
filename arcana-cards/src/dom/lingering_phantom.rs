@@ -1,10 +1,10 @@
-//! Lingering Phantom — `{5}{B}` 5/4 black creature. "Whenever you cast a
-//! historic spell, you may pay {B}. If you do, return this card from your
-//! graveyard to your hand."
+//! Lingering Phantom — `{5}{B}` 5/4 black Spirit.
+//! "Whenever you cast a historic spell, you may pay {B}. If you do, return this card from
+//! your graveyard to your hand."
 //!
-//! GAP: trigger — "historic" spell filter (artifacts, legendaries, Sagas) is
-//! not available in ObjectFilter.
-//! GAP: effect — "pay {B}" additional cost gating return not expressible.
+//! GAP: "historic" filter (artifact, legendary, Saga) is not exposed in ObjectFilter.
+//! Using filter: None as the closest approximation. Also the "may pay {B}" cost is a GAP;
+//! effect fires unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "historic" spell filter not in ObjectFilter.
+                // GAP: "historic" filter not in ObjectFilter; using filter: None
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
@@ -57,6 +57,6 @@ fn on_historic_cast(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — optional pay {B} cost gating return not expressible.
+    // GAP: "may pay {B}" cost before the effect is not expressible.
     vec![Effect::ReturnFromGraveyardToHand { target: trig.source }]
 }

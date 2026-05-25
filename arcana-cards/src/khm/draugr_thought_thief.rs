@@ -1,9 +1,10 @@
-//! Draugr Thought-Thief — `{2}{U}` 3/2 Zombie Rogue.
-//! "When this creature enters, look at the top card of target player's
-//! library. You may put that card into their graveyard."
+//! Draugr Thought-Thief — `{2}{U}` 3/2 Zombie Rogue. "When this creature
+//! enters, look at the top card of target player's library. You may put
+//! that card into their graveyard."
 //!
-//! GAP: "look at top card and optionally mill 1" — no Effect for
-//! conditional mill-1 targeting any player; using Mill as approximation.
+//! GAP: "look at top card of target player's library, may mill 1" —
+//! Mill effect targets self by default; no targeted-player mill with
+//! optional choice. Emitting Mill 1 on the target player.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -52,10 +53,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_look_mill(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "optionally mill 1" — using unconditional Mill 1 as approximation
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: "look at top card, optionally mill" — emitting Mill 1 which
+    // is the oracle's if-you-do branch; the look+choice is not modeled.
     vec![Effect::Mill { player: *p, count: 1 }]
 }

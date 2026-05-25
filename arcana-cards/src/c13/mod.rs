@@ -4,3 +4,4 @@ pub mod valley_rannet;
 pub mod spoils_of_victory;
 pub mod from_the_ashes;
 pub mod endless_cockroaches;
+pub mod terra_ravager;

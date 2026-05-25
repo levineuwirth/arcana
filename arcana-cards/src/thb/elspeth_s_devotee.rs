@@ -1,10 +1,9 @@
 //! Elspeth's Devotee — `{2}{W}{W}` 3/3 white Human Soldier.
-//! "When this creature enters, you may search your library and/or graveyard
-//! for a card named Elspeth, Undaunted Hero, reveal it, and put it into your
-//! hand. If you search your library this way, shuffle."
-//! GAP: TutorToHand cannot filter by specific card name; searching both
-//! library and graveyard is not a single catalog effect. Modeled as library
-//! tutor only (no name filter).
+//! "When this creature enters, you may search your library and/or graveyard for
+//! a card named Elspeth, Undaunted Hero, reveal it, and put it into your hand.
+//! If you search your library this way, shuffle."
+//! GAP: Searching by exact name and optional library+graveyard search not in
+//! TutorToHand (which uses ObjectFilter, not name). Best-effort: tutor any card.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -43,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,16 +49,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: cannot filter by specific card name "Elspeth, Undaunted Hero".
-    // GAP: searching graveyard not in TutorToHand.
+    // GAP: Name-based search and graveyard search not expressible with TutorToHand.
+    // Best-effort: tutor a planeswalker (Elspeth).
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::permanent(),
+        filter: ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
         reveal: true,
     }]
 }

@@ -1,20 +1,15 @@
-//! High Priest of Penance — `{W}{B}` 1/1 white/black Creature — Human Cleric.
-//! "Whenever this creature is dealt damage, you may destroy target
-//! nonland permanent."
-//!
-//! GAP: trigger condition "this creature is dealt damage" — no
-//! matching TriggerCondition variant for "source receives damage".
-//! Using DamageDealt with self as target as closest approximation;
-//! the catalog shows DamageDealt with source/target filters, but
-//! "damage dealt TO self" is not directly expressible. GAP noted.
+//! High Priest of Penance — `{W}{B}` 1/1 white-black creature (Human Cleric).
+//! "Whenever this creature is dealt damage, you may destroy target nonland
+//! permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white() | ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -42,17 +38,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "this creature is dealt damage"; no
-                // TriggerCondition variant for damage received by self.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfIsDealtDamage { combat_only: false },
                 intervening_if: None,
-                effect: on_dealt_damage,
+                effect: on_damaged,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
-                            .without_types(TypeLine::LAND.into()),
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -61,12 +54,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_dealt_damage(
+fn on_damaged(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

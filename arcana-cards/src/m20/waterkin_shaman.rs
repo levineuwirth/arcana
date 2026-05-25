@@ -1,4 +1,4 @@
-//! Waterkin Shaman — `{1}{U}` 2/1 blue Creature — Elemental Shaman.
+//! Waterkin Shaman — `{1}{U}` 2/1 blue creature (Elemental Shaman).
 //! "Whenever a creature you control with flying enters, this creature
 //! gets +1/+1 until end of turn."
 
@@ -14,6 +14,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::effects::KeywordAbility;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Waterkin Shaman");
@@ -44,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_flier_enters,
+                effect: on_flyer_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_flier_enters(
+fn on_flyer_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,4 +1,4 @@
-//! Fourth Bridge Prowler — `{B}` 1/1 black Human Rogue.
+//! Fourth Bridge Prowler — `{B}` 1/1 black Human Rogue creature.
 //! "When this creature enters, you may have target creature get -1/-1 until end of turn."
 
 use arcana_core::effects::Effect;
@@ -7,7 +7,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -49,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_minus_one(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

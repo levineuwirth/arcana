@@ -1,8 +1,8 @@
-//! Glowspore Shaman — `{B}{G}` 3/1 black-green Elf Shaman.
-//! "When this creature enters, mill three cards. You may put a land card from your graveyard on
-//! top of your library."
-//! GAP: "put a land card from your graveyard on top" — requires player to choose a specific
-//! graveyard card; no such selector in catalog; emitting mill only.
+//! Glowspore Shaman — `{B}{G}` 3/1 black-green Elf Shaman creature.
+//! "When this creature enters, mill three cards. You may put a land card from your
+//! graveyard on top of your library."
+//! GAP: "put a land card from your graveyard on top of your library" — non-targeted
+//! graveyard-to-top not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_return,
+                effect: etb_mill_three,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,12 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_return(
+fn etb_mill_three(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may put a land card from your graveyard on top of your library" — requires
-    // player to choose a specific graveyard card; no such selector in catalog
+    // GAP: "you may put a land card from your graveyard on top of your library"
+    // — non-targeted graveyard retrieval not expressible.
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

@@ -17,3 +17,4 @@ pub mod agent_of_masks;
 pub mod ranger_of_eos;
 pub mod bronzebeak_moa;
 pub mod soul_warden;
+pub mod kor_hookmaster;

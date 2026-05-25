@@ -1,4 +1,4 @@
-//! Rumbling Slum — `{1}{R}{G}{G}` 5/5 green-red Elemental.
+//! Rumbling Slum — `{1}{R}{G}{G}` 5/5 red-green Elemental.
 //! "At the beginning of your upkeep, this creature deals 1 damage to each
 //! player."
 
@@ -34,23 +34,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::StepBegins {
-                    step: Step::Upkeep,
-                    whose: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: upkeep_ping_all,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::StepBegins {
+                step: Step::Upkeep,
+                whose: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: upkeep_damage_all,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn upkeep_ping_all(
+fn upkeep_damage_all(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,4 +1,4 @@
-//! Spore Crawler — `{2}{G}` 3/2 green Fungus.
+//! Spore Crawler — `{2}{G}` 3/2 green Fungus creature.
 //! "When this creature dies, draw a card."
 
 use arcana_core::effects::Effect;
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn dies_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

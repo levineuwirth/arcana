@@ -1,17 +1,17 @@
 //! Bigfin Bouncer — `{3}{U}` 3/2 blue Creature — Shark Pirate.
-//! "When this creature enters, return target creature an opponent controls to
-//! its owner's hand."
+//! "When this creature enters, return target creature an opponent controls
+//! to its owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement, TargetFilter, TargetCount, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -38,21 +37,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_bounce_creature,
+                effect: etb_bounce_opponent_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
             }),
     )
 }
 
-fn etb_bounce_creature(
+fn etb_bounce_opponent_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

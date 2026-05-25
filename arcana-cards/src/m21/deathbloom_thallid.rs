@@ -1,6 +1,5 @@
-//! Deathbloom Thallid — `{2}{B}` 3/2 Fungus.
-//! "When this creature dies, create a 1/1 green Saproling creature
-//! token."
+//! Deathbloom Thallid — `{2}{B}` 3/2 Fungus. "When this creature dies,
+//! create a 1/1 green Saproling creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -36,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_saproling_token,
+                effect: on_dies_create_saproling,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,20 +43,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_saproling_token(
+fn on_dies_create_saproling(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let saproling = reg.interner().lookup("Saproling")
         .expect("Saproling interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(saproling);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(saproling);
     let token = TokenDefinition {
         name: saproling,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],

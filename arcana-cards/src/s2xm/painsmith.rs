@@ -1,4 +1,4 @@
-//! Painsmith — `{1}{B}` 2/1 black Creature — Human Artificer.
+//! Painsmith — `{1}{B}` 2/1 black Human Artificer creature.
 //! "Whenever you cast an artifact spell, you may have target creature get +2/+0 and
 //! gain deathtouch until end of turn."
 
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: artifact_cast_pump_deathtouch,
+                effect: artifact_cast_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -53,10 +53,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn artifact_cast_pump_deathtouch(
+fn artifact_cast_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

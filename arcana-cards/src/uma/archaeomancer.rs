@@ -1,6 +1,6 @@
 //! Archaeomancer — `{2}{U}{U}` 1/2 blue Human Wizard.
-//! "When this creature enters, return target instant or sorcery card from
-//! your graveyard to your hand."
+//! "When this creature enters, return target instant or sorcery card
+//! from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: return_instant_or_sorcery,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -56,7 +55,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn return_instant_or_sorcery(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

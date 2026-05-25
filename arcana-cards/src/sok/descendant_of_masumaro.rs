@@ -1,13 +1,12 @@
 //! Descendant of Masumaro — `{2}{G}` 1/1 green Human Monk.
-//! "At the beginning of your upkeep, put a +1/+1 counter on this creature
-//! for each card in your hand, then remove a +1/+1 counter from this creature
-//! for each card in target opponent's hand."
+//! "At the beginning of your upkeep, put a +1/+1 counter on this
+//! creature for each card in your hand, then remove a +1/+1 counter
+//! from this creature for each card in target opponent's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
@@ -16,6 +15,7 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Descendant of Masumaro");
@@ -33,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -45,41 +44,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: adjust_counters,
+                effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Player,
                     count: TargetCount::Exactly(1),
-                    controller: None,
+                    controller: Some(ControllerConstraint::Opponent),
                 }],
             }),
     )
 }
 
-fn adjust_counters(
+fn on_upkeep(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let my_hand = script::hand_size(state, trig.controller);
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
-    let opp_hand = script::hand_size(state, *opponent);
-    let mut effects = Vec::new();
-    if my_hand > 0 {
-        effects.push(Effect::AddCounters {
+    let TargetChoice::Player(opp) = target else { return Vec::new(); };
+    let opp_hand = script::hand_size(state, *opp);
+    vec![
+        Effect::AddCounters {
             target: trig.source,
             kind: CounterKind::PlusOnePlusOne,
             count: my_hand,
-        });
-    }
-    if opp_hand > 0 {
-        effects.push(Effect::RemoveCounters {
+        },
+        Effect::RemoveCounters {
             target: trig.source,
             kind: CounterKind::PlusOnePlusOne,
             count: opp_hand,
-        });
-    }
-    effects
+        },
+    ]
 }

@@ -1,7 +1,7 @@
-//! Wedding Security — `{3}{B}{B}` 4/4 black Vampire Soldier.
-//! "Whenever this creature attacks, you may sacrifice a Blood token. If you do, put a +1/+1
-//! counter on this creature and draw a card."
-//! GAP: "sacrifice a Blood token" optional cost not in effect catalog; emitting counter + draw.
+//! Wedding Security — `{3}{B}{B}` 4/4 black Vampire Soldier creature.
+//! "Whenever this creature attacks, you may sacrifice a Blood token. If you do, put a
+//! +1/+1 counter on this creature and draw a card."
+//! GAP: "sacrifice a specific named token type" not expressible via Sacrifice filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attack_counter_draw,
+                effect: attacks_blood_sac,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,12 +46,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attack_counter_draw(
+fn attacks_blood_sac(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice a Blood token" — optional sacrifice of named token not in catalog
+    // GAP: "you may sacrifice a Blood token; if you do" — sacrifice specific named token
+    // type not expressible.
     vec![
         Effect::AddCounters {
             target: trig.source,

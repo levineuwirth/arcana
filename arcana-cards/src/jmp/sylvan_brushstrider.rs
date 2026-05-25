@@ -1,4 +1,4 @@
-//! Sylvan Brushstrider — `{2}{G}` 3/2 green Creature — Beast.
+//! Sylvan Brushstrider — `{2}{G}` 3/2 green Beast creature.
 //! "When this creature enters, you gain 2 life."
 
 use arcana_core::effects::Effect;
@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_gain_2_life,
+                effect: etb_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,10 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_gain_2_life(
+fn etb_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GainLife { player: trig.controller, amount: 2 }]
 }

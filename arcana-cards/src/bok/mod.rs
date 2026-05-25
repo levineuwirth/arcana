@@ -29,3 +29,8 @@ pub mod loam_dweller;
 pub mod scourge_of_numai;
 pub mod shizuko_caller_of_autumn;
 pub mod tallowisp;
+pub mod shinka_gatekeeper;
+pub mod takenuma_bleeder;
+pub mod yomiji_who_bars_the_way;
+pub mod akki_blizzard_herder;
+pub mod kami_of_tattered_shoji;

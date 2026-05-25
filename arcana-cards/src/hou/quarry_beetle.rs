@@ -1,13 +1,13 @@
 //! Quarry Beetle — `{4}{G}` 4/5 green Insect.
-//! "When this creature enters, you may return target land card from your
-//! graveyard to the battlefield."
+//! "When this creature enters, you may return target land card from
+//! your graveyard to the battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -42,8 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: arcana_core::targets::ObjectFilter::new()
-                            .with_types(TypeLine::LAND.into()),
+                        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -55,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_return_land(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

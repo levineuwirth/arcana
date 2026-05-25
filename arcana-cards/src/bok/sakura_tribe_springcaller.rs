@@ -1,8 +1,9 @@
 //! Sakura-Tribe Springcaller — `{3}{G}` 2/4 green Snake Shaman.
-//! "At the beginning of your upkeep, add {G}. Until end of turn, you don't
-//! lose this mana as steps and phases end."
-//! GAP: effect — "mana doesn't empty at phase/step end" (floating mana flag)
-//! not expressible in the Effect catalog. AddMana used as best-effort.
+//! "At the beginning of your upkeep, add {G}. Until end of turn, you
+//! don't lose this mana as steps and phases end."
+//!
+//! NOTE: The "don't lose mana as steps and phases end" (floating mana)
+//! modifier is not expressible; the {G} addition is expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -14,7 +15,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: add_green_mana,
+                effect: add_green,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,12 +52,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_green_mana(
+fn add_green(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "doesn't empty at phase/step end" flag not in Effect catalog
+    // GAP: "don't lose this mana as steps and phases end" not expressible.
     vec![Effect::AddMana {
         player: trig.controller,
         mana: vec![ManaUnit::plain(ManaColor::Green, trig.source)],

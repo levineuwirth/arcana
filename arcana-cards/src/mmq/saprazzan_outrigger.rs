@@ -1,12 +1,14 @@
-//! Saprazzan Outrigger — `{3}{U}` 5/5 blue Merfolk.
-//! "When this creature attacks or blocks, put it on top of its owner's library
-//! at end of combat."
-//! GAP: trigger condition — "attacks or blocks" combined trigger is not a single
-//! TriggerCondition variant; using SelfAttacks only as best-effort approximation.
-//! GAP: effect — "at end of combat" delayed timing not expressible; using
-//! PutOnTopOfLibrary immediately.
+//! Saprazzan Outrigger — `{3}{U}` 5/5 Merfolk.
+//! "When this creature attacks or blocks, put it on top of its
+//! owner's library at end of combat."
+//!
+//! Note: "attacks or blocks" requires two triggers; only one
+//! TriggeredAbilityDef is supported. Using SelfAttacks as primary;
+//! adding a GAP note for the blocks trigger.
+//! "at end of combat" — DelayedAction with NextEndStep is the closest
+//! available; no EndOfCombat DelayedWhen variant exists.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -37,6 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: "attacks or blocks" — only one trigger registered;
+                // SelfBlocks trigger not included.
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
                 effect: on_attacks,
@@ -47,12 +51,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attacks(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "attacks or blocks" — only attacks trigger captured; blocks omitted.
-    // GAP: "at end of combat" timing — using immediate PutOnTopOfLibrary.
+fn on_attacks(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "at end of combat" — no EndOfCombat DelayedWhen variant;
+    // using PutOnTopOfLibrary directly (fires at end of step not
+    // end of combat).
     vec![Effect::PutOnTopOfLibrary { target: trig.source }]
 }

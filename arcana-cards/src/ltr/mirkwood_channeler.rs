@@ -1,12 +1,9 @@
-//! Mirkwood Channeler — `{3}{G}` 3/3 green Elf Druid.
-//! "At the beginning of combat on your turn, target Elf you control
-//! gains trample and gets +X/+X until end of turn, where X is the
-//! number of Forests you control."
-//! Dynamic pump: X = count of Forests you control (via script).
-//! Targets a creature (an Elf you control).
+//! Mirkwood Channeler — `{3}{G}` 3/3 green Elf Druid. "At the beginning
+//! of combat on your turn, target Elf you control gains trample and gets
+//! +X/+X until end of turn, where X is the number of Forests you control."
+//! Combat-phase trigger targeting a friendly Elf; pump by Forest count (dynamic).
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -21,6 +18,7 @@ use arcana_core::triggers::{
 use arcana_core::turn::Phase;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::layers::Duration;
 use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -51,11 +49,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: pump_elf,
+                effect: combat_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        script::subtype_filter(reg, "Elf")
+                            .controlled_by(ControllerConstraint::You),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -63,28 +64,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_elf(
+fn combat_pump(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let forest_filter = script::subtype_filter(reg, "Forest")
-        .with_types(TypeLine::LAND.into());
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    let forest_filter = script::subtype_filter(reg, "Forest");
     let x = script::count_matching(state, &forest_filter, trig.controller) as i32;
-    vec![
-        Effect::Pump {
-            target: *id,
-            power: x,
-            toughness: x,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        },
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Trample,
-            duration: Duration::EndOfTurn,
-        },
-    ]
+    vec![Effect::Pump {
+        target: *id,
+        power: x,
+        toughness: x,
+        duration: Duration::EndOfTurn,
+        keywords: vec![KeywordAbility::Trample],
+    }]
 }

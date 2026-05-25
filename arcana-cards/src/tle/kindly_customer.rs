@@ -1,4 +1,4 @@
-//! Kindly Customer — `{1}{W}` 1/1 white Human Citizen. "When this creature enters,
+//! Kindly Customer — `{1}{W}` 1/1 white creature. "When this creature enters,
 //! draw a card."
 
 use arcana_core::effects::Effect;

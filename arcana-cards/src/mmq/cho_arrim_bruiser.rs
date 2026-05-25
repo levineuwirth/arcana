@@ -10,7 +10,7 @@ use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequir
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -37,32 +36,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: tap_targets,
+                effect: tap_creatures,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::UpTo(2),
-                        controller: None,
-                    }
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn tap_targets(
+fn tap_creatures(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    trig.targets.targets.iter()
-        .filter_map(|t| {
-            if let TargetChoice::Object(id) = t {
-                Some(Effect::Tap { target: *id })
-            } else {
-                None
-            }
-        })
-        .collect()
+    trig.targets.targets.iter().filter_map(|t| {
+        if let TargetChoice::Object(id) = t {
+            Some(Effect::Tap { target: *id })
+        } else {
+            None
+        }
+    }).collect()
 }

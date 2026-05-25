@@ -1,6 +1,6 @@
-//! Ovalchase Daredevil — `{3}{B}` 4/2 black creature. "Whenever an artifact
-//! you control enters, you may return this card from your graveyard to your
-//! hand."
+//! Ovalchase Daredevil — `{3}{B}` 4/2 black Human Pilot.
+//! "Whenever an artifact you control enters, you may return this card from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -57,6 +57,6 @@ fn on_artifact_enters(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Return this card from graveyard to hand.
+    // Return this card from the graveyard to hand.
     vec![Effect::ReturnFromGraveyardToHand { target: trig.source }]
 }

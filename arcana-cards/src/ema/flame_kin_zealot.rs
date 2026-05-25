@@ -1,19 +1,20 @@
-//! Flame-Kin Zealot — `{1}{R}{R}{W}` 2/2 red/white Creature — Elemental Berserker.
-//! "When this creature enters, creatures you control get +1/+1 and gain haste until end of turn."
+//! Flame-Kin Zealot — `{1}{R}{R}{W}` 2/2 red-white Creature — Elemental Berserker.
+//! "When this creature enters, creatures you control get +1/+1 and gain
+//! haste until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Flame-Kin Zealot");
@@ -28,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_pump_all_haste,
+                effect: etb_pump_all_creatures,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_pump_all_haste(
+fn etb_pump_all_creatures(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

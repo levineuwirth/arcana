@@ -1,8 +1,8 @@
 //! Undercity Scavenger — `{3}{B}` 3/3 black Creature — Ogre Warrior.
 //! "When this creature enters, you may sacrifice another creature. If you do,
 //! put two +1/+1 counters on this creature, then scry 2."
-//! GAP: conditional 'sacrifice another creature' cost not expressible;
-//! emitting counters and scry unconditionally.
+//! GAP: optional sacrifice cost ("you may sacrifice") not expressible;
+//! emitting counters + scry unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_counters_scry,
+                effect: etb_sac_counters_scry,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,12 +46,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_counters_scry(
+fn etb_sac_counters_scry(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional 'sacrifice another creature' cost not expressible; emitting unconditionally
+    // GAP: optional sacrifice cost "you may sacrifice another creature" not
+    // expressible; emitting counters + scry unconditionally
     vec![
         Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 2 },
         Effect::Scry { player: trig.controller, count: 2 },

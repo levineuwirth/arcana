@@ -1,10 +1,6 @@
-//! Seasoned Warrenguard — `{W}` 1/2 white Creature — Rabbit Warrior.
-//! "Whenever this creature attacks while you control a token, this
-//! creature gets +2/+0 until end of turn."
-//!
-//! GAP: intervening-if "while you control a token" — cannot check
-//! token presence as an intervening-if condition. Approximated as
-//! unconditional +2/+0 Pump.
+//! Seasoned Warrenguard — `{W}` 1/2 white creature (Rabbit Warrior).
+//! "Whenever this creature attacks while you control a token, this creature
+//! gets +2/+0 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,11 +8,13 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Seasoned Warrenguard");
@@ -41,9 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "while you control a token" — not expressible.
                 intervening_if: None,
-                effect: on_attack,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,16 +48,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack(
-    _state: &GameState,
+fn on_attacks(
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Pump {
-        target: trig.source,
-        power: 2,
-        toughness: 0,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    let token_count = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .tokens_only()
+            .controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    if token_count > 0 {
+        vec![Effect::Pump {
+            target: trig.source,
+            power: 2,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        }]
+    } else {
+        Vec::new()
+    }
 }

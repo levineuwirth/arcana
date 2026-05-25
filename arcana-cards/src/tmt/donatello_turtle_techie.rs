@@ -1,6 +1,8 @@
-//! Donatello, Turtle Techie — `{3}{U}` 3/4 Legendary blue Creature — Mutant Ninja Turtle.
-//! "When Donatello enters, if you control an artifact, draw a card."
-//! GAP: intervening-if "if you control an artifact" not expressible; using None.
+//! Donatello, Turtle Techie — `{3}{U}` 3/4 legendary blue creature. "When
+//! Donatello enters, if you control an artifact, draw a card."
+//!
+//! GAP: intervening_if — "if you control an artifact" condition not
+//! representable in TriggeredAbilityDef.intervening_if.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,8 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you control an artifact" not expressible
-                intervening_if: None,
+                intervening_if: None, // GAP: intervening_if — "if you control an artifact"
                 effect: etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,

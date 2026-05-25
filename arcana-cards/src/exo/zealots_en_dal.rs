@@ -1,10 +1,10 @@
-//! Zealots en-Dal — `{3}{W}` 2/4 white Creature — Human Soldier.
-//! "At the beginning of your upkeep, if all nonland permanents you
-//! control are white, you gain 1 life."
+//! Zealots en-Dal — `{3}{W}` 2/4 white creature (Human Soldier).
+//! "At the beginning of your upkeep, if all nonland permanents you control
+//! are white, you gain 1 life."
 //!
-//! GAP: intervening-if "if all nonland permanents you control are
-//! white" — checking color of all nonland permanents is not available
-//! via the script API. Approximated as unconditional GainLife 1.
+//! GAP: "if all nonland permanents you control are white" — no script helper
+//! to test whether all permanents share a color. Emitting GainLife
+//! unconditionally as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,8 +45,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "all nonland permanents you control are
-                // white" — cannot check colors of a set of permanents via API.
+                // GAP: intervening if — "if all nonland permanents are white"
+                // not expressible.
                 intervening_if: None,
                 effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
@@ -61,5 +61,7 @@ fn on_upkeep(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "if all nonland permanents you control are white" condition
+    // not evaluable; emitting gain life unconditionally as best effort.
     vec![Effect::GainLife { player: trig.controller, amount: 1 }]
 }

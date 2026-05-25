@@ -1,16 +1,16 @@
 //! Phyrexian Bloodstock — `{4}{B}` 3/3 black Phyrexian Zombie.
 //! "When this creature leaves the battlefield, destroy target white creature.
 //! It can't be regenerated."
-//! GAP: trigger — "leaves the battlefield" (not just dies) is not a direct
-//! TriggerCondition variant; SelfDies is the closest.
-//! GAP: "can't be regenerated" modifier on a destroy effect not expressible.
+//! GAP: "leaves the battlefield" trigger condition not in catalog (only SelfDies);
+//! "can't be regenerated" modifier not in engine effect catalog.
+//! Using SelfDies as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -33,17 +33,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
+    // GAP: "leaves the battlefield" trigger not in catalog; SelfDies used as approximation.
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "leaves the battlefield" — using SelfDies as closest.
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: destroy_white_creature,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -57,13 +56,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn destroy_white_creature(
+fn on_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "it can't be regenerated" not expressible.
+    // GAP: "can't be regenerated" not in engine effect catalog.
     vec![Effect::DestroyPermanent { target: *id }]
 }

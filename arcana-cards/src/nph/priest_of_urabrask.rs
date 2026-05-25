@@ -1,4 +1,4 @@
-//! Priest of Urabrask — `{2}{R}` 2/1 red Creature — Phyrexian Human Cleric.
+//! Priest of Urabrask — `{2}{R}` 2/1 red Phyrexian Human Cleric creature.
 //! "When this creature enters, add {R}{R}{R}."
 
 use arcana_core::effects::Effect;
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_add_rrr,
+                effect: etb_add_three_red,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,10 +46,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_add_rrr(
+fn etb_add_three_red(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: trig.controller,

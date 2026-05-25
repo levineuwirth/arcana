@@ -1,7 +1,9 @@
 //! Elusive Spellfist — `{1}{U}` 1/3 blue Human Monk.
-//! "Whenever you cast a noncreature spell, this creature gets +1/+0 until
-//! end of turn and can't be blocked this turn."
-//! GAP: effect — "can't be blocked this turn" not in Effect catalog.
+//! "Whenever you cast a noncreature spell, this creature gets +1/+0
+//! until end of turn and can't be blocked this turn."
+//!
+//! GAP: effect — "can't be blocked this turn" is not in the Effect catalog.
+//! Only the +1/+0 pump is expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -13,7 +15,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -39,12 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter::new()
-                        .without_types(TypeLine::CREATURE.into())),
+                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: pump_unblockable,
+                effect: spellfist_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,12 +52,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_unblockable(
+fn spellfist_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "can't be blocked this turn" not in Effect catalog
+    // GAP: effect — "can't be blocked this turn" not in catalog.
     vec![Effect::Pump {
         target: trig.source,
         power: 1,

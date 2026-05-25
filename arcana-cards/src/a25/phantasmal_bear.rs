@@ -1,11 +1,6 @@
-//! Phantasmal Bear — `{U}` 2/2 blue Creature — Bear Illusion.
+//! Phantasmal Bear — `{U}` 2/2 blue creature (Bear Illusion).
 //! "When this creature becomes the target of a spell or ability,
 //! sacrifice it."
-//!
-//! GAP: "becomes the target of a spell or ability" trigger — no
-//! TriggerCondition variant for being targeted. Using
-//! SelfEntersBattlefield as structural placeholder. Effect:
-//! Sacrifice self.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,12 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes the target of a spell or ability";
-                // no TriggerCondition variant. Using SelfEntersBattlefield
-                // as structural placeholder.
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                trigger_condition: TriggerCondition::SelfBecomesTarget {
+                    caster: ControllerConstraint::Any,
+                },
                 intervening_if: None,
-                effect: on_targeted,
+                effect: on_becomes_target,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,14 +48,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_targeted(
+fn on_becomes_target(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: arcana_core::targets::ObjectFilter::creature(),
-        count: 1,
-    }]
+    vec![Effect::Sacrifice { player: trig.controller, filter: arcana_core::targets::ObjectFilter::creature(), count: 1 }]
 }

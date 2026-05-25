@@ -32,3 +32,4 @@ pub mod rakshasa_vizier;
 pub mod warden_of_the_eye;
 pub mod mardu_blazebringer;
 pub mod armament_corps;
+pub mod mardu_roughrider;

@@ -1,2 +1,3 @@
 //! YDFT — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod turbocharged_escape;
+pub mod chomping_mastasaur;

@@ -1,4 +1,4 @@
-//! Moonglove Extractor — `{2}{B}` 2/1 black Creature — Elf Warlock.
+//! Moonglove Extractor — `{2}{B}` 2/1 black creature (Elf Warlock).
 //! "Whenever this creature attacks, you draw a card and lose 1 life."
 
 use arcana_core::effects::Effect;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

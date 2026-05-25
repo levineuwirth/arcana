@@ -1,6 +1,5 @@
-//! Ophiomancer — `{2}{B}` 2/2 black Human Shaman creature.
-//! "At the beginning of each upkeep, if you control no Snakes, create a 1/1 black Snake
-//! creature token with deathtouch."
+//! Ophiomancer — `{2}{B}` 2/2 black Human Shaman. "At the beginning of each upkeep,
+//! if you control no Snakes, create a 1/1 black Snake creature token with deathtouch."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -30,10 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -45,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: on_upkeep_snake_token,
+                effect: on_upkeep_create_snake,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,17 +50,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_upkeep_snake_token(
+fn on_upkeep_create_snake(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let snake_filter = script::subtype_filter(reg, "Snake");
-    let n = script::count_matching(state, &snake_filter, trig.controller);
-    if n > 0 {
+    let snake_count = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Snake").controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    if snake_count > 0 {
         return Vec::new();
     }
-    let snake = reg.interner().lookup("Snake").expect("Snake interned during register()");
+    let snake = reg.interner().lookup("Snake")
+        .expect("Snake interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(snake);
     let token = TokenDefinition {

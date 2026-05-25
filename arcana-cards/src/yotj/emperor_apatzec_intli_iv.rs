@@ -1,15 +1,13 @@
-//! Emperor Apatzec Intli IV — `{R}{G}{W}` 3/4 legendary red-green-white
-//! Human Noble.
+//! Emperor Apatzec Intli IV — `{R}{G}{W}` 3/4 legendary red-green-white Human Noble.
 //! "Whenever another creature enters under your control, that creature
-//! perpetually gains haste if its power is 4 or greater. If its toughness
-//! is 4 or greater, you gain 4 life. If its mana value is 4 or greater,
-//! seek a creature card."
-//! GAP: "perpetually gains haste" — no catalog Effect variant for perpetual
-//! keyword grants.
-//! GAP: "seek a creature card" — TutorToHand with reveal:false approximates
-//! seek; power/toughness/MV conditionals cannot be evaluated at resolve
-//! time without more script helpers. Using GainLife for the toughness≥4
-//! branch (unconditional — GAP). Other branches return Vec::new().
+//! perpetually gains haste if its power is 4 or greater. If its
+//! toughness is 4 or greater, you gain 4 life. If its mana value is
+//! 4 or greater, seek a creature card."
+//! GAP: "perpetually gains haste" (persistent keyword grant) not in
+//! engine catalog; "seek" not in engine catalog. Life gain emitted
+//! unconditionally (the power/toughness/CMC conditionals require
+//! accessing entering object stats which needs entering_object()).
+//! Keywords: Seek not supported — omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,13 +45,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: creature_enters_conditionals,
+                effect: creature_etb_rider,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -60,15 +58,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_enters_conditionals(
+fn creature_etb_rider(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "perpetually gains haste if power ≥ 4" — no perpetual keyword
-    // grant in catalog.
-    // GAP: conditional on toughness ≥ 4 and MV ≥ 4 not evaluable without
-    // accessing the triggering object's stats; implementing unconditional
-    // best-effort: gain 4 life (toughness branch), seek omitted.
+    // GAP: "perpetually gains haste if power >= 4" — no perpetual keyword grant effect
+    // GAP: "if toughness >= 4, gain 4 life" — conditional on entering creature's stats
+    // GAP: "if mana value >= 4, seek a creature card" — Seek not in engine catalog
+    // Emitting unconditional life gain as partial approximation
     vec![Effect::GainLife { player: trig.controller, amount: 4 }]
 }

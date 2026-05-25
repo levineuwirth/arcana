@@ -1,7 +1,6 @@
 //! Root Spider — `{3}{G}` 2/2 green Creature — Spider.
-//! "Whenever this creature blocks, it gets +1/+0 and gains first strike until
-//! end of turn."
-//! GAP: trigger — no 'blocks' condition; using SelfAttacks as closest.
+//! "Whenever this creature blocks, it gets +1/+0 and gains first strike
+//! until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -12,7 +11,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -35,10 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'blocks' condition; using SelfAttacks as closest
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
-                effect: blocks_pump_firststrike,
+                effect: on_blocks_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocks_pump_firststrike(
+fn on_blocks_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

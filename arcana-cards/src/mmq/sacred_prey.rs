@@ -1,8 +1,5 @@
 //! Sacred Prey — `{G}` 1/1 green Creature — Horse.
 //! "Whenever this creature becomes blocked, you gain 1 life."
-//!
-//! GAP: trigger — no TriggerCondition for "becomes blocked"; using SelfAttacks
-//! as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,10 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "becomes blocked" condition; SelfAttacks used
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: blocked_gain_life,
+                effect: on_blocked_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocked_gain_life(
+fn on_blocked_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

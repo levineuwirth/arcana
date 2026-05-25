@@ -10,3 +10,5 @@ pub mod praetor_s_counsel;
 pub mod titania_s_chosen;
 pub mod viridian_emissary;
 pub mod essence_warden;
+pub mod dread_cacodemon;
+pub mod diviner_spirit;

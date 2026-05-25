@@ -1,6 +1,6 @@
-//! Talrand, Sky Summoner — `{2}{U}{U}` 2/2 blue Legendary Merfolk Wizard creature.
-//! "Whenever you cast an instant or sorcery spell, create a 2/2 blue Drake creature token
-//! with flying."
+//! Talrand, Sky Summoner — `{2}{U}{U}` 2/2 legendary blue Merfolk Wizard.
+//! "Whenever you cast an instant or sorcery spell, create a 2/2 blue Drake creature
+//! token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -31,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,10 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::new().with_types_any(
+                        TypeLine(TypeLine::INSTANT | TypeLine::SORCERY),
+                    )),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
@@ -59,7 +57,8 @@ fn create_drake_token(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let drake = reg.interner().lookup("Drake").expect("Drake interned during register()");
+    let drake = reg.interner().lookup("Drake")
+        .expect("Drake interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(drake);
     let token = TokenDefinition {

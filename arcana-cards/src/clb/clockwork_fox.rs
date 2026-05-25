@@ -1,5 +1,6 @@
-//! Clockwork Fox — `{3}` 3/2 colorless artifact creature. "When this creature
-//! leaves the battlefield, you draw two cards and each opponent draws a card."
+//! Clockwork Fox — `{3}` 3/2 colorless Artifact Creature — Fox.
+//! "When this creature leaves the battlefield, you draw two cards and each opponent
+//! draws a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{3}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
@@ -33,10 +34,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "leaves the battlefield" is not a catalog
-                // variant; closest is ZoneChange from Battlefield to any zone.
-                // Using SelfDies as a partial approximation (only death, not exile/bounce).
-                trigger_condition: TriggerCondition::SelfDies,
+                // GAP: no "leaves the battlefield" trigger condition; using ZoneChange from
+                // Battlefield to any zone as the closest approximation. Using Graveyard as to.
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: arcana_core::targets::ObjectFilter::new()
+                        .with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
+                    from: Some(Zone::Battlefield),
+                    to: Zone::Graveyard(0),
+                },
                 intervening_if: None,
                 effect: on_leaves,
                 trigger_zones: vec![Zone::Battlefield],

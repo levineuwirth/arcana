@@ -1,4 +1,4 @@
-//! Watchful Giant — `{5}{W}` 3/6 white Giant Soldier.
+//! Watchful Giant — `{5}{W}` 3/6 white Creature — Giant Soldier.
 //! "When this creature enters, create a 1/1 white Human creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -9,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(6)),
         ..Default::default()
@@ -37,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: create_human_token,
+                effect: etb_human_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_human_token(
+fn etb_human_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

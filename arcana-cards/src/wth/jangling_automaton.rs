@@ -1,35 +1,28 @@
-//! Jangling Automaton — `{3}` 3/2 colorless Artifact Creature — Construct.
-//! "Whenever this creature attacks, untap all creatures defending player
-//! controls."
-//!
-//! GAP: "all creatures defending player controls" requires enumerating
-//! the defending player's creatures; defending player identity is not
-//! directly accessible. Approximated with opponents' creatures via
-//! script::opponents + ForEach.
+//! Jangling Automaton — `{3}` 3/2 Artifact Creature — Construct.
+//! "Whenever this creature attacks, untap all creatures defending player controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
+use arcana_core::script;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::targets::{ObjectFilter};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Jangling Automaton");
-    let construct = reg.interner_mut().intern("Construct");
+    let construct_sub = reg.interner_mut().intern("Construct");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(construct);
+    subtypes.0.insert(construct_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::CREATURE | TypeLine::ARTIFACT),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
@@ -40,9 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: untap_defending_creatures,
+                effect: jangling_automaton_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,19 +43,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn untap_defending_creatures(
+fn jangling_automaton_trigger(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: defending player is approximated as all opponents
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-        trig.controller,
-    );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::Untap { target: NULL_OBJECT_ID }),
-    }]
+    let Some(p) = trig.defending_player() else { return Vec::new(); };
+    let ids = script::ids_matching(state, &ObjectFilter::creature(), p);
+    ids.into_iter().map(|id| Effect::Untap { target: id }).collect()
 }

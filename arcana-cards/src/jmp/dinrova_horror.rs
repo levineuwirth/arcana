@@ -1,20 +1,19 @@
-//! Dinrova Horror — `{4}{U}{B}` 4/4 blue-black Horror.
-//! "When this creature enters, return target permanent to its owner's hand, then
-//! that player discards a card."
+//! Dinrova Horror — `{4}{U}{B}` 4/4 blue-black creature. "When this creature
+//! enters, return target permanent to its owner's hand, then that player
+//! discards a card."
 
-use arcana_core::effects::Effect;
-use arcana_core::effects::DiscardChoice;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dinrova Horror");
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(arcana_core::targets::ObjectFilter::permanent()),
+                    filter: TargetFilter::Permanent(ObjectFilter::permanent()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -55,13 +54,17 @@ fn etb_bounce_discard(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let controller = script::target_controller(state, *id, trig.controller);
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    let target_owner = script::target_controller(state, *id, trig.controller);
     vec![
         Effect::ReturnToHand { target: *id },
         Effect::Discard {
-            player: controller,
+            player: target_owner,
             count: 1,
             choice: DiscardChoice::ControllerChooses,
         },

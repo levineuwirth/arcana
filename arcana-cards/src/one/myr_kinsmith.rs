@@ -11,21 +11,20 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Myr Kinsmith");
-    let subtype = reg.interner_mut().intern("Myr");
+    let myr = reg.interner_mut().intern("Myr");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(subtype);
+    subtypes.0.insert(myr);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}").expect("valid cost")),
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -49,6 +48,10 @@ fn etb_tutor_myr(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = arcana_core::script::subtype_filter(reg, "Myr");
-    vec![Effect::TutorToHand { player: trig.controller, filter, reveal: true }]
+    let filter = ObjectFilter::creature()
+        .with_types(TypeLine::CREATURE.into());
+    // GAP: subtype-filtered tutor — TutorToHand with Myr subtype filter requires
+    // script::subtype_filter, but that uses reg; closest approximation uses creature filter.
+    let myr_filter = arcana_core::script::subtype_filter(reg, "Myr");
+    vec![Effect::TutorToHand { player: trig.controller, filter: myr_filter, reveal: true }]
 }

@@ -11,3 +11,5 @@ pub mod servant_of_volrath;
 pub mod mongrel_pack;
 pub mod segmented_wurm;
 pub mod dirtcowl_wurm;
+pub mod shocker;
+pub mod elven_warhounds;

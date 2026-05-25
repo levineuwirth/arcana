@@ -1,4 +1,4 @@
-//! Cunning Lethemancer — `{2}{B}` 2/2 black Human Wizard.
+//! Cunning Lethemancer — `{2}{B}` 2/2 Human Wizard.
 //! "At the beginning of your upkeep, each player discards a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
@@ -50,15 +50,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_upkeep(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let all = script::all_players(state);
-    vec![Effect::Sequence(all.into_iter().map(|p| Effect::Discard {
-        player: p,
-        count: 1,
-        choice: DiscardChoice::ControllerChooses,
-    }).collect())]
+fn on_upkeep(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Discard {
+            player: p,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        })
+        .collect()
 }

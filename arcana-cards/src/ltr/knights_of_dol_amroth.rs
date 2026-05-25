@@ -1,8 +1,9 @@
-//! Knights of Dol Amroth — `{3}{U}` 3/3 blue Human Knight.
-//! "Whenever you draw your second card each turn, put a +1/+1 counter on
-//! this creature."
-//! GAP: trigger — no variant for "draw your second card each turn"; using
-//! CardDrawn with frequency OncePerTurn as closest approximation.
+//! Knights of Dol Amroth — `{3}{U}` 3/3 Human Knight.
+//! "Whenever you draw your second card each turn, put a +1/+1 counter
+//! on this creature."
+//!
+//! GAP: CardDrawn trigger has no "second card this turn" count tracking.
+//! Using CardDrawn(You) as closest match.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,24 +39,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "draw your second card each turn";
+                // CardDrawn has no per-turn draw count. Using CardDrawn(You)
+                // as closest match.
                 trigger_condition: TriggerCondition::CardDrawn {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_second_draw,
+                effect: on_card_drawn,
                 trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::OncePerTurn,
+                frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
 }
 
-fn on_second_draw(
+fn on_card_drawn(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — fires on any draw (OncePerTurn), not specifically second.
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

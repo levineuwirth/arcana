@@ -1,10 +1,11 @@
-//! Azra Oddsmaker — `{1}{B}{R}` 3/3 black-red Azra Warrior.
-//! "At the beginning of combat on your turn, you may discard a card. If you do, choose a creature.
-//! Whenever that creature deals combat damage to a player this turn, you draw two cards."
-//! GAP: "choose a creature, then grant it a triggered ability this turn" not expressible in catalog.
-//! Emitting the combat-phase trigger with a partial effect (discard only).
+//! Azra Oddsmaker — `{1}{B}{R}` 3/3 black-red Azra Warrior creature.
+//! "At the beginning of combat on your turn, you may discard a card. If you do, choose a
+//! creature. Whenever that creature deals combat damage to a player this turn, you draw
+//! two cards."
+//! GAP: The conditional discard + delayed triggered ability (on chosen creature dealing
+//! damage) is not expressible. Emitting the discard portion only.
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -44,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: combat_begin_effect,
+                effect: combat_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,13 +53,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn combat_begin_effect(
+fn combat_discard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "choose a creature, whenever it deals combat damage draw two cards this turn" — delayed
-    // conditional triggered ability grant not in catalog. Emitting the discard only.
+    // GAP: "if you do, choose a creature; whenever that creature deals combat damage to a
+    // player this turn, draw two cards" is not expressible.
     vec![Effect::Discard {
         player: trig.controller,
         count: 1,

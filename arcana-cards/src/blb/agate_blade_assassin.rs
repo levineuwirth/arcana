@@ -1,6 +1,5 @@
-//! Agate-Blade Assassin — `{1}{B}` 1/3 black Lizard Assassin.
+//! Agate-Blade Assassin — `{1}{B}` 1/3 black Lizard Assassin creature.
 //! "Whenever this creature attacks, defending player loses 1 life and you gain 1 life."
-//! GAP: "defending player" not directly accessible from trig; using opponents as proxy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Agate-Blade Assassin");
@@ -38,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attack_drain,
+                effect: attacks_drain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,16 +44,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attack_drain(
-    state: &GameState,
+fn attacks_drain(
+    _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "defending player" not a direct field; using first opponent as proxy
-    let mut effects = vec![Effect::GainLife { player: trig.controller, amount: 1 }];
-    for opp in script::opponents(state, trig.controller) {
-        effects.push(Effect::LoseLife { player: opp, amount: 1 });
-        break; // defending player = first opponent
-    }
-    effects
+    let Some(defender) = trig.defending_player() else { return Vec::new(); };
+    vec![
+        Effect::LoseLife { player: defender, amount: 1 },
+        Effect::GainLife { player: trig.controller, amount: 1 },
+    ]
 }

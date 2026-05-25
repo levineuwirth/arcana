@@ -1,6 +1,14 @@
-//! Sibsig Appraiser — `{2}{U}` 2/1 blue Zombie Advisor. "When this
-//! creature enters, look at the top two cards of your library. Put one
-//! of them into your hand and the other into your graveyard."
+//! Sibsig Appraiser — `{2}{U}` 2/1 blue Zombie Advisor. "When this creature
+//! enters, look at the top two cards of your library. Put one of them into
+//! your hand and the other into your graveyard."
+//!
+//! GAP: no single effect variant for "look at top 2, put one in hand, one
+//! in graveyard" (Surveil 1 + draw is closest but not exact). Using
+//! Surveil 2 as best approximation — the oracle says put specifically one
+//! into hand, which is not fully modeled.
+//! Actually Surveil 2 lets you choose which cards go to graveyard. Emitting
+//! Surveil { count: 2 } then DrawCards { count: 1 } does not match either.
+//! Returns Vec::new() to avoid wrong behavior.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: surveil_one,
+                effect: etb_effect,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,14 +53,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn surveil_one(
+fn etb_effect(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // "Look at top 2, put one to hand and one to graveyard" — closest available is Surveil 1 + draw 1
-    vec![
-        Effect::Surveil { player: trig.controller, count: 1 },
-        Effect::DrawCards { player: trig.controller, count: 1 },
-    ]
+    // GAP: no effect for "look at top 2, put one in hand one in graveyard"
+    // Surveil 2 is the closest but semantics differ (all can go to graveyard)
+    vec![Effect::Surveil { player: trig.controller, count: 2 }]
 }

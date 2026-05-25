@@ -1,7 +1,10 @@
-//! Bloodstone Goblin — `{1}{R}` 2/2 red Goblin Warrior. "Whenever you
-//! cast a spell, if that spell was kicked, this creature gets +1/+1 and
-//! gains menace until end of turn."
-//! GAP: intervening_if — "if that spell was kicked" cannot be checked.
+//! Bloodstone Goblin — `{1}{R}` 2/2 red Goblin Warrior. "Whenever you cast a
+//! spell, if that spell was kicked, this creature gets +1/+1 and gains menace
+//! until end of turn."
+//!
+//! GAP: no TriggerCondition or ObjectFilter field for "kicked" spells.
+//! Using SpellCast with no filter as approximation; the kick check is not
+//! expressible.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -38,13 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: no filter for kicked spells; fires on every spell cast
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
-                // GAP: intervening_if — "if that spell was kicked" not checkable
                 intervening_if: None,
-                effect: pump_and_menace,
+                effect: on_kicked_spell,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +55,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_and_menace(
+fn on_kicked_spell(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

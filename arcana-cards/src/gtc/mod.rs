@@ -20,3 +20,5 @@ pub mod enter_the_infinite;
 pub mod arrows_of_justice;
 pub mod spell_rupture;
 pub mod rust_scarab;
+pub mod incursion_specialist;
+pub mod gruul_ragebeast;

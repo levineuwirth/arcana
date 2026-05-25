@@ -27,3 +27,4 @@ pub mod grim_javelineer;
 pub mod nimble_thopterist;
 pub mod ooze_patrol;
 pub mod pactdoll_terror;
+pub mod spikeshell_harrier;

@@ -1,9 +1,8 @@
-//! Thoughtweft Imbuer — `{3}{W}` 0/5 white Kithkin Advisor creature.
-//! "Whenever a creature you control attacks alone, it gets +X/+X until end of turn,
-//! where X is the number of Kithkin you control."
-//! GAP: trigger — "attacks alone" not expressible as a filter; using CreatureAttacks.
-//! The pump target is the attacking creature — approximated via trig.source (incorrect
-//! in general; the triggering attacker id is not available).
+//! Thoughtweft Imbuer — `{3}{W}` 0/5 white Kithkin Advisor. "Whenever a creature you
+//! control attacks alone, it gets +X/+X until end of turn, where X is the number of
+//! Kithkin you control."
+//! GAP: "attacks alone" condition not in engine filter; using CreatureAttacks(You).
+//! Kithkin count via script::count_matching + subtype_filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -15,7 +14,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -32,22 +31,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(5)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks alone" not expressible
+                // GAP: "attacks alone" not in CreatureAttacks filter
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                 },
                 intervening_if: None,
-                effect: on_attacks_alone_pump,
+                effect: on_attacks_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,21 +52,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attacks_alone_pump(
+fn on_attacks_pump(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let kithkin_filter = script::subtype_filter(reg, "Kithkin");
-    let x = script::count_matching(state, &kithkin_filter, trig.controller) as i32;
-    if x == 0 {
+    let n = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Kithkin").controlled_by(ControllerConstraint::You),
+        trig.controller,
+    ) as i32;
+    if n == 0 {
         return Vec::new();
     }
-    // GAP: trigger — attacker id not accessible; pumping trig.source as fallback
+    // GAP: we pump trig.source (self) instead of the attacking creature; no
+    // "triggering attacker id" accessor available
     vec![Effect::Pump {
         target: trig.source,
-        power: x,
-        toughness: x,
+        power: n,
+        toughness: n,
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]

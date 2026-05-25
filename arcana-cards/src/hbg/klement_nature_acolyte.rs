@@ -1,11 +1,8 @@
-//! Klement, Nature Acolyte — `{1}{G}{W}` 4/4 legendary green-white Tiefling Cleric.
-//! "When Klement, Nature Acolyte leaves the battlefield, create a 4/4
-//! green Ox creature token."
-//! GAP: trigger — "leaves the battlefield" covers both dying and being
-//! bounced; using SelfDies as closest approximation (dies covers graveyard;
-//! zone-change to other zones is not separately modelled).
+//! Klement, Nature Acolyte — `{1}{G}{W}` 4/4 Legendary green-white Tiefling
+//! Cleric. "When Klement, Nature Acolyte leaves the battlefield, create a
+//! 4/4 green Ox creature token." Leaves-battlefield trigger; create Ox token.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -39,10 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "leaves the battlefield" is broader than SelfDies
-                trigger_condition: TriggerCondition::SelfDies,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: arcana_core::targets::ObjectFilter::permanent(),
+                    from: Some(Zone::Battlefield),
+                    to: Zone::Graveyard(0),
+                },
                 intervening_if: None,
-                effect: create_ox,
+                effect: leaves_bf_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_ox(
+fn leaves_bf_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

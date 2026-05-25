@@ -19,3 +19,4 @@ pub mod extinguish;
 pub mod scorching_spear;
 pub mod undo;
 pub mod devout_monk;
+pub mod dakmor_ghoul;

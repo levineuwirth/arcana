@@ -56,13 +56,10 @@ fn end_step_draw_if_power(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-        trig.controller,
-    );
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    let ids = script::ids_matching(state, &filter, trig.controller);
     let total_power: i32 = ids.iter()
-        .map(|id| script::power_of(state, *id))
+        .map(|&id| script::power_of(state, id))
         .sum();
     if total_power >= 8 {
         vec![Effect::DrawCards { player: trig.controller, count: 1 }]

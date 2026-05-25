@@ -1,10 +1,11 @@
-//! Silt Crawler — `{2}{G}` 3/3 green Beast.
+//! Silt Crawler — `{2}{G}` 3/3 green Beast creature.
 //! "When this creature enters, tap all lands you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -12,7 +13,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Silt Crawler");
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: tap_all_lands,
+                effect: etb_tap_lands,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,17 +44,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tap_all_lands(
+fn etb_tap_lands(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let land_filter = ObjectFilter::new()
-        .with_types(TypeLine::LAND.into())
-        .controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &land_filter, trig.controller);
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::Tap { target: NULL_OBJECT_ID }),
-    }]
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::new()
+            .with_types(TypeLine::LAND.into())
+            .controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    ids.into_iter().map(|id| Effect::Tap { target: id }).collect()
 }

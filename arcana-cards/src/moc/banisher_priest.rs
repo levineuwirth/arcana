@@ -1,15 +1,17 @@
-//! Banisher Priest — `{1}{W}{W}` 2/2 white Human Cleric.
-//! "When this creature enters, exile target creature an opponent controls until this creature
-//! leaves the battlefield."
-//! GAP: "until this creature leaves the battlefield" duration not modeled; emitting ExilePermanent.
+//! Banisher Priest — `{1}{W}{W}` 2/2 white Human Cleric creature.
+//! "When this creature enters, exile target creature an opponent controls until this
+//! creature leaves the battlefield."
+//! GAP: "until this creature leaves the battlefield" duration is not expressible with
+//! ExilePermanent (which is permanent exile). Only the exile part is modelled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter,
-    TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: exile_opponent_creature,
+                effect: etb_exile,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -54,13 +56,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn exile_opponent_creature(
+fn etb_exile(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "until this creature leaves the battlefield" duration not modeled
+    // GAP: exile only until this creature leaves the battlefield; duration not expressible.
     vec![Effect::ExilePermanent { target: *id }]
 }

@@ -1,13 +1,13 @@
-//! Waterspout Warden — `{2}{U}` 3/2 Frog Soldier.
-//! "Whenever this creature attacks, if another creature entered the
-//! battlefield under your control this turn, this creature gains flying
-//! until end of turn."
+//! Waterspout Warden — `{2}{U}` 3/2 Frog Soldier. "Whenever this creature
+//! attacks, if another creature entered the battlefield under your control
+//! this turn, this creature gains flying until end of turn."
 //!
-//! GAP: intervening-if "another creature entered this turn" not expressible;
-//! flying granted unconditionally.
+//! GAP: intervening-if "if another creature entered under your control this
+//! turn" — no script helper to check ETB events this turn.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_flying,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,15 +50,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_flying(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if another creature entered under your control this turn" not checked
-    vec![Effect::GrantKeyword {
+    // GAP: intervening-if "if another creature entered under your control
+    // this turn" — no script helper to check ETB events this turn.
+    vec![Effect::Pump {
         target: trig.source,
-        keyword: KeywordAbility::Flying,
+        power: 0,
+        toughness: 0,
         duration: Duration::EndOfTurn,
+        keywords: vec![KeywordAbility::Flying],
     }]
 }

@@ -1,5 +1,5 @@
-//! Akki Rockspeaker — `{1}{R}` 1/1 red Goblin Shaman.
-//! "When this creature enters, add {R}."
+//! Akki Rockspeaker — `{1}{R}` 1/1 red creature. "When this creature enters,
+//! add {R}."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_add_red_mana,
+                effect: etb_add_red,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_add_red_mana(
+fn etb_add_red(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

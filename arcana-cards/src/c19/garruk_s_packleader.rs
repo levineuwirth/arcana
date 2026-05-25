@@ -11,8 +11,8 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Garruk's Packleader");
@@ -25,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: creature_enters_draw,
+                effect: on_creature_etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_enters_draw(
+fn on_creature_etb_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

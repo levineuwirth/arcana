@@ -1,5 +1,8 @@
 //! Fangren Firstborn — `{1}{G}{G}{G}` 4/2 green Beast.
-//! "Whenever this creature attacks, put a +1/+1 counter on each attacking creature."
+//! "Whenever this creature attacks, put a +1/+1 counter on each attacking
+//! creature."
+//! GAP: "each attacking creature" filter — ObjectFilter has no "is attacking"
+//! predicate; using ids_matching all creatures you control as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: counter_attackers,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,19 +47,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_attackers(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no "attacking" filter; using all creatures you control as approximation.
-    let ids = script::ids_matching(
+fn on_attacks(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "attacking creature" filter not expressible; applying to all
+    // creatures you control as best-effort.
+    let targets = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::AddCounters {
             target: NULL_OBJECT_ID,
             kind: CounterKind::PlusOnePlusOne,

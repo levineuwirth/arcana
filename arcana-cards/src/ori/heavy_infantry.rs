@@ -6,11 +6,11 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement, TargetFilter, TargetCount, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -40,13 +39,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_tap_opponent_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
             }),
     )
 }

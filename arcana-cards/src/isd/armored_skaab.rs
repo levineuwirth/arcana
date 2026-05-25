@@ -1,4 +1,4 @@
-//! Armored Skaab — `{2}{U}` 1/4 blue Zombie Warrior.
+//! Armored Skaab — `{2}{U}` 1/4 blue Creature — Zombie Warrior.
 //! "When this creature enters, mill four cards."
 
 use arcana_core::effects::Effect;
@@ -9,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -36,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: mill_four,
+                effect: etb_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,10 +43,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn mill_four(
+fn etb_mill(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Mill { player: trig.controller, count: 4 }]
 }

@@ -29,3 +29,4 @@ pub mod treasure_hunter;
 pub mod graveborn_muse;
 pub mod sylvan_basilisk;
 pub mod hidden_horror;
+pub mod goblin_elite_infantry;

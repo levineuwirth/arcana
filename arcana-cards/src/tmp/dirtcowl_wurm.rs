@@ -1,4 +1,4 @@
-//! Dirtcowl Wurm — `{4}{G}` 3/4 green Creature — Wurm.
+//! Dirtcowl Wurm — `{4}{G}` 3/4 green Wurm creature.
 //! "Whenever an opponent plays a land, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
@@ -34,14 +34,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::permanent()
+                    filter: ObjectFilter::new()
                         .with_types(TypeLine::LAND.into())
                         .controlled_by(ControllerConstraint::Opponent),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: opponent_plays_land_counter,
+                effect: opponent_land_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,14 +49,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opponent_plays_land_counter(
+fn opponent_land_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

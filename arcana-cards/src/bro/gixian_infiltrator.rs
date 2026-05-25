@@ -1,5 +1,5 @@
-//! Gixian Infiltrator — `{1}{B}` 2/1 black Phyrexian Human. "Whenever you
-//! sacrifice another permanent, put a +1/+1 counter on this creature."
+//! Gixian Infiltrator — `{1}{B}` 2/1 black Phyrexian Human.
+//! "Whenever you sacrifice another permanent, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::Sacrificed {
-                    filter: ObjectFilter::new(),
+                    filter: ObjectFilter::permanent(),
                 },
                 intervening_if: None,
                 effect: on_sacrifice,

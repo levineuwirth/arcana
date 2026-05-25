@@ -1,8 +1,6 @@
-//! Borderland Ranger — `{2}{G}` 2/2 green Human Scout Ranger creature.
-//! "When this creature enters, you may search your library for a basic land card, reveal it,
-//! put it into your hand, then shuffle."
-//! GAP: effect — "basic land" supertype filter not in ObjectFilter refinements;
-//! using plain land filter as best effort.
+//! Borderland Ranger — `{2}{G}` 2/2 green Human Scout Ranger. "When this creature
+//! enters, you may search your library for a basic land card, reveal it, put it into
+//! your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +11,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,10 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -43,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_search_basic_land,
+                effect: etb_tutor_basic_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,12 +47,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_search_basic_land(
+fn etb_tutor_basic_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "basic land" supertype filter not in ObjectFilter refinements; using land filter
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

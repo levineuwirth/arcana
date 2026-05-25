@@ -1,8 +1,7 @@
-//! Vraan, Executioner Thane — `{1}{B}` 2/2 black Legendary Creature —
-//! Phyrexian Vampire.
-//! "Whenever one or more other creatures you control die, each opponent
-//! loses 2 life and you gain 2 life. This ability triggers only once
-//! each turn."
+//! Vraan, Executioner Thane — `{1}{B}` 2/2 black legendary creature
+//! (Phyrexian Vampire). "Whenever one or more other creatures you
+//! control die, each opponent loses 2 life and you gain 2 life. This
+//! ability triggers only once each turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,6 +14,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Vraan, Executioner Thane");
@@ -39,7 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
@@ -57,9 +58,10 @@ fn on_creature_dies(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = vec![Effect::GainLife { player: trig.controller, amount: 2 }];
-    for opp in arcana_core::script::opponents(state, trig.controller) {
-        effects.push(Effect::LoseLife { player: opp, amount: 2 });
-    }
+    let mut effects: Vec<Effect> = script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|p| Effect::LoseLife { player: p, amount: 2 })
+        .collect();
+    effects.push(Effect::GainLife { player: trig.controller, amount: 2 });
     effects
 }

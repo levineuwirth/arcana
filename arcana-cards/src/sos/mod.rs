@@ -42,3 +42,4 @@ pub mod spirit_mascot;
 pub mod eager_glyphmage;
 pub mod blech_loafing_pest;
 pub mod mage_tower_referee;
+pub mod stirring_honormancer;

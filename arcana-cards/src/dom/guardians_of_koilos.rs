@@ -7,7 +7,9 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -31,26 +33,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_return_historic,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_bounce_historic,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            // GAP: "historic" filter (artifact | legendary | Saga) not
+            // directly available as a single ObjectFilter method; using
+            // artifact as approximation.
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new()
+                        .with_types(TypeLine::ARTIFACT.into())
+                        .controlled_by(ControllerConstraint::You),
+                ),
+                count: TargetCount::UpTo(1),
+                controller: None,
+            }],
+        }),
     )
 }
 
-fn etb_return_historic(
+fn etb_bounce_historic(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
@@ -61,5 +67,8 @@ fn etb_return_historic(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
+    if *id == trig.source {
+        return Vec::new();
+    }
     vec![Effect::ReturnToHand { target: *id }]
 }

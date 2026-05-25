@@ -1,5 +1,7 @@
-//! Pondering Mage — `{3}{U}{U}` 3/4 blue Human Wizard.
-//! "When Pondering Mage enters the battlefield, scry 3, then draw a card."
+//! Pondering Mage — `{3}{U}{U}` 3/4 blue Human Wizard. "When this creature
+//! enters, look at the top three cards of your library, then put them back
+//! in any order. You may shuffle. Draw a card." ETB trigger; scry 3 then
+//! draw 1.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_effect,
+                effect: etb_ponder,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_effect(
+fn etb_ponder(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

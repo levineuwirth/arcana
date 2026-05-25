@@ -2,19 +2,19 @@
 //! "When this creature enters, you may exile two cards from your graveyard.
 //! When you do, return target creature card from your graveyard to the
 //! battlefield."
-//! GAP: conditional 'exile two cards then return creature from graveyard' not expressible;
-//! using ReturnFromGraveyardToBattlefield directly.
+//! GAP: conditional "exile two cards" cost not expressible; emitting
+//! ReturnFromGraveyardToBattlefield on target creature unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetRequirement, TargetFilter, TargetCount, ObjectFilter, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -44,14 +43,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_reanimate,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Card {
+                            zone: Zone::Graveyard(0),
+                            filter: ObjectFilter::creature(),
+                        },
+                        count: TargetCount::Exactly(1),
+                        controller: None,
                     },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                ],
             }),
     )
 }
@@ -61,7 +62,7 @@ fn etb_reanimate(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional 'exile two cards first' cost not expressible; returning creature unconditionally
+    // GAP: conditional "exile two cards from graveyard" cost not expressible
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]

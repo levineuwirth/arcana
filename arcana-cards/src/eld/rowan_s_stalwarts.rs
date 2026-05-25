@@ -1,7 +1,9 @@
-//! Rowan's Stalwarts — `{4}{R}` 5/2 red Human Knight creature.
-//! "When this creature enters, you may search your library and/or graveyard for a card named
-//! Rowan, Fearless Sparkmage, reveal it, and put it into your hand. If you search your
-//! library this way, shuffle."
+//! Rowan's Stalwarts — `{4}{R}` 5/2 red Human Knight. "When this creature enters,
+//! you may search your library and/or graveyard for a card named Rowan, Fearless
+//! Sparkmage, reveal it, and put it into your hand. If you search your library this
+//! way, shuffle."
+//! GAP: name-specific search not directly supported; using TutorToHand with creature
+//! filter as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +14,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,10 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -53,9 +53,10 @@ fn etb_tutor_rowan(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: name-specific search not supported; using creature filter as approximation
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::new(),
+        filter: ObjectFilter::creature(),
         reveal: true,
     }]
 }

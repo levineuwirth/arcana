@@ -1,11 +1,12 @@
-//! Attack-in-the-Box — `{3}` 2/4 colorless Artifact Creature — Toy.
+//! Attack-in-the-Box — `{3}` 2/4 colorless artifact creature (Toy).
 //! "Whenever this creature attacks, you may have it get +4/+0 until
 //! end of turn. If you do, sacrifice it at the beginning of the next
 //! end step."
 //!
-//! GAP: "you may … if you do" — optional player-choice branching is
-//! not expressible; approximated as unconditional +4/+0 plus a
-//! delayed sacrifice at the next end step.
+//! GAP: "you may have it get +4/+0. If you do, sacrifice at end step"
+//! — optional pump with a conditional delayed sacrifice is not directly
+//! expressible. Emitting the Pump + DelayedAction sacrifice unconditionally
+//! as best effort.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::layers::Duration;
@@ -41,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,12 +50,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may … if you do" optional branch — both effects applied unconditionally.
+    // GAP: "you may … If you do" — optional pump branch not expressible;
+    // emitting Pump + delayed Sacrifice unconditionally as best effort.
     vec![
         Effect::Pump {
             target: trig.source,

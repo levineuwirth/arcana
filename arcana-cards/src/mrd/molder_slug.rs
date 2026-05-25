@@ -1,5 +1,5 @@
-//! Molder Slug — `{3}{G}{G}` 4/6 green Slug Beast creature.
-//! "At the beginning of each player's upkeep, that player sacrifices an artifact of their choice."
+//! Molder Slug — `{3}{G}{G}` 4/6 green Slug Beast. "At the beginning of each
+//! player's upkeep, that player sacrifices an artifact of their choice."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,8 +11,9 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Molder Slug");
@@ -27,10 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(6)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: on_each_upkeep_sacrifice_artifact,
+                effect: on_each_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,14 +49,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_each_upkeep_sacrifice_artifact(
-    _state: &GameState,
+fn on_each_upkeep(
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
-        count: 1,
-    }]
+    // Each player sacrifices an artifact; use Sequence for each player
+    let players = script::all_players(state);
+    players.into_iter()
+        .map(|p| Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+            count: 1,
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .fold(Vec::new(), |mut acc, e| { acc.push(e); acc })
 }

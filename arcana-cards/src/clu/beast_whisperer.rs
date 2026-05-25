@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,14 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::CREATURE)),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::creature()),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: draw_card,
+                effect: on_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_card(
+fn on_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

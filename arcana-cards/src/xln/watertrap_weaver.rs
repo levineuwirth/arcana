@@ -1,16 +1,16 @@
 //! Watertrap Weaver — `{2}{U}` 2/2 blue Merfolk Wizard.
-//! "When this creature enters, tap target creature an opponent controls.
-//! That creature doesn't untap during its controller's next untap step."
-//! GAP: "doesn't untap during its controller's next untap step" — no
-//! catalog Effect for preventing untap next turn. Tap is implemented.
+//! "When this creature enters, tap target creature an opponent
+//! controls. That creature doesn't untap during its controller's
+//! next untap step."
+//! GAP: "doesn't untap during its controller's next untap step" —
+//! no engine effect for skip-untap; only Tap is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tap_creature,
+                effect: etb_tap_opponent_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -55,14 +55,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tap_creature(
+fn etb_tap_opponent_creature(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "doesn't untap during its controller's next untap step" — no
-    // catalog Effect for skipping untap.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "doesn't untap during its controller's next untap step" — no skip-untap effect
     vec![Effect::Tap { target: *id }]
 }

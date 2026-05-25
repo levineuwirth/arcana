@@ -1,19 +1,21 @@
 //! Wu Spy — `{1}{U}` 1/1 blue Human Soldier Rogue.
 //! "When this creature enters, look at the top two cards of target
 //! player's library. Put one of them into their graveyard."
-//! GAP: effect — no "look at top N, choose one to graveyard" Effect variant;
-//! using Mill { count: 1 } as closest approximation (mills 1 from target player).
+//!
+//! GAP: effect — no Effect variant for "look at the top N cards and put one
+//! into the graveyard (player chooses)"; using Mill{1} as closest
+//! approximation for the graveyard placement, but the look+choice is absent.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -42,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: mill_target_player,
+                effect: etb_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -50,14 +51,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn mill_target_player(
+fn etb_mill(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "look at top 2, put one into graveyard" not in catalog;
-    // approximating with Mill { count: 1 } on target player
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
+    // GAP: effect — "look at top 2, put one in graveyard (choice)"; using Mill{1}
+    // as closest approximation (no look+choice variant available).
     vec![Effect::Mill { player: *p, count: 1 }]
 }

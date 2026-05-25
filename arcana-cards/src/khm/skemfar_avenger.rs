@@ -38,13 +38,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You)
-                        .nontoken(),
+                        .nontoken()
+                        .controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
+                // GAP: trigger — filter should restrict to Elf or Berserker
+                // subtypes only; ObjectFilter does not support an OR of two
+                // subtypes at trigger-condition level without script helpers.
+                // Using generic nontoken creature filter as approximation.
                 intervening_if: None,
-                effect: elf_berserker_dies,
+                effect: on_elf_berserker_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn elf_berserker_dies(
+fn on_elf_berserker_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

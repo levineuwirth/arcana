@@ -1,4 +1,4 @@
-//! Good-Fortune Unicorn — `{1}{G}{W}` 2/2 green/white Creature — Unicorn.
+//! Good-Fortune Unicorn — `{1}{G}{W}` 2/2 green-white Unicorn creature.
 //! "Whenever another creature you control enters, put a +1/+1 counter on that creature."
 
 use arcana_core::effects::Effect;
@@ -6,7 +6,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,13 +34,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: arcana_core::targets::ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: creature_enters_counter_it,
+                effect: creature_enters_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,16 +47,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_enters_counter_it(
+fn creature_enters_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that creature" refers to the triggering object, not trig.source.
-    // Using trig.source as approximation (the entering creature is not exposed in PendingTrigger).
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    let entering = trig.entering_object().unwrap_or(trig.source);
+    vec![Effect::AddCounters { target: entering, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

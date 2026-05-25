@@ -1,11 +1,10 @@
-//! The Keeper of Dark Pacts — `{4}{B}` 4/4 Legendary black Creature — Human
-//! Wizard.
+//! The Keeper of Dark Pacts — `{4}{B}` 4/4 black Legendary Creature — Human Wizard.
 //! "At the beginning of your upkeep, you lose 1 life and draw a card. Then,
 //! double the amount of life you lose and cards you draw for the rest of the
 //! game from this ability."
-//!
-//! GAP: effect — "double the amount for the rest of the game" persistent state
-//! escalation is not expressible with catalog.
+//! GAP: effect — "double the amount for the rest of the game" requires
+//! persistent state tracking that is not in the effect catalog. Only the
+//! base "lose 1 life and draw 1 card" portion is modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -60,7 +59,8 @@ fn upkeep_lose_draw(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "double for the rest of the game" persistent escalation not expressible
+    // GAP: effect — "double the amount for the rest of the game" persistent
+    // scaling is not modeled; emitting base 1 life / 1 card.
     vec![
         Effect::LoseLife { player: trig.controller, amount: 1 },
         Effect::DrawCards { player: trig.controller, count: 1 },

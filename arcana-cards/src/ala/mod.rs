@@ -15,3 +15,4 @@ pub mod violent_ultimatum;
 pub mod punish_ignorance;
 pub mod blister_beetle;
 pub mod cunning_lethemancer;
+pub mod prince_of_thralls;

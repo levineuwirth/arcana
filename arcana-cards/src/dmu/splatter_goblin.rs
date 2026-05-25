@@ -1,6 +1,6 @@
-//! Splatter Goblin — `{1}{B}` 2/1 Phyrexian Goblin.
-//! "When this creature dies, target creature an opponent controls gets
-//! -1/-1 until end of turn."
+//! Splatter Goblin — `{1}{B}` 2/1 Phyrexian Goblin. "When this creature
+//! dies, target creature an opponent controls gets -1/-1 until end of
+//! turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -8,9 +8,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,16 +39,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_minus_pump,
+                effect: on_dies_debuff,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature()
-                                .controlled_by(ControllerConstraint::Opponent),
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                         ),
-                        count: arcana_core::targets::TargetCount::Exactly(1),
+                        count: TargetCount::Exactly(1),
                         controller: None,
                     },
                 ],
@@ -58,10 +55,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_minus_pump(
+fn on_dies_debuff(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

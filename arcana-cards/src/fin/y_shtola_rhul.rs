@@ -1,8 +1,12 @@
-//! Y'shtola Rhul — `{4}{U}{U}` 3/5 legendary blue Cat Druid.
+//! Y'shtola Rhul — `{4}{U}{U}` 3/5 blue Legendary Cat Druid.
 //! "At the beginning of your end step, exile target creature you control,
-//! then return it to the battlefield under its owner's control. Then if it's
-//! the first end step of the turn, there is an additional end step after this step."
-//! GAP: effect — "additional end step" is not expressible in the Effect catalog.
+//! then return it to the battlefield under its owner's control. Then if
+//! it's the first end step of the turn, there is an additional end step
+//! after this step."
+//!
+//! GAP: effect — "additional end step" scheduling is not in the catalog.
+//! The blink (exile + return) is approximated via ExilePermanent +
+//! ReturnFromExileToBattlefield, but the atomic pairing is not guaranteed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -61,11 +65,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn blink_creature(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: effect — "additional end step" after return is not in Effect catalog
+    // GAP: effect — "additional end step" not in catalog; exile+return only.
     vec![
         Effect::ExilePermanent { target: *id },
         Effect::ReturnFromExileToBattlefield { target: *id },

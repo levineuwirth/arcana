@@ -1,4 +1,4 @@
-//! Serpent Warrior — `{2}{B}` 3/3 black Snake Warrior. "When this creature enters,
+//! Serpent Warrior — `{2}{B}` 3/3 black creature. "When this creature enters,
 //! you lose 3 life."
 
 use arcana_core::effects::Effect;

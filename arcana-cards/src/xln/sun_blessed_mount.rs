@@ -1,9 +1,11 @@
-//! Sun-Blessed Mount — `{3}{R}{W}` 4/4 red/white Creature — Dinosaur.
+//! Sun-Blessed Mount — `{3}{R}{W}` 4/4 red-white Dinosaur creature.
 //! "When this creature enters, you may search your library and/or graveyard for a card named
-//! Huatli, Dinosaur Knight, reveal it, then put it into your hand."
+//! Huatli, Dinosaur Knight, reveal it, then put it into your hand. If you searched your
+//! library this way, shuffle."
 //!
-//! # GAP: searching both library and/or graveyard for a named card is not expressible;
-//! emitting TutorToHand with creature filter as best approximation.
+//! # Notes
+//! GAP: "search for a card named Huatli" — no named-card filter in TutorToHand. Using
+//! TutorToHand as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_huatli,
+                effect: etb_search_huatli,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,16 +49,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_huatli(
+fn etb_search_huatli(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "search library and/or graveyard for a card named Huatli, Dinosaur Knight" —
-    // named-card filter not in ObjectFilter; emitting generic tutor as approximation.
+    // GAP: search for named "Huatli, Dinosaur Knight" — no named-card filter; using general tutor.
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::creature(),
+        filter: ObjectFilter::new(),
         reveal: true,
     }]
 }

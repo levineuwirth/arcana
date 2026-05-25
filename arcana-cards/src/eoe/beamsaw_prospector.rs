@@ -1,7 +1,7 @@
-//! Beamsaw Prospector — `{1}{B}` 2/1 black Human Artificer.
-//! "When this creature dies, create a Lander token."
-//! GAP: Lander token (artifact with activated tutor ability) — token abilities not expressible
-//! in TokenDefinition; emitting colorless artifact token with no abilities.
+//! Beamsaw Prospector — `{1}{B}` 2/1 black Human Artificer creature.
+//! "When this creature dies, create a Lander token. (It's an artifact with
+//! '{2}, {T}, Sacrifice this token: Search your library for a basic land card,
+//! put it onto the battlefield tapped, then shuffle.')"
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: create_lander_token,
+                effect: dies_lander_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_lander_token(
+fn dies_lander_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -56,7 +56,6 @@ fn create_lander_token(
         .expect("Lander interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(lander);
-    // GAP: Lander token's activated tutor ability not expressible in TokenDefinition
     let token = TokenDefinition {
         name: lander,
         colors: ColorSet::colorless(),

@@ -1,6 +1,7 @@
-//! Erkenbrand, Lord of Westfold — `{3}{R}` 3/3 red Legendary Human Soldier creature.
-//! "Whenever Erkenbrand or another Human you control enters, creatures you control get
-//! +1/+0 until end of turn."
+//! Erkenbrand, Lord of Westfold — `{3}{R}` 3/3 legendary red Human Soldier. "Whenever
+//! Erkenbrand or another Human you control enters, creatures you control get +1/+0
+//! until end of turn."
+//! ZoneChange trigger for Human ETB; effect pumps all your creatures.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -32,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,12 +40,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_human_enters_pump_all,
+                effect: on_human_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_human_enters_pump_all(
+fn on_human_enters(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
@@ -63,14 +64,13 @@ fn on_human_enters_pump_all(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::Pump {
-            target: arcana_core::objects::NULL_OBJECT_ID,
+    ids.into_iter()
+        .map(|id| Effect::Pump {
+            target: id,
             power: 1,
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        }),
-    }]
+        })
+        .collect()
 }

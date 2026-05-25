@@ -11,8 +11,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, ManaColor, PtValue, SubtypeSet,
-    SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                 },
                 intervening_if: None,
-                effect: sacrifice_artifact_reward,
+                effect: sacrifice_artifact_counter_and_mana,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,17 +48,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn sacrifice_artifact_reward(
+fn sacrifice_artifact_counter_and_mana(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
-        Effect::AddCounters {
-            target: trig.source,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        },
+        Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 },
         Effect::AddMana {
             player: trig.controller,
             mana: vec![ManaUnit::plain(ManaColor::Red, trig.source)],

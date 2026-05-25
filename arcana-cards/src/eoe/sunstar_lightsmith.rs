@@ -1,6 +1,10 @@
-//! Sunstar Lightsmith — `{3}{W}` 3/3 white Human Artificer.
-//! "Whenever you cast your second spell each turn, put a +1/+1 counter on this creature and draw a card."
-//! GAP: no "second spell each turn" trigger condition; SpellCast You with OncePerTurn used as proxy.
+//! Sunstar Lightsmith — `{3}{W}` 3/3 white creature. "Whenever you cast your
+//! second spell each turn, put a +1/+1 counter on this creature and draw a
+//! card."
+//!
+//! GAP: trigger — "second spell each turn" (spell count tracking) not
+//! expressible with any TriggerCondition variant. Using SpellCast as closest
+//! approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "second spell each turn" variant; SpellCast You used as proxy
+                // GAP: trigger — "second spell each turn" not expressible; using SpellCast Any
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,

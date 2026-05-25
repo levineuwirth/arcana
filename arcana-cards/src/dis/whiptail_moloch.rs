@@ -1,6 +1,6 @@
-//! Whiptail Moloch — `{4}{R}` 6/3 red Lizard.
-//! "When this creature enters, it deals 3 damage to target creature
-//! you control."
+//! Whiptail Moloch — `{4}{R}` 6/3 red Lizard. "When this creature enters, it
+//! deals 3 damage to target creature you control." ETB trigger; deal 3 damage
+//! to a target creature the controller controls.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -54,8 +57,12 @@ fn etb_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
         target: DamageTarget::Object(*id),
         amount: 3,

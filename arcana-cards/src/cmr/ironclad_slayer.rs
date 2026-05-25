@@ -1,15 +1,15 @@
 //! Ironclad Slayer — `{2}{W}` 3/2 white Human Warrior.
 //! "When this creature enters, you may return target Aura or Equipment card
 //! from your graveyard to your hand."
-//! GAP: filtering by Aura or Equipment subtype from graveyard is not fully
-//! expressible with TargetFilter::Card; using graveyard card target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,27 +35,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_return_aura_equip,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
-                    },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_return_aura_equipment,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Card {
+                    zone: Zone::Graveyard(0),
+                    filter: ObjectFilter::new()
+                        .with_types_any(TypeLine(TypeLine::ENCHANTMENT | TypeLine::ARTIFACT)),
+                },
+                count: TargetCount::UpTo(1),
+                controller: Some(ControllerConstraint::You),
+            }],
+        }),
     )
 }
 
-fn etb_return_aura_equip(
+fn etb_return_aura_equipment(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

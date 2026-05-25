@@ -1,16 +1,15 @@
-//! Scholar of Combustion — `{3}{R}` 3/2 red Human Wizard. "When this creature
-//! enters, exile up to one target instant or sorcery card from your graveyard. You
-//! may cast that card until the end of your next turn."
-//!
-//! GAP: "you may cast that card until end of your next turn" is not expressible.
-//! Emitting ExileFromGraveyard only.
+//! Scholar of Combustion — `{3}{R}` 3/2 red creature. "When this creature
+//! enters, exile up to one target instant or sorcery card from your graveyard.
+//! You may cast that card until the end of your next turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,13 +40,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_exile,
+                effect: exile_and_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new().with_types(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+                        filter: ObjectFilter::new().with_types_any(TypeLine(
+                            TypeLine::INSTANT | TypeLine::SORCERY,
+                        )),
                     },
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -56,13 +57,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_exile(
+fn exile_and_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "you may cast that card until the end of your next turn" not expressible
+    // GAP: "exile and may cast until end of next turn" — no exile-and-grant-cast-from-exile in catalog
     vec![Effect::ExileFromGraveyard { target: *id }]
 }

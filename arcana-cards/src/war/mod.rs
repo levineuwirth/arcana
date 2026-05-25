@@ -37,3 +37,5 @@ pub mod ignite_the_beacon;
 pub mod augur_of_bolas;
 pub mod teyo_s_lightshield;
 pub mod vraska_s_finisher;
+pub mod bloom_hulk;
+pub mod martyr_for_the_cause;

@@ -1,7 +1,6 @@
-//! Grisly Survivor — `{2}{B}` 2/3 black Minotaur Warrior creature.
-//! "Whenever you cycle or discard a card, this creature gets +2/+0 until end of turn."
-//! GAP: trigger — "whenever you cycle" is not a distinct TriggerCondition; using
-//! CardDiscarded as the closest available (covers discard; cycle-discard is also a discard).
+//! Grisly Survivor — `{2}{B}` 2/3 black Minotaur Warrior. "Whenever you cycle or
+//! discard a card, this creature gets +2/+0 until end of turn."
+//! CardDiscarded trigger on you.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -13,7 +12,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,10 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(

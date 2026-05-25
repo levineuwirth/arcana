@@ -1,8 +1,11 @@
-//! Lat-Nam Adept — `{3}{U}` 3/3 blue Creature — Human Wizard.
+//! Lat-Nam Adept — `{3}{U}` 3/3 blue Human Wizard creature.
 //! "Whenever you draw your second card each turn, put a +1/+1 counter on this creature."
 //!
-//! # GAP: trigger — "whenever you draw your second card each turn" has no variant for
-//! tracking draw count per turn; using CardDrawn as best approximation.
+//! # Notes
+//! GAP: "your second card each turn" — CardDrawn trigger fires on any draw; no way to
+//! distinguish second draw. Using CardDrawn with OncePerTurn as approximation (fires once
+//! per turn on first draw rather than second).
+//! GAP: trigger — no "second card drawn" TriggerCondition variant.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,15 +41,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "whenever you draw your second card each turn" — no variant tracks draw
-                // count; using CardDrawn as closest approximation.
+                // GAP: trigger — "second card drawn each turn" not expressible; using CardDrawn
+                // once-per-turn as approximation.
                 trigger_condition: TriggerCondition::CardDrawn {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
                 effect: card_drawn_counter,
                 trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
+                frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
             }),
     )
@@ -55,11 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn card_drawn_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

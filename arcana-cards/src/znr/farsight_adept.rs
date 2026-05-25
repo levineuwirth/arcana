@@ -1,4 +1,4 @@
-//! Farsight Adept — `{2}{W}` 3/3 white Kor Wizard. "When this creature enters,
+//! Farsight Adept — `{2}{W}` 3/3 white creature. "When this creature enters,
 //! you and target opponent each draw a card."
 
 use arcana_core::effects::Effect;
@@ -6,7 +6,9 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: both_draw,
+                effect: etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -49,15 +51,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn both_draw(
+fn etb_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opp) = target else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
-        Effect::DrawCards { player: *opp, count: 1 },
+        Effect::DrawCards { player: *p, count: 1 },
     ]
 }

@@ -1,10 +1,11 @@
 //! Technomancer — `{5}{B}{B}` 5/1 black Artifact Creature — Necron Wizard.
-//! Keywords: Mill (in rules text only).
 //! "When this creature enters, mill three cards, then return any number of
 //! artifact creature cards with total mana value 6 or less from your
 //! graveyard to the battlefield."
-//! GAP: "return any number with total mana value ≤ 6" requires multi-select
-//! with aggregate constraint — not expressible.
+//!
+//! GAP: "return any number of artifact creature cards with total mana value
+//! 6 or less" — selecting multiple cards with a shared CMC budget is not
+//! expressible. Emitting Mill(3); graveyard return omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,25 +37,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_mill_and_reanimate,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_mill_reanimate,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn etb_mill_and_reanimate(
+fn etb_mill_reanimate(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "return any number of artifact creature cards with total mana
-    // value 6 or less" multi-select aggregate constraint not expressible.
-    vec![Effect::Mill { player: trig.controller, count: 3 }]
+    // GAP: return any number of artifact creature cards with total mana value
+    // ≤6 — budget-constrained multi-card graveyard return not expressible.
+    vec![Effect::Mill {
+        player: trig.controller,
+        count: 3,
+    }]
 }

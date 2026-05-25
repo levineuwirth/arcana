@@ -1,6 +1,7 @@
-//! Ishi-Ishi, Akki Crackshot — `{1}{R}` 1/1 red Legendary Goblin Warrior creature.
-//! "Whenever an opponent casts a Spirit or Arcane spell, Ishi-Ishi deals 2 damage to
-//! that player."
+//! Ishi-Ishi, Akki Crackshot — `{1}{R}` 1/1 legendary red Goblin Warrior.
+//! "Whenever an opponent casts a Spirit or Arcane spell, Ishi-Ishi deals 2 damage
+//! to that player."
+//! SpellCast trigger with opponent caster; deal damage to that caster.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -8,7 +9,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -31,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,14 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine::CREATURE.into()),
-                        ..Default::default()
-                    }),
+                    filter: None,
                     caster: ControllerConstraint::Opponent,
                 },
                 intervening_if: None,
-                effect: on_opponent_spirit_arcane_damage,
+                effect: on_opponent_spell,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,15 +51,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_opponent_spirit_arcane_damage(
+fn on_opponent_spell(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "that player" = the opponent who cast the spell = trig.controller in this trigger context
-    // GAP: trigger — Spirit/Arcane type filter uses CREATURE as approximation (Arcane is a spell subtype)
+    let Some(p) = trig.triggering_caster() else { return Vec::new(); };
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(trig.controller),
+        target: DamageTarget::Player(p),
         amount: 2,
         source: trig.source,
     }]

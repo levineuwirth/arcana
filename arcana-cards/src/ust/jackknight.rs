@@ -1,9 +1,8 @@
-//! Jackknight — `{1}{W}` 1/1 white Artifact Creature Cyborg Knight.
-//! "Whenever another artifact you control enters, put a +1/+1 counter on
-//! this creature. If that artifact is a Contraption, this creature gains
-//! lifelink until end of turn."
-//! GAP: Contraption subtype check and conditional lifelink not expressible;
-//! counter effect implemented, lifelink conditional omitted.
+//! Jackknight — `{1}{W}` 1/1 white Artifact Creature — Cyborg Knight.
+//! "Whenever another artifact you control enters, put a +1/+1 counter
+//! on this creature. If that artifact is a Contraption, this creature
+//! gains lifelink until end of turn."
+//! GAP: "Contraption" subtype conditional not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,8 +13,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,26 +40,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::new()
-                        .with_types(TypeLine(TypeLine::ARTIFACT))
+                        .with_types(TypeLine::ARTIFACT.into())
                         .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: jackknight_artifact_enters,
+                effect: artifact_enters_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn jackknight_artifact_enters(
+fn artifact_enters_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Contraption check and conditional lifelink not expressible.
+    // GAP: "if that artifact is a Contraption, gain lifelink" — subtype check not expressible
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

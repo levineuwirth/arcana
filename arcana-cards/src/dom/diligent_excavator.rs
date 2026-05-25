@@ -1,13 +1,13 @@
-//! Diligent Excavator — `{1}{U}` 1/3 blue Human Artificer.
+//! Diligent Excavator — `{1}{U}` 1/3 blue Human Artificer creature.
 //! "Whenever you cast a historic spell, target player mills two cards."
-//! GAP: historic spell filter (artifacts, legendaries, Sagas) not in SpellCast ObjectFilter.
+//! GAP: no "historic" filter in ObjectFilter; using SpellCast You with no filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,13 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: historic spell filter not in SpellCast ObjectFilter
+                // GAP: no "historic spell" filter; using SpellCast You without filter.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: mill_target_player,
+                effect: historic_spell_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -50,10 +50,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn mill_target_player(
+fn historic_spell_mill(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };

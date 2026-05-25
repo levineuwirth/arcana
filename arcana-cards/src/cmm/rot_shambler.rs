@@ -1,4 +1,4 @@
-//! Rot Shambler — `{1}{G}` 1/1 green Fungus. "Whenever another creature you
+//! Rot Shambler — `{1}{G}` 1/1 green creature. "Whenever another creature you
 //! control dies, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: counter_on_self,
+                effect: creature_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_on_self(
+fn creature_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

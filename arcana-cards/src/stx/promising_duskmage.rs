@@ -1,9 +1,10 @@
-//! Promising Duskmage — `{2}{B}` 2/3 black Creature — Human Warlock.
-//! "When this creature dies, if it had a +1/+1 counter on it, draw a card."
+//! Promising Duskmage — `{2}{B}` 2/3 black creature (Human Warlock).
+//! "When this creature dies, if it had a +1/+1 counter on it, draw a
+//! card."
 //!
-//! GAP: intervening-if "if it had a +1/+1 counter on it" — checking
-//! counters on a dying creature is not available via the script API
-//! (creature is leaving battlefield). Approximated as unconditional draw.
+//! GAP: "if it had a +1/+1 counter on it" — intervening-if checking
+//! counter presence on the dying object is not expressible. Emitting
+//! DrawCards unconditionally as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,8 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
-                // GAP: intervening-if "if it had a +1/+1 counter" — cannot
-                // check counters on a dying creature; not expressible.
+                // GAP: "if it had a +1/+1 counter on it" — counter check
+                // on dying creature not expressible as intervening-if.
                 intervening_if: None,
                 effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
@@ -55,5 +56,7 @@ fn on_dies(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: condition "if it had a +1/+1 counter" not evaluated;
+    // emitting draw unconditionally as best effort.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

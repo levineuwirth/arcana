@@ -23,3 +23,4 @@ pub mod blight_herder;
 pub mod noyan_dar_roil_shaper;
 pub mod serene_steward;
 pub mod nirkana_assassin;
+pub mod ruin_processor;

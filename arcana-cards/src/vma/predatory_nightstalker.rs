@@ -1,8 +1,6 @@
-//! Predatory Nightstalker — `{3}{B}{B}` 3/2 black Nightstalker.
-//! "When this creature enters, you may have target opponent sacrifice a creature
-//! of their choice."
-//! GAP: "target opponent sacrifices a creature of their choice" — opponent-choice
-//! sacrifice not in Effect catalog.
+//! Predatory Nightstalker — `{3}{B}{B}` 3/2 black Creature — Nightstalker.
+//! "When this creature enters, you may have target opponent sacrifice a
+//! creature of their choice."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,9 +11,8 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Predatory Nightstalker");
@@ -28,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,27 +35,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: gap_opponent_sacrifice,
+                effect: etb_opponent_sacrifice,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
+                target_requirements: vec![TargetRequirement::target_player()],
             }),
     )
 }
 
-fn gap_opponent_sacrifice(
-    state: &GameState,
+fn etb_opponent_sacrifice(
+    _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "target opponent sacrifices a creature of their choice" — opponent picks;
-    // making each opponent sacrifice a creature as approximation
-    script::opponents(state, trig.controller)
-        .into_iter()
-        .map(|pid| Effect::Sacrifice {
-            player: pid,
-            filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-            count: 1,
-        })
-        .collect()
+    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(player) = target else { return Vec::new(); };
+    vec![Effect::Sacrifice {
+        player: *player,
+        filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        count: 1,
+    }]
 }

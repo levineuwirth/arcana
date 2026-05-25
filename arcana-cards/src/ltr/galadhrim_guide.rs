@@ -1,5 +1,6 @@
-//! Galadhrim Guide — `{3}{G}` 3/4 green Elf Scout.
-//! "When this creature enters, scry 2."
+//! Galadhrim Guide — `{3}{G}` 3/4 green creature. "When this creature enters,
+//! scry 2." Keyword `Scry` is not in the supported keyword list; emitting
+//! `keywords: vec![]`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(

@@ -17,3 +17,4 @@ pub mod geosurge;
 pub mod auriok_survivors;
 pub mod kiln_walker;
 pub mod priest_of_urabrask;
+pub mod furnace_scamp;

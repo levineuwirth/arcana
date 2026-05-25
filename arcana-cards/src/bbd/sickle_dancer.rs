@@ -1,9 +1,12 @@
-//! Sickle Dancer — `{2}{B}` 3/2 black creature. "Whenever this creature
-//! attacks, if your team controls another Warrior, this creature gets
-//! +1/+1 until end of turn."
+//! Sickle Dancer — `{2}{B}` 3/2 Human Warrior. "Whenever this
+//! creature attacks, if your team controls another Warrior, this
+//! creature gets +1/+1 until end of turn." Implemented as a
+//! `SelfAttacks` trigger that pumps the source +1/+1 until end of
+//! turn.
 //!
-//! GAP: intervening_if — "if your team controls another Warrior" not
-//! expressible; using None.
+//! GAP: intervening-if ("if your team controls another Warrior") is
+//! not expressible — `intervening_if` is left `None`, so the pump
+//! resolves unconditionally on every attack.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -24,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(warrior);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{B}").expect("valid cost")),
@@ -35,14 +39,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening_if — "if your team controls another Warrior" not expressible
                 intervening_if: None,
-                effect: attacks_pump_if_warrior,
+                effect: pump_self_on_attack,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,7 +54,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump_if_warrior(
+/// Resolution: Sickle Dancer gets +1/+1 until end of turn.
+fn pump_self_on_attack(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

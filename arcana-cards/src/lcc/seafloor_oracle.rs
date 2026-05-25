@@ -1,5 +1,5 @@
-//! Seafloor Oracle — `{2}{U}{U}` 2/3 blue creature. "Whenever a Merfolk you
-//! control deals combat damage to a player, draw a card."
+//! Seafloor Oracle — `{2}{U}{U}` 2/3 blue Merfolk Wizard.
+//! "Whenever a Merfolk you control deals combat damage to a player, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,6 +12,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Seafloor Oracle");
@@ -31,17 +32,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
     };
+    let merfolk_filter = script::subtype_filter(reg, "Merfolk")
+        .controlled_by(ControllerConstraint::You);
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    source_filter: merfolk_filter,
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: on_damage,
+                effect: on_combat_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_damage(
+fn on_combat_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

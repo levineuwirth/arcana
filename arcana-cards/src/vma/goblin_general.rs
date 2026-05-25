@@ -5,21 +5,20 @@
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Goblin General");
     let goblin = reg.interner_mut().intern("Goblin");
     let warrior = reg.interner_mut().intern("Warrior");
-    let _goblin_lookup = reg.interner_mut().intern("Goblin");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(warrior);
@@ -29,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -40,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_pump_goblins,
+                effect: on_attack_pump_goblins,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump_goblins(
+fn on_attack_pump_goblins(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -58,7 +56,7 @@ fn attacks_pump_goblins(
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::Pump {
-            target: arcana_core::objects::NULL_OBJECT_ID,
+            target: NULL_OBJECT_ID,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,

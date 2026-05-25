@@ -1,4 +1,4 @@
-//! Kessig Malcontents — `{2}{R}` 3/1 red Human Warrior.
+//! Kessig Malcontents — `{2}{R}` 3/1 Human Warrior.
 //! "When this creature enters, it deals damage to target player or
 //! planeswalker equal to the number of Humans you control."
 
@@ -9,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -20,7 +22,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Kessig Malcontents");
     let human = reg.interner_mut().intern("Human");
     let warrior = reg.interner_mut().intern("Warrior");
-    let _human2 = reg.interner_mut().intern("Human");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(warrior);
@@ -44,26 +45,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Player,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_etb(
-    state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    let human_filter = script::subtype_filter(reg, "Human");
-    let n = script::count_matching(state, &human_filter, trig.controller);
+fn on_etb(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
+    let n = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Human").controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
     vec![Effect::DealDamage {
         target: DamageTarget::Player(*p),
         amount: n,

@@ -1,4 +1,4 @@
-//! Accursed Centaur — `{B}` 2/2 black Zombie Centaur creature.
+//! Accursed Centaur — `{B}` 2/2 Creature — Zombie Centaur.
 //! "When this creature enters, sacrifice a creature."
 
 use arcana_core::effects::Effect;
@@ -6,20 +6,19 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::targets::{ObjectFilter};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Accursed Centaur");
-    let zombie = reg.interner_mut().intern("Zombie");
-    let centaur = reg.interner_mut().intern("Centaur");
+    let zombie_sub = reg.interner_mut().intern("Zombie");
+    let centaur_sub = reg.interner_mut().intern("Centaur");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(zombie);
-    subtypes.0.insert(centaur);
+    subtypes.0.insert(zombie_sub);
+    subtypes.0.insert(centaur_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{B}").expect("valid cost")),
@@ -37,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_sacrifice_creature,
+                effect: accursed_centaur_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,14 +44,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_sacrifice_creature(
+fn accursed_centaur_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-        count: 1,
-    }]
+    vec![Effect::Sacrifice { player: trig.controller, filter: ObjectFilter::creature(), count: 1 }]
 }

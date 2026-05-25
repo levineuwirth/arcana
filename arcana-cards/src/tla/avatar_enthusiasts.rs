@@ -1,18 +1,18 @@
-//! Avatar Enthusiasts — `{2}{W}` 2/2 white Human Peasant Ally creature.
-//! "Whenever another Ally you control enters, put a +1/+1 counter on this creature."
+//! Avatar Enthusiasts — `{2}{W}` 2/2 white Human Peasant Ally. "Whenever another
+//! Ally you control enters, put a +1/+1 counter on this creature."
+//! ZoneChange trigger filtered to creatures controlled by you.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::targets::ObjectFilter;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Avatar Enthusiasts");
@@ -29,10 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_ally_enters_counter,
+                effect: on_ally_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_ally_enters_counter(
+fn on_ally_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

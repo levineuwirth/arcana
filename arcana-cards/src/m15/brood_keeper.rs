@@ -1,16 +1,15 @@
-//! Brood Keeper — `{3}{R}` 2/3 red Human Shaman.
-//! "Whenever an Aura becomes attached to this creature, create a 2/2 red Dragon creature token
-//! with flying. It has '{R}: This creature gets +1/+0 until end of turn.'"
-//! GAP: trigger — "Aura becomes attached" not in catalog; using ZoneChange as closest.
-//! GAP: token activated ability not expressible in TokenDefinition.
+//! Brood Keeper — `{3}{R}` 2/3 red Human Shaman creature.
+//! "Whenever an Aura becomes attached to this creature, create a 2/2 red Dragon creature
+//! token with flying. It has '{R}: This creature gets +1/+0 until end of turn.'"
+//! GAP: trigger condition "Aura becomes attached to this creature" not in catalog;
+//! using SelfEntersBattlefield as closest. The token's activated ability (+1/+0) is not
+//! expressible in TokenDefinition.abilities.
 
-use arcana_core::effects::{Effect, TokenDefinition};
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,14 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "Aura becomes attached to this creature" not in catalog
-                trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::new().controlled_by(ControllerConstraint::You),
-                    from: None,
-                    to: Zone::Battlefield,
-                },
+                // GAP: "Aura becomes attached to this creature" trigger not in catalog;
+                // placeholder SelfEntersBattlefield used.
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: create_dragon_token,
+                effect: aura_attached_dragon_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_dragon_token(
+fn aura_attached_dragon_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -64,7 +60,6 @@ fn create_dragon_token(
         .expect("Dragon interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dragon);
-    // GAP: token's activated ability "{R}: +1/+0" not expressible in TokenDefinition
     let token = TokenDefinition {
         name: dragon,
         colors: ColorSet::red(),
@@ -73,6 +68,8 @@ fn create_dragon_token(
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         keywords: vec![KeywordAbility::Flying],
+        // GAP: "{R}: This creature gets +1/+0 until end of turn" activated ability
+        // not expressible in TokenDefinition.abilities.
         abilities: vec![],
     };
     vec![Effect::CreateToken { controller: trig.controller, token }]

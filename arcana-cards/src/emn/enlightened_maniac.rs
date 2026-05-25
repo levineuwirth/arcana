@@ -10,14 +10,14 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Enlightened Maniac");
     let human = reg.interner_mut().intern("Human");
-    let _eldrazi = reg.interner_mut().intern("Eldrazi");
-    let _horror = reg.interner_mut().intern("Horror");
+    let eldrazi = reg.interner_mut().intern("Eldrazi");
+    let horror = reg.interner_mut().intern("Horror");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     let chars = Characteristics {
@@ -26,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -37,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_create_eldrazi_horror,
+                effect: etb_eldrazi_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_create_eldrazi_horror(
+fn etb_eldrazi_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

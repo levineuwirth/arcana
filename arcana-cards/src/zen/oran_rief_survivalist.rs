@@ -1,6 +1,6 @@
-//! Oran-Rief Survivalist — `{1}{G}` 1/1 green Creature — Human Warrior Ally.
-//! "Whenever this creature or another Ally you control enters, you may
-//! put a +1/+1 counter on this creature."
+//! Oran-Rief Survivalist — `{1}{G}` 1/1 green creature (Human Warrior
+//! Ally). "Whenever this creature or another Ally you control enters,
+//! you may put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,6 +13,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Oran-Rief Survivalist");
@@ -23,6 +24,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(human);
     subtypes.0.insert(warrior);
     subtypes.0.insert(ally);
+    let ally_filter = script::subtype_filter(reg, "Ally")
+        .controlled_by(ControllerConstraint::You);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{G}").expect("valid cost")),
@@ -39,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ally_filter,
                     from: None,
                     to: Zone::Battlefield,
                 },

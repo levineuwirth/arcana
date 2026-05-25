@@ -1,9 +1,6 @@
 //! Bag End Porter — `{3}{G}` 4/4 green Creature — Dwarf.
 //! "Whenever this creature attacks, it gets +X/+X until end of turn, where X
 //! is the number of legendary creatures you control."
-//!
-//! GAP: ObjectFilter has no legendary-supertype filter; using creature count
-//! as best effort (X will be overcounted).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -33,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_pump,
+                effect: on_attack_legendary_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,21 +46,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump(
+fn on_attack_legendary_pump(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no legendary-supertype ObjectFilter; creature count used as
-    // best effort — X will not reflect "legendary creatures only"
-    let x = script::count_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-        trig.controller,
-    ) as i32;
-    if x == 0 {
-        return Vec::new();
-    }
+    // GAP: ObjectFilter has no with_supertypes; using creature filter with
+    // You constraint as approximation; X will count all your creatures
+    // instead of only legendary ones.
+    let filter = ObjectFilter::creature()
+        .controlled_by(ControllerConstraint::You);
+    let x = script::count_matching(state, &filter, trig.controller) as i32;
     vec![Effect::Pump {
         target: trig.source,
         power: x,

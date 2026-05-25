@@ -1,5 +1,5 @@
-//! Hallowed Priest — `{1}{W}` 1/1 white Human Cleric creature.
-//! "Whenever you gain life, put a +1/+1 counter on this creature."
+//! Hallowed Priest — `{1}{W}` 1/1 white Human Cleric. "Whenever you gain life, put a
+//! +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +10,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,10 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_life_gained_counter,
+                effect: on_life_gained,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_life_gained_counter(
+fn on_life_gained(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

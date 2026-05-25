@@ -1,12 +1,12 @@
-//! Dune-Brood Nephilim — `{B}{R}{G}{W}` 3/3 Nephilim (B/G/R/W).
-//! "Whenever this creature deals combat damage to a player, create a 1/1
-//! colorless Sand creature token for each land you control."
+//! Dune-Brood Nephilim — `{B}{R}{G}{W}` 3/3 BRGW creature. "Whenever this
+//! creature deals combat damage to a player, create a 1/1 colorless Sand
+//! creature token for each land you control."
 
 use arcana_core::effects::{Effect, TokenDefinition};
-use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
@@ -14,12 +14,11 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dune-Brood Nephilim");
-    let _sand = reg.interner_mut().intern("Sand");
     let nephilim = reg.interner_mut().intern("Nephilim");
+    let _sand = reg.interner_mut().intern("Sand");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(nephilim);
     let chars = Characteristics {
@@ -43,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: damage_create_tokens,
+                effect: combat_damage_create_sand_tokens,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn damage_create_tokens(
+fn combat_damage_create_sand_tokens(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -63,20 +62,27 @@ fn damage_create_tokens(
             .controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    let sand = reg.interner().lookup("Sand").expect("Sand interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(sand);
-    let token = TokenDefinition {
-        name: sand,
-        colors: ColorSet::colorless(),
-        types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
-        power: Some(PtValue::Fixed(1)),
-        toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
-        abilities: vec![],
-    };
-    (0..land_count)
-        .map(|_| Effect::CreateToken { controller: trig.controller, token: token.clone() })
-        .collect()
+    if land_count == 0 {
+        return Vec::new();
+    }
+    let mut effects = Vec::new();
+    for _ in 0..land_count {
+        let sand2 = reg.interner().lookup("Sand").expect("Sand interned");
+        let mut st = SubtypeSet::default();
+        st.0.insert(sand2);
+        effects.push(Effect::CreateToken {
+            controller: trig.controller,
+            token: TokenDefinition {
+                name: sand2,
+                colors: ColorSet::colorless(),
+                types: TypeLine::CREATURE.into(),
+                subtypes: st,
+                power: Some(PtValue::Fixed(1)),
+                toughness: Some(PtValue::Fixed(1)),
+                keywords: vec![],
+                abilities: vec![],
+            },
+        });
+    }
+    effects
 }

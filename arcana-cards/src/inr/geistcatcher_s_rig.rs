@@ -12,9 +12,8 @@ use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::effects::KeywordAbility;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Geistcatcher's Rig");
@@ -27,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
@@ -38,11 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: deal_four_to_flyer,
+                effect: etb_shoot_flyer,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
                     count: TargetCount::UpTo(1),
                     controller: None,
                 }],
@@ -50,10 +48,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_four_to_flyer(
+fn etb_shoot_flyer(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

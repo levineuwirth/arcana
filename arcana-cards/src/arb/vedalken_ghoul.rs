@@ -1,8 +1,5 @@
 //! Vedalken Ghoul — `{U}{B}` 1/1 blue-black Creature — Vedalken Zombie.
 //! "Whenever this creature becomes blocked, defending player loses 4 life."
-//!
-//! GAP: trigger — no TriggerCondition for "becomes blocked"; using SelfAttacks
-//! as closest available trigger with a GAP note.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,11 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition for "becomes blocked";
-                // SelfAttacks is the closest available
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: blocked_lose_life,
+                effect: on_blocked_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,10 +44,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocked_lose_life(
+fn on_blocked_lose_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::LoseLife { player: trig.controller, amount: 4 }]
+    let Some(p) = trig.defending_player() else { return Vec::new(); };
+    vec![Effect::LoseLife { player: p, amount: 4 }]
 }

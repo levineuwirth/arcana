@@ -1,4 +1,4 @@
-//! Wayward Servant — `{W}{B}` 2/2 white/black Creature — Zombie.
+//! Wayward Servant — `{W}{B}` 2/2 white-black Zombie creature.
 //! "Whenever another Zombie you control enters, each opponent loses 1 life and you gain 1 life."
 
 use arcana_core::effects::Effect;
@@ -30,17 +30,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
+    let zombie_filter = script::subtype_filter(reg, "Zombie")
+        .controlled_by(ControllerConstraint::You);
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: zombie_filter,
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: zombie_enters_drain_opponents,
+                effect: zombie_enters_drain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,15 +50,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn zombie_enters_drain_opponents(
+fn zombie_enters_drain(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    let mut effects: Vec<Effect> = opponents.into_iter().map(|p| {
-        Effect::LoseLife { player: p, amount: 1 }
-    }).collect();
-    effects.push(Effect::GainLife { player: trig.controller, amount: 1 });
-    vec![Effect::Sequence(effects)]
+    let mut effects = vec![Effect::GainLife { player: trig.controller, amount: 1 }];
+    for opp in script::opponents(state, trig.controller) {
+        effects.push(Effect::LoseLife { player: opp, amount: 1 });
+    }
+    effects
 }

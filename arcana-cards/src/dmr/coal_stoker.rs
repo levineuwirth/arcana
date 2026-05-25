@@ -1,5 +1,8 @@
-//! Coal Stoker — `{3}{R}` 3/3 red Elemental. "When this creature enters,
-//! if you cast it from your hand, add {R}{R}{R}."
+//! Coal Stoker — `{3}{R}` 3/3 red Elemental. "When this creature enters, if
+//! you cast it from your hand, add {R}{R}{R}."
+//!
+//! GAP: no intervening-if for "if you cast it from your hand" — using
+//! None and adding mana unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -33,9 +36,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening_if — "if you cast it from your hand" cannot be checked
                 intervening_if: None,
-                effect: add_three_red,
+                effect: etb_add_mana,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,11 +45,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_three_red(
+fn etb_add_mana(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: intervening-if "if you cast it from your hand" not modeled
     vec![Effect::AddMana {
         player: trig.controller,
         mana: vec![

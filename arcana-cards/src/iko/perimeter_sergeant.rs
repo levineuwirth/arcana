@@ -1,12 +1,13 @@
-//! Perimeter Sergeant — `{2}{W}` 3/2 white Human Soldier.
-//! "Whenever this creature attacks, other Humans you control get
-//! +1/+0 until end of turn."
+//! Perimeter Sergeant — `{2}{W}` 3/2 white Human Soldier. "Whenever this
+//! creature attacks, other Humans you control get +1/+0 until end of turn."
+//! Attack trigger; pump all other friendly Humans +1/+0.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
@@ -14,7 +15,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Perimeter Sergeant");
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: pump_humans,
+                effect: on_attack_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,27 +48,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_humans(
+fn on_attack_pump(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let filter = script::subtype_filter(reg, "Human")
-        .controlled_by(ControllerConstraint::You);
+        .controlled_by(ControllerConstraint::You)
+        .nontoken();
     let ids = script::ids_matching(state, &filter, trig.controller);
-    // pump only others (not self)
-    let pump_ids: Vec<_> = ids.into_iter().filter(|id| *id != trig.source).collect();
-    if pump_ids.is_empty() {
-        return Vec::new();
-    }
-    vec![Effect::ForEach {
-        targets: pump_ids,
-        effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
-            power: 1,
-            toughness: 0,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        }),
-    }]
+    // exclude self
+    let ids: Vec<_> = ids.into_iter().filter(|id| *id != trig.source).collect();
+    let inner = Effect::Pump {
+        target: arcana_core::objects::NULL_OBJECT_ID,
+        power: 1,
+        toughness: 0,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    };
+    vec![Effect::ForEach { targets: ids, effect: Box::new(inner) }]
 }

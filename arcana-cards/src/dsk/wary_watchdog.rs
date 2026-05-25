@@ -1,7 +1,5 @@
-//! Wary Watchdog — `{1}{G}` 3/1 green Dog. "When this creature enters or dies,
-//! surveil 1."
-//!
-//! Two triggers: one for ETB, one for dies. Both surveil 1.
+//! Wary Watchdog — `{1}{G}` 3/1 green creature. "When this creature enters or
+//! dies, surveil 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

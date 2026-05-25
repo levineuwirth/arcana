@@ -1,5 +1,6 @@
-//! Fiend Binder — `{3}{W}` 3/2 white Human Soldier.
-//! "Whenever this creature attacks, tap target creature defending player controls."
+//! Fiend Binder — `{3}{W}` 3/2 white Human Soldier. "Whenever this creature
+//! attacks, tap target creature defending player controls." Attack trigger;
+//! tap a target creature the defending player controls.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -54,7 +58,11 @@ fn on_attack_tap(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::Tap { target: *id }]
 }

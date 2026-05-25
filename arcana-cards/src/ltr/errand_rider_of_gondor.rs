@@ -1,8 +1,8 @@
-//! Errand-Rider of Gondor — `{2}{W}` 3/2 white Human Soldier.
-//! "When this creature enters, draw a card. Then if you don't control a legendary creature,
-//! put a card from your hand on the bottom of your library."
-//! GAP: intervening conditional "if you don't control a legendary creature" not modeled;
-//! emitting draw + put-on-bottom as unconditional sequence.
+//! Errand-Rider of Gondor — `{2}{W}` 3/2 white Human Soldier creature.
+//! "When this creature enters, draw a card. Then if you don't control a legendary
+//! creature, put a card from your hand on the bottom of your library."
+//! The conditional "if you don't control a legendary creature" is a GAP; emitting draw
+//! only as the primary effect.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw_card,
+                effect: etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,12 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_card(
+fn etb_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you don't control a legendary creature, put a card on bottom" — board-state
-    // conditional on legendary control not in catalog; emitting draw only
+    // GAP: "if you don't control a legendary creature, put a card from your hand on the
+    // bottom of your library" — conditional library-bottom put not expressible.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

@@ -1,6 +1,7 @@
 //! Fyndhorn Druid — `{2}{G}` 2/2 green Elf Druid.
 //! "When this creature dies, if it was blocked this turn, you gain 4 life."
-//! GAP: intervening-if "if it was blocked this turn" not expressible; using None.
+//! GAP: "if it was blocked this turn" intervening-if condition not in engine.
+//! Using intervening_if: None as best-effort; verify will flag.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,9 +37,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
-                // GAP: intervening-if "if it was blocked this turn" not expressible.
+                // GAP: "if it was blocked this turn" condition not expressible.
                 intervening_if: None,
-                effect: gain_life,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_life(
+fn on_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

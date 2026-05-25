@@ -9,3 +9,7 @@ pub mod silkenfist_order;
 pub mod rackling;
 pub mod laccolith_warrior;
 pub mod skyshroud_sentinel;
+pub mod complex_automaton;
+pub mod flint_golem;
+pub mod mossdog;
+pub mod silkenfist_fighter;

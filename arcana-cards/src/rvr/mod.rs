@@ -28,3 +28,7 @@ pub mod mortus_strider;
 pub mod bulwark_giant;
 pub mod rising_populace;
 pub mod burning_prophet;
+pub mod aetherplasm;
+pub mod kiora_s_dambreaker;
+pub mod shadow_alley_denizen;
+pub mod protean_hulk;

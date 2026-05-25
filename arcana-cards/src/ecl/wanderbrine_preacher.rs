@@ -1,8 +1,5 @@
 //! Wanderbrine Preacher — `{1}{W}` 2/2 white Merfolk Cleric.
 //! "Whenever this creature becomes tapped, you gain 2 life."
-//! GAP: trigger — no TriggerCondition for "becomes tapped"; using
-//! closest available (SelfAttacks fires when tapping to attack, but
-//! does not cover all tap events). Mapped to SelfAttacks as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -37,10 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "becomes tapped" condition; SelfAttacks is closest
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: gain_two_life,
+                effect: gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,10 +43,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_two_life(
+fn gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GainLife { player: trig.controller, amount: 2 }]
 }

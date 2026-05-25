@@ -1,4 +1,4 @@
-//! Lorescale Coatl — `{1}{G}{U}` 2/2 green/blue Creature — Snake.
+//! Lorescale Coatl — `{1}{G}{U}` 2/2 green-blue Snake creature.
 //! "Whenever you draw a card, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: draw_counter_self,
+                effect: card_drawn_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,14 +45,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_counter_self(
+fn card_drawn_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

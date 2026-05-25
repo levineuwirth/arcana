@@ -1,19 +1,23 @@
 //! Hagra Diabolist — `{4}{B}` 3/2 black Creature — Ogre Shaman Ally.
 //! "Whenever this creature or another Ally you control enters, you may have
 //! target player lose life equal to the number of Allies you control."
+//! Note: "this creature or another Ally" — using ZoneChange creature entering
+//! under your control as trigger approximation (can't filter to Ally subtype
+//! at trigger build time; subtype_filter requires reg at resolve time).
+//! Dynamic amount — count Allies you control via script.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hagra Diabolist");
@@ -30,7 +34,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,14 +42,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: "this creature or another Ally" filter — can't filter
+                // by Ally subtype at trigger build time; using generic creature
+                // entering your battlefield
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: arcana_core::targets::ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: ally_enters_life_loss,
+                effect: on_ally_enters_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -54,14 +59,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn ally_enters_life_loss(
+fn on_ally_enters_lose_life(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ally_filter = script::subtype_filter(reg, "Ally");
-    let n = script::count_matching(state, &ally_filter, trig.controller);
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let ally_filter = script::subtype_filter(reg, "Ally").controlled_by(ControllerConstraint::You);
+    let n = script::count_matching(state, &ally_filter, trig.controller);
     vec![Effect::LoseLife { player: *p, amount: n }]
 }

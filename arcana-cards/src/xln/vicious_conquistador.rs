@@ -1,17 +1,18 @@
-//! Vicious Conquistador — `{B}` 1/2 black Vampire Soldier.
-//! "Whenever this creature attacks, each opponent loses 1 life."
+//! Vicious Conquistador — `{B}` 1/2 black Vampire Soldier. "Whenever this
+//! creature attacks, each opponent loses 1 life." Attack trigger; each opponent
+//! loses 1 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Vicious Conquistador");
@@ -37,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack_drain,
+                effect: on_attack,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,14 +46,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack_drain(
+fn on_attack(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let opponents = script::opponents(state, trig.controller);
-    let effects: Vec<Effect> = opponents.into_iter()
-        .map(|opp| Effect::LoseLife { player: opp, amount: 1 })
+    let effects: Vec<Effect> = opponents
+        .into_iter()
+        .map(|p| Effect::LoseLife { player: p, amount: 1 })
         .collect();
     vec![Effect::Sequence(effects)]
 }

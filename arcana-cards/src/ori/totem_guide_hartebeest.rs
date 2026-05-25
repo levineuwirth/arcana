@@ -1,16 +1,17 @@
-//! Totem-Guide Hartebeest — `{4}{W}` 2/5 white creature. "When this
-//! creature enters, you may search your library for an Aura card, reveal
-//! it, put it into your hand, then shuffle."
+//! Totem-Guide Hartebeest — `{4}{W}` 2/5 white Antelope creature.
+//! "When this creature enters, you may search your library for an
+//! Aura card, reveal it, put it into your hand, then shuffle."
 //!
-//! GAP: filter — ObjectFilter has no "subtype equals Aura" filter.
-//! Using enchantment filter as best approximation.
+//! Modeled as an ETB `TutorToHand` filtered to the Aura subtype.
+//! GAP: the "you may" optionality is not expressible with the
+//! catalog — the search resolves unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -20,8 +21,12 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Totem-Guide Hartebeest");
     let antelope = reg.interner_mut().intern("Antelope");
+    // Pre-intern the Aura subtype so the resolver can build the
+    // search filter via the non-mut interner at resolve time.
+    let _aura = reg.interner_mut().intern("Aura");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(antelope);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{W}").expect("valid cost")),
@@ -33,6 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
@@ -47,15 +53,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// ETB trigger resolution: search the controller's library for an
+/// Aura card and put it into their hand (revealed, shuffle after).
 fn etb_tutor_aura(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: filter — no Aura subtype filter; using enchantment type as approximation
+    let filter = script::subtype_filter(reg, "Aura");
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
+        filter,
         reveal: true,
     }]
 }

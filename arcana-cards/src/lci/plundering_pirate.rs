@@ -1,28 +1,24 @@
-//! Plundering Pirate — `{2}{R}` 3/2 red Orc Pirate creature.
-//! "When this creature enters, create a Treasure token."
-//!
-//! GAP: Treasure token's activated ability "{T}, Sacrifice this token: Add
-//! one mana of any color" not expressible in TokenDefinition.
+//! Plundering Pirate — `{2}{R}` 3/2 Creature — Orc Pirate.
+//! "When this creature enters, create a Treasure token. (It's an artifact with "{T}, Sacrifice this token: Add one mana of any color.")"
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Plundering Pirate");
-    let orc = reg.interner_mut().intern("Orc");
-    let pirate = reg.interner_mut().intern("Pirate");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(orc);
-    subtypes.0.insert(pirate);
+    let orc_sub = reg.interner_mut().intern("Orc");
+    let pirate_sub = reg.interner_mut().intern("Pirate");
     let _treasure = reg.interner_mut().intern("Treasure");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(orc_sub);
+    subtypes.0.insert(pirate_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}").expect("valid cost")),
@@ -40,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_treasure,
+                effect: plundering_pirate_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_treasure(
+fn plundering_pirate_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -56,16 +52,17 @@ fn etb_treasure(
     let treasure = reg.interner().lookup("Treasure").expect("Treasure interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
-    let token = TokenDefinition {
-        name: treasure,
-        colors: ColorSet::colorless(),
-        types: TypeLine::ARTIFACT.into(),
-        subtypes,
-        power: None,
-        toughness: None,
-        keywords: vec![],
-        // GAP: "{T}, Sacrifice this token: Add one mana of any color" not expressible
-        abilities: vec![],
-    };
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    vec![Effect::CreateToken {
+        controller: trig.controller,
+        token: TokenDefinition {
+            name: treasure,
+            colors: ColorSet::colorless(),
+            types: TypeLine::ARTIFACT.into(),
+            subtypes,
+            power: None,
+            toughness: None,
+            keywords: vec![],
+            abilities: vec![],
+        },
+    }]
 }

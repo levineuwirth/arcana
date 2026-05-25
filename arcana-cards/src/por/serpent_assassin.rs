@@ -1,4 +1,4 @@
-//! Serpent Assassin — `{3}{B}{B}` 2/2 black Creature — Snake Assassin.
+//! Serpent Assassin — `{3}{B}{B}` 2/2 black Snake Assassin creature.
 //! "When this creature enters, you may destroy target nonblack creature."
 
 use arcana_core::effects::Effect;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_destroy_nonblack_creature,
+                effect: etb_destroy_nonblack,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -51,10 +51,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_destroy_nonblack_creature(
+fn etb_destroy_nonblack(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

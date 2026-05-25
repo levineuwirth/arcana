@@ -1,5 +1,9 @@
-//! Acolyte of Affliction — `{2}{B}{G}` 2/3 black-green Human Cleric.
-//! "When this creature enters, mill two cards, then you may return a permanent card from your graveyard to your hand."
+//! Acolyte of Affliction — `{2}{B}{G}` 2/3 black-green creature. "When this
+//! creature enters, mill two cards, then you may return a permanent card from
+//! your graveyard to your hand."
+//!
+//! GAP: effect — "return a permanent card from graveyard to hand" (non-targeted
+//! choice); using ReturnFromGraveyardToHand on a target as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,6 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_return_permanent,
+                effect: etb_mill_reanimate_hand,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -52,7 +57,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_return_permanent(
+fn etb_mill_reanimate_hand(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

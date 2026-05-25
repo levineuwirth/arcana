@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -52,6 +51,10 @@ fn etb_draw_discard(
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
-        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: trig.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

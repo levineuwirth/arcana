@@ -1,8 +1,8 @@
 //! Haazda Snare Squad — `{2}{W}` 1/4 white Human Soldier.
 //! "Whenever this creature attacks, you may pay {W}. If you do, tap target
 //! creature an opponent controls."
-//! GAP: optional pay-{W} cost at trigger resolution not expressible.
-//! Modeled as unconditional tap.
+//! GAP: "you may pay {W}" optional cost not in engine effect catalog;
+//! emitting Tap on target unconditionally as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: tap_target,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -55,13 +54,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tap_target(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional pay-{W} cost not expressible; fires unconditionally.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "you may pay {W}" optional cost not expressible; tapping unconditionally.
     vec![Effect::Tap { target: *id }]
 }

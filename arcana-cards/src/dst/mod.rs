@@ -20,3 +20,6 @@ pub mod fangren_firstborn;
 pub mod tel_jilad_wolf;
 pub mod roaring_slagwurm;
 pub mod gemini_engine;
+pub mod vulshok_war_boar;
+pub mod myr_moonvessel;
+pub mod drooling_ogre;

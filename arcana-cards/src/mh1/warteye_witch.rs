@@ -29,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -36,12 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: creature_dies_scry,
+                effect: on_creature_dies_scry,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_dies_scry(
+fn on_creature_dies_scry(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

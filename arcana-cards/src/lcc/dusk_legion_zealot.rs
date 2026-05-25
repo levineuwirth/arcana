@@ -1,6 +1,6 @@
-//! Dusk Legion Zealot — `{1}{B}` 1/1 black Vampire Soldier.
-//! "When Dusk Legion Zealot enters the battlefield, you draw a card
-//! and you lose 1 life."
+//! Dusk Legion Zealot — `{1}{B}` 1/1 black Vampire Soldier. "When this
+//! creature enters, you draw a card and you lose 1 life." ETB trigger;
+//! draw a card then lose 1 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_effect,
+                effect: etb_draw_lose,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_effect(
+fn etb_draw_lose(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

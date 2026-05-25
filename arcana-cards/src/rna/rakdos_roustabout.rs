@@ -1,20 +1,18 @@
-//! Rakdos Roustabout — `{1}{B}{R}` 3/2 black/red Creature — Ogre Warrior.
+//! Rakdos Roustabout — `{1}{B}{R}` 3/2 black-red Creature — Ogre Warrior.
 //! "Whenever this creature becomes blocked, it deals 1 damage to the player
 //! or planeswalker it's attacking."
-//! GAP: trigger — no 'becomes blocked' condition; using SelfAttacks as closest.
-//! GAP: 'player or planeswalker it's attacking' not accessible; using opponent damage.
+//! Note: "the player it's attacking" = defending player.
 
-use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black() | ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,10 +36,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'becomes blocked' condition; using SelfAttacks as closest
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: blocked_deal_damage,
+                effect: on_blocked_damage_defender,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,20 +46,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocked_deal_damage(
-    state: &GameState,
+fn on_blocked_damage_defender(
+    _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'player or planeswalker being attacked' not accessible; dealing to first opponent
-    let opponents = script::opponents(state, trig.controller);
-    if let Some(p) = opponents.into_iter().next() {
-        vec![Effect::DealDamage {
-            target: DamageTarget::Player(p),
-            amount: 1,
-            source: trig.source,
-        }]
-    } else {
-        Vec::new()
-    }
+    let Some(p) = trig.defending_player() else { return Vec::new(); };
+    vec![Effect::DealDamage {
+        target: DamageTarget::Player(p),
+        amount: 1,
+        source: trig.source,
+    }]
 }

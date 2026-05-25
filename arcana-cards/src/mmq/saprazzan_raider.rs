@@ -1,14 +1,11 @@
 //! Saprazzan Raider — `{2}{U}` 1/2 blue Merfolk.
 //! "When this creature becomes blocked, return it to its owner's hand."
-//! GAP: trigger — "becomes blocked" has no matching TriggerCondition variant.
-//! Using CreatureAttacks as closest structural placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -29,18 +26,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes blocked" has no TriggerCondition;
-                // using SelfAttacks as placeholder.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: return_to_hand,
+                effect: on_blocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn return_to_hand(
+fn on_blocked(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

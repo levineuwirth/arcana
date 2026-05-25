@@ -1,9 +1,9 @@
-//! Hydra Omnivore — `{4}{G}{G}` 8/8 green Creature — Hydra.
+//! Hydra Omnivore — `{4}{G}{G}` 8/8 green creature (Hydra).
 //! "Whenever this creature deals combat damage to an opponent, it deals
 //! that much damage to each other opponent."
 
 use arcana_core::effects::Effect;
-use arcana_core::events::{DamageTarget, GameEvent};
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -27,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(8)),
         toughness: Some(PtValue::Fixed(8)),
         ..Default::default()
@@ -41,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: on_combat_damage,
+                effect: on_damage_dealt,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,20 +50,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_combat_damage(
+fn on_damage_dealt(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // amount = power of self at time of trigger (combat damage dealt)
-    let amount = script::power_of(state, trig.source).max(0) as u32;
+    let n = trig.damage_amount().unwrap_or(0);
+    if n == 0 {
+        return Vec::new();
+    }
+    let damaged = trig.damaged_player();
     let opponents = script::opponents(state, trig.controller);
-    let effects: Vec<Effect> = opponents.into_iter().map(|p| {
-        Effect::DealDamage {
+    let effects: Vec<Effect> = opponents
+        .into_iter()
+        .filter(|p| Some(*p) != damaged)
+        .map(|p| Effect::DealDamage {
             target: DamageTarget::Player(p),
-            amount,
+            amount: n,
             source: trig.source,
-        }
-    }).collect();
+        })
+        .collect();
     vec![Effect::Sequence(effects)]
 }

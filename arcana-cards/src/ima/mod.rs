@@ -18,3 +18,4 @@ pub mod grisly_spectacle;
 pub mod elusive_spellfist;
 pub mod student_of_ojutai;
 pub mod bala_ged_scorpion;
+pub mod sultai_flayer;

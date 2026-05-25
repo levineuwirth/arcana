@@ -1,9 +1,6 @@
-//! Tel-Jilad Wolf — `{2}{G}` 2/2 green Creature — Wolf.
+//! Tel-Jilad Wolf — `{2}{G}` 2/2 green Wolf creature.
 //! "Whenever this creature becomes blocked by an artifact creature, this creature gets
 //! +3/+3 until end of turn."
-//!
-//! # GAP: trigger — "whenever this creature becomes blocked by an artifact creature"
-//! has no matching TriggerCondition variant; using SelfAttacks as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -37,9 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever blocked by an artifact creature" has no variant;
-                // using SelfAttacks as approximation.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
+                // GAP: trigger only when blocked specifically by an artifact creature —
+                // SelfBecomesBlocked has no filter on the blocker type; fires on any block.
                 intervening_if: None,
                 effect: blocked_by_artifact_pump,
                 trigger_zones: vec![Zone::Battlefield],
@@ -52,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn blocked_by_artifact_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

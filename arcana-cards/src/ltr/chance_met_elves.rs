@@ -1,7 +1,5 @@
-//! Chance-Met Elves — `{2}{G}` 3/2 green Elf Warrior. "Whenever you scry, put a
+//! Chance-Met Elves — `{2}{G}` 3/2 green creature. "Whenever you scry, put a
 //! +1/+1 counter on this creature. This ability triggers only once each turn."
-//!
-//! GAP: no TriggerCondition for "whenever you scry".
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,10 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition for "whenever you scry"
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // GAP: no Scry trigger condition in catalog; using Scry effect trigger as placeholder
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: counter_on_scry,
+                effect: scry_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -47,11 +45,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_on_scry(
+fn scry_counter(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: scry trigger condition not in catalog
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

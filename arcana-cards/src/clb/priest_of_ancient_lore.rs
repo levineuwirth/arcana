@@ -1,4 +1,4 @@
-//! Priest of Ancient Lore — `{2}{W}` 2/1 white Dwarf Cleric.
+//! Priest of Ancient Lore — `{2}{W}` 2/1 white Dwarf Cleric creature.
 //! "When this creature enters, you gain 1 life and draw a card."
 
 use arcana_core::effects::Effect;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: gain_life_draw,
+                effect: etb_gain_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,10 +44,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_life_draw(
+fn etb_gain_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::GainLife { player: trig.controller, amount: 1 },

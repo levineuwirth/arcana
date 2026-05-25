@@ -1,4 +1,4 @@
-//! Glory Bearers — `{3}{W}` 3/4 white Enchantment Creature — Human Cleric.
+//! Glory Bearers — `{3}{W}` 3/4 white enchantment creature (Human Cleric).
 //! "Whenever another creature you control attacks, it gets +0/+1 until
 //! end of turn."
 
@@ -8,7 +8,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -54,24 +54,11 @@ fn on_creature_attacks(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // The triggering creature is the attacker; pump it +0/+1.
-    // trig.source is Glory Bearers itself; the attacking creature is
-    // not directly available — approximating pump on trig.source as
-    // best effort.
-    let Some(target) = trig.targets.targets.first() else {
-        return vec![Effect::Pump {
-            target: trig.source,
-            power: 0,
-            toughness: 1,
-            duration: Duration::EndOfTurn,
-            keywords: vec![],
-        }];
-    };
-    let TargetChoice::Object(id) = target else {
+    let Some(entering) = trig.entering_object() else {
         return Vec::new();
     };
     vec![Effect::Pump {
-        target: *id,
+        target: entering,
         power: 0,
         toughness: 1,
         duration: Duration::EndOfTurn,

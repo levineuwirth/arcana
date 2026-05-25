@@ -1,12 +1,12 @@
-//! War Priest of Thune — `{1}{W}` 2/2 white Human Cleric. "When this
-//! creature enters, you may destroy target enchantment."
+//! War Priest of Thune — `{1}{W}` 2/2 white creature. "When this creature
+//! enters, you may destroy target enchantment."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,24 +37,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: destroy_target_enchantment,
+                effect: etb_destroy_enchantment,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
                     ),
-                    count: TargetCount::UpTo(1),
+                    count: TargetCount::Exactly(1),
                     controller: None,
                 }],
             }),
     )
 }
 
-fn destroy_target_enchantment(
+fn etb_destroy_enchantment(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

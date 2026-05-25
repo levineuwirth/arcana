@@ -1,4 +1,4 @@
-//! Wriggling Grub — `{1}{B}` 1/1 black Creature — Worm.
+//! Wriggling Grub — `{1}{B}` 1/1 black Worm creature.
 //! "When this creature dies, create two 1/1 black and green Worm creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_create_two_worms,
+                effect: dies_create_worms,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,20 +42,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_create_two_worms(
+fn dies_create_worms(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let worm = reg.interner().lookup("Worm")
-        .expect("Worm interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(worm);
+    let worm = reg.interner().lookup("Worm").expect("Worm interned during register()");
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(worm);
     let token = TokenDefinition {
         name: worm,
         colors: ColorSet::black() | ColorSet::green(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],

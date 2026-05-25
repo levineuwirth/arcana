@@ -1,6 +1,6 @@
 //! Riddlesmith — `{1}{U}` 2/1 blue Human Artificer.
-//! "Whenever you cast an artifact spell, you may draw a card. If you do,
-//! discard a card."
+//! "Whenever you cast an artifact spell, you may draw a card. If you
+//! do, discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -37,8 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter::new()
-                        .with_types(TypeLine::ARTIFACT.into())),
+                    filter: Some(ObjectFilter::new().with_types(TypeLine::ARTIFACT.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
@@ -53,14 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn artifact_cast_loot(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
-        Effect::Discard {
-            player: trig.controller,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
+        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
     ]
 }

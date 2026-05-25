@@ -1,9 +1,6 @@
-//! Dromad Purebred — `{4}{W}` 1/5 white creature. "Whenever this
-//! creature is dealt damage, you gain 1 life."
-//!
-//! GAP: trigger — TriggerCondition for "whenever this permanent is dealt
-//! damage" is not in the catalog. Using SelfEntersBattlefield as closest
-//! available; verify pipeline will flag.
+//! Dromad Purebred — `{4}{W}` 1/5 white Camel Beast. "Whenever
+//! this creature is dealt damage, you gain 1 life." Damage-taken
+//! self-trigger that gains a flat 1 life regardless of amount.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,10 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition variant for "whenever this creature is dealt damage"
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                trigger_condition: TriggerCondition::SelfIsDealtDamage {
+                    combat_only: false,
+                },
                 intervening_if: None,
-                effect: gain_life_on_damage,
+                effect: gain_one_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +47,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_life_on_damage(
+/// Damage-taken trigger resolution: the controller gains 1 life.
+fn gain_one_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,5 +1,5 @@
-//! Stitcher's Supplier — `{B}` 1/1 black Zombie.
-//! "When this creature enters the battlefield or dies, mill three cards."
+//! Stitcher's Supplier — `{B}` 1/1 black Creature — Zombie.
+//! "When this creature enters or dies, mill three cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn mill_three(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

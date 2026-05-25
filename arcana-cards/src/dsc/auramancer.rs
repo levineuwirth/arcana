@@ -1,17 +1,16 @@
-//! Auramancer — `{2}{W}` 2/2 white Human Wizard creature.
-//! "When this creature enters, you may return target enchantment card from your graveyard
-//! to your hand."
+//! Auramancer — `{2}{W}` 2/2 white Human Wizard. "When this creature enters, you may
+//! return target enchantment card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,10 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,16 +39,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_return_enchantment,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Card {
-                            zone: Zone::Graveyard(0),
-                            filter: ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
-                        },
-                        count: TargetCount::Exactly(1),
-                        controller: None,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
                     },
-                ],
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }

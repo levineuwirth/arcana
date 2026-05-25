@@ -34,3 +34,4 @@ pub mod civic_stalwart;
 pub mod bloodmist_infiltrator;
 pub mod undercity_scavenger;
 pub mod rakdos_roustabout;
+pub mod basilica_bell_haunt;

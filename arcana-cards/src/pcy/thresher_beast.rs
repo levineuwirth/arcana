@@ -1,18 +1,13 @@
-//! Thresher Beast — `{3}{G}{G}` 4/4 green Beast.
-//! "Whenever this creature becomes blocked, defending player sacrifices a land
-//! of their choice."
-//! GAP: trigger — no variant for "becomes blocked"; using SelfAttacks as
-//! closest approximation.
-//! GAP: effect — "defending player sacrifices a land" — Sacrifice effect uses
-//! ObjectFilter::creature() by default; land sacrifice by a specific player
-//! not fully expressible.
+//! Thresher Beast — `{3}{G}{G}` 4/4 Beast.
+//! "Whenever this creature becomes blocked, defending player
+//! sacrifices a land of their choice."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
                 effect: on_blocked,
                 trigger_zones: vec![Zone::Battlefield],
@@ -49,17 +44,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_blocked(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: trigger — "becomes blocked" not in catalog; fires on attack instead.
-    // GAP: effect — defending player sacrifices a land; using opponent sacrifice land filter.
+fn on_blocked(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(defending) = trig.defending_player() else {
+        return Vec::new();
+    };
     vec![Effect::Sacrifice {
-        player: trig.controller,
+        player: defending,
         filter: ObjectFilter {
-            types_any: Some(TypeLine(TypeLine::LAND)),
+            types_any: Some(TypeLine::LAND.into()),
             ..Default::default()
         },
         count: 1,

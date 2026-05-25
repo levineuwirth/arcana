@@ -27,3 +27,7 @@ pub mod dawnhart_geist;
 pub mod estwald_shieldbasher;
 pub mod headless_rider;
 pub mod whispering_wizard;
+pub mod old_rutstein;
+pub mod kessig_flamebreather;
+pub mod blood_servitor;
+pub mod pyre_spawn;

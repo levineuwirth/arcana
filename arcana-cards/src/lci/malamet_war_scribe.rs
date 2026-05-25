@@ -1,10 +1,9 @@
 //! Malamet War Scribe — `{3}{W}{W}` 4/3 white Cat Warrior.
 //! "When this creature enters, creatures you control get +2/+1 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -13,6 +12,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::layers::Duration;
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: pump_creatures,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,17 +47,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_creatures(
+fn on_etb(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, trig.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
+            target: arcana_core::objects::NULL_OBJECT_ID,
             power: 2,
             toughness: 1,
             duration: Duration::EndOfTurn,

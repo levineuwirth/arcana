@@ -1,5 +1,4 @@
 //! Crosstown Courier — `{1}{U}` 2/1 blue Vedalken.
-//! Keywords: Mill (in rules text).
 //! "Whenever this creature deals combat damage to a player, that player mills
 //! that many cards."
 
@@ -7,7 +6,6 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
@@ -33,31 +31,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::new(),
-                    target_filter: TargetFilter::Player,
-                    combat_only: true,
-                },
-                intervening_if: None,
-                effect: mill_on_damage,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::DamageDealt {
+                source_filter: ObjectFilter::new(),
+                target_filter: TargetFilter::Player,
+                combat_only: true,
+            },
+            intervening_if: None,
+            effect: on_combat_damage_player,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn mill_on_damage(
-    state: &GameState,
+fn on_combat_damage_player(
+    _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "that many cards" = this creature's power
-    let power = script::power_of(state, trig.source).max(0) as u32;
-    // GAP: "that player" = the player who was dealt damage; using
-    // trig.controller as placeholder since the damaged player is not in trig.
-    vec![Effect::Mill { player: trig.controller, count: power }]
+    let Some(p) = trig.damaged_player() else {
+        return Vec::new();
+    };
+    let n = trig.damage_amount().unwrap_or(0);
+    if n == 0 {
+        return Vec::new();
+    }
+    vec![Effect::Mill { player: p, count: n }]
 }

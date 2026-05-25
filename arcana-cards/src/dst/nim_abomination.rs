@@ -1,5 +1,6 @@
-//! Nim Abomination — `{2}{B}` 3/4 black Zombie creature.
-//! "At the beginning of your end step, if this creature is untapped, you lose 3 life."
+//! Nim Abomination — `{2}{B}` 3/4 black Zombie. "At the beginning of your end step,
+//! if this creature is untapped, you lose 3 life."
+//! StepBegins End trigger; intervening-if checks untapped state (GAP: none available).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +12,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,10 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_end_step_lose_life,
+                effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +47,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_end_step_lose_life(
+fn on_end_step(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // intervening_if "if this creature is untapped" — using None per convention; GAP: condition dropped
+    // GAP: intervening-if "if this creature is untapped" not expressible with current API
     vec![Effect::LoseLife { player: trig.controller, amount: 3 }]
 }

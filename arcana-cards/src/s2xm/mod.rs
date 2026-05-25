@@ -25,3 +25,7 @@ pub mod peace_strider;
 pub mod painsmith;
 pub mod vedalken_infuser;
 pub mod magus_of_the_abyss;
+pub mod myr_retriever;
+pub mod dire_fleet_hoarder;
+pub mod conclave_naturalists;
+pub mod woodland_champion;

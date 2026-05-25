@@ -1,6 +1,6 @@
 //! Ogre Battledriver — `{2}{R}{R}` 3/3 red Ogre Warrior.
-//! "Whenever another creature you control enters, that creature gets +2/+0
-//! and gains haste until end of turn."
+//! "Whenever another creature you control enters, that creature gets
+//! +2/+0 and gains haste until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -31,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -44,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: pump_entering_creature,
+                effect: on_creature_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,17 +51,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_entering_creature(
+fn on_creature_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // The entering creature is trig.source (the triggering object).
-    // GAP: trig.source here is Ogre Battledriver, not the entering creature.
-    // The ZoneChange trigger's source_id isn't available from trig.source.
-    // Best effort: use trig.source as placeholder.
+    let id = trig.entering_object().unwrap_or(trig.source);
     vec![Effect::Pump {
-        target: trig.source,
+        target: id,
         power: 2,
         toughness: 0,
         duration: Duration::EndOfTurn,

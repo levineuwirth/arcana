@@ -2,9 +2,10 @@
 //! "When this creature enters, you may search your library for any number of
 //! cards named Battalion Foot Soldier, reveal them, put them into your hand,
 //! then shuffle."
-//! GAP: searching for cards by exact name (multiple copies) is not directly
-//! expressible — TutorToHand with a name filter is not in the ObjectFilter
-//! API. Using closest available (creature filter); verify will flag gap.
+//!
+//! GAP: searching for any number of cards by exact name (tutor by name,
+//! multiple copies) is not expressible with TutorToHand's ObjectFilter.
+//! Emitting a single TutorToHand as best-effort (finds one copy).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,27 +38,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_tutor_named,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_tutor_battalion,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn etb_tutor_named(
+fn etb_tutor_battalion(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: searching for "any number of cards named Battalion Foot Soldier"
-    // requires a by-name filter not in ObjectFilter API; using creature tutor
-    // as structural placeholder.
+    // GAP: search for "any number of cards named Battalion Foot Soldier" —
+    // name-based filtering and multi-copy tutor not expressible.
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::creature(),

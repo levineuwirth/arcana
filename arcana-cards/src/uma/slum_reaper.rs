@@ -1,18 +1,18 @@
-//! Slum Reaper — `{3}{B}` 4/2 black Horror.
-//! "When this creature enters, each player sacrifices a creature of their choice."
+//! Slum Reaper — `{3}{B}` 4/2 black creature. "When this creature enters, each
+//! player sacrifices a creature of their choice."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Slum Reaper");
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_all_sac,
+                effect: etb_each_sac_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,18 +44,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_all_sac(
+fn etb_each_sac_creature(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all_players = script::all_players(state);
-    all_players
+    let sac_effects: Vec<Effect> = all_players
         .into_iter()
         .map(|p| Effect::Sacrifice {
             player: p,
             filter: ObjectFilter::creature(),
             count: 1,
         })
-        .collect()
+        .collect();
+    vec![Effect::Sequence(sac_effects)]
 }

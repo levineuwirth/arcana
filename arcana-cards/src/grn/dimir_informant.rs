@@ -1,4 +1,4 @@
-//! Dimir Informant — `{2}{U}` 1/4 blue Human Rogue. "When this creature enters,
+//! Dimir Informant — `{2}{U}` 1/4 blue creature. "When this creature enters,
 //! surveil 2."
 
 use arcana_core::effects::Effect;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: surveil_two,
+                effect: etb_surveil,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn surveil_two(
+fn etb_surveil(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

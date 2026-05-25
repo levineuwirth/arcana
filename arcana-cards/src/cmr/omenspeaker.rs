@@ -1,5 +1,5 @@
-//! Omenspeaker — `{1}{U}` 1/3 blue creature. "When this creature enters,
-//! scry 2."
+//! Omenspeaker — `{1}{U}` 1/3 blue Human Wizard.
+//! "When this creature enters, scry 2."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

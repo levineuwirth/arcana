@@ -1,7 +1,6 @@
 //! Relief Captain — `{2}{W}{W}` 3/2 white Kor Knight Ally.
-//! Keywords: Support (in rules text).
-//! "When this creature enters, support 3. (Put a +1/+1 counter on each of
-//! up to three other target creatures.)"
+//! "When this creature enters, support 3." (Put a +1/+1 counter on each of
+//! up to three other target creatures.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,24 +35,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_support_3,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(3),
-                    controller: None,
-                }],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_support_three,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Creature,
+                count: TargetCount::UpTo(3),
+                controller: None,
+            }],
+        }),
     )
 }
 
-fn etb_support_3(
+fn etb_support_three(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

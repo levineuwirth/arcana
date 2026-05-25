@@ -1,5 +1,5 @@
-//! Blind Creeper — `{1}{B}` 3/3 black Zombie Beast.
-//! "Whenever a player casts a spell, this creature gets -1/-1 until end of turn."
+//! Blind Creeper — `{1}{B}` 3/3 black creature. "Whenever a player casts a
+//! spell, this creature gets -1/-1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

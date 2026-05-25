@@ -1,6 +1,6 @@
-//! Sek'Kuar, Deathkeeper — `{2}{B}{R}{G}` 4/3 legendary black/red/green
-//! Orc Shaman. "Whenever another nontoken creature you control dies,
-//! create a 3/1 black and red Graveborn creature token with haste."
+//! Sek'Kuar, Deathkeeper — `{2}{B}{R}{G}` 4/3 legendary black/red/green Orc
+//! Shaman. "Whenever another nontoken creature you control dies, create a
+//! 3/1 black and red Graveborn creature token with haste."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: create_graveborn_token,
+                effect: on_nontoken_creature_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,20 +53,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_graveborn_token(
+fn on_nontoken_creature_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let graveborn = reg.interner().lookup("Graveborn")
         .expect("Graveborn interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(graveborn);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(graveborn);
     let token = TokenDefinition {
         name: graveborn,
         colors: ColorSet::black() | ColorSet::red(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Haste],

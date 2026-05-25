@@ -37,3 +37,7 @@ pub mod inventive_wingsmith;
 pub mod vault_plunderer;
 pub mod vial_smasher_gleeful_grenadier;
 pub mod razzle_dazzler;
+pub mod discerning_peddler;
+pub mod lazav_familiar_stranger;
+pub mod overzealous_muscle;
+pub mod prickly_pair;

@@ -1,11 +1,10 @@
 //! Ridgescale Tusker — `{3}{G}{G}` 5/5 green Creature — Pangolin Beast.
-//! "When this creature enters, put a +1/+1 counter on each other creature
-//! you control."
+//! "When this creature enters, put a +1/+1 counter on each other creature you
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::objects::NULL_OBJECT_ID;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -32,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(5)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_counter_each,
+                effect: etb_counter_each_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,21 +47,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_counter_each(
+fn etb_counter_each_creature(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-        trig.controller,
-    );
-    let targets: Vec<_> = ids.into_iter().filter(|id| *id != trig.source).collect();
+    let filter = ObjectFilter::creature()
+        .controlled_by(ControllerConstraint::You);
+    let ids = script::ids_matching(state, &filter, trig.controller);
+    // Exclude self
+    let ids: Vec<_> = ids.into_iter().filter(|&id| id != trig.source).collect();
     vec![Effect::ForEach {
-        targets,
+        targets: ids,
         effect: Box::new(Effect::AddCounters {
-            target: NULL_OBJECT_ID,
+            target: arcana_core::objects::NULL_OBJECT_ID,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         }),

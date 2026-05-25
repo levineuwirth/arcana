@@ -1,10 +1,13 @@
-//! Grotag Thrasher — `{4}{R}` 3/3 red Creature — Lizard.
-//! "Whenever this creature attacks, target creature can't block this turn."
+//! Grotag Thrasher — `{4}{R}` 3/3 red creature (Lizard).
+//! "Whenever this creature attacks, target creature can't block this
+//! turn."
 //!
-//! GAP: "can't block this turn" — no blocking-restriction Effect.
-//! Approximated as Tap on the target.
+//! GAP: "target creature can't block this turn" — no Effect variant
+//! for blocking restriction. Using ForbidAttacking as closest
+//! approximation.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -38,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -46,14 +49,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "can't block this turn" — no blocking-restriction Effect.
-    // Approximating as Tap.
-    vec![Effect::Tap { target: *id }]
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "can't block this turn" — no Effect for blocking restriction;
+    // using ForbidAttacking as closest approximation.
+    vec![Effect::ForbidAttacking { target: *id, duration: Duration::EndOfTurn }]
 }

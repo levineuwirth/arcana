@@ -1,17 +1,18 @@
-//! Gemini Engine — `{6}` 3/4 colorless Artifact Creature — Construct.
-//! "Whenever this creature attacks, create a colorless Construct artifact
-//! creature token named Twin that's attacking. Its power is equal to this
-//! creature's power and its toughness is equal to this creature's toughness.
-//! Sacrifice the token at end of combat."
-//! GAP: effect — token P/T equals source's P/T (dynamic); "attacking" state
-//! not expressible with CreateToken; sacrifice at end of combat uses
-//! DelayedAction::Sacrifice + NextEndStep as approximation.
+//! Gemini Engine — `{6}` 3/4 Artifact Creature — Construct.
+//! "Whenever this creature attacks, create a colorless Construct
+//! artifact creature token named Twin that's attacking. Its power is
+//! equal to this creature's power and its toughness is equal to this
+//! creature's toughness. Sacrifice the token at end of combat."
+//!
+//! GAP: token power/toughness equal to this creature's power/toughness
+//! — TokenDefinition requires fixed PtValue; dynamic P/T not supported.
+//! Also "token is attacking" initial state not supported in CreateToken.
+//! CreateTokenSacEot used for the sac-at-end-of-combat portion.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -21,8 +22,8 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Gemini Engine");
-    let twin_name = reg.interner_mut().intern("Twin");
     let construct = reg.interner_mut().intern("Construct");
+    let _twin = reg.interner_mut().intern("Twin");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(construct);
     let chars = Characteristics {
@@ -50,30 +51,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attacks(
-    state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let construct = reg.interner().lookup("Construct")
-        .expect("Construct interned during register()");
-    let twin = reg.interner().lookup("Twin")
+fn on_attacks(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: token P/T equal to this creature's P/T — dynamic P/T in
+    // TokenDefinition not supported. Using fixed 3/4.
+    // GAP: token enters attacking — not supported in CreateTokenSacEot.
+    let twin = reg
+        .interner()
+        .lookup("Twin")
         .expect("Twin interned during register()");
-    let pwr = script::power_of(state, trig.source).max(0);
-    let tgh = script::toughness_of(state, trig.source).max(0);
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(construct);
+    let construct = reg
+        .interner()
+        .lookup("Construct")
+        .expect("Construct interned during register()");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(construct);
     let token = TokenDefinition {
         name: twin,
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
-        subtypes: token_subtypes,
-        power: Some(PtValue::Fixed(pwr)),
-        toughness: Some(PtValue::Fixed(tgh)),
+        subtypes,
+        power: Some(PtValue::Fixed(3)),
+        toughness: Some(PtValue::Fixed(4)),
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: token is not "attacking"; sacrifice at end of combat uses
-    // CreateTokenSacEot as best-effort (sacrifices at next end step).
     vec![Effect::CreateTokenSacEot { controller: trig.controller, token }]
 }

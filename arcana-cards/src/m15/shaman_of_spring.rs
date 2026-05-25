@@ -1,4 +1,4 @@
-//! Shaman of Spring — `{3}{G}` 2/2 green Creature — Elf Shaman.
+//! Shaman of Spring — `{3}{G}` 2/2 green creature (Elf Shaman).
 //! "When this creature enters, draw a card."
 
 use arcana_core::effects::Effect;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

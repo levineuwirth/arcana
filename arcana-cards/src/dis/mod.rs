@@ -9,3 +9,4 @@ pub mod drekavac;
 pub mod whiptail_moloch;
 pub mod ogre_gatecrasher;
 pub mod azorius_aethermage;
+pub mod flame_kin_war_scout;

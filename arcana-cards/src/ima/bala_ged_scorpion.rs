@@ -1,4 +1,4 @@
-//! Bala Ged Scorpion — `{3}{B}` 2/3 black Creature — Scorpion.
+//! Bala Ged Scorpion — `{3}{B}` 2/3 black Scorpion creature.
 //! "When this creature enters, you may destroy target creature with power 1 or less."
 
 use arcana_core::effects::Effect;
@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_destroy_small_creature,
+                effect: etb_destroy_small,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -49,10 +49,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_destroy_small_creature(
+fn etb_destroy_small(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

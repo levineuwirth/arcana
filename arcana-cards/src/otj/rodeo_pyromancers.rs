@@ -1,4 +1,4 @@
-//! Rodeo Pyromancers — `{3}{R}` 3/4 red Human Mercenary.
+//! Rodeo Pyromancers — `{3}{R}` 3/4 red Human Mercenary creature.
 //! "Whenever you cast your first spell each turn, add {R}{R}."
 
 use arcana_core::effects::Effect;
@@ -10,8 +10,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: add_two_red_mana,
+                effect: first_spell_add_mana,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -49,10 +48,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_two_red_mana(
+fn first_spell_add_mana(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: trig.controller,

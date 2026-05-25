@@ -10,3 +10,5 @@ pub mod sea_gate_oracle;
 pub mod shaman_of_the_pack;
 pub mod eyeblight_cullers;
 pub mod farhaven_elf;
+pub mod lys_alana_huntmaster;
+pub mod kor_cartographer;

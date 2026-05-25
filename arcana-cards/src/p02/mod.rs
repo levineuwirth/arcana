@@ -20,3 +20,4 @@ pub mod razorclaw_bear;
 pub mod lurking_nightstalker;
 pub mod brutal_nightstalker;
 pub mod norwood_warrior;
+pub mod abyssal_nightstalker;

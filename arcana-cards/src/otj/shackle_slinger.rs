@@ -1,12 +1,11 @@
-//! Shackle Slinger — `{2}{U}` 3/2 blue Creature — Human Soldier.
-//! "Whenever you cast your second spell each turn, choose target
-//! creature an opponent controls. If it's tapped, put a stun counter
-//! on it. Otherwise, tap it."
+//! Shackle Slinger — `{2}{U}` 3/2 blue creature (Human Soldier).
+//! "Whenever you cast your second spell each turn, choose target creature an
+//! opponent controls. If it's tapped, put a stun counter on it. Otherwise,
+//! tap it."
 //!
-//! GAP: "second spell each turn" trigger — no SpellCast variant
-//! tracks spell-count-per-turn. Using SpellCast as structural
-//! placeholder. GAP: stun counter type not in CounterKind catalog;
-//! conditional "if tapped" check unavailable. Approximated as Tap.
+//! GAP: "second spell each turn" — no TriggerCondition for nth spell cast.
+//! Using SpellCast with OncePerTurn as closest approximation.
+//! GAP: stun counter — CounterKind::Stun not in catalog; tapping only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,16 +44,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "second spell each turn"; SpellCast does not
-                // track per-turn spell count. Using SpellCast as placeholder.
+                // GAP: trigger — "second spell each turn" not supported;
+                // using SpellCast + OncePerTurn as closest approximation.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_second_spell,
+                effect: on_spell_cast,
                 trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
+                frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
@@ -66,14 +65,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_second_spell(
+fn on_spell_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: stun counter type not in CounterKind catalog; "if tapped"
-    // conditional unavailable. Approximating as unconditional Tap.
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "if tapped, put stun counter; otherwise tap" — stun counter
+    // kind not available; emitting Tap unconditionally.
     vec![Effect::Tap { target: *id }]
 }

@@ -1,9 +1,9 @@
-//! Saltskitter — `{3}{W}` 3/4 white Wurm.
-//! "Whenever another creature enters, exile this creature. Return this
-//! creature to the battlefield under its owner's control at the beginning of
-//! the next end step."
+//! Saltskitter — `{3}{W}` 3/4 Wurm.
+//! "Whenever another creature enters, exile this creature. Return
+//! this creature to the battlefield under its owner's control at the
+//! beginning of the next end step."
 
-use arcana_core::effects::{Effect, DelayedWhen, DelayedAction};
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

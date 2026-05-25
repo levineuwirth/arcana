@@ -11,3 +11,5 @@ pub mod bramble_elemental;
 pub mod tukatongue_thallid;
 pub mod dreampod_druid;
 pub mod ondu_giant;
+pub mod auratouched_mage;
+pub mod nest_invader;

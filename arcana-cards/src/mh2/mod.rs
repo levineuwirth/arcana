@@ -20,3 +20,5 @@ pub mod nested_shambler;
 pub mod young_necromancer;
 pub mod imperial_recruiter;
 pub mod etherium_spinner;
+pub mod herd_baloth;
+pub mod nykthos_paragon;

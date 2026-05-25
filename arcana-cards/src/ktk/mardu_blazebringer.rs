@@ -1,7 +1,9 @@
-//! Mardu Blazebringer — `{2}{R}` 4/4 red Ogre Warrior.
-//! "When this creature attacks or blocks, sacrifice it at end of combat."
-//! GAP: no "attacks or blocks" compound trigger; using SelfAttacks as proxy.
-//! GAP: "at end of combat" timing for sacrifice (DelayedWhen::NextEndStep used as approximate proxy).
+//! Mardu Blazebringer — `{2}{R}` 4/4 red creature. "When this creature attacks
+//! or blocks, sacrifice it at end of combat."
+//!
+//! GAP: trigger — "attacks or blocks" compound; using two defs.
+//! GAP: effect — "sacrifice at end of combat"; DelayedWhen has NextEndStep not
+//! EndOfCombat. Using NextEndStep as best-effort.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,10 +38,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "attacks or blocks" compound variant; SelfAttacks used as proxy
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: combat_sacrifice_eot,
+                effect: sac_at_end_of_combat,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: sac_at_end_of_combat,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,12 +57,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn combat_sacrifice_eot(
+fn sac_at_end_of_combat(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at end of combat" step — using NextEndStep as proxy (end step, not end of combat)
+    // GAP: effect — sacrifice at end of combat; using NextEndStep as best-effort
     vec![Effect::DelayedAction {
         source: trig.source,
         controller: trig.controller,

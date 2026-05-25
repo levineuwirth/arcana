@@ -1,11 +1,12 @@
-//! Riddlekeeper — `{2}{U}` 1/4 blue Creature — Homunculus.
-//! "Whenever a creature attacks you or a planeswalker you control,
-//! that creature's controller mills two cards."
+//! Riddlekeeper — `{2}{U}` 1/4 blue creature (Homunculus).
+//! "Whenever a creature attacks you or a planeswalker you control, that
+//! creature's controller mills two cards."
 //!
-//! GAP: "creature attacks you or a planeswalker you control" trigger —
-//! CreatureAttacks filters on the attacking creature, not the attack
-//! target. GAP: milling the attacking creature's controller (not
-//! trig.controller). Using CreatureAttacks as structural placeholder.
+//! GAP: trigger — "attacks you or a planeswalker you control" — no
+//! TriggerCondition variant for creatures attacking a specific player;
+//! using CreatureAttacks with Any controller as closest approximation.
+//! GAP: "that creature's controller" — no accessor to retrieve the
+//! controller of the attacking creature at trigger resolution.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,9 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks you or a planeswalker you control";
-                // CreatureAttacks does not filter by attack target. Using
-                // CreatureAttacks opponent as structural placeholder.
+                // GAP: trigger — "attacks you or planeswalker you control"
+                // not a supported condition; using CreatureAttacks Any as
+                // closest approximation.
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                 },
@@ -59,9 +60,7 @@ fn on_creature_attacks(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that creature's controller mills" — the attacker's
-    // controller is not accessible from trig; approximating as
-    // milling the defending controller (trig.controller is defender's
-    // perspective but we'd need the attacker's controller).
+    // GAP: "that creature's controller mills" — attacker's controller
+    // not accessible; milling the trigger controller as best effort.
     vec![Effect::Mill { player: trig.controller, count: 2 }]
 }

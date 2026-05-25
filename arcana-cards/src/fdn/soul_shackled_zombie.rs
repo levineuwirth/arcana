@@ -1,25 +1,24 @@
 //! Soul-Shackled Zombie — `{3}{B}` 4/2 black Zombie.
-//! "When this creature enters, exile up to two target cards from a single
-//! graveyard. If at least one creature card was exiled this way, each
-//! opponent loses 2 life and you gain 2 life."
-//! GAP: "up to two cards from a single graveyard" — TargetCount::UpTo(2)
-//! but from-same-graveyard constraint is not expressible.
-//! GAP: "if at least one creature card was exiled this way" conditional —
-//! implementing drain unconditionally.
+//! "When this creature enters, exile up to two target cards from a
+//! single graveyard. If at least one creature card was exiled this
+//! way, each opponent loses 2 life and you gain 2 life."
+//! GAP: "from a single graveyard" constraint on multiple targets not
+//! expressible; "if at least one creature card" conditional on what
+//! was exiled not expressible. Emitting exile for both targets and
+//! unconditional life effects.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Soul-Shackled Zombie");
@@ -43,13 +42,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_exile_drain,
+                effect: etb_exile_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::default(),
+                        filter: ObjectFilter::new(),
                     },
                     count: TargetCount::UpTo(2),
                     controller: None,
@@ -58,12 +57,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_exile_drain(
+fn etb_exile_graveyard(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = trig.targets.targets.iter()
+    let mut effects: Vec<Effect> = trig
+        .targets
+        .targets
+        .iter()
         .filter_map(|t| {
             if let TargetChoice::Object(id) = t {
                 Some(Effect::ExileFromGraveyard { target: *id })
@@ -72,7 +74,8 @@ fn etb_exile_drain(
             }
         })
         .collect();
-    // GAP: drain only if a creature was exiled; implementing unconditionally.
+    // GAP: "if at least one creature card" — conditional not expressible;
+    // emitting life effects unconditionally
     let opponents = script::opponents(state, trig.controller);
     for p in opponents {
         effects.push(Effect::LoseLife { player: p, amount: 2 });

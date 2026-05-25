@@ -1,5 +1,5 @@
-//! Kami of the Crescent Moon — `{U}{U}` 1/3 blue legendary Spirit. "At the
-//! beginning of each player's draw step, that player draws an additional card."
+//! Kami of the Crescent Moon — `{U}{U}` 1/3 blue Legendary Spirit.
+//! "At the beginning of each player's draw step, that player draws an additional card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,6 +13,7 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Kami of the Crescent Moon");
@@ -48,14 +49,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_draw_step(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "that player" = the active player whose draw step this is (trig.controller
-    // is the step's active player when whose: Any).
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
-    }]
+    // "that player" = the active player whose draw step this is.
+    // GAP: the "active player" is not directly accessible; using all players as approximation.
+    script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::DrawCards { player: p, count: 1 })
+        .collect()
 }

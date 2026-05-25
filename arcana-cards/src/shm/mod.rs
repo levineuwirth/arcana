@@ -30,3 +30,6 @@ pub mod medicine_runner;
 pub mod wicker_warcrawler;
 pub mod somnomancer;
 pub mod hollowsage;
+pub mod cultbrand_cinder;
+pub mod drowner_initiate;
+pub mod intimidator_initiate;

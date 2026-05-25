@@ -1,6 +1,5 @@
-//! Herd Gnarr — `{3}{G}` 2/2 Beast.
-//! "Whenever another creature you control enters, this creature gets
-//! +2/+2 until end of turn."
+//! Herd Gnarr — `{3}{G}` 2/2 Beast. "Whenever another creature you
+//! control enters, this creature gets +2/+2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -43,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: ally_etb_pump,
+                effect: on_another_creature_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,10 +50,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn ally_etb_pump(
+fn on_another_creature_enters(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

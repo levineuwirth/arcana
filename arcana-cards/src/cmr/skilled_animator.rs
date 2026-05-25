@@ -1,9 +1,9 @@
 //! Skilled Animator — `{2}{U}` 1/3 blue Human Artificer.
 //! "When this creature enters, target artifact you control becomes an artifact
-//! creature with base power and toughness 5/5 for as long as this creature
-//! remains on the battlefield."
-//! GAP: duration "as long as ~ remains on the battlefield" is not a Duration
-//! variant (only EndOfTurn available). Modeled as EndOfTurn.
+//! creature with base power and toughness 5/5 for as long as this creature remains
+//! on the battlefield."
+//! GAP: "for as long as this creature remains on the battlefield" duration for
+//! type + PT change not expressible; Duration::EndOfTurn is the closest available.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,7 +11,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,7 +34,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -43,13 +42,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: animate_artifact,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new()
                             .with_types(TypeLine::ARTIFACT.into())
+                            .without_types(TypeLine::CREATURE.into())
                             .controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
@@ -59,15 +59,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn animate_artifact(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: duration "as long as Skilled Animator remains on the battlefield"
-    // not available; using EndOfTurn as approximation.
+    // GAP: "for as long as source remains" duration; using EndOfTurn as best-effort.
     vec![Effect::SetBasePT {
         target: *id,
         power: 5,

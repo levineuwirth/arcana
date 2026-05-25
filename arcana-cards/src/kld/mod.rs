@@ -45,3 +45,5 @@ pub mod herald_of_the_fair;
 pub mod dukhara_scavenger;
 pub mod toolcraft_exemplar;
 pub mod spireside_infiltrator;
+pub mod reckless_fireweaver;
+pub mod restoration_gearsmith;

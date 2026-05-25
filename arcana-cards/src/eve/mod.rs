@@ -23,3 +23,4 @@ pub mod woodlurker_mimic;
 pub mod shorecrasher_mimic;
 pub mod marshdrinker_giant;
 pub mod tilling_treefolk;
+pub mod kithkin_zealot;

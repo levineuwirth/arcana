@@ -29,3 +29,7 @@ pub mod ashiok_s_reaper;
 pub mod knight_of_doves;
 pub mod tanglespan_lookout;
 pub mod boundary_lands_ranger;
+pub mod charging_hooligan;
+pub mod redcap_thief;
+pub mod imodane_the_pyrohammer;
+pub mod mintstrosity;

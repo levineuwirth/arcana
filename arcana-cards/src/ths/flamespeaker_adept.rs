@@ -1,7 +1,9 @@
 //! Flamespeaker Adept — `{2}{R}` 2/3 red Creature — Human Shaman.
-//! "Whenever you scry, this creature gets +2/+0 and gains first strike until
-//! end of turn."
-//! GAP: trigger — no 'you scry' condition; using CardDrawn(You) as closest proxy.
+//! "Whenever you scry, this creature gets +2/+0 and gains first strike
+//! until end of turn."
+//! GAP: "whenever you scry" — no TriggerCondition variant for scry;
+//! using SelfBecomesTapped as closest approximation (not accurate).
+//! Actually using SelfEntersBattlefield as baseline stub.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -9,11 +11,10 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -38,12 +38,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'you scry' condition; using CardDrawn(You) as closest proxy
-                trigger_condition: TriggerCondition::CardDrawn {
-                    player: ControllerConstraint::You,
-                },
+                // GAP: trigger — "whenever you scry" not available;
+                // no matching TriggerCondition variant
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: scry_pump,
+                effect: on_scry_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn scry_pump(
+fn on_scry_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

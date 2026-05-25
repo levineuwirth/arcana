@@ -2,8 +2,7 @@
 //! "When this creature enters, if you control two or more Gates, gain control
 //! of target creature an opponent controls until end of turn. Untap that
 //! creature. It gains haste until end of turn."
-//! GAP: intervening-if 'two or more Gates' not computable; using None.
-//! GAP: ChangeControl has no 'until end of turn' variant; control change is permanent.
+//! GAP: intervening-if "if you control two or more Gates" — using None.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -11,11 +10,11 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -41,32 +39,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if 'two or more Gates' not computable
+                // GAP: intervening-if "if you control two or more Gates" not expressible
                 intervening_if: None,
-                effect: etb_steal_creature,
+                effect: etb_threaten,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
+                    filter: TargetFilter::Creature,
                     count: TargetCount::Exactly(1),
-                    controller: None,
+                    controller: Some(ControllerConstraint::Opponent),
                 }],
             }),
     )
 }
 
-fn etb_steal_creature(
+fn etb_threaten(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: ChangeControl has no 'until end of turn' variant; control change is permanent
     vec![
-        Effect::ChangeControl { target: *id, new_controller: trig.controller },
+        Effect::ChangeControlEot { target: *id, new_controller: trig.controller },
         Effect::Untap { target: *id },
         Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn },
     ]

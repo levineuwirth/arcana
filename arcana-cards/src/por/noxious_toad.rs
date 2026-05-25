@@ -10,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,7 +24,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -35,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_opponents_discard,
+                effect: on_dies_opponents_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,14 +42,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_opponents_discard(
+fn on_dies_opponents_discard(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    opponents
+    script::opponents(state, trig.controller)
         .into_iter()
-        .map(|p| Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses })
+        .map(|opp| Effect::Discard { player: opp, count: 1, choice: DiscardChoice::ControllerChooses })
         .collect()
 }

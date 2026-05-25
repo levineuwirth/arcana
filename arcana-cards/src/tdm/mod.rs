@@ -31,3 +31,8 @@ pub mod unsparing_boltcaster;
 pub mod watcher_of_the_wayside;
 pub mod embermouth_sentinel;
 pub mod gurmag_nightwatch;
+pub mod trade_route_envoy;
+pub mod rescue_leopard;
+pub mod iceridge_serpent;
+pub mod iridescent_tiger;
+pub mod furious_forebear;

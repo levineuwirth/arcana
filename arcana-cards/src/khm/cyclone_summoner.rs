@@ -1,15 +1,10 @@
-//! Cyclone Summoner — `{5}{U}{U}` 7/7 blue Giant Wizard. "When this creature
-//! enters, if you cast it from your hand, return all permanents to their owners'
-//! hands except for Giants, Wizards, and lands."
-//!
-//! GAP: the "if cast from hand" intervening-if is not expressible; the "return all
-//! permanents except Giants, Wizards, and lands" requires a typed exclusion filter
-//! that is not in the catalog. Using ForEach with creature filter as best-effort,
-//! noting all the gaps.
+//! Cyclone Summoner — `{5}{U}{U}` 7/7 blue creature. "When this creature
+//! enters, if you cast it from your hand, return all permanents to their
+//! owners' hands except for Giants, Wizards, and lands."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -24,6 +19,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cyclone Summoner");
     let giant = reg.interner_mut().intern("Giant");
     let wizard = reg.interner_mut().intern("Wizard");
+    let _giant2 = reg.interner_mut().intern("Giant");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(giant);
     subtypes.0.insert(wizard);
@@ -43,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you cast it from your hand" not expressible
+                // intervening_if: "if you cast it from your hand" — GAP: cast-from-hand check not supported
                 intervening_if: None,
                 effect: bounce_all,
                 trigger_zones: vec![Zone::Battlefield],
@@ -56,14 +52,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn bounce_all(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: cannot exclude Giants/Wizards/lands from the bounce; approximating as
-    // "return all opponent creatures to hand"
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
-    let ids = script::ids_matching(state, &filter, trig.controller);
+    // Return all permanents except Giants, Wizards, and lands
+    let giant_filter = script::subtype_filter(reg, "Giant");
+    let wizard_filter = script::subtype_filter(reg, "Wizard");
+    let all_permanents = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().controlled_by(ControllerConstraint::Any),
+        trig.controller,
+    );
+    let giant_ids = script::ids_matching(state, &giant_filter, trig.controller);
+    let wizard_ids = script::ids_matching(state, &wizard_filter, trig.controller);
+    let land_ids = script::ids_matching(
+        state,
+        &ObjectFilter::new().with_types(TypeLine::LAND.into()).controlled_by(ControllerConstraint::Any),
+        trig.controller,
+    );
+    let excluded: std::collections::HashSet<_> = giant_ids.iter()
+        .chain(wizard_ids.iter())
+        .chain(land_ids.iter())
+        .copied()
+        .collect();
+    let targets: Vec<_> = all_permanents.into_iter()
+        .filter(|id| !excluded.contains(id))
+        .collect();
     vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),
+        targets,
+        effect: Box::new(Effect::ReturnToHand {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+        }),
     }]
 }

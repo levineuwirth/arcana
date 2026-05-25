@@ -1,17 +1,18 @@
-//! Sibsig Icebreakers — `{2}{B}` 2/3 black Zombie.
+//! Sibsig Icebreakers — `{2}{B}` 2/3 black Creature — Zombie.
 //! "When this creature enters, each player discards a card."
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
+use arcana_core::effects::DiscardChoice;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sibsig Icebreakers");
@@ -35,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: each_player_discards,
+                effect: etb_each_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,18 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_discards(
+fn etb_each_discard(
     state: &GameState,
-    trig: &PendingTrigger,
-    _: &CardRegistry,
+    _trig: &PendingTrigger,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let players = script::all_players(state);
-    let effects: Vec<Effect> = players.into_iter()
-        .map(|p| Effect::Discard {
-            player: p,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        })
-        .collect();
-    vec![Effect::Sequence(effects)]
+    script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::Discard { player: p, count: 1, choice: DiscardChoice::Random })
+        .collect()
 }

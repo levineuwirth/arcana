@@ -1,5 +1,8 @@
 //! Fissure Wizard — `{1}{R}` 2/1 red Goblin Wizard.
 //! "When this creature enters, you may discard a card. If you do, draw a card."
+//!
+//! NOTE: "you may discard ... if you do, draw" — emitting discard then draw;
+//! the "you may" optional is not expressible, so it fires unconditionally.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -9,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -36,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: loot,
+                effect: etb_loot,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,11 +46,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn loot(
+fn etb_loot(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // "you may discard a card. If you do, draw a card." — emitting as discard+draw.
+    // GAP: "you may" optional not expressible; fires unconditionally.
     vec![
         Effect::Discard {
             player: trig.controller,

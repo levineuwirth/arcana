@@ -1,5 +1,5 @@
-//! Nimble Innovator — `{3}{U}` 2/2 blue Vedalken Artificer.
-//! "When this creature enters, draw a card."
+//! Nimble Innovator — `{3}{U}` 2/2 blue Vedalken Artificer. "When this
+//! creature enters, draw a card." ETB trigger; draw a card.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

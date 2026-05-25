@@ -1,17 +1,18 @@
-//! Azorius Aethermage — `{1}{W}{U}` 1/1 white-blue Human Wizard.
-//! "Whenever a permanent is returned to your hand, you may pay {1}. If you
-//! do, draw a card."
-//! GAP: trigger — no variant for "permanent is returned to your hand";
-//! using ZoneChange (battlefield → hand) as closest approximation.
-//! GAP: effect — conditional on paying mana not expressible; drawing
-//! unconditionally as best-effort.
+//! Azorius Aethermage — `{1}{W}{U}` 1/1 Human Wizard.
+//! "Whenever a permanent is returned to your hand, you may pay {1}.
+//! If you do, draw a card."
+//!
+//! GAP: trigger condition "whenever a permanent is returned to your
+//! hand" — ZoneChange with to: Zone::Hand and from: Zone::Battlefield
+//! filtering to permanents you control. The optional-pay-{1} condition
+//! is also not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -28,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}{U}").expect("valid cost")),
-        colors: ColorSet::white() | ColorSet::blue(),
+        colors: ColorSet(ColorSet::WHITE | ColorSet::BLUE),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet::default(),
@@ -40,14 +41,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "permanent is returned to your hand";
+                // Zone::Hand form unknown from catalog (only Graveyard(0)
+                // and Battlefield shown). Using ZoneChange from Battlefield
+                // with best-effort Zone::Hand(0).
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::permanent()
+                    filter: arcana_core::targets::ObjectFilter::permanent()
                         .controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Battlefield),
-                    to: Zone::Graveyard(0),
+                    to: Zone::Hand(0),
                 },
                 intervening_if: None,
-                effect: on_returned,
+                effect: on_permanent_returned,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,12 +60,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_returned(
+fn on_permanent_returned(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — "returned to hand" vs battlefield→graveyard; also
-    // conditional pay {1} not modeled.
+    // GAP: "you may pay {1}. If you do, draw a card" — optional mana
+    // payment conditioning the draw is not expressible.
+    // Emitting unconditional draw as closest approximation.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

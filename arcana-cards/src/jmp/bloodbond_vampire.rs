@@ -1,5 +1,4 @@
-//! Bloodbond Vampire — `{2}{B}{B}` 3/3 black Creature — Vampire Shaman
-//! Ally.
+//! Bloodbond Vampire — `{2}{B}{B}` 3/3 black creature (Vampire Shaman Ally).
 //! "Whenever you gain life, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;

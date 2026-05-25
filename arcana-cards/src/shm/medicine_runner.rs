@@ -1,18 +1,19 @@
-//! Medicine Runner — `{1}{G/W}` 2/1 green/white Creature — Elf Cleric.
+//! Medicine Runner — `{1}{G/W}` 2/1 green-white Creature — Elf Cleric.
 //! "When this creature enters, you may remove a counter from target permanent."
-//! GAP: RemoveCounters requires a CounterKind; 'any counter' not expressible.
-//! Using RemoveCounters with PlusOnePlusOne as best-effort approximation.
+//! GAP: no Effect variant for "remove a counter" (RemoveCounters requires
+//! specifying a CounterKind; no "any counter" form); using RemoveCounters with
+//! PlusOnePlusOne as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(arcana_core::targets::ObjectFilter::new()),
+                    filter: TargetFilter::Permanent(ObjectFilter::new()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -58,10 +58,6 @@ fn etb_remove_counter(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'any counter' not expressible; using PlusOnePlusOne as best-effort
-    vec![Effect::RemoveCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    // GAP: "any counter" not available; using PlusOnePlusOne as best effort
+    vec![Effect::RemoveCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

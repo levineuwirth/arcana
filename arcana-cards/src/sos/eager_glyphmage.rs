@@ -1,6 +1,6 @@
-//! Eager Glyphmage — `{3}{W}` 3/3 white Cat Cleric.
-//! "When this creature enters, create a 1/1 white and black Inkling creature
-//! token with flying."
+//! Eager Glyphmage — `{3}{W}` 3/3 Cat Cleric.
+//! "When this creature enters, create a 1/1 white and black Inkling
+//! creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -46,20 +46,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let inkling = reg.interner().lookup("Inkling")
+fn on_etb(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let inkling = reg
+        .interner()
+        .lookup("Inkling")
         .expect("Inkling interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(inkling);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(inkling);
     let token = TokenDefinition {
         name: inkling,
-        colors: ColorSet::white() | ColorSet::black(),
+        colors: ColorSet(ColorSet::WHITE | ColorSet::BLACK),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Flying],

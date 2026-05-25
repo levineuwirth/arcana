@@ -1,12 +1,12 @@
-//! Fleshmad Steed — `{1}{B}` 2/2 Horse.
-//! "Whenever another creature dies, tap this creature."
+//! Fleshmad Steed — `{1}{B}` 2/2 Horse. "Whenever another creature
+//! dies, tap this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,12 +34,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Any),
+                    filter: ObjectFilter::creature(),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: creature_dies_tap_self,
+                effect: on_creature_dies_tap_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,10 +47,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_dies_tap_self(
+fn on_creature_dies_tap_self(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Tap { target: trig.source }]
 }

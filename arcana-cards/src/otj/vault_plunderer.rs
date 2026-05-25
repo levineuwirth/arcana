@@ -1,12 +1,12 @@
-//! Vault Plunderer — `{2}{B}` 3/1 black Human Rogue.
-//! "When this creature enters, target player draws a card and loses 1 life."
+//! Vault Plunderer — `{2}{B}` 3/1 black creature. "When this creature enters,
+//! target player draws a card and loses 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_drain,
+                effect: etb_draw_and_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -45,13 +45,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_drain(
+fn etb_draw_and_lose_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
     vec![
         Effect::DrawCards { player: *p, count: 1 },
         Effect::LoseLife { player: *p, amount: 1 },

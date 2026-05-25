@@ -1,9 +1,12 @@
-//! Eshki, Temur's Roar — `{G}{U}{R}` 2/2 legendary green-blue-red Human Warrior.
-//! "Whenever you cast a creature spell, put a +1/+1 counter on Eshki. If that
-//! spell's power is 4 or greater, draw a card. If that spell's power is 6 or
-//! greater, Eshki deals damage equal to Eshki's power to each opponent."
-//! GAP: effect — checking a spell's power stat and conditional DealDamage based
-//! on casted spell's power not expressible; emitting AddCounters only.
+//! Eshki, Temur's Roar — `{G}{U}{R}` 2/2 Legendary Human Warrior.
+//! "Whenever you cast a creature spell, put a +1/+1 counter on Eshki.
+//! If that spell's power is 4 or greater, draw a card. If that spell's
+//! power is 6 or greater, Eshki deals damage equal to Eshki's power
+//! to each opponent."
+//!
+//! GAP: "if that spell's power is 4 or greater / 6 or greater" —
+//! reading the power of a spell on the stack (not yet a permanent)
+//! is not available via script helpers. Emitting only the counter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -27,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{G}{U}{R}").expect("valid cost")),
-        colors: ColorSet::green() | ColorSet::blue() | ColorSet::red(),
+        colors: ColorSet(ColorSet::GREEN | ColorSet::BLUE | ColorSet::RED),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
@@ -41,13 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::CREATURE)),
+                        types_any: Some(TypeLine::CREATURE.into()),
                         ..Default::default()
                     }),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_creature_spell,
+                effect: on_creature_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,13 +58,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_creature_spell(
+fn on_creature_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — checking spell's power and conditional draw/damage not
-    // expressible; emitting AddCounters only.
+    // GAP: "if that spell's power is 4+ / 6+" — cannot read spell
+    // power from stack. Emitting counter only.
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

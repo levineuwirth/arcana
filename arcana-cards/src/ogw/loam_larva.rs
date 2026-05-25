@@ -31,24 +31,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_tutor_land,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_tutor_land_to_top,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn etb_tutor_land(
+fn etb_tutor_land_to_top(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // Search for a basic land and put it on top (TutorToBattlefield is for
+    // battlefield; use the land-filter tutor shape).
+    // GAP: TutorToHand puts it in hand; no "tutor to top of library" variant
+    // exists. Using PutOnTopOfLibrary is for a known object. Closest
+    // available is TutorToHand — emitting that as best-effort.
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

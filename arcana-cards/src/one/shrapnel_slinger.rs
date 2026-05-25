@@ -1,9 +1,10 @@
-//! Shrapnel Slinger — `{1}{R}` 2/2 red Artifact Creature — Phyrexian Beast.
-//! "When this creature enters, you may sacrifice a creature. When you do,
-//! destroy target artifact an opponent controls."
-//! GAP: "when you do" chained trigger is not expressible with one TriggeredAbilityDef.
-//! Best-effort: ETB trigger with sacrifice + destroy artifact, omitting the
-//! conditionality.
+//! Shrapnel Slinger — `{1}{R}` 2/2 red artifact creature. "When this creature
+//! enters, you may sacrifice a creature. When you do, destroy target artifact
+//! an opponent controls."
+//!
+//! GAP: effect — "when you do" conditional chain after optional sacrifice; no
+//! two-step conditional Effect. Emitting best-effort: sacrifice + destroy target
+//! artifact.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_sac_destroy,
+                effect: etb_sac_destroy_artifact,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -57,15 +58,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_sac_destroy(
+fn etb_sac_destroy_artifact(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: effect — optional "you may sacrifice a creature" gate before destroy; emitting destroy unconditionally
     vec![
-        // GAP: "you may sacrifice a creature" optional cost not modeled.
+        Effect::Sacrifice {
+            player: trig.controller,
+            filter: ObjectFilter::creature(),
+            count: 1,
+        },
         Effect::DestroyPermanent { target: *id },
     ]
 }

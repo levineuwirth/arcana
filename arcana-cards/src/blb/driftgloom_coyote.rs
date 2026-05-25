@@ -1,18 +1,18 @@
-//! Driftgloom Coyote — `{3}{W}{W}` 3/4 white Elemental Coyote. "When this
-//! creature enters, exile target creature an opponent controls until this
-//! creature leaves the battlefield. If that creature had power 2 or less, put a
-//! +1/+1 counter on this creature."
+//! Driftgloom Coyote — `{3}{W}{W}` 3/4 white Elemental Coyote.
+//! "When this creature enters, exile target creature an opponent controls until
+//! this creature leaves the battlefield. If that creature had power 2 or less,
+//! put a +1/+1 counter on this creature."
 //!
-//! GAP: effect — "until this creature leaves the battlefield" delayed return
-//! not expressible in catalog; "if power ≤ 2" conditional counter also not
-//! expressible.
+//! GAP: "until this creature leaves the battlefield" return-on-LTB not expressible;
+//! "if power 2 or less" conditional counter not expressible.
+//! Using ExilePermanent as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -60,9 +60,7 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: effect — "until this creature leaves battlefield" delayed return not
-    // expressible; "if power ≤ 2" conditional counter not expressible.
+    // GAP: "until this creature leaves the battlefield" and "if power 2 or less" not expressible.
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]
 }

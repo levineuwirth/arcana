@@ -54,3 +54,6 @@ pub mod galadhrim_guide;
 pub mod th_oden_king_of_rohan;
 pub mod eastfarthing_farmer;
 pub mod knights_of_dol_amroth;
+pub mod meriadoc_brandybuck;
+pub mod brandywine_farmer;
+pub mod butterbur_bree_innkeeper;

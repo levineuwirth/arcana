@@ -1,17 +1,12 @@
 //! Wanted Scoundrels — `{1}{B}` 4/3 black Human Pirate.
-//! Keywords: Treasure (in rules text).
 //! "When this creature dies, target opponent creates two Treasure tokens."
-//! GAP: Treasure token creation for an opponent (not your own) is not
-//! directly expressible — CreateToken uses `controller` for the token's
-//! controller, but we need a target-opponent's controller. Using target
-//! player read from trig.targets.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,31 +33,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfDies,
-                intervening_if: None,
-                effect: create_treasures_for_opponent,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfDies,
+            intervening_if: None,
+            effect: on_dies_opponent_treasures,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement {
+                filter: arcana_core::targets::TargetFilter::Player,
+                count: arcana_core::targets::TargetCount::Exactly(1),
+                controller: Some(ControllerConstraint::Opponent),
+            }],
+        }),
     )
 }
 
-fn create_treasures_for_opponent(
+fn on_dies_opponent_treasures(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Player(opp) = target else {
-        return Vec::new();
-    };
-    let treasure = reg.interner().lookup("Treasure").expect("Treasure interned during register()");
+    let treasure = reg
+        .interner()
+        .lookup("Treasure")
+        .expect("Treasure interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treasure);
     let token = TokenDefinition {
@@ -75,8 +70,20 @@ fn create_treasures_for_opponent(
         keywords: vec![],
         abilities: vec![],
     };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
     vec![
-        Effect::CreateToken { controller: *opp, token: token.clone() },
-        Effect::CreateToken { controller: *opp, token },
+        Effect::CreateToken {
+            controller: *p,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: *p,
+            token,
+        },
     ]
 }

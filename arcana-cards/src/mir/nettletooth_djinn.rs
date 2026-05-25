@@ -1,7 +1,7 @@
-//! Nettletooth Djinn — `{3}{G}` 4/4 green Creature — Djinn.
+//! Nettletooth Djinn — `{3}{G}` 4/4 green creature (Djinn).
 //! "At the beginning of your upkeep, this creature deals 1 damage to you."
 
-use arcana_core::effects::{Effect};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -26,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -39,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_upkeep,
+                effect: upkeep_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_upkeep(
+fn upkeep_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,10 +1,14 @@
-//! Town Greeter — `{1}{G}` 1/1 green Human Citizen.
-//! "When this creature enters, mill four cards. You may put a land card from
-//! among them into your hand. If you put a Town card into your hand this way,
-//! you gain 2 life."
-//! GAP: effect — "you may put a land card from among them into your hand" and
-//! "Town card" conditional are not in the Effect catalog; emitting Mill 4 as
-//! best-effort.
+//! Town Greeter — `{1}{G}` 1/1 Human Citizen.
+//! Keywords: Mill
+//! "When this creature enters, mill four cards. You may put a land
+//! card from among them into your hand. If you put a Town card into
+//! your hand this way, you gain 2 life."
+//!
+//! GAP: "you may put a land card from among the milled cards into
+//! your hand" — selecting a specific card from the just-milled cards
+//! is not expressible with catalog variants after a Mill effect.
+//! Also "if you put a Town card into your hand this way" is a
+//! conditional based on the player's choice.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,12 +53,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: effect — selecting a land card from milled cards and Town-card
-    // conditional not in catalog; mill only.
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // Mill four is expressible; the rest is a GAP.
+    // GAP: "put a land card from among the milled cards into your hand"
+    // — cannot select specific cards from just-milled group.
+    // GAP: "if you put a Town card into your hand" — conditional on
+    // player choice not expressible.
     vec![Effect::Mill { player: trig.controller, count: 4 }]
 }

@@ -1,5 +1,5 @@
-//! Hornet Harasser — `{2}{B}{B}` 2/2 black creature. "When this creature
-//! dies, target creature gets -2/-2 until end of turn."
+//! Hornet Harasser — `{2}{B}{B}` 2/2 black Goblin Shaman.
+//! "When this creature dies, target creature gets -2/-2 until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

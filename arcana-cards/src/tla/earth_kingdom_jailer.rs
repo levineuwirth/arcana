@@ -1,19 +1,19 @@
-//! Earth Kingdom Jailer — `{2}{W}` 3/3 Human Soldier Ally.
-//! "When this creature enters, exile up to one target artifact,
-//! creature, or enchantment an opponent controls with mana value 3 or
-//! greater until this creature leaves the battlefield."
+//! Earth Kingdom Jailer — `{2}{W}` 3/3 Human Soldier Ally. "When this
+//! creature enters, exile up to one target artifact, creature, or
+//! enchantment an opponent controls with mana value 3 or greater until
+//! this creature leaves the battlefield."
 //!
-//! GAP: "until this creature leaves the battlefield" duration — no
-//! ExilePermanent with duration; using ExilePermanent unconditionally.
+//! GAP: "until this creature leaves the battlefield" — conditional
+//! return on the exile not expressible with ExilePermanent alone;
+//! the delayed-return-when-source-dies pattern requires additional
+//! trigger infrastructure.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -52,7 +52,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::permanent()
+                            ObjectFilter::new()
+                                .with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE | TypeLine::ENCHANTMENT))
                                 .controlled_by(ControllerConstraint::Opponent)
                                 .with_min_cmc(3),
                         ),
@@ -67,10 +68,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_exile_permanent(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: exile duration "until this creature leaves the battlefield" not expressible
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "until this creature leaves the battlefield" — only the exile
+    // half is emitted; return-when-source-leaves requires additional
+    // trigger infrastructure not modeled here.
     vec![Effect::ExilePermanent { target: *id }]
 }

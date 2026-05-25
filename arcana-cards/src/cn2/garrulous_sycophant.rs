@@ -1,8 +1,9 @@
-//! Garrulous Sycophant — `{2}{B}` 1/4 black Creature — Human Advisor.
+//! Garrulous Sycophant — `{2}{B}` 1/4 black Human Advisor creature.
 //! "At the beginning of your end step, if you're the monarch, each opponent loses 1 life
 //! and you gain 1 life."
 //!
-//! # GAP: intervening-if "if you're the monarch" — monarchy mechanic not in the engine.
+//! # Notes
+//! GAP: "if you're the monarch" intervening-if condition — no engine support; using None.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,9 +45,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you're the monarch" not modeled.
+                // GAP: intervening_if — "if you're the monarch" not expressible.
                 intervening_if: None,
-                effect: end_step_monarch_drain,
+                effect: end_step_monarch_effect,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,16 +55,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn end_step_monarch_drain(
+fn end_step_monarch_effect(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you're the monarch" check not modeled.
-    let opponents = script::opponents(state, trig.controller);
-    let mut effects: Vec<Effect> = opponents.into_iter().map(|opp| {
-        Effect::LoseLife { player: opp, amount: 1 }
-    }).collect();
-    effects.push(Effect::GainLife { player: trig.controller, amount: 1 });
-    vec![Effect::Sequence(effects)]
+    let mut effects = vec![Effect::GainLife { player: trig.controller, amount: 1 }];
+    for opp in script::opponents(state, trig.controller) {
+        effects.push(Effect::LoseLife { player: opp, amount: 1 });
+    }
+    effects
 }

@@ -1,8 +1,10 @@
-//! Vraska's Finisher — `{2}{B}` 3/2 black Gorgon Assassin.
-//! "When this creature enters, destroy target creature or planeswalker an
-//! opponent controls that was dealt damage this turn."
-//! GAP: intervening_if — "that was dealt damage this turn" condition not
-//! expressible; using plain target creature an opponent controls.
+//! Vraska's Finisher — `{2}{B}` 3/2 Gorgon Assassin.
+//! "When this creature enters, destroy target creature or planeswalker
+//! an opponent controls that was dealt damage this turn."
+//!
+//! GAP: "that was dealt damage this turn" — ObjectFilter has no
+//! refinement for "was dealt damage this turn". Emitting destroy on
+//! target without the damage-this-turn constraint.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +12,8 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -45,24 +48,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: Some(ControllerConstraint::Opponent),
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: intervening_if — "dealt damage this turn" not checkable.
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "that was dealt damage this turn" — no ObjectFilter for
+    // damage-this-turn tracking.
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

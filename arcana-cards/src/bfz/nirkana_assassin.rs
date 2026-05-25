@@ -1,7 +1,5 @@
-//! Nirkana Assassin — `{2}{B}` 2/3 black Creature — Vampire Assassin
-//! Ally.
-//! "Whenever you gain life, this creature gains deathtouch until end
-//! of turn."
+//! Nirkana Assassin — `{2}{B}` 2/3 black creature (Vampire Assassin Ally).
+//! "Whenever you gain life, this creature gains deathtouch until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;

@@ -1,6 +1,6 @@
-//! Warden of the Eye — `{2}{U}{R}{W}` 3/3 red/blue/white Creature — Djinn Wizard.
-//! "When this creature enters, return target noncreature, nonland card from your graveyard to
-//! your hand."
+//! Warden of the Eye — `{2}{U}{R}{W}` 3/3 red-white-blue Djinn Wizard creature.
+//! "When this creature enters, return target noncreature, nonland card from your graveyard
+//! to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{U}{R}{W}").expect("valid cost")),
-        colors: ColorSet::blue() | ColorSet::red() | ColorSet::white(),
+        colors: ColorSet::red() | ColorSet::blue() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet::default(),
@@ -58,7 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_return_noncreature_nonland(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

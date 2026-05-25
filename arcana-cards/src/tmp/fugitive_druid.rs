@@ -1,18 +1,17 @@
 //! Fugitive Druid — `{3}{G}` 3/2 green Human Druid.
-//! "Whenever this creature becomes the target of an Aura spell, you draw a card."
-//! GAP: trigger — no "becomes target of an Aura spell" TriggerCondition;
-//! using SpellCast(Any) as closest placeholder.
+//! "Whenever this creature becomes the target of an Aura spell, you draw
+//! a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -37,14 +35,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes target of Aura spell" not in catalog;
-                // SpellCast(Any) used as placeholder
-                trigger_condition: TriggerCondition::SpellCast {
-                    filter: None,
+                // "becomes the target of an Aura spell" — closest is SelfBecomesTarget
+                // but it doesn't filter to Aura spells only; using Any controller.
+                trigger_condition: TriggerCondition::SelfBecomesTarget {
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: draw_a_card,
+                effect: draw_card,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +49,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_a_card(
+fn draw_card(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

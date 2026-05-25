@@ -1,13 +1,13 @@
 //! Selhoff Occultist — `{2}{U}` 2/3 blue Human Rogue.
-//! "Whenever this creature or another creature dies, target player mills a
-//! card."
+//! "Whenever this creature or another creature dies, target player
+//! mills a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature(),
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Any),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
@@ -53,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn creature_dies_mill(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };

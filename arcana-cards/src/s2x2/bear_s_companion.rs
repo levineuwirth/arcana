@@ -1,4 +1,4 @@
-//! Bear's Companion — `{2}{G}{U}{R}` 2/2 green-blue-red Human Warrior.
+//! Bear's Companion — `{2}{G}{U}{R}` 2/2 Human Warrior.
 //! "When this creature enters, create a 4/4 green Bear creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -23,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G}{U}{R}").expect("valid cost")),
-        colors: ColorSet::green() | ColorSet::blue() | ColorSet::red(),
+        colors: ColorSet(ColorSet::GREEN | ColorSet::BLUE | ColorSet::RED),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet::default(),
@@ -45,19 +45,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let bear = reg.interner().lookup("Bear").expect("Bear interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(bear);
+fn on_etb(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let bear = reg
+        .interner()
+        .lookup("Bear")
+        .expect("Bear interned during register()");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(bear);
     let token = TokenDefinition {
         name: bear,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         keywords: vec![],

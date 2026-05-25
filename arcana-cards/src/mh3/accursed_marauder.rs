@@ -1,10 +1,11 @@
-//! Accursed Marauder — `{1}{B}` 2/1 black Zombie Warrior. "When this
-//! creature enters, each player sacrifices a nontoken creature of their choice."
+//! Accursed Marauder — `{1}{B}` 2/1 black Zombie Warrior. "When this creature
+//! enters, each player sacrifices a nontoken creature of their choice."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
@@ -12,7 +13,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Accursed Marauder");
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: each_player_sacrifices,
+                effect: etb_each_player_sacrifice,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,14 +46,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_sacrifices(
+fn etb_each_player_sacrifice(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().nontoken();
     script::all_players(state)
         .into_iter()
-        .map(|p| Effect::Sacrifice { player: p, filter: filter.clone(), count: 1 })
+        .map(|p| Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::creature().nontoken(),
+            count: 1,
+        })
         .collect()
 }

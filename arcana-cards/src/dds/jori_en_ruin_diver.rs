@@ -1,5 +1,7 @@
-//! Jori En, Ruin Diver — `{1}{U}{R}` 2/3 red-blue Legendary Merfolk Wizard.
+//! Jori En, Ruin Diver — `{1}{U}{R}` 2/3 blue-red Legendary Creature — Merfolk Wizard.
 //! "Whenever you cast your second spell each turn, draw a card."
+//! GAP: "second spell each turn" count tracking not in TriggerCondition; using SpellCast
+//! with OncePerTurn as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,13 +37,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "second spell each turn" — OncePerTurn fires on first, not second
+                // GAP: "second spell cast this turn" tracking not in catalog; using SpellCast
+                // OncePerTurn as approximation.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: draw_card,
+                effect: second_spell_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -49,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_card(
+fn second_spell_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

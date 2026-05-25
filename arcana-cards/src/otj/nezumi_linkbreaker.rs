@@ -2,7 +2,9 @@
 //! "When this creature dies, create a 1/1 red Mercenary creature token
 //! with '{T}: Target creature you control gets +1/+0 until end of turn.
 //! Activate only as a sorcery.'"
-//! GAP: token activated ability not expressible via TokenDefinition.abilities.
+//!
+//! NOTE: The token's activated ability is deferred engine work recognized
+//! by subtype; it is not authored here.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +14,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -40,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: create_mercenary_token,
+                effect: dies_create_mercenary,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_mercenary_token(
+fn dies_create_mercenary(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -66,7 +67,6 @@ fn create_mercenary_token(
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
-        // GAP: token activated ability not expressible via TokenDefinition.abilities
     };
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

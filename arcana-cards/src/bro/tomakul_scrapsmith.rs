@@ -1,10 +1,10 @@
-//! Tomakul Scrapsmith — `{2}{R}` 2/1 red Human Artificer. "When this creature
-//! enters, mill three cards. You may put an artifact card from among the cards
-//! milled this way into your hand. If you don't, put a +1/+1 counter on this
-//! creature."
+//! Tomakul Scrapsmith — `{2}{R}` 2/1 red Human Artificer.
+//! "When this creature enters, mill three cards. You may put an artifact card from
+//! among the cards milled this way into your hand. If you don't, put a +1/+1 counter
+//! on this creature."
 //!
-//! GAP: effect — "from among milled cards" conditional (artifact to hand or
-//! counter on self) not expressible; emitting Mill 3 as partial approximation.
+//! GAP: "from among the cards milled this way" selective choice not expressible.
+//! Using Mill 3 as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,7 +54,6 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "put artifact from milled cards to hand, else counter" not
-    // expressible; emitting Mill 3 only.
+    // GAP: "put artifact from among milled cards into hand" selective choice not expressible.
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

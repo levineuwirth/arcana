@@ -1,15 +1,16 @@
-//! Cosi's Trickster — `{U}` 1/1 blue Creature — Merfolk Wizard.
+//! Cosi's Trickster — `{U}` 1/1 blue Merfolk Wizard creature.
 //! "Whenever an opponent shuffles their library, you may put a +1/+1 counter on this creature."
 //!
-//! # GAP: "whenever an opponent shuffles their library" has no TriggerCondition variant;
-//! effect fn returns Vec::new().
+//! # Notes
+//! GAP: "whenever an opponent shuffles their library" — no TriggerCondition for library shuffle.
+//! Using ZoneChange as placeholder (no accurate substitute). Effect approximated.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,14 +39,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "whenever an opponent shuffles their library" — no TriggerCondition variant;
-                // using SpellCast by opponent as closest approximation.
+                // GAP: trigger — "opponent shuffles their library" has no TriggerCondition;
+                // using SpellCast (opponent searching) as rough approximation.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::Opponent,
                 },
                 intervening_if: None,
-                effect: opponent_shuffles_counter,
+                effect: shuffle_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,15 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opponent_shuffles_counter(
+fn shuffle_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "whenever an opponent shuffles" — trigger condition is an approximation.
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

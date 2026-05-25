@@ -1,4 +1,4 @@
-//! Deadbridge Shaman — `{2}{B}` 3/1 black Creature — Elf Shaman.
+//! Deadbridge Shaman — `{2}{B}` 3/1 black creature (Elf Shaman).
 //! "When this creature dies, target opponent discards a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
@@ -6,7 +6,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,7 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
+                }],
             }),
     )
 }
@@ -50,11 +54,11 @@ fn on_dies(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard {
-        player: *p,
-        count: 1,
-        choice: DiscardChoice::ControllerChooses,
-    }]
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
+    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::ControllerChooses }]
 }

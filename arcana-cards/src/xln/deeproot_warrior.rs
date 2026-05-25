@@ -1,4 +1,4 @@
-//! Deeproot Warrior — `{1}{G}` 2/2 green Merfolk Warrior. "Whenever this creature
+//! Deeproot Warrior — `{1}{G}` 2/2 green creature. "Whenever this creature
 //! becomes blocked, it gets +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
@@ -35,10 +35,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: no TriggerCondition::SelfBecomesBlocked variant; using SelfAttacks as best-effort
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: pump_when_blocked,
+                effect: blocked_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_when_blocked(
+fn blocked_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

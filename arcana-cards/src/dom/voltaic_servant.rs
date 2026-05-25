@@ -1,5 +1,5 @@
-//! Voltaic Servant — `{2}` 1/3 colorless Artifact Creature — Construct.
-//! "At the beginning of your end step, untap target artifact."
+//! Voltaic Servant — `{2}` 1/3 colorless Artifact Creature. "At the beginning
+//! of your end step, untap target artifact."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: untap_target_artifact,
+                effect: untap_artifact,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -54,10 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn untap_target_artifact(
+fn untap_artifact(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

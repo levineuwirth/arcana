@@ -1,11 +1,11 @@
-//! Wizened Mentor — `{1}{W}` 2/2 white Creature — Zombie Cleric.
-//! "Whenever an opponent activates an ability of a permanent that isn't
-//! a mana ability, you create a 1/1 white Zombie creature token. This
-//! ability triggers only once each turn."
+//! Wizened Mentor — `{1}{W}` 2/2 white creature (Zombie Cleric).
+//! "Whenever an opponent activates an ability of a permanent that isn't a
+//! mana ability, you create a 1/1 white Zombie creature token. This ability
+//! triggers only once each turn."
 //!
-//! GAP: trigger condition "opponent activates a non-mana ability of a
-//! permanent" — no matching TriggerCondition variant; using SelfAttacks
-//! as structural placeholder.
+//! GAP: no TriggerCondition for "opponent activates a non-mana ability";
+//! using closest available trigger. Using StepBegins as a placeholder;
+//! this is a best-effort stub — the correct trigger is not in the catalog.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -15,6 +15,8 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -32,6 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -40,11 +43,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "opponent activates a non-mana ability of
-                // a permanent"; no matching TriggerCondition variant.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // GAP: trigger — "opponent activates a non-mana permanent
+                // ability" has no matching TriggerCondition variant.
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
                 intervening_if: None,
-                effect: on_opponent_activates,
+                effect: create_zombie_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -52,7 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_opponent_activates(
+fn create_zombie_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

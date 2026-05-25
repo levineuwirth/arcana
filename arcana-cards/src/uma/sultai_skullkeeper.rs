@@ -1,4 +1,4 @@
-//! Sultai Skullkeeper — `{1}{U}` 2/1 blue Snake Shaman.
+//! Sultai Skullkeeper — `{1}{U}` 2/1 blue Snake Shaman creature.
 //! "When this creature enters, mill two cards."
 
 use arcana_core::effects::Effect;
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_mill_two(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Mill { player: trig.controller, count: 2 }]
 }

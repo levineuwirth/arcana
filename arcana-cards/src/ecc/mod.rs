@@ -10,3 +10,5 @@ pub mod incremental_blight;
 pub mod shatter_the_sky;
 pub mod sinister_gnarlbark;
 pub mod skinrender;
+pub mod bane_of_progress;
+pub mod soul_snuffers;

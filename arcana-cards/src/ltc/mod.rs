@@ -3,3 +3,4 @@ pub mod windswift_slice;
 pub mod too_greedily_too_deep;
 pub mod boromir_gondor_s_hope;
 pub mod the_gaffer;
+pub mod beregond_of_the_guard;

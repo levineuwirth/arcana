@@ -1,17 +1,16 @@
 //! Howling Wolf — `{2}{G}{G}` 2/2 green Creature — Wolf.
 //! "When this creature enters, you may search your library for up to three
-//! cards named Howling Wolf, reveal them, put them into your hand, then
-//! shuffle."
-//!
-//! GAP: TutorToHand cannot filter by card name (only ObjectFilter types/colors);
-//! a single TutorToHand Wolf is used as best effort; "up to three" not expressible.
+//! cards named Howling Wolf, reveal them, put them into your hand, then shuffle."
+//! GAP: effect — TutorToHand searches for one card; "up to three named" is not
+//! directly modeled. Emitting three TutorToHand calls (each optional) as
+//! best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -32,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_wolves,
+                effect: etb_search_wolves,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,13 +47,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_wolves(
+fn etb_search_wolves(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: name filter not available; using subtype Wolf filter as best effort;
-    // "up to three" copies not expressible — returning one TutorToHand only
-    let filter = script::subtype_filter(reg, "Wolf");
-    vec![Effect::TutorToHand { player: trig.controller, filter, reveal: true }]
+    // GAP: "up to three named Howling Wolf" — TutorToHand approximation;
+    // name-specific filter and "up to three" not modeled.
+    vec![
+        Effect::TutorToHand {
+            player: trig.controller,
+            filter: ObjectFilter::creature(),
+            reveal: true,
+        },
+        Effect::TutorToHand {
+            player: trig.controller,
+            filter: ObjectFilter::creature(),
+            reveal: true,
+        },
+        Effect::TutorToHand {
+            player: trig.controller,
+            filter: ObjectFilter::creature(),
+            reveal: true,
+        },
+    ]
 }

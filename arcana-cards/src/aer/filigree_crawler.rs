@@ -1,4 +1,4 @@
-//! Filigree Crawler — `{4}` 2/2 colorless Artifact Creature — Insect.
+//! Filigree Crawler — `{4}` 2/2 colorless artifact creature (Insect).
 //! "When this creature dies, create a 1/1 colorless Thopter artifact
 //! creature token with flying."
 
@@ -25,6 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()

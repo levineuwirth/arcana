@@ -1,17 +1,18 @@
-//! Scab-Clan Giant — `{4}{R}{G}` 4/5 red green Creature — Giant Warrior.
+//! Scab-Clan Giant — `{4}{R}{G}` 4/5 red-green Creature — Giant Warrior.
 //! "When this creature enters, it fights target creature an opponent controls
 //! chosen at random."
-//!
-//! GAP: "chosen at random" from opponent creatures not expressible with
-//! target_requirements (requires player choice, not random selection);
-//! using target creature as best effort.
+//! GAP: effect — "chosen at random" (random target from opponent's creatures)
+//! is not in the catalog. Using a targeted fight with TargetRequirement as
+//! best approximation (random selection not modeled).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter, TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,12 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_fight,
+                effect: etb_fight_random,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -57,13 +59,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_fight(
+fn etb_fight_random(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "chosen at random" not enforced; target is player-chosen
+    // GAP: "chosen at random" — using targeted fight, random selection not modeled.
     vec![Effect::Fight { a: trig.source, b: *id }]
 }

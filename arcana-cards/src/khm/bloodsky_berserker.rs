@@ -1,9 +1,10 @@
-//! Bloodsky Berserker — `{1}{B}` 1/1 Human Berserker.
-//! "Whenever you cast your second spell each turn, put two +1/+1
-//! counters on this creature. It gains menace until end of turn."
+//! Bloodsky Berserker — `{1}{B}` 1/1 Human Berserker. "Whenever you
+//! cast your second spell each turn, put two +1/+1 counters on this
+//! creature. It gains menace until end of turn."
 //!
-//! GAP: "your second spell each turn" — no TriggerCondition for Nth
-//! spell this turn; using SpellCast as closest, noting the gap.
+//! GAP: "second spell each turn" tracking — no TriggerCondition variant
+//! for Nth-spell-this-turn ordering. Using SpellCast + OncePerTurn as
+//! the closest approximation.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -40,13 +41,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "second spell each turn" not in catalog; using SpellCast
+                // GAP: trigger — "second spell each turn"; using SpellCast
+                // OncePerTurn as closest available.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: second_spell_counters,
+                effect: on_second_spell,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -54,10 +56,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn second_spell_counters(
+fn on_second_spell(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::AddCounters {

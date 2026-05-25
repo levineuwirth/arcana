@@ -1,18 +1,20 @@
-//! Storm Caller — `{2}{R}` 3/2 red creature. "When this creature enters,
-//! it deals 2 damage to each opponent."
+//! Storm Caller — `{2}{R}` 3/2 red Ogre Shaman. "When this
+//! creature enters, it deals 2 damage to each opponent." ETB
+//! trigger that enumerates opponents at resolution and emits one
+//! `DealDamage` per opponent.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Storm Caller");
@@ -38,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_deal_2_each_opponent,
+                effect: etb_damage_each_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,17 +48,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_deal_2_each_opponent(
+/// ETB trigger: deal 2 damage to each opponent — enumerate
+/// opponents from the live state and emit one `DealDamage` per
+/// player, wrapped in a `Sequence`.
+fn etb_damage_each_opponent(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    script::opponents(state, trig.controller)
+    let opps = script::opponents(state, trig.controller);
+    let damages: Vec<Effect> = opps
         .into_iter()
         .map(|p| Effect::DealDamage {
             target: DamageTarget::Player(p),
             amount: 2,
             source: trig.source,
         })
-        .collect()
+        .collect();
+    vec![Effect::Sequence(damages)]
 }

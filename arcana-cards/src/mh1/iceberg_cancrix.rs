@@ -1,15 +1,15 @@
 //! Iceberg Cancrix — `{1}{U}` 0/4 blue Snow Creature — Crab.
-//! "Whenever another snow permanent you control enters, you may have target
-//! player mill two cards."
-//! GAP: Snow supertype filtering is not supported by ObjectFilter;
-//! ZoneChange filter uses plain permanent filter as approximation.
+//! "Whenever another snow permanent you control enters, you may have
+//! target player mill two cards."
+//! GAP: "snow permanent" subtype filter not available via ObjectFilter;
+//! using general permanent ZoneChange with You controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,16 +36,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "another snow permanent you control" — Snow supertype
-                // not supported in ObjectFilter; using any permanent you control.
+                // GAP: "snow permanent" — snow supertype filter not in ObjectFilter;
+                // using any permanent you control entering
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::permanent()
-                        .controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::new().controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: snow_enters_mill,
+                effect: snow_etb_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -53,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn snow_enters_mill(
+fn snow_etb_mill(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };

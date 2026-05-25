@@ -1,13 +1,13 @@
 //! Inspiring Unicorn — `{2}{W}{W}` 2/2 white Unicorn.
-//! "Whenever this creature attacks, creatures you control get +1/+1 until
-//! end of turn."
+//! "Whenever this creature attacks, creatures you control get +1/+1
+//! until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::objects::NULL_OBJECT_ID;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -15,7 +15,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Inspiring Unicorn");
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_pump_all,
+                effect: attack_pump_all,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,21 +46,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump_all(
+fn attack_pump_all(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, trig.controller);
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    ids.into_iter()
+        .map(|id| Effect::Pump {
+            target: id,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,
             keywords: vec![],
-        }),
-    }]
+        })
+        .collect()
 }

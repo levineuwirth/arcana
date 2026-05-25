@@ -1,7 +1,6 @@
-//! Marshdrinker Giant — `{3}{G}{G}` 4/3 green Giant Warrior.
-//! "When this creature enters, destroy target Island or Swamp an
-//! opponent controls."
-//! Targets a land permanent (Island or Swamp) an opponent controls.
+//! Marshdrinker Giant — `{3}{G}{G}` 4/3 green Giant Warrior. "When this
+//! creature enters, destroy target Island or Swamp an opponent controls."
+//! ETB trigger targeting an opponent's Island or Swamp; destroy it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,6 +13,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Marshdrinker Giant");
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
+                        ObjectFilter::permanent()
                             .with_types(TypeLine::LAND.into())
                             .controlled_by(ControllerConstraint::Opponent),
                     ),
@@ -60,7 +60,11 @@ fn etb_destroy_land(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

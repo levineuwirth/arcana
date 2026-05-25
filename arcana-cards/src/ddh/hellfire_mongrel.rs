@@ -1,19 +1,19 @@
-//! Hellfire Mongrel — `{2}{R}` 2/2 red Elemental Dog.
-//! "At the beginning of each opponent's upkeep, if that player has two or fewer cards in hand,
-//! this creature deals 2 damage to that player."
-//! GAP: intervening-if "if that player has two or fewer cards in hand" not modeled; emitting None.
+//! Hellfire Mongrel — `{2}{R}` 2/2 red Elemental Dog creature.
+//! "At the beginning of each opponent's upkeep, if that player has two or fewer cards in
+//! hand, this creature deals 2 damage to that player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -43,9 +43,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Opponent,
                 },
-                // GAP: intervening-if "if that player has two or fewer cards in hand" not modeled
                 intervening_if: None,
-                effect: deal_two_damage,
+                effect: opponent_upkeep_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,14 +52,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_two_damage(
-    _state: &GameState,
+fn opponent_upkeep_damage(
+    state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DealDamage {
-        target: DamageTarget::Player(trig.controller),
-        amount: 2,
-        source: trig.source,
-    }]
+    // GAP: "that player" = the player whose upkeep this is; approximating with
+    // opponents(). Each opponent checked individually.
+    let opponents = script::opponents(state, trig.controller);
+    let mut effects = Vec::new();
+    for p in opponents {
+        if script::hand_size(state, p) <= 2 {
+            effects.push(Effect::DealDamage {
+                target: DamageTarget::Player(p),
+                amount: 2,
+                source: trig.source,
+            });
+        }
+    }
+    effects
 }

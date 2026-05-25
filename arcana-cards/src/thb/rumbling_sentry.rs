@@ -1,4 +1,5 @@
-//! Rumbling Sentry — `{3}{W}{W}` 3/6 white Giant.
+//! Rumbling Sentry — `{3}{W}{W}` 3/6 Giant.
+//! Keywords: Scry (not as a keyword ability — it's the trigger effect)
 //! "When this creature enters, scry 1."
 
 use arcana_core::effects::Effect;
@@ -42,10 +43,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Scry { player: trig.controller, count: 1 }]
 }

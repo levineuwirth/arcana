@@ -1,4 +1,4 @@
-//! Enatu Golem — `{6}` colorless 3/5 Artifact Creature — Golem.
+//! Enatu Golem — `{6}` 3/5 colorless Artifact Creature — Golem.
 //! "When this creature dies, you gain 4 life."
 
 use arcana_core::effects::Effect;
@@ -21,7 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{6}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn dies_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GainLife { player: trig.controller, amount: 4 }]
 }

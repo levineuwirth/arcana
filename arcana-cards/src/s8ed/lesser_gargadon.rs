@@ -1,15 +1,12 @@
-//! Lesser Gargadon — `{2}{R}{R}` 6/4 Beast.
-//! "Whenever this creature attacks or blocks, sacrifice a land."
-//!
-//! GAP: no TriggerCondition for "attacks or blocks"; using SelfAttacks
-//! for the attacks half only.
+//! Lesser Gargadon — `{2}{R}{R}` 6/4 Beast. "Whenever this creature
+//! attacks or blocks, sacrifice a land."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,10 +33,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks or blocks" not in catalog; attacks only
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_sac_land,
+                effect: sac_land,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: sac_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,14 +52,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_sac_land(
+fn sac_land(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Sacrifice {
         player: trig.controller,
-        filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
         count: 1,
     }]
 }

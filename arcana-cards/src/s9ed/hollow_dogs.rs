@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attack_pump,
+                effect: on_attack_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attack_pump(
+fn on_attack_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

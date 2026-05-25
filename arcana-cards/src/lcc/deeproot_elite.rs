@@ -1,21 +1,18 @@
 //! Deeproot Elite — `{1}{G}` 1/1 green Merfolk Warrior.
-//! "Whenever another Merfolk you control enters, put a +1/+1 counter on
-//! target Merfolk you control."
+//! "Whenever another Merfolk you control enters, put a +1/+1 counter
+//! on target Merfolk you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Deeproot Elite");
@@ -45,13 +42,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     from: None,
                     to: Zone::Battlefield,
                 },
+                // GAP: "another Merfolk" — subtype filter not applied to ZoneChange filter here;
+                // triggers on any creature you control entering
                 intervening_if: None,
-                effect: merfolk_enters_counter,
+                effect: merfolk_etb_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -60,16 +60,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn merfolk_enters_counter(
+fn merfolk_etb_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::AddCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

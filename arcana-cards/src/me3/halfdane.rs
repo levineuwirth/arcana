@@ -1,18 +1,17 @@
 //! Halfdane — `{1}{W}{U}{B}` 3/3 legendary white/blue/black Shapeshifter.
-//! "At the beginning of your upkeep, change Halfdane's base power and
-//! toughness to the power and toughness of target creature other than
-//! Halfdane until the end of your next upkeep."
-//! GAP: duration "until the end of your next upkeep" is not a Duration
-//! variant; using EndOfTurn as approximation.
+//! "At the beginning of your upkeep, change Halfdane's base power and toughness
+//! to the power and toughness of target creature other than Halfdane until the
+//! end of your next upkeep."
+//! GAP: "until end of your next upkeep" duration not expressible; target creature's
+//! P/T lookup not available via PendingTrigger accessors for upkeep triggers.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter, TargetCount, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: copy_pt,
+                effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -58,20 +56,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn copy_pt(
+fn on_upkeep(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id);
-    let toughness = script::toughness_of(state, *id);
-    // GAP: duration "until end of your next upkeep" not available; using EndOfTurn.
+    let p = arcana_core::script::power_of(state, *id);
+    let t = arcana_core::script::toughness_of(state, *id);
+    // GAP: "until end of your next upkeep" duration; using EndOfTurn as approximation.
     vec![Effect::SetBasePT {
         target: trig.source,
-        power,
-        toughness,
+        power: p,
+        toughness: t,
         duration: Duration::EndOfTurn,
     }]
 }

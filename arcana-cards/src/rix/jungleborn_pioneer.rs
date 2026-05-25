@@ -1,6 +1,6 @@
-//! Jungleborn Pioneer — `{2}{G}` 2/2 green Merfolk Scout.
-//! "When Jungleborn Pioneer enters the battlefield, create a 1/1 blue
-//! Merfolk creature token with hexproof."
+//! Jungleborn Pioneer — `{2}{G}` 2/2 green Merfolk Scout. "When this creature
+//! enters, create a 1/1 blue Merfolk creature token with hexproof."
+//! ETB trigger; create a 1/1 blue Merfolk token with Hexproof.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_effect,
+                effect: etb_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,19 +45,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_effect(
+fn etb_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let merfolk_id = reg.interner().lookup("Merfolk").expect("Merfolk interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(merfolk_id);
+    let merfolk = reg.interner().lookup("Merfolk").expect("Merfolk interned");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(merfolk);
     let token = TokenDefinition {
-        name: merfolk_id,
+        name: merfolk,
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Hexproof],

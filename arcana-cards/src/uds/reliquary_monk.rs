@@ -10,7 +10,7 @@ use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,15 +38,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_destroy_artifact_or_enchantment,
+                effect: on_dies_destroy_artifact_or_enchantment,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter {
-                            types_any: Some(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
-                            ..Default::default()
-                        },
+                        ObjectFilter::new().with_types_any(
+                            TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)
+                        ),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -56,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_destroy_artifact_or_enchantment(
+fn on_dies_destroy_artifact_or_enchantment(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

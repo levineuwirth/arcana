@@ -1,7 +1,8 @@
 //! Rushing-Tide Zubera — `{2}{U}{U}` 3/3 blue Creature — Zubera Spirit.
 //! "When this creature dies, if 4 or more damage was dealt to it this turn,
 //! draw three cards."
-//! GAP: intervening-if 'damage dealt to it this turn' not computable; using None.
+//! GAP: intervening-if clause "if 4 or more damage was dealt to it this turn"
+//! is not expressible; using None and drawing unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -37,9 +37,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
-                // GAP: intervening-if '4 or more damage dealt to it this turn' not computable
+                // GAP: intervening-if "if 4 or more damage was dealt to it this turn" not expressible
                 intervening_if: None,
-                effect: dies_draw_three,
+                effect: on_dies_draw_three,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_draw_three(
+fn on_dies_draw_three(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

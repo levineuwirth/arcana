@@ -41,3 +41,4 @@ pub mod dwarven_priest;
 pub mod aviation_pioneer;
 pub mod highland_game;
 pub mod cavalry_drillmaster;
+pub mod aethershield_artificer;

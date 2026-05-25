@@ -1,7 +1,6 @@
 //! Graven Abomination — `{3}` 3/1 colorless Artifact Creature — Horror.
 //! "Whenever this creature attacks, exile target card from defending player's
 //! graveyard."
-//! GAP: 'defending player' not accessible from trig; using target player's graveyard.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,7 @@ use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -37,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_exile_from_graveyard,
+                effect: on_attack_exile_from_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -52,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_exile_from_graveyard(
+fn on_attack_exile_from_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

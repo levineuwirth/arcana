@@ -1,9 +1,8 @@
-//! Harvestrite Host — `{2}{W}` 3/3 white Rabbit Citizen.
-//! "Whenever this creature or another Rabbit you control enters, target creature you control gets
-//! +1/+0 until end of turn. Then draw a card if this is the second time this ability has resolved
-//! this turn."
-//! GAP: "second time this ability has resolved this turn" — per-turn resolution counter not in catalog;
-//! emitting pump only.
+//! Harvestrite Host — `{2}{W}` 3/3 white Rabbit Citizen creature.
+//! "Whenever this creature or another Rabbit you control enters, target creature you
+//! control gets +1/+0 until end of turn. Then draw a card if this is the second time
+//! this ability has resolved this turn."
+//! GAP: "second time this ability has resolved this turn" tracking not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,8 +10,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter,
-    TargetCount, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -47,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: pump_target,
+                effect: rabbit_enters_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -61,14 +59,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_target(
+fn rabbit_enters_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "draw a card if this is the second time this ability resolved this turn" — no resolution counter
+    // GAP: "draw a card if this is the second time this ability has resolved this turn"
+    // not expressible.
     vec![Effect::Pump {
         target: *id,
         power: 1,

@@ -1,8 +1,8 @@
-//! Chub Toad — `{2}{G}` 1/1 green Frog creature.
-//! "Whenever this creature blocks or becomes blocked, it gets +2/+2 until end of turn."
-//! GAP: trigger — "blocks or becomes blocked" — using DeclareBlockers step as closest;
-//! no single TriggerCondition covers both blocking and being blocked simultaneously.
-//! Using SelfAttacks as a placeholder; the full trigger is a GAP.
+//! Chub Toad — `{2}{G}` 1/1 green Frog. "Whenever this creature blocks or becomes
+//! blocked, it gets +2/+2 until end of turn."
+//! SelfBlocks trigger (covers both blocks and being blocked is approximated).
+//! GAP: SelfBecomesBlocked is separate condition; using both triggers via one ability
+//! is not possible; using SelfBlocks as primary trigger.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -13,7 +13,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,20 +27,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
-    // GAP: trigger — "blocks or becomes blocked" not in TriggerCondition catalog
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
                 effect: on_blocks_pump,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
+                intervening_if: None,
+                effect: on_becomes_blocked_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,6 +55,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_blocks_pump(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Pump {
+        target: trig.source,
+        power: 2,
+        toughness: 2,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
+}
+
+fn on_becomes_blocked_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

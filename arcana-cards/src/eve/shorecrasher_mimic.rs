@@ -1,7 +1,7 @@
-//! Shorecrasher Mimic — `{1}{G/U}` 2/1 green-blue Creature — Shapeshifter.
+//! Shorecrasher Mimic — `{1}{G/U}` 2/1 green-blue Shapeshifter.
 //! "Whenever you cast a spell that's both green and blue, this creature has
-//! base power and toughness 5/3 until end of turn and gains trample until end
-//! of turn."
+//! base power and toughness 5/3 until end of turn and gains trample until
+//! end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -33,26 +33,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        colors: Some(ColorSet::green() | ColorSet::blue()),
-                        ..Default::default()
-                    }),
-                    caster: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: pump_and_trample,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SpellCast {
+                filter: Some(ObjectFilter {
+                    colors: Some(ColorSet::green() | ColorSet::blue()),
+                    ..Default::default()
+                }),
+                caster: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: on_green_blue_spell,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn pump_and_trample(
+fn on_green_blue_spell(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

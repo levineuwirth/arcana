@@ -1,6 +1,5 @@
 //! Phyrexian Rager — `{2}{B}` 2/2 black Phyrexian Horror.
-//! "When Phyrexian Rager enters the battlefield, you draw a card and you
-//! lose 1 life."
+//! "When this creature enters, you draw a card and you lose 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,18 +36,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: rager_etb,
+                effect: etb_draw_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn rager_etb(
+fn etb_draw_lose_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },

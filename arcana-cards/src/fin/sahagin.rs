@@ -1,7 +1,10 @@
-//! Sahagin — `{1}{U}` 1/3 blue Merfolk Warrior.
-//! "Whenever you cast a noncreature spell, if at least four mana was spent to cast it, put a +1/+1 counter on this creature and it can't be blocked this turn."
-//! GAP: "if at least four mana was spent to cast it" intervening-if not expressible.
-//! GAP: "can't be blocked this turn" effect not in catalog.
+//! Sahagin — `{1}{U}` 1/3 blue creature. "Whenever you cast a noncreature spell,
+//! if at least four mana was spent to cast it, put a +1/+1 counter on this
+//! creature and it can't be blocked this turn."
+//!
+//! GAP: intervening_if — "if at least four mana was spent" not expressible.
+//! GAP: effect — "can't be blocked this turn" (self unblockable) not expressible.
+//! Emitting counter only as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,14 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(
-                        ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
-                    ),
+                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if at least four mana was spent" not expressible
-                intervening_if: None,
-                effect: noncreature_counter_unblockable,
+                intervening_if: None, // GAP: intervening_if — "if at least four mana was spent"
+                effect: noncreature_cast_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,12 +53,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn noncreature_counter_unblockable(
+fn noncreature_cast_counter(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "can't be blocked this turn" effect not in catalog
+    // GAP: effect — "can't be blocked this turn" not expressible
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

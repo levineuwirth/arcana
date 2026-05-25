@@ -42,3 +42,4 @@ pub mod vinereap_mentor;
 pub mod seasoned_warrenguard;
 pub mod thieving_otter;
 pub mod beza_the_bounding_spring;
+pub mod hazardroot_herbalist;

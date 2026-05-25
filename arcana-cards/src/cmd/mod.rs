@@ -10,3 +10,4 @@ pub mod false_prophet;
 pub mod goblin_cadets;
 pub mod celestial_force;
 pub mod monk_realist;
+pub mod sigil_captain;

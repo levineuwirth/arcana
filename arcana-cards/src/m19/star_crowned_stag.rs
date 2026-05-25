@@ -1,12 +1,14 @@
-//! Star-Crowned Stag — `{3}{W}` 3/3 white Elk. "Whenever this creature attacks,
-//! tap target creature defending player controls."
+//! Star-Crowned Stag — `{3}{W}` 3/3 white creature. "Whenever this creature
+//! attacks, tap target creature defending player controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,19 +37,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: tap_defender,
+                effect: tap_defender_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                    ),
                     count: TargetCount::Exactly(1),
-                    controller: Some(ControllerConstraint::Opponent),
+                    controller: None,
                 }],
             }),
     )
 }
 
-fn tap_defender(
+fn tap_defender_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

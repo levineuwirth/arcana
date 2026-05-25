@@ -1,17 +1,19 @@
-//! Hungry Mist — `{2}{G}{G}` 6/2 green Elemental.
+//! Hungry Mist — `{2}{G}{G}` 6/2 green Elemental creature.
 //! "At the beginning of your upkeep, sacrifice this creature unless you pay {G}{G}."
-//! GAP: "unless you pay {G}{G}" optional cost not in effect catalog; emitting Sacrifice only.
+//! GAP: "unless you pay" (optional mana payment to avoid sacrifice) is not expressible;
+//! emitting unconditional sacrifice as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -51,12 +53,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn upkeep_sacrifice(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you pay {G}{G}" optional mana payment not in catalog
+    // GAP: "unless you pay {G}{G}" optional mana payment not expressible.
     vec![Effect::Sacrifice {
         player: trig.controller,
-        filter: ObjectFilter::creature(),
+        filter: ObjectFilter::permanent(),
         count: 1,
     }]
 }

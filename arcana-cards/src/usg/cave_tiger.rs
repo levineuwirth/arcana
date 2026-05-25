@@ -1,10 +1,7 @@
-//! Cave Tiger — `{2}{G}` 2/2 green creature. "Whenever this creature
-//! becomes blocked by a creature, this creature gets +1/+1 until end
-//! of turn."
-//!
-//! GAP: trigger — no TriggerCondition for "whenever this creature becomes
-//! blocked by a creature". Using SelfAttacks as closest available; verify
-//! pipeline will flag.
+//! Cave Tiger — `{2}{G}` 2/2 green Cat. "Whenever this creature
+//! becomes blocked by a creature, this creature gets +1/+1 until
+//! end of turn." Self-blocked trigger granting a temporary pump
+//! to the source creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -23,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let cat = reg.interner_mut().intern("Cat");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(cat);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G}").expect("valid cost")),
@@ -34,14 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition for "whenever this creature becomes blocked"
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: blocked_pump,
+                effect: pump_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +47,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocked_pump(
+/// On becoming blocked, give Cave Tiger +1/+1 until end of turn.
+fn pump_self(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

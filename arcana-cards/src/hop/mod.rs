@@ -9,3 +9,6 @@ pub mod silverglade_elemental;
 pub mod rumbling_slum;
 pub mod flamekin_harbinger;
 pub mod battlegate_mimic;
+pub mod bogardan_firefiend;
+pub mod nefashu;
+pub mod noxious_ghoul;

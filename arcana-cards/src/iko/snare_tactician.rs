@@ -1,19 +1,17 @@
-//! Snare Tactician — `{2}{W}` 2/3 white Creature — Human Soldier.
-//! "Whenever you cycle a card, tap target creature an opponent controls."
+//! Snare Tactician — `{2}{W}` 2/3 white creature (Human Soldier).
+//! "Whenever you cycle a card, tap target creature an opponent
+//! controls."
 //!
-//! GAP: "whenever you cycle a card" trigger — no TriggerCondition
-//! variant for cycling. Using CardDiscarded as structural placeholder
-//! (cycling involves discarding).
+//! GAP: "whenever you cycle a card" — no TriggerCondition for the
+//! Cycling discard event. Using CardDiscarded You as closest
+//! approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -42,8 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever you cycle a card"; no TriggerCondition
-                // variant. Using CardDiscarded as structural placeholder.
+                // GAP: trigger — "whenever you cycle a card" — no
+                // TriggerCondition for Cycling; using CardDiscarded You
+                // as closest approximation.
                 trigger_condition: TriggerCondition::CardDiscarded {
                     player: ControllerConstraint::You,
                 },
@@ -53,7 +52,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -67,7 +67,11 @@ fn on_cycle(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::Tap { target: *id }]
 }

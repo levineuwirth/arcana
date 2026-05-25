@@ -1,17 +1,19 @@
-//! Jon Irenicus, the Exile — `{2}{U}{B}` 3/5 blue/black Legendary Creature — Elf Wizard.
-//! "At the beginning of your end step, draw a card if your library has more cards in it than
-//! target opponent's library. Otherwise, each opponent mills five cards."
+//! Jon Irenicus, the Exile — `{2}{U}{B}` 3/5 blue-black Legendary Creature — Elf Wizard.
+//! "At the beginning of your end step, draw a card if your library has more cards in it
+//! than target opponent's library. Otherwise, each opponent mills five cards."
+//! Keywords (Scryfall-parsed): Mill (handled via trigger)
 //!
-//! # GAP: conditional "if your library has more cards than target opponent's library" comparison
-//! between two players' library sizes is not directly expressible without accessing target player
-//! state; emitting opponent mill unconditionally as best approximation.
+//! # Notes
+//! GAP: "draw a card if your library has more cards than target opponent's library" —
+//! intervening-if condition comparing library sizes requires script helpers but no
+//! Conditional Effect variant with a scriptable predicate; using script to compute inline.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -47,24 +49,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: end_step_draw_or_mill,
+                effect: end_step_library_compare,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
+                target_requirements: vec![TargetRequirement::target_player()],
             }),
     )
 }
 
-fn end_step_draw_or_mill(
+fn end_step_library_compare(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if your library has more cards than target opponent's library" conditional not
-    // expressible without cross-player library comparison; emitting mill for all opponents.
-    let opponents = script::opponents(state, trig.controller);
-    let effects: Vec<Effect> = opponents.into_iter().map(|p| {
-        Effect::Mill { player: p, count: 5 }
-    }).collect();
-    vec![Effect::Sequence(effects)]
+    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Player(opp) = target else { return Vec::new(); };
+    let my_lib = script::library_size(state, trig.controller);
+    let opp_lib = script::library_size(state, *opp);
+    if my_lib > opp_lib {
+        vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+    } else {
+        script::opponents(state, trig.controller)
+            .into_iter()
+            .map(|p| Effect::Mill { player: p, count: 5 })
+            .collect()
+    }
 }

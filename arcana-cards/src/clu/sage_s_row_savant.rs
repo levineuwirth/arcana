@@ -1,5 +1,5 @@
-//! Sage's Row Savant — `{1}{U}` 2/1 blue Vedalken Wizard.
-//! "When this creature enters, scry 2."
+//! Sage's Row Savant — `{1}{U}` 2/1 blue creature. "When this creature
+//! enters, scry 2."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: scry_two,
+                effect: etb_scry_2,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,10 +44,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn scry_two(
+fn etb_scry_2(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Scry { player: trig.controller, count: 2 }]
 }

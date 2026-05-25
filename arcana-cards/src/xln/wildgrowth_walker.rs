@@ -1,8 +1,7 @@
-//! Wildgrowth Walker — `{1}{G}` 1/3 green Elemental.
-//! "Whenever a creature you control explores, put a +1/+1 counter on this creature and you gain
-//! 3 life."
-//! GAP: trigger — "whenever a creature explores" (explore mechanic) not in catalog;
-//! using ZoneChange as closest.
+//! Wildgrowth Walker — `{1}{G}` 1/3 green Elemental creature.
+//! "Whenever a creature you control explores, put a +1/+1 counter on this creature and
+//! you gain 3 life."
+//! GAP: Explore trigger condition not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,14 +35,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — explore mechanic not in catalog
+                // GAP: Explore trigger condition not in catalog; using ZoneChange creature
+                // you control enters as closest approximation.
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: counter_and_life,
+                effect: explore_counter_gain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,10 +51,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_and_life(
+fn explore_counter_gain(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::AddCounters {

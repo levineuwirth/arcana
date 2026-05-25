@@ -1,18 +1,17 @@
-//! Kazuul Warlord — `{4}{R}` 3/3 red Creature — Minotaur Warrior Ally.
-//! "Whenever this creature or another Ally you control enters, you may
-//! put a +1/+1 counter on each Ally creature you control."
+//! Kazuul Warlord — `{4}{R}` 3/3 red creature (Minotaur Warrior Ally).
+//! "Whenever this creature or another Ally you control enters, you may put
+//! a +1/+1 counter on each Ally creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -31,6 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
+                    filter: arcana_core::targets::ObjectFilter::creature()
                         .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
@@ -62,9 +62,12 @@ fn on_ally_enters(
     let ally_filter = script::subtype_filter(reg, "Ally")
         .controlled_by(ControllerConstraint::You);
     let ids = script::ids_matching(state, &ally_filter, trig.controller);
-    ids.into_iter().map(|id| Effect::AddCounters {
-        target: id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }).collect()
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::AddCounters {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        }),
+    }]
 }

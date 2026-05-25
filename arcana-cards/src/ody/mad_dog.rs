@@ -1,8 +1,9 @@
 //! Mad Dog — `{1}{R}` 2/2 red Creature — Dog.
 //! "At the beginning of your end step, if this creature didn't attack or come
 //! under your control this turn, sacrifice it."
-//! GAP: intervening-if 'didn't attack or come under your control this turn' not computable;
-//! using None and emitting Sacrifice unconditionally.
+//! GAP: intervening-if "didn't attack or come under your control this turn"
+//! state-tracking condition not expressible; using intervening_if: None
+//! and emitting Sacrifice unconditionally as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +15,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -41,9 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if 'didn't attack or come under your control this turn' not computable
+                // GAP: "if this creature didn't attack or come under your
+                // control this turn" not expressible
                 intervening_if: None,
-                effect: end_step_sacrifice,
+                effect: on_end_step_sacrifice,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,12 +52,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn end_step_sacrifice(
+fn on_end_step_sacrifice(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if creature didn't attack or come under control this turn
+    // GAP: should only fire if didn't attack/come under control this turn
     vec![Effect::Sacrifice {
         player: trig.controller,
         filter: ObjectFilter::new(),

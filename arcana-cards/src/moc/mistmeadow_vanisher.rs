@@ -1,20 +1,20 @@
-//! Mistmeadow Vanisher — `{2}{W/U}` 3/2 blue/white Creature — Kithkin Wizard.
-//! "Whenever this creature becomes tapped, exile up to one target
-//! nonland, nontoken permanent. Return that card to the battlefield
-//! under its owner's control at the beginning of the next end step."
+//! Mistmeadow Vanisher — `{2}{W/U}` 3/2 blue-white creature (Kithkin
+//! Wizard). "Whenever this creature becomes tapped, exile up to one
+//! target nonland, nontoken permanent. Return that card to the
+//! battlefield under its owner's control at the beginning of the next
+//! end step."
 //!
-//! GAP: "becomes tapped" trigger — no TriggerCondition variant.
-//! Using SelfAttacks as structural placeholder (attacking taps).
-//! Effect: ExilePermanent + DelayedAction ReturnFromExileToBattlefield.
+//! GAP: "return to battlefield under its owner's control at beginning
+//! of next end step" — ReturnFromExileToBattlefield exists but the
+//! delayed scheduling to end step is approximated via DelayedAction.
+//! Owner rather than controller is not distinguishable.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,16 +43,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes tapped"; no TriggerCondition variant.
-                // Using SelfAttacks as structural placeholder.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: on_tap,
+                effect: on_tapped,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
+                        ObjectFilter::default()
                             .without_types(TypeLine::LAND.into())
                             .nontoken(),
                     ),
@@ -63,13 +61,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_tap(
+fn on_tapped(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![
         Effect::ExilePermanent { target: *id },
         Effect::DelayedAction {

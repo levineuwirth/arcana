@@ -1,18 +1,13 @@
-//! A-Imperial Subduer — `{1}{W}` 3/1 Human Samurai.
-//! "Whenever a Samurai or Warrior you control attacks alone, tap
-//! target creature you don't control."
-//!
-//! GAP: no TriggerCondition for "attacks alone" filter; using
-//! CreatureAttacks as closest available.
+//! A-Imperial Subduer — `{1}{W}` 3/1 Human Samurai. "Whenever a Samurai
+//! or Warrior you control attacks alone, tap target creature you don't
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,21 +36,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "attacks alone" condition not in TriggerCondition catalog
+                // GAP: trigger — "Samurai or Warrior attacks alone";
+                // CreatureAttacks cannot filter for "attacks alone".
+                // Using CreatureAttacks with Samurai-or-Warrior filter
+                // as closest approximation.
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                 },
                 intervening_if: None,
-                effect: attacks_alone_tap,
+                effect: on_samurai_warrior_attacks_alone,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature()
-                                .controlled_by(ControllerConstraint::Opponent),
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                         ),
-                        count: arcana_core::targets::TargetCount::Exactly(1),
+                        count: TargetCount::Exactly(1),
                         controller: None,
                     },
                 ],
@@ -63,10 +60,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_alone_tap(
+fn on_samurai_warrior_attacks_alone(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

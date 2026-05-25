@@ -1,6 +1,5 @@
-//! Spireside Infiltrator — `{2}{R}` 3/2 red Human Rogue.
-//! "Whenever this creature becomes tapped, it deals 1 damage to each opponent."
-//! GAP: no "becomes tapped" TriggerCondition; using SelfAttacks as proxy.
+//! Spireside Infiltrator — `{2}{R}` 3/2 red creature. "Whenever this creature
+//! becomes tapped, it deals 1 damage to each opponent."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -37,8 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "becomes tapped" variant; SelfAttacks used as proxy
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
                 effect: tapped_damage_opponents,
                 trigger_zones: vec![Zone::Battlefield],
@@ -53,8 +51,7 @@ fn tapped_damage_opponents(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    opponents
+    script::opponents(state, trig.controller)
         .into_iter()
         .map(|p| Effect::DealDamage {
             target: DamageTarget::Player(p),

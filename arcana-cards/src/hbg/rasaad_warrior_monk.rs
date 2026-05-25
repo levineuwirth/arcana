@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_create_three_soldiers,
+                effect: dies_create_soldiers,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,19 +45,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_create_three_soldiers(
+fn dies_create_soldiers(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(soldier);
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(soldier);
     let token = TokenDefinition {
         name: soldier,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],

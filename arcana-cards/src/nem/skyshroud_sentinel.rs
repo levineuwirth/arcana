@@ -1,20 +1,23 @@
-//! Skyshroud Sentinel — `{2}{G}` 1/1 green Creature — Elf.
+//! Skyshroud Sentinel — `{2}{G}` 1/1 green Elf creature.
 //! "When this creature enters, you may search your library for up to three cards named
 //! Skyshroud Sentinel, reveal them, put them into your hand, then shuffle."
 //!
-//! # GAP: TutorToHand with specific-name filter is not expressible; emitting a generic
-//! creature tutor as best approximation.
+//! # Notes
+//! GAP: "up to three cards named Skyshroud Sentinel" — TutorToHand supports one card and
+//! has no named-card filter. Using TutorToHand with Elf creature filter as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Skyshroud Sentinel");
@@ -38,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_copies,
+                effect: etb_search_copies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,16 +49,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_copies(
+fn etb_search_copies(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "up to three cards named Skyshroud Sentinel" — specific-name filter not in ObjectFilter;
-    // emitting a single creature tutor as best-effort approximation.
+    // GAP: search for up to three named copies — using single TutorToHand with creature filter.
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: arcana_core::targets::ObjectFilter::creature(),
+        filter: ObjectFilter::creature(),
         reveal: true,
     }]
 }

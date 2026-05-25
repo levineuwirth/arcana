@@ -1,4 +1,4 @@
-//! Tunnel Surveyor — `{2}{U}` 2/2 blue Human Detective.
+//! Tunnel Surveyor — `{2}{U}` 2/2 blue Human Detective creature.
 //! "When this creature enters, create a 1/1 white Glimmer enchantment creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: create_glimmer_token,
+                effect: etb_glimmer_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_glimmer_token(
+fn etb_glimmer_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -57,7 +57,7 @@ fn create_glimmer_token(
     let token = TokenDefinition {
         name: glimmer,
         colors: ColorSet::white(),
-        types: TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE),
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),

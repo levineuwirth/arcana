@@ -1,10 +1,11 @@
-//! Tenacious Pup — `{G}` 1/2 green Creature — Wolf.
+//! Tenacious Pup — `{G}` 1/2 green Wolf creature.
 //! "When Tenacious Pup enters the battlefield, you gain 1 life. You get a one-time boon
 //! with 'When you cast a creature spell, that creature enters the battlefield with an
 //! additional +1/+1 counter, trample counter, and vigilance counter on it.'"
 //!
-//! # GAP: "one-time boon" (an emblematic delayed triggered ability) is not modeled.
-//! Only the ETB gain-1-life portion is emitted.
+//! # Notes
+//! GAP: "one-time boon" emblem/effect granting a replacement effect — no boon/emblem Effect
+//! variant. Modeled as ETB gain 1 life only; boon effect is omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -50,9 +51,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "one-time boon" delayed triggered ability for counters on next creature cast
-    // is not expressible with the Effect catalog.
+    // GAP: one-time boon granting replacement for creature ETB — no boon/emblem Effect variant.
     vec![Effect::GainLife { player: trig.controller, amount: 1 }]
 }

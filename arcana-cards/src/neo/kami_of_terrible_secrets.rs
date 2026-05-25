@@ -1,9 +1,11 @@
-//! Kami of Terrible Secrets — `{3}{B}` 3/4 black Creature — Spirit. "When
-//! this creature enters, if you control an artifact and an enchantment, you
-//! draw a card and you gain 1 life."
+//! Kami of Terrible Secrets — `{3}{B}` 3/4 black Spirit creature.
+//! "When this creature enters, if you control an artifact and an
+//! enchantment, you draw a card and you gain 1 life."
 //!
-//! GAP: intervening_if — "if you control an artifact and an enchantment" not
-//! expressible; using None.
+//! GAP: intervening-if ("if you control an artifact and an enchantment")
+//! is not expressible via `TriggeredAbilityDef.intervening_if` in the
+//! demonstrated API — emitted as `None`, so the trigger currently fires
+//! unconditionally. The verify pipeline will flag this for human routing.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,9 +39,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening_if — "if you control an artifact and an enchantment" not expressible
+                // GAP: intervening "if you control an artifact and an enchantment"
+                // is not expressible in the demonstrated API.
                 intervening_if: None,
-                effect: etb_draw_gain,
+                effect: etb_draw_and_gain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +50,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_gain(
+/// ETB trigger resolution: controller draws one card and gains one life.
+fn etb_draw_and_gain(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

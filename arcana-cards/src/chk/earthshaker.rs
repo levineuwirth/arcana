@@ -1,14 +1,14 @@
-//! Earthshaker — `{4}{R}{R}` 4/5 red Spirit.
-//! "Whenever you cast a Spirit or Arcane spell, this creature deals 2 damage to each creature
-//! without flying."
-//! GAP: "Spirit or Arcane" spell type/subtype filter not in SpellCast ObjectFilter;
-//! GAP: "each creature without flying" — ForEach over non-flying creatures.
+//! Earthshaker — `{4}{R}{R}` 4/5 red Spirit creature.
+//! "Whenever you cast a Spirit or Arcane spell, this creature deals 2 damage to each
+//! creature without flying."
+//! GAP: no "Arcane" spell type in TypeLine catalog. Using SpellCast You with no filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -16,7 +16,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Earthshaker");
@@ -38,13 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "Spirit or Arcane" filter not in SpellCast ObjectFilter
+                // GAP: no "Spirit or Arcane" spell filter; using SpellCast You no filter.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: damage_non_flying,
+                effect: spirit_arcane_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,20 +51,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn damage_non_flying(
+fn spirit_arcane_damage(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // All creatures, then damage each (GAP: no "without flying" filter in ObjectFilter)
-    let filter = ObjectFilter::creature();
-    let ids = script::ids_matching(state, &filter, trig.controller);
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::DealDamage {
-            target: DamageTarget::Object(NULL_OBJECT_ID),
-            amount: 2,
-            source: trig.source,
-        }),
-    }]
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature(),
+        trig.controller,
+    );
+    ids.into_iter().map(|id| Effect::DealDamage {
+        target: DamageTarget::Object(id),
+        amount: 2,
+        source: trig.source,
+    }).collect()
 }

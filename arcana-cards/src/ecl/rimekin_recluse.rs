@@ -1,4 +1,4 @@
-//! Rimekin Recluse — `{2}{U}` 3/2 blue Creature — Elemental Wizard.
+//! Rimekin Recluse — `{2}{U}` 3/2 blue Elemental Wizard creature.
 //! "When this creature enters, return up to one other target creature to its owner's hand."
 
 use arcana_core::effects::Effect;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_bounce_creature,
+                effect: etb_bounce,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -49,10 +49,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_bounce_creature(
+fn etb_bounce(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

@@ -1,12 +1,12 @@
-//! Embermouth Sentinel — `{2}` 2/1 colorless Artifact Creature — Chimera.
+//! Embermouth Sentinel — `{2}` 2/1 colorless artifact creature (Chimera).
 //! "When this creature enters, you may search your library for a basic
 //! land card, reveal it, then shuffle and put that card on top. If you
 //! control a Dragon, put that card onto the battlefield tapped instead."
 //!
-//! GAP: conditional "if you control a Dragon" — ObjectFilter::creature()
-//! with Dragon subtype exists but TutorToBattlefield / TutorToHand have
-//! no "conditional put on top vs. battlefield" branching. Approximated
-//! as unconditional TutorToHand for basic land.
+//! GAP: "if you control a Dragon, put onto battlefield tapped instead" —
+//! conditional tutor destination (top-of-library vs battlefield tapped)
+//! based on board state not expressible. Emitting TutorToHand with basic
+//! land filter as best effort; Dragon condition dropped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,17 +50,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "if you control a Dragon, put onto battlefield tapped" —
-    // conditional on Dragon subtype presence + battlefield-tapped
-    // tutor variant not expressible. Approximating as TutorToHand.
+    // conditional tutor destination not expressible; using TutorToHand
+    // with basic land filter as best effort.
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+        filter: ObjectFilter::default().with_types(TypeLine::LAND.into()),
         reveal: true,
     }]
 }

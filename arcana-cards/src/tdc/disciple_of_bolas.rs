@@ -1,6 +1,6 @@
 //! Disciple of Bolas — `{3}{B}` 2/1 black Human Wizard.
-//! "When this creature enters, sacrifice another creature. You gain X life
-//! and draw X cards, where X is that creature's power."
+//! "When this creature enters, sacrifice another creature. You gain X life and
+//! draw X cards, where X is that creature's power."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,14 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: sacrifice_and_draw,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You)
-                            .nontoken(),
+                            .controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -56,21 +54,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn sacrifice_and_draw(
+fn on_etb(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, *id).max(0) as u32;
+    let x = script::power_of(state, *id).max(0) as u32;
     vec![
-        Effect::Sacrifice {
-            player: trig.controller,
-            filter: ObjectFilter::creature(),
-            count: 1,
-        },
-        Effect::GainLife { player: trig.controller, amount: power },
-        Effect::DrawCards { player: trig.controller, count: power },
+        Effect::Sacrifice { player: trig.controller, filter: ObjectFilter::creature(), count: 1 },
+        Effect::GainLife { player: trig.controller, amount: x },
+        Effect::DrawCards { player: trig.controller, count: x },
     ]
 }

@@ -1,12 +1,12 @@
-//! Cinder Giant — `{3}{R}` 5/3 Giant.
-//! "At the beginning of your upkeep, this creature deals 2 damage to
-//! each other creature you control."
+//! Cinder Giant — `{3}{R}` 5/3 Giant. "At the beginning of your upkeep,
+//! this creature deals 2 damage to each other creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -15,7 +15,6 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cinder Giant");
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: upkeep_damage_own_creatures,
+                effect: upkeep_damage_creatures,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,20 +49,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_damage_own_creatures(
+fn upkeep_damage_creatures(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature()
-        .controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, trig.controller);
-    ids.into_iter()
-        .filter(|id| *id != trig.source)
-        .map(|id| Effect::DealDamage {
-            target: DamageTarget::Object(id),
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    // Exclude self
+    let targets: Vec<_> = ids.into_iter().filter(|id| *id != trig.source).collect();
+    vec![Effect::ForEach {
+        targets,
+        effect: Box::new(Effect::DealDamage {
+            target: DamageTarget::Object(NULL_OBJECT_ID),
             amount: 2,
             source: trig.source,
-        })
-        .collect()
+        }),
+    }]
 }

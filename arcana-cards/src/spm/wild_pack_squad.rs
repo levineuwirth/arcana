@@ -1,6 +1,6 @@
-//! Wild Pack Squad — `{2}{W}` 2/3 white creature. "At the beginning of combat
-//! on your turn, up to one target creature gains first strike and vigilance
-//! until end of turn."
+//! Wild Pack Squad — `{2}{W}` 2/3 white Human Mercenary.
+//! "At the beginning of combat on your turn, up to one target creature gains first strike
+//! and vigilance until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -63,15 +63,7 @@ fn on_combat(
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::FirstStrike,
-            duration: Duration::EndOfTurn,
-        },
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Vigilance,
-            duration: Duration::EndOfTurn,
-        },
+        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::FirstStrike, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Vigilance, duration: Duration::EndOfTurn },
     ]
 }

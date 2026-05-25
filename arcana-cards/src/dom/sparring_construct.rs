@@ -1,12 +1,12 @@
-//! Sparring Construct — `{1}` 1/1 colorless artifact creature Construct. "When
-//! this creature dies, put a +1/+1 counter on target creature you control."
+//! Sparring Construct — `{1}` 1/1 colorless Artifact Creature — Construct.
+//! "When this creature dies, put a +1/+1 counter on target creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -22,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{1}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),

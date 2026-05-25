@@ -1,13 +1,12 @@
-//! Reki, the History of Kamigawa — `{2}{G}` 1/2 green Legendary Human Shaman.
+//! Reki, the History of Kamigawa — `{2}{G}` 1/2 green Legendary Creature — Human Shaman.
 //! "Whenever you cast a legendary spell, draw a card."
-//! GAP: legendary spell filter not available in SpellCast ObjectFilter; using unfiltered cast.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,13 +35,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: legendary spell filter not in SpellCast ObjectFilter
+                // GAP: no "legendary spell" filter in ObjectFilter; using SpellCast You
+                // with no filter as approximation.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: draw_on_legendary_cast,
+                effect: legendary_spell_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,10 +50,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_on_legendary_cast(
+fn legendary_spell_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

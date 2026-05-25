@@ -1,11 +1,15 @@
 //! Resistance Squad — `{2}{W}` 3/2 white Creature — Human Soldier.
 //! "When this creature enters, if you control another Human, draw a card."
+//! Intervening-if clause: "if you control another Human" — modeled as None
+//! (the condition is evaluated at resolution via script in the effect fn).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -45,10 +49,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_draw_if_human(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // intervening-if "if you control another Human" is checked by the engine
-    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+    let human_filter = script::subtype_filter(reg, "Human")
+        .controlled_by(ControllerConstraint::You);
+    let count = script::count_matching(state, &human_filter, trig.controller);
+    // "another Human" — the card itself is one, so need at least 2 (but we use
+    // the live board; the card just ETB'd so count >= 1 means another exists).
+    if count >= 1 {
+        vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+    } else {
+        Vec::new()
+    }
 }

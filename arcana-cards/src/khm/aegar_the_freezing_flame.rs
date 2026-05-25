@@ -1,13 +1,18 @@
-//! Aegar, the Freezing Flame — `{1}{U}{R}` 3/3 legendary blue/red
-//! creature. "Whenever a creature or planeswalker an opponent controls is
-//! dealt excess damage, if a Giant, Wizard, or spell you controlled dealt
+//! Aegar, the Freezing Flame — `{1}{U}{R}` legendary 3/3 Giant Wizard.
+//! "Whenever a creature or planeswalker an opponent controls is dealt
+//! excess damage, if a Giant, Wizard, or spell you controlled dealt
 //! damage to it this turn, draw a card."
 //!
-//! GAP: trigger — no TriggerCondition for "whenever a creature or
-//! planeswalker an opponent controls is dealt excess damage". Using
-//! DamageDealt as closest available; verify pipeline will flag.
-//! GAP: intervening_if — "if a Giant, Wizard, or spell you controlled
-//! dealt damage to it this turn" not expressible; using None.
+//! GAP: "excess damage" is not a catalog trigger — the closest
+//! expressible match is the generic `DamageDealt` event, which fires on
+//! ANY damage dealt to a matching object. The trigger therefore over-
+//! fires relative to oracle text.
+//! GAP: intervening_if clause ("if a Giant, Wizard, or spell you
+//! controlled dealt damage to it this turn") is not expressible against
+//! the engine's `intervening_if` surface; left as `None`.
+//! GAP: target filter restricted to opponent-controlled creatures —
+//! planeswalker filtering is not in the demonstrated `TypeLine` const
+//! surface.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,6 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(giant);
     subtypes.0.insert(wizard);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{U}{R}").expect("valid cost")),
@@ -39,21 +45,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no variant for "creature or planeswalker takes excess damage"
                 trigger_condition: TriggerCondition::DamageDealt {
                     source_filter: ObjectFilter::new(),
                     target_filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::new()
+                            .with_types(TypeLine::CREATURE.into())
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     combat_only: false,
                 },
-                // GAP: intervening_if — "if a Giant/Wizard/spell you controlled dealt damage this turn"
                 intervening_if: None,
-                effect: excess_damage_draw,
+                effect: draw_a_card,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -61,7 +68,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn excess_damage_draw(
+/// Trigger resolution: the controller draws one card. The oracle gates
+/// this on "excess damage" + an intervening-if check, neither of which
+/// is expressible against the demonstrated trigger API — see the file
+/// doc-comment GAP notes.
+fn draw_a_card(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

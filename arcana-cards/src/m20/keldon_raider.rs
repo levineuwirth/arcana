@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_loot,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,22 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_loot(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "you may discard a card. If you do, draw a card." — modeled as discard
-    // then draw; the optional nature is a GAP (no conditional-pay cost).
     vec![
-        Effect::Discard {
-            player: trig.controller,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
-        Effect::DrawCards {
-            player: trig.controller,
-            count: 1,
-        },
+        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::DrawCards { player: trig.controller, count: 1 },
     ]
 }

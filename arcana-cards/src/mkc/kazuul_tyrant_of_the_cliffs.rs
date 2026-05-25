@@ -1,11 +1,9 @@
-//! Kazuul, Tyrant of the Cliffs — `{3}{R}{R}` 5/4 red legendary creature.
-//! "Whenever a creature an opponent controls attacks, if you're the defending
-//! player, create a 3/3 red Ogre creature token unless that creature's
-//! controller pays {3}."
+//! Kazuul, Tyrant of the Cliffs — `{3}{R}{R}` 5/4 red Legendary Ogre Warrior.
+//! "Whenever a creature an opponent controls attacks, if you're the defending player,
+//! create a 3/3 red Ogre creature token unless that creature's controller pays {3}."
 //!
-//! GAP: intervening-if "if you're the defending player" and the "unless pays"
-//! clause are not expressible in the catalog. Best-effort: fires on any
-//! opponent creature attack, creates the Ogre token unconditionally.
+//! GAP: intervening-if "if you're the defending player" and the "unless pays {3}" choice
+//! are not expressible in the current API. The token creation fires unconditionally.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -26,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(ogre);
     subtypes.0.insert(warrior);
-    let _ogre_token = reg.interner_mut().intern("Ogre");
+    let _ogre_tok = reg.interner_mut().intern("Ogre");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{R}{R}").expect("valid cost")),
@@ -45,9 +43,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                 },
+                // GAP: intervening-if "if you're the defending player" — use None
                 intervening_if: None,
-                // GAP: intervening-if "if you're the defending player" not supported;
-                // "unless pays {3}" payment alternative not supported.
                 effect: create_ogre_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,

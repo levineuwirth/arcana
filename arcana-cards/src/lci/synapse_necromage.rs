@@ -1,9 +1,10 @@
-//! Synapse Necromage — `{2}{B}` 3/1 black Creature — Fungus Wizard.
+//! Synapse Necromage — `{2}{B}` 3/1 black creature (Fungus Wizard).
 //! "When this creature dies, create two 1/1 black Fungus creature
 //! tokens with 'This token can't block.'"
 //!
-//! GAP: "can't block" keyword/ability on token is not in the
-//! KeywordAbility catalog. Tokens created without the restriction.
+//! GAP: "This token can't block" — granting a static restriction
+//! ability to a token is not in the TokenDefinition API. Tokens are
+//! created without the can't-block ability as best effort.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -23,6 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(fungus);
     subtypes.0.insert(wizard);
+    let _ = reg.interner_mut().intern("Fungus");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{B}").expect("valid cost")),
@@ -53,23 +55,37 @@ fn on_dies(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let fungus = reg.interner().lookup("Fungus")
+    let fungus_id = reg.interner().lookup("Fungus")
         .expect("Fungus interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(fungus);
-    // GAP: "can't block" ability on token not in KeywordAbility catalog.
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(fungus_id);
     let token = TokenDefinition {
-        name: fungus,
+        name: fungus_id,
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
+        power: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(1)),
+        keywords: vec![],
+        // GAP: "can't block" restriction not expressible in TokenDefinition
+        abilities: vec![],
+    };
+    let token2 = TokenDefinition {
+        name: fungus_id,
+        colors: ColorSet::black(),
+        types: TypeLine::CREATURE.into(),
+        subtypes: {
+            let mut s = SubtypeSet::default();
+            s.0.insert(fungus_id);
+            s
+        },
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: trig.controller, token: token.clone() },
         Effect::CreateToken { controller: trig.controller, token },
+        Effect::CreateToken { controller: trig.controller, token: token2 },
     ]
 }

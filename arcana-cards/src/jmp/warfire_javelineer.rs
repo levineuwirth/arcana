@@ -1,23 +1,21 @@
-//! Warfire Javelineer — `{3}{R}` 2/3 Minotaur Warrior.
-//! "When this creature enters, it deals X damage to target creature
-//! an opponent controls, where X is the number of instant and sorcery
-//! cards in your graveyard."
+//! Warfire Javelineer — `{3}{R}` 2/3 Minotaur Warrior. "When this
+//! creature enters, it deals X damage to target creature an opponent
+//! controls, where X is the number of instant and sorcery cards in your
+//! graveyard."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Warfire Javelineer");
@@ -43,16 +41,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_deal_x_damage,
+                effect: etb_damage_equal_to_gy_instants,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature()
-                                .controlled_by(ControllerConstraint::Opponent),
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                         ),
-                        count: arcana_core::targets::TargetCount::Exactly(1),
+                        count: TargetCount::Exactly(1),
                         controller: None,
                     },
                 ],
@@ -60,24 +57,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_deal_x_damage(
+fn etb_damage_equal_to_gy_instants(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let instant_filter = ObjectFilter {
-        types_any: Some(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
-        ..Default::default()
-    };
-    let x = script::graveyard_size(state, trig.controller);
-    // Approximate: count all graveyard cards; engine lacks instant+sorcery graveyard count
-    // GAP: graveyard_size counts all cards, not just instants/sorceries
-    let _ = instant_filter;
+    // Count instant and sorcery cards in graveyard
+    let gy_size = script::graveyard_size(state, trig.controller);
+    // GAP: graveyard_size counts all cards, not just instant/sorcery;
+    // no graveyard-zone ObjectFilter available in script helpers.
+    // Using full graveyard count as approximation.
     vec![Effect::DealDamage {
         target: DamageTarget::Object(*id),
-        amount: x,
+        amount: gy_size,
         source: trig.source,
     }]
 }

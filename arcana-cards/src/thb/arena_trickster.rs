@@ -1,9 +1,10 @@
 //! Arena Trickster — `{3}{R}` 3/3 red Human Shaman.
 //! "Whenever you cast your first spell during each opponent's turn, put a
 //! +1/+1 counter on this creature."
-//! GAP: "first spell during each opponent's turn" tracking is not in the
-//! TriggerCondition catalog; using SpellCast with Opponent whose as
-//! structural placeholder.
+//!
+//! GAP: "your first spell during each opponent's turn" — SpellCast condition
+//! does not support "first spell during an opponent's turn" filter; using
+//! SpellCast with caster=You as approximation. frequency: OncePerTurn.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,26 +37,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                // GAP: "first spell during each opponent's turn" — no catalog
-                // variant tracking first-spell-per-turn on opponents' turns;
-                // SpellCast You used as structural placeholder.
-                trigger_condition: TriggerCondition::SpellCast {
-                    filter: None,
-                    caster: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: add_counter,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::OncePerTurn,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            // GAP: "first spell during each opponent's turn" — using
+            // SpellCast(You) as approximation; "during opponent's turn"
+            // not filterable.
+            trigger_condition: TriggerCondition::SpellCast {
+                filter: None,
+                caster: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: on_spell_cast_counter,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::OncePerTurn,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn add_counter(
+fn on_spell_cast_counter(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

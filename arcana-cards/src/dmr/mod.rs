@@ -22,3 +22,6 @@ pub mod man_o_war;
 pub mod festering_goblin;
 pub mod coal_stoker;
 pub mod wretched_anurid;
+pub mod denizen_of_the_deep;
+pub mod symbiotic_beast;
+pub mod flesh_reaver;

@@ -1,10 +1,10 @@
-//! Order of the Golden Cricket — `{1}{W}` 2/2 white Creature — Kithkin Knight.
-//! "Whenever this creature attacks, you may pay {W}. If you do, it
-//! gains flying until end of turn."
+//! Order of the Golden Cricket — `{1}{W}` 2/2 white creature (Kithkin
+//! Knight). "Whenever this creature attacks, you may pay {W}. If you
+//! do, it gains flying until end of turn."
 //!
-//! GAP: optional {W} payment gating Flying — "you may pay {cost}" is
-//! not expressible as a trigger effect. Approximated as unconditional
-//! Flying grant.
+//! GAP: "you may pay {W}. If you do, …" — optional mana payment
+//! branching is not in the Effect catalog. Emitting GrantKeyword Flying
+//! unconditionally as best effort.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,13 +50,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional {W} payment gating Flying — not expressible.
-    // Approximated as unconditional Flying grant.
+    // GAP: "you may pay {W}. If you do, …" — optional cost branch not
+    // expressible; granting Flying unconditionally as best effort.
     vec![Effect::GrantKeyword {
         target: trig.source,
         keyword: KeywordAbility::Flying,

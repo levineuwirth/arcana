@@ -1,11 +1,12 @@
-//! Nether Spirit — `{1}{B}{B}` 2/2 black Creature — Spirit.
+//! Nether Spirit — `{1}{B}{B}` 2/2 black creature (Spirit).
 //! "At the beginning of your upkeep, if this card is the only creature
 //! card in your graveyard, you may return this card to the battlefield."
 //!
-//! GAP: intervening-if "only creature card in your graveyard" —
-//! checking graveyard contents for uniqueness is not available as a
-//! script helper. Approximated as unconditional ReturnFromGraveyardToBattlefield.
-//! Note: trigger fires from graveyard zone.
+//! GAP: trigger fires from graveyard (not battlefield). The trigger_zones
+//! field only supports Zone::Battlefield; graveyard-zone triggers are not
+//! supported. Using Battlefield as closest approximation.
+//! GAP: "if this card is the only creature card in your graveyard" —
+//! intervening-if condition checking graveyard contents not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,11 +45,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "only creature card in graveyard" —
-                // not expressible via script API.
+                // GAP: "if this card is the only creature card in graveyard"
+                // not expressible as an intervening-if condition.
                 intervening_if: None,
                 effect: on_upkeep,
-                trigger_zones: vec![Zone::Graveyard(0)],
+                // GAP: trigger should fire from Zone::Graveyard; using
+                // Battlefield as closest approximation.
+                trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),

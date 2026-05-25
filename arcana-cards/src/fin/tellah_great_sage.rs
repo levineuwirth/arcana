@@ -1,11 +1,10 @@
-//! Tellah, Great Sage — `{3}{U}{R}` 3/3 legendary blue-red Human Wizard.
+//! Tellah, Great Sage — `{3}{U}{R}` 3/3 legendary red-blue Human Wizard.
 //! "Whenever you cast a noncreature spell, create a 1/1 colorless Hero
-//! creature token. If four or more mana was spent to cast that spell, draw
-//! two cards. If eight or more mana was spent to cast that spell, sacrifice
-//! Tellah and it deals that much damage to each opponent."
-//! GAP: "if four or more / eight or more mana was spent" — mana-spent
-//! tracking is not accessible at trigger resolution. Implementing token
-//! creation only; conditional draw/damage return Vec::new().
+//! creature token. If four or more mana was spent to cast that spell,
+//! draw two cards. If eight or more mana was spent to cast that spell,
+//! sacrifice Tellah and it deals that much damage to each opponent."
+//! GAP: "if X or more mana was spent" — mana spent on a spell is not
+//! accessible via script helpers; only the token creation is emitted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -30,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{U}{R}").expect("valid cost")),
-        colors: ColorSet::blue() | ColorSet::red(),
+        colors: ColorSet::red() | ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
@@ -43,12 +42,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter::new()
-                        .without_types(TypeLine::CREATURE.into())),
+                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: noncreature_cast_token,
+                effect: noncreature_spell_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -56,12 +54,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn noncreature_cast_token(
+fn noncreature_spell_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let hero = reg.interner().lookup("Hero").expect("Hero interned");
+    let hero = reg.interner().lookup("Hero").expect("Hero interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(hero);
     let token = TokenDefinition {
@@ -74,7 +72,7 @@ fn noncreature_cast_token(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "if 4+ mana spent draw 2; if 8+ mana spent sacrifice+damage" —
-    // mana-spent amount not accessible at trigger resolution.
+    // GAP: "if 4+ mana spent, draw 2" and "if 8+ mana spent, sacrifice + deal damage"
+    // — mana spent on cast not accessible via script helpers
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

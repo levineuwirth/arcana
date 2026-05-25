@@ -2,3 +2,5 @@
 pub mod rampaging_growth;
 pub mod launch_mishap;
 pub mod skullslither_worm;
+pub mod ossuary_rats;
+pub mod dutiful_replicator;

@@ -2,8 +2,6 @@
 //! "Whenever this creature attacks, gain control of target Equipment an
 //! opponent controls until end of turn. Attach it to this creature.
 //! When you lose control of that Equipment, unattach it."
-//! GAP: effect — ChangeControl has no duration; Equipment attachment and
-//! "when you lose control" triggered cleanup are not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +12,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -46,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new()
+                        ObjectFilter::permanent()
                             .with_types(TypeLine::ARTIFACT.into())
                             .controlled_by(ControllerConstraint::Opponent),
                     ),
@@ -60,11 +57,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn steal_equipment(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: effect — ChangeControl has no "until end of turn" duration;
-    // Equipment attach and cleanup trigger also not in catalog
-    vec![Effect::ChangeControl { target: *id, new_controller: trig.controller }]
+    vec![
+        Effect::ChangeControlEot { target: *id, new_controller: trig.controller },
+        Effect::Attach { equipment_or_aura: *id, target: trig.source },
+    ]
 }

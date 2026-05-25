@@ -1,5 +1,6 @@
 //! Chrome Cat — `{3}` 3/2 colorless Artifact Creature — Cat.
 //! "When this creature enters, scry 1."
+//! Keywords (Scryfall-parsed): Scry (handled via trigger)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_scry_1,
+                effect: etb_scry,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,10 +43,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_scry_1(
+fn etb_scry(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Scry { player: trig.controller, count: 1 }]
 }

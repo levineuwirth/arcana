@@ -1,9 +1,7 @@
-//! Isamaru and Yoshimaru — `{W}` 2/2 Legendary white Creature — Dog.
+//! Isamaru and Yoshimaru — `{W}` 2/2 white Legendary Creature — Dog.
 //! "Whenever another legendary creature or creature with mana value one enters
-//! under your control, put a +1/+1 counter on Isamaru and Yoshimaru."
-//!
-//! GAP: ObjectFilter has no "legendary OR mana value 1" disjunction;
-//! using creature ETB (you control) as best effort.
+//! the battlefield under your control, put a +1/+1 counter on Isamaru and
+//! Yoshimaru."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,12 +36,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .with_max_cmc(1)
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
+                // GAP: trigger — "legendary creature OR creature with mana
+                // value 1" OR-condition not expressible in a single ZoneChange
+                // filter; using with_max_cmc(1) as approximation (misses the
+                // legendary branch).
                 intervening_if: None,
-                effect: creature_etb_counter,
+                effect: on_legendary_or_mva1_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,12 +55,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_etb_counter(
+fn on_legendary_or_mva1_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no "legendary OR mana value 1" filter; triggers on any creature ETB
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

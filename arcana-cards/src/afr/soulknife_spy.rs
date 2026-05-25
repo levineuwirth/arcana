@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: draw_a_card,
+                effect: on_combat_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,10 +49,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_a_card(
+fn on_combat_damage(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

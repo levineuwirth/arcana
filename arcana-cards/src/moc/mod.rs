@@ -14,3 +14,7 @@ pub mod goblin_instigator;
 pub mod corpse_knight;
 pub mod mistmeadow_vanisher;
 pub mod phyrexian_delver;
+pub mod rashmi_and_ragavan;
+pub mod juniper_order_ranger;
+pub mod scrap_trawler;
+pub mod vodalian_wave_knight;

@@ -1,17 +1,17 @@
-//! Symbiote Spawn — `{2}{B}` 3/2 black Symbiote Villain.
+//! Symbiote Spawn — `{2}{B}` 3/2 black Creature — Symbiote Villain.
 //! "When this creature dies, each opponent loses 2 life and you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Symbiote Spawn");
@@ -26,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -37,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: drain_opponents,
+                effect: dies_drain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,14 +44,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn drain_opponents(
+fn dies_drain(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects: Vec<Effect> = script::opponents(state, trig.controller)
         .into_iter()
-        .map(|pid| Effect::LoseLife { player: pid, amount: 2 })
+        .map(|opp| Effect::LoseLife { player: opp, amount: 2 })
         .collect();
     effects.push(Effect::GainLife { player: trig.controller, amount: 2 });
     effects

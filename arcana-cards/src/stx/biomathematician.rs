@@ -1,22 +1,18 @@
-//! Biomathematician — `{1}{G}{U}` 2/2 green/blue Human Wizard creature.
-//! "When this creature enters, create a 0/0 green and blue Fractal creature token. Put a
-//! +1/+1 counter on each Fractal you control."
-//! GAP: effect — 0/0 token creation and "each Fractal you control" counter requires
-//! subtype-based counter targeting; Fractal subtype filter not available at registration time
-//! for ForEach; returning partial: create token only.
+//! Biomathematician — `{1}{G}{U}` 2/2 green-blue Human Wizard.
+//! "When this creature enters, create a 0/0 green and blue Fractal creature token.
+//! Put a +1/+1 counter on each Fractal you control."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::objects::NULL_OBJECT_ID;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Biomathematician");
@@ -32,10 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -57,7 +51,8 @@ fn etb_fractal(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let fractal = reg.interner().lookup("Fractal").expect("Fractal interned during register()");
+    let fractal = reg.interner().lookup("Fractal")
+        .expect("Fractal interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(fractal);
     let token = TokenDefinition {
@@ -70,16 +65,21 @@ fn etb_fractal(
         keywords: vec![],
         abilities: vec![],
     };
-    let fractal_filter = script::subtype_filter(reg, "Fractal");
-    let fractal_ids = script::ids_matching(state, &fractal_filter, trig.controller);
-    let mut effects = vec![Effect::CreateToken { controller: trig.controller, token }];
-    effects.push(Effect::ForEach {
+    let fractal_ids = script::ids_matching(
+        state,
+        &script::subtype_filter(reg, "Fractal"),
+        trig.controller,
+    );
+    let counter_each = Effect::ForEach {
         targets: fractal_ids,
         effect: Box::new(Effect::AddCounters {
             target: NULL_OBJECT_ID,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         }),
-    });
-    effects
+    };
+    vec![
+        Effect::CreateToken { controller: trig.controller, token },
+        counter_each,
+    ]
 }

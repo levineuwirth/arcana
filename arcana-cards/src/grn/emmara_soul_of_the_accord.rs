@@ -1,11 +1,7 @@
-//! Emmara, Soul of the Accord — `{G}{W}` 2/2 Legendary green-white Creature
-//! — Elf Cleric.
+//! Emmara, Soul of the Accord — `{G}{W}` 2/2 green-white Legendary Creature —
+//! Elf Cleric.
 //! "Whenever Emmara becomes tapped, create a 1/1 white Soldier creature token
 //! with lifelink."
-//!
-//! GAP: trigger — no TriggerCondition for "becomes tapped"; using
-//! SelfAttacks as an approximation (tapping from attacking is the main
-//! use case).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -41,10 +37,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "becomes tapped" condition; SelfAttacks used
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: tapped_create_soldier,
+                effect: on_tapped_soldier_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,12 +47,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tapped_create_soldier(
+fn on_tapped_soldier_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let soldier = reg.interner().lookup("Soldier")
+        .expect("Soldier interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {

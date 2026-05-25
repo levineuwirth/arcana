@@ -1,4 +1,4 @@
-//! Inspiring Cleric — `{2}{W}` 3/2 white Vampire Cleric.
+//! Inspiring Cleric — `{2}{W}` 3/2 Vampire Cleric.
 //! "When this creature enters, you gain 4 life."
 
 use arcana_core::effects::Effect;
@@ -44,10 +44,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::GainLife { player: trig.controller, amount: 4 }]
 }

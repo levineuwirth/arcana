@@ -1,16 +1,14 @@
-//! Spirit of Resilience — `{2}{R}` 2/2 red Spirit Warrior. "Whenever one or more
-//! cards leave your graveyard, put a +1/+1 counter on this creature, then you may
-//! have this creature become a copy of an artifact or creature card from among those
-//! cards until end of turn."
-//!
-//! GAP: no TriggerCondition for "cards leave graveyard"; no "become a copy" Effect.
-//! Using SelfAttacks as best-effort placeholder with counter on self.
+//! Spirit of Resilience — `{2}{R}` 2/2 red creature. "Whenever one or more
+//! cards leave your graveyard, put a +1/+1 counter on this creature, then you
+//! may have this creature become a copy of an artifact or creature card from
+//! among those cards until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,10 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition for "cards leave graveyard"
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::new().controlled_by(ControllerConstraint::You),
+                    from: Some(Zone::Graveyard(0)),
+                    to: Zone::Battlefield,
+                },
                 intervening_if: None,
-                effect: on_graveyard_leave,
+                effect: cards_leave_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,12 +51,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_graveyard_leave(
+fn cards_leave_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "become a copy of an artifact or creature card from among those cards" not expressible
+    // GAP: "become a copy of an artifact or creature card from among those cards" — no copy-from-graveyard in catalog
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

@@ -1,28 +1,26 @@
 //! Voldaren Epicure — `{R}` 1/1 red Vampire.
-//! "When this creature enters, it deals 1 damage to each opponent. Create
-//! a Blood token."
-//! GAP: Blood token creation (artifact with activated ability) is not
-//! expressible with CreateToken — no Blood token type in TokenDefinition.
-//! Damage to each opponent is implemented.
+//! "When this creature enters, it deals 1 damage to each opponent.
+//! Create a Blood token."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Voldaren Epicure");
     let vampire = reg.interner_mut().intern("Vampire");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(vampire);
+    let _blood = reg.interner_mut().intern("Blood");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{R}").expect("valid cost")),
@@ -40,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_damage_opponents,
+                effect: etb_damage_opponents_blood,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +46,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_damage_opponents(
+fn etb_damage_opponents_blood(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Blood token creation is not expressible.
+    let blood = reg.interner().lookup("Blood").expect("Blood interned during register()");
+    let mut blood_subtypes = SubtypeSet::default();
+    blood_subtypes.0.insert(blood);
+    let token = TokenDefinition {
+        name: blood,
+        colors: ColorSet::colorless(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes: blood_subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
     let opponents = script::opponents(state, trig.controller);
     let mut effects: Vec<Effect> = opponents
         .into_iter()
@@ -63,5 +73,6 @@ fn etb_damage_opponents(
             source: trig.source,
         })
         .collect();
+    effects.push(Effect::CreateToken { controller: trig.controller, token });
     effects
 }

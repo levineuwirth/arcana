@@ -1,13 +1,13 @@
-//! Baloth Null — `{4}{B}{G}` 4/5 Zombie Beast.
-//! "When this creature enters, return up to two target creature cards
-//! from your graveyard to your hand."
+//! Baloth Null — `{4}{B}{G}` 4/5 Zombie Beast. "When this creature
+//! enters, return up to two target creature cards from your graveyard
+//! to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,27 +38,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_return_creatures,
+                effect: etb_return_creatures_from_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Card {
                             zone: Zone::Graveyard(0),
-                            filter: arcana_core::targets::ObjectFilter::creature(),
+                            filter: ObjectFilter::creature(),
                         },
                         count: TargetCount::UpTo(2),
-                        controller: None,
+                        controller: Some(ControllerConstraint::You),
                     },
                 ],
             }),
     )
 }
 
-fn etb_return_creatures(
+fn etb_return_creatures_from_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     trig.targets.targets.iter().filter_map(|t| {
         if let TargetChoice::Object(id) = t {

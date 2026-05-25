@@ -1,5 +1,5 @@
-//! Baleful Force — `{5}{B}{B}{B}` 7/7 black Elemental.
-//! "At the beginning of each upkeep, draw a card and you lose 1 life."
+//! Baleful Force — `{5}{B}{B}{B}` 7/7 black Creature — Elemental.
+//! "At the beginning of each upkeep, you draw a card and you lose 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: draw_lose_life,
+                effect: each_upkeep_draw_lose,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,10 +47,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_lose_life(
+fn each_upkeep_draw_lose(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },

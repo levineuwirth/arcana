@@ -3,3 +3,4 @@ pub mod rejoin_the_fight;
 pub mod unfinished_business;
 pub mod chocobo_knights;
 pub mod general_leo_cristophe;
+pub mod gogo_mysterious_mime;

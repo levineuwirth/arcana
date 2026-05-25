@@ -1,5 +1,5 @@
-//! Laboratory Brute — `{3}{U}` 3/3 blue Zombie Horror.
-//! "When Laboratory Brute enters the battlefield, mill four cards."
+//! Laboratory Brute — `{3}{U}` 3/3 blue Zombie Horror. "When this creature
+//! enters, mill four cards." ETB trigger; mill 4.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,6 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -36,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_effect,
+                effect: etb_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_effect(
+fn etb_mill(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

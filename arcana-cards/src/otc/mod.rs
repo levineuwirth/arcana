@@ -11,3 +11,4 @@ pub mod talrand_sky_summoner;
 pub mod elvish_rejuvenator;
 pub mod oblivion_sower;
 pub mod murmuring_mystic;
+pub mod edric_spymaster_of_trest;

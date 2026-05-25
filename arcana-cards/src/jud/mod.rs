@@ -8,3 +8,6 @@ pub mod funeral_pyre;
 pub mod venomous_vines;
 pub mod swirling_sandstorm;
 pub mod death_wish;
+pub mod nantuko_tracer;
+pub mod goretusk_firebeast;
+pub mod centaur_rootcaster;

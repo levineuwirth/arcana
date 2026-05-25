@@ -1,9 +1,13 @@
 //! Goblin Kaboomist — `{1}{R}` 1/2 red Goblin Warrior.
-//! "At the beginning of your upkeep, create a colorless artifact token named
-//! Land Mine with '{R}, Sacrifice this token: This token deals 2 damage to
-//! target attacking creature without flying.' Then flip a coin. If you lose
-//! the flip, this creature deals 2 damage to itself."
-//! GAP: effect — coin flip mechanic and token activated ability are not in catalog.
+//! "At the beginning of your upkeep, create a colorless artifact token
+//! named Land Mine with '{R}, Sacrifice this token: This token deals 2
+//! damage to target attacking creature without flying.' Then flip a coin.
+//! If you lose the flip, this creature deals 2 damage to itself."
+//!
+//! NOTE: Land Mine token's activated ability (sacrifice for damage) is
+//! deferred engine work recognized by subtype.
+//! GAP: effect — coin-flip mechanic and conditional self-damage are not
+//! in the catalog; only the token creation is expressed.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -15,7 +19,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -32,7 +36,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -61,18 +64,18 @@ fn create_land_mine(
 ) -> Vec<Effect> {
     let land_mine = reg.interner().lookup("Land Mine")
         .expect("Land Mine interned during register()");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(land_mine);
     let token = TokenDefinition {
         name: land_mine,
         colors: ColorSet::colorless(),
         types: TypeLine::ARTIFACT.into(),
-        subtypes: SubtypeSet::default(),
+        subtypes,
         power: None,
         toughness: None,
         keywords: vec![],
         abilities: vec![],
-        // GAP: token activated ability "{R}, Sacrifice: deal 2 damage to attacking creature
-        // without flying" not expressible via TokenDefinition.abilities
     };
-    // GAP: coin flip — if lose flip, deal 2 damage to self; not in Effect catalog
+    // GAP: effect — coin-flip and conditional self-damage are not in catalog.
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

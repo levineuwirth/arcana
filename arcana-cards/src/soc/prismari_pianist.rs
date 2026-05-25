@@ -1,20 +1,22 @@
 //! Prismari Pianist — `{1}{R}{R}` 2/1 red Djinn Bard.
-//! "Whenever you cast an instant or sorcery spell, create a 1/1 blue and red
-//! Elemental creature token. If that spell's mana value is 5 or greater,
-//! create three of those tokens instead."
-//! GAP: no InstantOrSorcery filter in ObjectFilter; using SpellCast(Any filter) as approximation.
-//! GAP: conditional "MV ≥ 5 → 3 tokens" not in Effect catalog; creating 1 unconditionally.
+//! "Whenever you cast an instant or sorcery spell, create a 1/1 blue and
+//! red Elemental creature token. If that spell's mana value is 5 or
+//! greater, create three of those tokens instead."
+//!
+//! GAP: effect — "if that spell's mana value is 5 or greater, create three
+//! instead" conditional on the triggering spell's CMC is not computable
+//! (no accessor for triggering spell's CMC). Creating one token unconditionally.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -40,10 +41,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: no InstantOrSorcery filter; using any spell cast by you
                 trigger_condition: TriggerCondition::SpellCast {
+                    filter: Some(ObjectFilter {
+                        types_any: Some(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+                        ..Default::default()
+                    }),
                     caster: ControllerConstraint::You,
-                    filter: None,
                 },
                 intervening_if: None,
                 effect: create_elemental_token,
@@ -65,7 +68,7 @@ fn create_elemental_token(
     subtypes.0.insert(elemental);
     let token = TokenDefinition {
         name: elemental,
-        colors: ColorSet(ColorSet::BLUE | ColorSet::RED),
+        colors: ColorSet::blue() | ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(1)),
@@ -73,6 +76,6 @@ fn create_elemental_token(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: MV ≥ 5 → 3 tokens; creating 1 unconditionally
+    // GAP: effect — "if MV >= 5 create three instead" not computable; creating one.
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

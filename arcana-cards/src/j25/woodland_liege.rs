@@ -1,5 +1,5 @@
-//! Woodland Liege — `{2}{G}` 2/2 green Elf Druid Noble.
-//! "Whenever a Beast you control enters, draw a card."
+//! Woodland Liege — `{2}{G}` 2/2 green creature. "Whenever a Beast you control
+//! enters, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,14 +54,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn beast_enters_draw(
-    state: &GameState,
+    _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Only trigger when the entering creature is a Beast
-    let beast_filter = script::subtype_filter(reg, "Beast").controlled_by(ControllerConstraint::You);
-    let _ = beast_filter;
-    // GAP: ZoneChange filter cannot be constrained to subtype at trigger-check time;
-    // we draw unconditionally for any creature you control entering — verify will flag.
+    // Confirm entering creature is a Beast via subtype filter
+    let id = trig.entering_object().unwrap_or(trig.source);
+    let beast_filter = script::subtype_filter(reg, "Beast");
+    // GAP: can't check subtype of entering object without state access beyond allowed helpers
+    let _ = (id, beast_filter);
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

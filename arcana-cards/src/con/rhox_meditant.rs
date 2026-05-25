@@ -1,7 +1,13 @@
-//! Rhox Meditant — `{3}{W}` 2/4 white Rhino Monk.
-//! "When this creature enters, if you control a green permanent, draw a card."
-//! GAP: intervening-if clause checking for green permanent control is not
-//! expressible; using intervening_if: None and omitting the check.
+//! Rhox Meditant — `{3}{W}` 2/4 white creature. "When this creature enters, if
+//! you control a green permanent, draw a card."
+//!
+//! The intervening-if clause ("if you control a green permanent") is a condition
+//! that cannot be expressed in `intervening_if` (that field is None per
+//! convention). Emitting the draw unconditionally as best-effort — the verify
+//! pipeline will flag the conditional gap.
+//!
+//! GAP: intervening_if — "if you control a green permanent" condition not
+//! representable in TriggeredAbilityDef.intervening_if.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,8 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if — "if you control a green permanent" not expressible
-                intervening_if: None,
+                intervening_if: None, // GAP: intervening_if — "if you control a green permanent"
                 effect: etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,

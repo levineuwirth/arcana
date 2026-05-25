@@ -1,7 +1,8 @@
-//! Cyclopean Giant — `{2}{B}{B}` 4/2 black Zombie Giant.
-//! "When this creature dies, target land becomes a Swamp. Exile this card."
-//! GAP: effect — "becomes a Swamp" (continuous type/subtype change) not in effect catalog.
-//! Exile this card from graveyard is expressed via ExileFromGraveyard targeting self.
+//! Cyclopean Giant — `{2}{B}{B}` 4/2 black creature. "When this creature dies,
+//! target land becomes a Swamp. Exile this card."
+//!
+//! GAP: effect — "land becomes a Swamp" type-change layer effect not expressible.
+//! ExileFromGraveyard emitted for self; land-becomes-swamp omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_swampify_land,
+                effect: dies_exile_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -53,12 +54,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_swampify_land(
+fn dies_exile_self(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "becomes a Swamp" — continuous subtype/type-change not in effect catalog
-    // Emit the "exile this card" clause only
+    // GAP: "becomes a Swamp" type-change not expressible
+    // Exile self from graveyard as per card text
     vec![Effect::ExileFromGraveyard { target: trig.source }]
 }

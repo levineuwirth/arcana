@@ -1,5 +1,6 @@
-//! Mold Adder — `{G}` 1/1 green Fungus Snake.
-//! "Whenever an opponent casts a blue or black spell, put a +1/+1 counter on this creature."
+//! Mold Adder — `{G}` 1/1 green Creature — Fungus Snake.
+//! "Whenever an opponent casts a blue or black spell, you may put a +1/+1 counter on
+//! this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,8 +11,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,13 +38,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(
-                        ObjectFilter::new()
+                        ObjectFilter::default()
+                            .controlled_by(ControllerConstraint::Opponent)
                             .with_colors(ColorSet::blue() | ColorSet::black()),
                     ),
                     caster: ControllerConstraint::Opponent,
                 },
                 intervening_if: None,
-                effect: counter_self,
+                effect: opponent_blue_black_spell_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +53,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_self(
+fn opponent_blue_black_spell_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::AddCounters {
         target: trig.source,

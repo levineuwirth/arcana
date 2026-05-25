@@ -1,8 +1,6 @@
 //! Ruthless Lawbringer — `{1}{W}{B}` 3/2 white/black Vampire Assassin.
-//! "When this creature enters, you may sacrifice another creature. When you
-//! do, destroy target nonland permanent."
-//! GAP: "when you do" triggers a second event from the sacrifice; modeled as a
-//! single ETB with sacrifice + destroy if target is chosen.
+//! "When this creature enters, you may sacrifice another creature. When you do,
+//! destroy target nonland permanent."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,12 +38,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: sacrifice_and_destroy,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -55,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn sacrifice_and_destroy(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
@@ -65,7 +62,7 @@ fn sacrifice_and_destroy(
     vec![
         Effect::Sacrifice {
             player: trig.controller,
-            filter: ObjectFilter::creature(),
+            filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
             count: 1,
         },
         Effect::DestroyPermanent { target: *id },

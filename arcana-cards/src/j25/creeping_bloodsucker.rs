@@ -1,21 +1,21 @@
-//! Creeping Bloodsucker — `{1}{B}` 1/2 black Vampire.
-//! "At the beginning of your upkeep, this creature deals 1 damage to each opponent and you
-//! gain life equal to the damage dealt this way."
+//! Creeping Bloodsucker — `{1}{B}` 1/2 black Vampire creature.
+//! "At the beginning of your upkeep, this creature deals 1 damage to each opponent.
+//! You gain life equal to the damage dealt this way."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Creeping Bloodsucker");
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: drain_each_opponent,
+                effect: upkeep_drain_opponents,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,20 +50,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn drain_each_opponent(
+fn upkeep_drain_opponents(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let opponents = script::opponents(state, trig.controller);
     let opp_count = opponents.len() as u32;
-    let mut effects: Vec<Effect> = opponents.into_iter()
-        .map(|opp| Effect::DealDamage {
-            target: DamageTarget::Player(opp),
-            amount: 1,
-            source: trig.source,
-        })
-        .collect();
+    let mut effects: Vec<Effect> = opponents.into_iter().map(|p| Effect::DealDamage {
+        target: DamageTarget::Player(p),
+        amount: 1,
+        source: trig.source,
+    }).collect();
     effects.push(Effect::GainLife { player: trig.controller, amount: opp_count });
-    vec![Effect::Sequence(effects)]
+    effects
 }

@@ -1,6 +1,6 @@
-//! Civic Wayfinder — `{2}{G}` 2/2 green Elf Druid Warrior.
-//! "When this creature enters, you may search your library for a basic land
-//! card, reveal it, put it into your hand, then shuffle."
+//! Civic Wayfinder — `{2}{G}` 2/2 green creature. "When this creature enters,
+//! you may search your library for a basic land card, reveal it, put it into
+//! your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

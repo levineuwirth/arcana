@@ -16,3 +16,4 @@ pub mod monomania;
 pub mod timely_reinforcements;
 pub mod benalish_veteran;
 pub mod gideon_s_avenger;
+pub mod manic_vandal;

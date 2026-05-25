@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn dies_draw_two(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 2 }]
 }

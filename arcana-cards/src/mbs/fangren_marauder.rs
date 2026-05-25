@@ -1,6 +1,6 @@
 //! Fangren Marauder — `{5}{G}` 5/5 green Creature — Beast.
-//! "Whenever an artifact is put into a graveyard from the battlefield, you
-//! may gain 5 life."
+//! "Whenever an artifact is put into a graveyard from the battlefield, you may
+//! gain 5 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(5)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: artifact_dies_gain_life,
+                effect: on_artifact_dies_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn artifact_dies_gain_life(
+fn on_artifact_dies_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

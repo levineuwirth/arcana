@@ -1,18 +1,16 @@
 //! Eclipsed Boggart — `{B/R}{B/R}{B/R}` 2/3 black-red Goblin Scout.
-//! "When this creature enters, look at the top four cards of your library.
-//! You may reveal a Goblin, Swamp, or Mountain card from among them and put
-//! it into your hand. Put the rest on the bottom of your library in a
-//! random order."
-//! GAP: "look at top 4, choose specific-type card to hand, rest to bottom
-//! in random order" — no catalog Effect for this; TutorToHand approximates
-//! without the look/bottom-rest behavior.
+//! "When this creature enters, look at the top four cards of your
+//! library. You may reveal a Goblin, Swamp, or Mountain card from
+//! among them and put it into your hand. Put the rest on the bottom
+//! of your library in a random order."
+//! GAP: selective reveal/hand from among top 4 with subtype/land filter
+//! — not expressible; Surveil(4) used as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -54,14 +52,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_look_top_four(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "look at top 4, choose Goblin/Swamp/Mountain card to hand, rest
-    // to bottom random" — using TutorToHand for Goblin as best effort.
-    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned");
-    vec![Effect::TutorToHand {
-        player: trig.controller,
-        filter: ObjectFilter::creature(),
-        reveal: false,
-    }]
+    // GAP: look at top 4, reveal Goblin/Swamp/Mountain to hand, rest bottom
+    // — selective reveal not in engine catalog; Surveil(4) as approximation
+    vec![Effect::Surveil { player: trig.controller, count: 4 }]
 }

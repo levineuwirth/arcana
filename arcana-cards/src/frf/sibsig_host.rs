@@ -5,13 +5,13 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sibsig Host");
@@ -24,7 +24,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(6)),
         ..Default::default()
@@ -35,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: each_player_mills_three,
+                effect: etb_each_player_mills,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,13 +42,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_mills_three(
+fn etb_each_player_mills(
     state: &GameState,
-    _trig: &PendingTrigger,
-    _: &CardRegistry,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    script::all_players(state)
-        .into_iter()
-        .map(|pid| Effect::Mill { player: pid, count: 3 })
-        .collect()
+    let players = script::all_players(state);
+    let effects: Vec<Effect> = players.into_iter().map(|p| {
+        Effect::Mill { player: p, count: 3 }
+    }).collect();
+    vec![Effect::Sequence(effects)]
 }

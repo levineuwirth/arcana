@@ -1,9 +1,10 @@
-//! Festering Newt — `{B}` 1/1 black Salamander.
-//! "When this creature dies, target creature an opponent controls gets -1/-1
-//! until end of turn. That creature gets -4/-4 instead if you control a
-//! creature named Bogbrew Witch."
-//! GAP: conditional pump based on controlling a named creature not expressible.
-//! Best-effort: apply -1/-1 always.
+//! Festering Newt — `{B}` 1/1 black creature. "When this creature dies, target
+//! creature an opponent controls gets -1/-1 until end of turn. That creature
+//! gets -4/-4 instead if you control a creature named Bogbrew Witch."
+//!
+//! GAP: effect — conditional "-4/-4 if you control Bogbrew Witch"; no
+//! Effect::Conditional with named-card check available. Emitting -1/-1 Pump
+//! unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,7 +12,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -44,11 +45,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
+                    filter: TargetFilter::Creature,
+                    count: arcana_core::targets::TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
                 }],
             }),
     )
@@ -59,10 +58,13 @@ fn dies_debuff(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: conditional -4/-4 if Bogbrew Witch controlled — named-creature check
-    // not in script helpers. Always applying -1/-1.
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: effect — -4/-4 if Bogbrew Witch controlled; no named-card check available
     vec![Effect::Pump {
         target: *id,
         power: -1,

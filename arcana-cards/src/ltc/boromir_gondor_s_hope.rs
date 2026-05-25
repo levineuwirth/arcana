@@ -1,21 +1,19 @@
-//! Boromir, Gondor's Hope — `{2}{W}{U}` 3/4 Legendary white-blue Creature —
+//! Boromir, Gondor's Hope — `{2}{W}{U}` 3/4 white-blue Legendary Creature —
 //! Human Warrior.
 //! "Whenever Boromir enters or attacks, look at the top six cards of your
-//! library. You may reveal a Human or artifact card from among them and put
-//! it into your hand. Put the rest on the bottom of your library in a random
-//! order."
-//!
-//! GAP: trigger — "enters or attacks" is two conditions; using
-//! SelfEntersBattlefield for the enters trigger only.
-//! GAP: effect — TutorToHand searches full library; "look at top 6 and choose"
-//! not expressible exactly.
+//! library. You may reveal a Human or artifact card from among them and put it
+//! into your hand. Put the rest on the bottom of your library in a random order."
+//! GAP: effect — "look at top N and selectively put a card into hand" has no
+//! direct catalog equivalent; TutorToHand searches the whole library.
+//! Using TutorToHand as best approximation; the Human-or-artifact filter
+//! is approximated with a combined ObjectFilter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -46,7 +44,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_human_or_artifact,
+                effect: etb_or_attack_tutor,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: etb_or_attack_tutor,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,16 +61,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_human_or_artifact(
+fn etb_or_attack_tutor(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "look at top 6" not expressible; using TutorToHand for artifact
-    // as best effort (Human subtype filter also not supported)
+    // GAP: "look at top 6 and choose a Human or artifact" uses TutorToHand as
+    // approximation; top-N reveal/select not modeled.
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+        filter: ObjectFilter::creature(),
         reveal: true,
     }]
 }

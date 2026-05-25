@@ -6,7 +6,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -27,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -50,7 +49,7 @@ fn etb_counter_target(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let arcana_core::targets::TargetChoice::Object(id) = target else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,

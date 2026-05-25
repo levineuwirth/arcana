@@ -24,3 +24,5 @@ pub mod kazuul_warlord;
 pub mod oran_rief_survivalist;
 pub mod cosi_s_trickster;
 pub mod nimana_sell_sword;
+pub mod kor_outfitter;
+pub mod ondu_cleric;

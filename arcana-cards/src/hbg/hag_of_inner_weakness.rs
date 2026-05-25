@@ -1,8 +1,8 @@
 //! Hag of Inner Weakness — `{2}{B}` 2/2 black Creature — Hag Warlock.
 //! "At the beginning of your upkeep, target creature an opponent controls gets
 //! -2/-1 until your next turn."
-//!
-//! GAP: "until your next turn" not expressible; EndOfTurn used as best effort.
+//! GAP: effect — "until your next turn" duration is not in the Duration enum
+//! (only EndOfTurn is available). Using Duration::EndOfTurn as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -10,7 +10,9 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter, TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,7 +36,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,12 +47,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: upkeep_debuff,
+                effect: upkeep_weaken_opponent_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -60,14 +62,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_debuff(
+fn upkeep_weaken_opponent_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let arcana_core::targets::TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "until your next turn" duration not available; EndOfTurn used
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "until your next turn" — using EndOfTurn as approximation.
     vec![Effect::Pump {
         target: *id,
         power: -2,

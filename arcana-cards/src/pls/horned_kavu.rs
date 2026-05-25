@@ -1,18 +1,18 @@
 //! Horned Kavu — `{R}{G}` 3/4 red-green Creature — Kavu.
-//! "When this creature enters, return a red or green creature you control
-//! to its owner's hand."
-//!
-//! GAP: effect — ReturnToHand requires a specific ObjectId; "choose a red or
-//! green creature you control" targeted bounce is partially expressible but
-//! color filter in TargetFilter not available as TargetFilter::Permanent
-//! with color restriction needs target_requirements.
+//! "When this creature enters, return a red or green creature you control to
+//! its owner's hand."
+//! GAP: effect — ReturnToHand targets a specific ObjectId; there is no
+//! "choose a red or green creature you control" non-targeted variant.
+//! Using ReturnToHand with a target requirement as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,14 +41,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_bounce_red_green,
+                effect: etb_return_red_green,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You)
-                            .with_colors(ColorSet::red() | ColorSet::green()),
+                            .with_colors(ColorSet::red() | ColorSet::green())
+                            .controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -57,12 +57,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_bounce_red_green(
+fn etb_return_red_green(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    use arcana_core::targets::TargetChoice;
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]

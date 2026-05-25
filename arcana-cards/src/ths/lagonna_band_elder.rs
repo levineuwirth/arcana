@@ -1,6 +1,7 @@
 //! Lagonna-Band Elder — `{2}{W}` 3/2 white Centaur Advisor.
 //! "When this creature enters, if you control an enchantment, you gain 3 life."
-//! GAP: intervening-if "if you control an enchantment" not expressible.
+//! GAP: Intervening-if "if you control an enchantment" is not expressible
+//! as an engine condition; using intervening_if: None as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,9 +37,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you control an enchantment" not expressible.
+                // GAP: "if you control an enchantment" intervening-if not expressible.
                 intervening_if: None,
-                effect: gain_life,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_life(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

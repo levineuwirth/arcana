@@ -1,9 +1,10 @@
 //! Turntimber Ranger — `{3}{G}{G}` 2/2 green Creature — Elf Scout Ranger Ally.
-//! "Whenever this creature or another Ally you control enters, you may create
-//! a 2/2 green Wolf creature token. If you do, put a +1/+1 counter on this
+//! "Whenever this creature or another Ally you control enters, you may create a
+//! 2/2 green Wolf creature token. If you do, put a +1/+1 counter on this
 //! creature."
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::Effect;
+use arcana_core::effects::TokenDefinition;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -43,7 +44,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -61,7 +63,8 @@ fn ally_etb_wolf_token(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let wolf = reg.interner().lookup("Wolf").expect("Wolf interned during register()");
+    let wolf = reg.interner().lookup("Wolf")
+        .expect("Wolf interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(wolf);
     let token = TokenDefinition {

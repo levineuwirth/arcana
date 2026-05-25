@@ -1,4 +1,4 @@
-//! Rubblebelt Boar — `{3}{R}` 3/3 red Boar creature.
+//! Rubblebelt Boar — `{3}{R}` 3/3 Creature — Boar.
 //! "When this creature enters, target creature gets +2/+0 until end of turn."
 
 use arcana_core::effects::Effect;
@@ -7,18 +7,17 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rubblebelt Boar");
-    let boar = reg.interner_mut().intern("Boar");
+    let boar_sub = reg.interner_mut().intern("Boar");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(boar);
+    subtypes.0.insert(boar_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{R}").expect("valid cost")),
@@ -36,30 +35,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_pump,
+                effect: rubblebelt_boar_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![TargetRequirement::target_creature()],
             }),
     )
 }
 
-fn etb_pump(
+fn rubblebelt_boar_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Pump {
-        target: *id,
-        power: 2,
-        toughness: 0,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    vec![Effect::Pump { target: *id, power: 2, toughness: 0, duration: Duration::EndOfTurn, keywords: vec![] }]
 }

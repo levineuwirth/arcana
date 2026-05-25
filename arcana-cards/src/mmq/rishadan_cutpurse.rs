@@ -1,8 +1,7 @@
 //! Rishadan Cutpurse — `{2}{U}` 1/1 blue Human Pirate.
-//! "When this creature enters, each opponent sacrifices a permanent of their
-//! choice unless they pay {1}."
-//! GAP: "unless they pay {1}" optional cost for each opponent is not expressible.
-//! Modeled as each opponent sacrifices a permanent unconditionally.
+//! "When this creature enters, each opponent sacrifices a permanent of their choice
+//! unless they pay {1}."
+//! GAP: "unless they pay {1}" optional cost escape not in engine effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: opponents_sacrifice,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,16 +48,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opponents_sacrifice(
+fn on_etb(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless they pay {1}" optional cost not expressible.
-    let opponents = script::opponents(state, trig.controller);
-    opponents.into_iter().map(|p| Effect::Sacrifice {
-        player: p,
-        filter: ObjectFilter::permanent(),
-        count: 1,
-    }).collect()
+    // GAP: "unless they pay {1}" optional mana escape not in engine effect catalog.
+    // Best-effort: each opponent sacrifices a permanent.
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::Sacrifice {
+            player: opp,
+            filter: ObjectFilter::permanent(),
+            count: 1,
+        })
+        .collect()
 }

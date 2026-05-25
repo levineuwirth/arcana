@@ -1,8 +1,8 @@
 //! Historian of Zhalfir — `{2}{U}{U}` 3/3 blue Human Wizard.
 //! "Whenever this creature attacks, if you control a Teferi planeswalker,
 //! draw a card."
-//! GAP: intervening-if "if you control a Teferi planeswalker" (by name) not
-//! expressible with ObjectFilter.
+//! GAP: Intervening-if "if you control a Teferi planeswalker" requires
+//! name-based filter not in engine; using intervening_if: None as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,9 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "if you control a Teferi planeswalker" not expressible.
+                // GAP: "if you control a Teferi planeswalker" not expressible.
                 intervening_if: None,
-                effect: draw_card,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_card(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

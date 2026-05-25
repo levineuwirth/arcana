@@ -1,6 +1,6 @@
 //! Kambal, Consul of Allocation — `{1}{W}{B}` 2/3 legendary white/black Human Advisor.
-//! "Whenever an opponent casts a noncreature spell, that player loses 2 life
-//! and you gain 2 life."
+//! "Whenever an opponent casts a noncreature spell, that player loses 2 life and
+//! you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::Opponent,
                 },
                 intervening_if: None,
-                effect: drain,
+                effect: on_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,19 +49,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn drain(
+fn on_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // trig.controller is the ability controller (you); the caster is the opponent.
-    // GAP: no field to identify the casting opponent directly; using trig.controller
-    // for the life gain and approximating — the LoseLife player should be the caster.
-    // The engine trigger system should pass the caster in some form; we use
-    // trig.controller for gain and cannot identify the opponent caster precisely.
+    let Some(caster) = trig.triggering_caster() else { return Vec::new(); };
     vec![
+        Effect::LoseLife { player: caster, amount: 2 },
         Effect::GainLife { player: trig.controller, amount: 2 },
-        // GAP: cannot identify the specific opponent who cast the spell from trig;
-        // LoseLife effect for caster omitted.
     ]
 }

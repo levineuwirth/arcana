@@ -1,4 +1,4 @@
-//! Gristle Grinner — `{4}{B}` 3/3 black Creature — Zombie.
+//! Gristle Grinner — `{4}{B}` 3/3 black Zombie creature.
 //! "Whenever a creature dies, this creature gets +2/+2 until end of turn."
 
 use arcana_core::effects::Effect;
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: creature_dies_pump_self,
+                effect: creature_dies_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,10 +48,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_dies_pump_self(
+fn creature_dies_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

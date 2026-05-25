@@ -1,7 +1,6 @@
-//! Ondu Giant — `{3}{G}` 2/4 green Giant Druid.
-//! "When this creature enters, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
-//! GAP: "you may" optional search not expressible; emitting unconditionally.
-//! GAP: "tapped" entry mode not expressible in TutorToBattlefield.
+//! Ondu Giant — `{3}{G}` 2/4 green creature. "When this creature enters, you may
+//! search your library for a basic land card, put it onto the battlefield tapped,
+//! then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_search_basic_land,
+                effect: etb_tutor_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,16 +46,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_search_basic_land(
+fn etb_tutor_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may" optional not expressible; emitting unconditionally
-    // GAP: "tapped" entry mode not expressible; using tapped: false as proxy
+    // GAP: "basic" supertype filter not expressible; using land type only
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-        tapped: false,
+        tapped: true,
     }]
 }

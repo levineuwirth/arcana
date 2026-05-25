@@ -1,4 +1,4 @@
-//! Soul's Attendant — `{W}` 1/1 white Human Cleric creature.
+//! Soul's Attendant — `{W}` 1/1 Creature — Human Cleric.
 //! "Whenever another creature enters, you may gain 1 life."
 
 use arcana_core::effects::Effect;
@@ -6,20 +6,19 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Soul's Attendant");
-    let human = reg.interner_mut().intern("Human");
-    let cleric = reg.interner_mut().intern("Cleric");
+    let human_sub = reg.interner_mut().intern("Human");
+    let cleric_sub = reg.interner_mut().intern("Cleric");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(human);
-    subtypes.0.insert(cleric);
+    subtypes.0.insert(human_sub);
+    subtypes.0.insert(cleric_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),
@@ -36,12 +35,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature(),
-                    from: None,
-                    to: Zone::Battlefield,
-                },
+                filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                from: None,
+                to: Zone::Battlefield,
+            },
                 intervening_if: None,
-                effect: on_creature_enters,
+                effect: soul_s_attendant_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,10 +48,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_creature_enters(
+fn soul_s_attendant_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GainLife { player: trig.controller, amount: 1 }]
 }

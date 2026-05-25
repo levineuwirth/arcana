@@ -1,6 +1,6 @@
-//! Nimana Sell-Sword — `{3}{B}` 2/2 black Creature — Human Warrior Ally.
-//! "Whenever this creature or another Ally you control enters, you may put a +1/+1 counter on
-//! this creature."
+//! Nimana Sell-Sword — `{3}{B}` 2/2 black Human Warrior Ally creature.
+//! "Whenever this creature or another Ally you control enters, you may put a +1/+1 counter
+//! on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,6 +13,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Nimana Sell-Sword");
@@ -34,17 +35,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
+    let ally_filter = script::subtype_filter(reg, "Ally")
+        .controlled_by(ControllerConstraint::You);
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ally_filter,
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: ally_enters_counter_self,
+                effect: ally_enters_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,14 +55,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn ally_enters_counter_self(
+fn ally_enters_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

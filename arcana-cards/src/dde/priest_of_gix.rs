@@ -1,5 +1,5 @@
-//! Priest of Gix — `{2}{B}` 2/1 black Phyrexian Human Cleric Minion.
-//! "When this creature enters, add {B}{B}{B}."
+//! Priest of Gix — `{2}{B}` 2/1 black Phyrexian Human Cleric Minion. "When
+//! this creature enters, add {B}{B}{B}." ETB trigger; add three black mana.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};

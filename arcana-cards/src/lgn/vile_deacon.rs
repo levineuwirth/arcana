@@ -1,6 +1,6 @@
-//! Vile Deacon — `{2}{B}{B}` 2/2 black Human Cleric. "Whenever this creature
-//! attacks, it gets +X/+X until end of turn, where X is the number of Clerics on
-//! the battlefield."
+//! Vile Deacon — `{2}{B}{B}` 2/2 black creature. "Whenever this creature
+//! attacks, it gets +X/+X until end of turn, where X is the number of Clerics
+//! on the battlefield."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -9,7 +9,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: pump_by_clerics,
+                effect: pump_per_cleric,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,20 +47,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_by_clerics(
+fn pump_per_cleric(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Cleric");
-    let n = script::count_matching(state, &filter, trig.controller);
-    if n == 0 {
-        return Vec::new();
-    }
+    let n = script::count_matching(state, &script::subtype_filter(reg, "Cleric"), trig.controller);
+    let x = n as i32;
     vec![Effect::Pump {
         target: trig.source,
-        power: n as i32,
-        toughness: n as i32,
+        power: x,
+        toughness: x,
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]

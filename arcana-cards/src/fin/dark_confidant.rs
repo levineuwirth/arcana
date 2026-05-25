@@ -1,9 +1,10 @@
-//! Dark Confidant — `{1}{B}` 2/1 black Human Wizard.
+//! Dark Confidant — `{1}{B}` 2/1 black Creature — Human Wizard.
 //! "At the beginning of your upkeep, reveal the top card of your library
 //! and put that card into your hand. You lose life equal to its mana value."
-//! GAP: "lose life equal to mana value of revealed card" dynamic amount
-//! not in Effect catalog; using DrawCards 1 + LoseLife 0 (approximation — can't
-//! read mana value at resolve time without a script helper that doesn't exist).
+//!
+//! GAP: effect — "reveal top card, put in hand, lose life equal to its MV"
+//! (DrawCards draws without revealing; no RevealAndDraw + LoseLifeEqualToMV
+//! composite). Approximated as DrawCards{1} only; life loss omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,7 +16,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: draw_lose_life,
+                effect: upkeep_draw_lose,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,12 +53,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_lose_life(
+fn upkeep_draw_lose(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "lose life equal to mana value" — dynamic amount not computable here;
-    // draw 1 only as structural approximation
+    // GAP: effect — reveal+draw+lose life equal to MV not in catalog; using DrawCards{1} only.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

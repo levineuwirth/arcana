@@ -1,4 +1,4 @@
-//! Clarion Cathars — `{3}{W}` 3/3 white Creature — Human Knight.
+//! Clarion Cathars — `{3}{W}` 3/3 white creature (Human Knight).
 //! "When this creature enters, create a 1/1 white Human creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -19,6 +19,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(knight);
+    let _ = reg.interner_mut().intern("Human");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{W}").expect("valid cost")),
@@ -36,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,20 +45,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let human = reg.interner().lookup("Human")
+    let human_id = reg.interner().lookup("Human")
         .expect("Human interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(human);
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(human_id);
     let token = TokenDefinition {
-        name: human,
+        name: human_id,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],

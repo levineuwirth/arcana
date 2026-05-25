@@ -1,16 +1,17 @@
-//! Dutiful Attendant — `{2}{B}` 1/2 black Human Warrior creature.
-//! "When this creature dies, return another target creature card from your graveyard to your hand."
+//! Dutiful Attendant — `{2}{B}` 1/2 black Human Warrior. "When this creature
+//! dies, return another target creature card from your graveyard to your hand."
+//! SelfDies trigger targeting a creature card in graveyard.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,10 +27,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,21 +37,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: on_dies_return_creature,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Card { zone: Zone::Graveyard(0), filter: arcana_core::targets::ObjectFilter::creature() },
-                        count: TargetCount::Exactly(1),
-                        controller: None,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: arcana_core::targets::ObjectFilter::creature(),
                     },
-                ],
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_dies_return_creature(
+fn on_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

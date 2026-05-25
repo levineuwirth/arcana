@@ -1,12 +1,13 @@
-//! Scholar of the Ages — `{5}{U}{U}` 3/3 blue Human Wizard.
-//! "When this creature enters, return up to two target instant and/or sorcery cards from your graveyard to your hand."
+//! Scholar of the Ages — `{5}{U}{U}` 3/3 blue creature. "When this creature
+//! enters, return up to two target instant and/or sorcery cards from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,15 +38,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_return_instants_sorceries,
+                effect: etb_return_spells,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Card {
                             zone: Zone::Graveyard(0),
-                            filter: arcana_core::targets::ObjectFilter::new()
-                                .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+                            filter: ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
                         },
                         count: TargetCount::UpTo(2),
                         controller: None,
@@ -55,16 +55,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_return_instants_sorceries(
+fn etb_return_spells(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    trig.targets.targets.iter().filter_map(|t| {
-        if let TargetChoice::Object(id) = t {
-            Some(Effect::ReturnFromGraveyardToHand { target: *id })
-        } else {
-            None
-        }
-    }).collect()
+    trig.targets.targets.iter()
+        .filter_map(|t| {
+            if let TargetChoice::Object(id) = t {
+                Some(Effect::ReturnFromGraveyardToHand { target: *id })
+            } else {
+                None
+            }
+        })
+        .collect()
 }

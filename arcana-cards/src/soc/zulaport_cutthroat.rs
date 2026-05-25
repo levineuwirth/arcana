@@ -1,4 +1,4 @@
-//! Zulaport Cutthroat — `{1}{B}` 1/1 black Creature — Human Rogue Ally.
+//! Zulaport Cutthroat — `{1}{B}` 1/1 black Human Rogue Ally creature.
 //! "Whenever this creature or another creature you control dies, each opponent loses 1 life
 //! and you gain 1 life."
 
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: creature_dies_drain_opponents,
+                effect: creature_dies_drain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,15 +53,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_dies_drain_opponents(
+fn creature_dies_drain(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    let mut effects: Vec<Effect> = opponents.into_iter().map(|opp| {
-        Effect::LoseLife { player: opp, amount: 1 }
-    }).collect();
-    effects.push(Effect::GainLife { player: trig.controller, amount: 1 });
-    vec![Effect::Sequence(effects)]
+    let mut effects = vec![Effect::GainLife { player: trig.controller, amount: 1 }];
+    for opp in script::opponents(state, trig.controller) {
+        effects.push(Effect::LoseLife { player: opp, amount: 1 });
+    }
+    effects
 }

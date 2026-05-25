@@ -1,4 +1,4 @@
-//! Somnomancer — `{1}{W/U}` 2/1 white/blue Kithkin Wizard creature.
+//! Somnomancer — `{1}{W/U}` 2/1 Creature — Kithkin Wizard.
 //! "When this creature enters, you may tap target creature."
 
 use arcana_core::effects::Effect;
@@ -6,24 +6,23 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Somnomancer");
-    let kithkin = reg.interner_mut().intern("Kithkin");
-    let wizard = reg.interner_mut().intern("Wizard");
+    let kithkin_sub = reg.interner_mut().intern("Kithkin");
+    let wizard_sub = reg.interner_mut().intern("Wizard");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(kithkin);
-    subtypes.0.insert(wizard);
+    subtypes.0.insert(kithkin_sub);
+    subtypes.0.insert(wizard_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W/U}").expect("valid cost")),
-        colors: ColorSet::white() | ColorSet::blue(),
+        colors: ColorSet::blue() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet::default(),
@@ -37,22 +36,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tap_creature,
+                effect: somnomancer_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![TargetRequirement::target_creature()],
             }),
     )
 }
 
-fn etb_tap_creature(
+fn somnomancer_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

@@ -1,16 +1,15 @@
-//! Curious Forager — `{2}{G}` 3/2 green Squirrel Druid. "When this creature enters,
-//! you may forage. When you do, return target permanent card from your graveyard to
-//! your hand."
-//!
-//! GAP: "forage" mechanic (exile 3 cards from graveyard or sacrifice a Food) not
-//! expressible. Emitting ETB with return permanent from graveyard as best-effort.
+//! Curious Forager — `{2}{G}` 3/2 green creature. "When this creature enters,
+//! you may forage. When you do, return target permanent card from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,27 +40,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_forage,
+                effect: forage_effect,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new(),
+                        filter: ObjectFilter::permanent(),
                     },
-                    count: TargetCount::UpTo(1),
+                    count: TargetCount::Exactly(1),
                     controller: None,
                 }],
             }),
     )
 }
 
-fn etb_forage(
+fn forage_effect(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: forage cost (exile 3 from graveyard or sacrifice Food) not expressible
+    // GAP: Forage cost (exile 3 cards or sacrifice Food) — optional cost not in catalog
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]

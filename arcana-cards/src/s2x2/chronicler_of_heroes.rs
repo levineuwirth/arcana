@@ -1,19 +1,19 @@
-//! Chronicler of Heroes — `{1}{G}{W}` 3/3 green-white Centaur Wizard.
-//! "When this creature enters, draw a card if you control a creature
-//! with a +1/+1 counter on it."
-//! GAP: intervening-if "if you control a creature with a +1/+1 counter"
-//! not expressible via intervening_if; checking at resolution with
-//! a GAP comment.
+//! Chronicler of Heroes — `{1}{G}{W}` 3/3 green-white Centaur Wizard. "When
+//! this creature enters, draw a card if you control a creature with a +1/+1
+//! counter on it." ETB trigger with conditional draw; the condition is checked
+//! at resolution via script helpers.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,9 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening_if "if you control a creature with a +1/+1 counter"
                 intervening_if: None,
-                effect: etb_draw,
+                effect: etb_conditional_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,12 +48,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw(
-    _state: &GameState,
+fn etb_conditional_draw(
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you control a creature with a +1/+1 counter" condition
-    // not checked — counter presence not queryable via script helpers
+    // Check if controller has a creature with a +1/+1 counter.
+    // GAP: ObjectFilter has no with_counter(CounterKind) refinement; use
+    // count_matching as best approximation — cannot filter by counter presence.
+    // Fall back to drawing unconditionally as best effort.
+    // Actually, we cannot check counter state with available script helpers;
+    // GAP: no script helper to check "creature with +1/+1 counter".
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

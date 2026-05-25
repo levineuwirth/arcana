@@ -1,7 +1,5 @@
 //! Razorclaw Bear — `{2}{G}{G}` 3/3 green Bear.
 //! "Whenever this creature becomes blocked, it gets +2/+2 until end of turn."
-//! GAP: trigger — "becomes blocked" has no matching TriggerCondition variant.
-//! Using SelfAttacks as closest structural placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -29,18 +27,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes blocked" has no TriggerCondition;
-                // using SelfAttacks as placeholder.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: pump_self,
+                effect: on_becomes_blocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_self(
+fn on_becomes_blocked(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

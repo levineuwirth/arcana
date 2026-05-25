@@ -1,9 +1,6 @@
-//! Nimrodel Watcher — `{1}{U}` 2/1 blue Elf Scout. "Whenever you scry, this
+//! Nimrodel Watcher — `{1}{U}` 2/1 blue creature. "Whenever you scry, this
 //! creature gets +1/+0 until end of turn and can't be blocked this turn. This
 //! ability triggers only once each turn."
-//!
-//! GAP: no TriggerCondition for "whenever you scry"; no "can't be blocked" Effect.
-//! Using best-effort SelfAttacks placeholder. OncePerTurn frequency used.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -39,10 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition for "whenever you scry"
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // GAP: no Scry trigger condition in catalog
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: on_scry,
+                effect: scry_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -50,12 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_scry(
+fn scry_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "can't be blocked this turn" not expressible with Effect catalog
+    // GAP: scry trigger condition not in catalog; "can't be blocked" effect not in catalog
     vec![Effect::Pump {
         target: trig.source,
         power: 1,

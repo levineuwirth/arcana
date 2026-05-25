@@ -1,7 +1,7 @@
-//! Slimy Piper — `{1}{G}` 2/1 green Creature — Fungus Bard.
-//! "Whenever this creature attacks, it gets +1/+1 until end of turn.
-//! If you control four or more creatures, it gets +2/+2 and gains
-//! indestructible until end of turn instead."
+//! Slimy Piper — `{1}{G}` 2/1 green creature (Fungus Bard).
+//! "Whenever this creature attacks, it gets +1/+1 until end of turn. If you
+//! control four or more creatures, it gets +2/+2 and gains indestructible
+//! until end of turn instead."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -30,6 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -53,12 +54,12 @@ fn on_attacks(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let creature_count = script::count_matching(
+    let n = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    if creature_count >= 4 {
+    if n >= 4 {
         vec![
             Effect::Pump {
                 target: trig.source,

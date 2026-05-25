@@ -1,9 +1,12 @@
-//! Roaring Slagwurm — `{5}{G}{G}` 6/4 green Creature — Wurm.
+//! Roaring Slagwurm — `{5}{G}{G}` 6/4 green Wurm creature.
 //! "Whenever this creature attacks, tap all artifacts."
+//!
+//! # Notes
+//! Uses ForEach over all battlefield artifacts to tap them.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
@@ -36,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_tap_all_artifacts,
+                effect: attack_tap_all_artifacts,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,15 +47,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_tap_all_artifacts(
+fn attack_tap_all_artifacts(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let artifact_filter = ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into());
-    let artifact_ids = script::ids_matching(state, &artifact_filter, trig.controller);
+    let filter = ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into());
+    let ids = script::ids_matching(state, &filter, trig.controller);
     vec![Effect::ForEach {
-        targets: artifact_ids,
-        effect: Box::new(Effect::Tap { target: arcana_core::objects::NULL_OBJECT_ID }),
+        targets: ids,
+        effect: Box::new(Effect::Tap { target: NULL_OBJECT_ID }),
     }]
 }

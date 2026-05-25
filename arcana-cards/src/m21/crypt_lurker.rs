@@ -1,10 +1,10 @@
-//! Crypt Lurker — `{3}{B}` 3/4 black Horror.
-//! "When this creature enters, you may sacrifice a creature or discard a creature card. If you do,
-//! draw a card."
-//! GAP: "sacrifice a creature OR discard a creature card" — modal choice not in catalog;
-//! emitting the discard path only.
+//! Crypt Lurker — `{3}{B}` 3/4 black Horror creature.
+//! "When this creature enters, you may sacrifice a creature or discard a creature card.
+//! If you do, draw a card."
+//! GAP: "may sacrifice OR discard" conditional with draw is not expressible; emitting
+//! draw only as best-effort.
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw_if_cost_paid,
+                effect: etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,15 +45,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_if_cost_paid(
+fn etb_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice a creature OR discard a creature card, if you do draw a card" —
-    // modal optional cost with conditional draw not in catalog
-    vec![
-        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-        Effect::DrawCards { player: trig.controller, count: 1 },
-    ]
+    // GAP: "you may sacrifice a creature or discard a creature card; if you do, draw a
+    // card" — optional sacrifice/discard with conditional draw not expressible.
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

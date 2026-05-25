@@ -13,3 +13,5 @@ pub mod merfolk_traders;
 pub mod dwarven_berserker;
 pub mod urborg_stalker;
 pub mod hurloon_shaman;
+pub mod tolarian_serpent;
+pub mod bone_dancer;

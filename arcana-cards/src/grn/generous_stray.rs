@@ -1,5 +1,6 @@
-//! Generous Stray — `{2}{G}` 1/2 green Creature — Cat. "When this creature
-//! enters, draw a card."
+//! Generous Stray — `{2}{G}` 1/2 green Cat creature. "When this
+//! creature enters, draw a card." Simple ETB cantrip in the
+//! Elvish Visionary mold.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw_card,
+                effect: etb_draw_a_card,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,7 +43,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_card(
+/// ETB trigger resolution: the triggering object's controller draws
+/// one card.
+fn etb_draw_a_card(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

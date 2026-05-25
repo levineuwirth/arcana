@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: opponents_lose_life,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,13 +45,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opponents_lose_life(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    script::opponents(state, trig.controller)
-        .into_iter()
-        .map(|p| Effect::LoseLife { player: p, amount: 2 })
+fn on_attacks(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let opponents = script::opponents(state, trig.controller);
+    opponents
+        .iter()
+        .map(|&p| Effect::LoseLife { player: p, amount: 2 })
         .collect()
 }

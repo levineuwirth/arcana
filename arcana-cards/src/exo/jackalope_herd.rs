@@ -10,7 +10,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
@@ -40,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: spell_bounce_self,
+                effect: on_spell_cast_bounce_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn spell_bounce_self(
+fn on_spell_cast_bounce_self(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

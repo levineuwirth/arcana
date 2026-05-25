@@ -1,5 +1,5 @@
-//! Pulse Tracker — `{B}` 1/1 black creature. "Whenever this creature attacks,
-//! each opponent loses 1 life."
+//! Pulse Tracker — `{B}` 1/1 black Vampire Rogue.
+//! "Whenever this creature attacks, each opponent loses 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

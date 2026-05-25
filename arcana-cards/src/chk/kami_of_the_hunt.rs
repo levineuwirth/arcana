@@ -1,7 +1,6 @@
 //! Kami of the Hunt — `{2}{G}` 2/2 green Spirit.
-//! "Whenever you cast a Spirit or Arcane spell, this creature gets +1/+1
-//! until end of turn."
-//! GAP: no "Spirit or Arcane" SpellCast filter; using SpellCast(You) as approximation.
+//! "Whenever you cast a Spirit or Arcane spell, this creature gets
+//! +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -9,11 +8,11 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -36,7 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "Spirit or Arcane" spell filter not in SpellCast; using any spell
+                // "Spirit or Arcane spell" — SpellCast with filter; Arcane is a subtype
+                // of Instant. Using a spell-cast filter for Spirit-subtype or any spell
+                // as best effort; the subtype filter is not available for spell types here.
+                // GAP: filter — cannot filter by "Spirit subtype or Arcane subtype" on spells.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
@@ -53,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn pump_self(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

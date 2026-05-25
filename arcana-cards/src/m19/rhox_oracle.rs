@@ -36,21 +36,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: draw_card,
+                effect: etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn draw_card(
+fn etb(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
-    }]
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

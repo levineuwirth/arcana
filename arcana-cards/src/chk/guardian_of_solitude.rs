@@ -1,9 +1,8 @@
 //! Guardian of Solitude — `{1}{U}` 1/2 blue Spirit.
 //! "Whenever you cast a Spirit or Arcane spell, target creature gains flying
 //! until end of turn."
-//! GAP: "Spirit or Arcane" spell filter — Arcane is a subtype, combining
-//! subtype filter with type-class filter not expressible as single ObjectFilter;
-//! using SpellCast(You, Spirit subtype) as partial placeholder.
+//! GAP: Arcane is a spell type not in TypeLine constants; filtering Spirit
+//! subtype only as best-effort.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -32,22 +31,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "Spirit or Arcane" — Arcane subtype filter not
-                // combinable with creature-subtype filter; using SpellCast(You)
-                // as placeholder.
+                // GAP: Arcane spell type not in TypeLine constants; filtering
+                // Spirit subtype via SpellCast creature (Spirit subtype) only.
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: None,
+                    filter: Some(ObjectFilter::new().with_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: grant_flying,
+                effect: on_spirit_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -59,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn grant_flying(
+fn on_spirit_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

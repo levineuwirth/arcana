@@ -1,15 +1,12 @@
-//! Drekavac — `{1}{B}` 3/3 black Beast. "When this creature enters, sacrifice it
-//! unless you discard a noncreature card."
-//!
-//! GAP: "sacrifice it unless you discard a noncreature card" — conditional discard
-//! or sacrifice not expressible. Emitting Discard as best-effort (omits the
-//! sacrifice-unless condition).
+//! Drekavac — `{1}{B}` 3/3 black creature. "When this creature enters,
+//! sacrifice it unless you discard a noncreature card."
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_condition,
+                effect: etb_cost,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,16 +43,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_condition(
+fn etb_cost(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice unless you discard a noncreature card" conditional not expressible;
-    // emitting discard as approximation (the actual sacrifice-unless mechanic is missing)
-    vec![Effect::Discard {
-        player: trig.controller,
-        count: 1,
-        choice: DiscardChoice::ControllerChooses,
-    }]
+    // GAP: "sacrifice unless you discard a noncreature card" — conditional sacrifice-or-discard not in catalog
+    // Approximate: discard a card (player's choice), if can't pay — sacrifice self
+    vec![
+        Effect::Discard {
+            player: trig.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
+    ]
 }

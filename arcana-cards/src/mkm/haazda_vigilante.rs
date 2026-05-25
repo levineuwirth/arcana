@@ -30,60 +30,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
+    };
+    let target_req = TargetRequirement {
+        filter: TargetFilter::Permanent(
+            ObjectFilter::creature()
+                .controlled_by(ControllerConstraint::You)
+                .with_max_power(2),
+        ),
+        count: TargetCount::Exactly(1),
+        controller: None,
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "enters or attacks" is two triggers; using
-                // SelfEntersBattlefield as primary (SelfAttacks would be a second def).
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: add_counter,
+                effect: on_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You)
-                            .with_max_power(2),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![target_req.clone()],
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: add_counter,
+                effect: on_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You)
-                            .with_max_power(2),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![target_req],
             }),
     )
 }
 
-fn add_counter(
+fn on_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::AddCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

@@ -1,6 +1,6 @@
-//! Volley Veteran — `{3}{R}` 4/2 red Goblin Warrior.
-//! "When this creature enters, it deals damage to target creature an opponent
-//! controls equal to the number of Goblins you control."
+//! Volley Veteran — `{3}{R}` 4/2 Goblin Warrior.
+//! "When this creature enters, it deals damage to target creature an
+//! opponent controls equal to the number of Goblins you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +10,8 @@ use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -22,7 +23,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Volley Veteran");
     let goblin = reg.interner_mut().intern("Goblin");
     let warrior = reg.interner_mut().intern("Warrior");
-    let _goblin2 = reg.interner_mut().intern("Goblin");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(warrior);
@@ -46,27 +46,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: Some(ControllerConstraint::Opponent),
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_etb(
-    state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let goblin_filter = script::subtype_filter(reg, "Goblin")
-        .controlled_by(ControllerConstraint::You);
-    let n = script::count_matching(state, &goblin_filter, trig.controller);
+fn on_etb(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    let n = script::count_matching(
+        state,
+        &script::subtype_filter(reg, "Goblin").controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
     vec![Effect::DealDamage {
         target: DamageTarget::Object(*id),
         amount: n,

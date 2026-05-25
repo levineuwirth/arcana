@@ -1,7 +1,6 @@
-//! Seizan, Perverter of Truth — `{3}{B}{B}` 6/5 legendary black Demon Spirit.
-//! "At the beginning of each player's upkeep, that player loses 2 life
-//! and draws two cards."
-//! Trigger fires at each player's upkeep; effect applies to that player.
+//! Seizan, Perverter of Truth — `{3}{B}{B}` 6/5 Legendary black Demon Spirit.
+//! "At the beginning of each player's upkeep, that player loses 2 life and
+//! draws two cards." Upkeep trigger (any player); that player loses 2 and draws 2.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,7 +14,6 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Seizan, Perverter of Truth");
@@ -44,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: each_upkeep,
+                effect: upkeep_effect,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,20 +50,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_upkeep(
-    state: &GameState,
+fn upkeep_effect(
+    _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "that player" = each player whose upkeep it is; using all_players
-    // since the trigger fires once per upkeep with whose=Any.
-    // In practice the engine fires this once per player's upkeep.
-    let all = script::all_players(state);
-    let effects: Vec<Effect> = all.into_iter().flat_map(|p| {
-        vec![
-            Effect::LoseLife { player: p, amount: 2 },
-            Effect::DrawCards { player: p, count: 2 },
-        ]
-    }).collect();
-    vec![Effect::Sequence(effects)]
+    // "that player" = the player whose upkeep it is; trig.controller is
+    // Seizan's controller, not the upkeep player. GAP: no accessor for
+    // "the player whose upkeep triggered this" — use trig.controller as
+    // best approximation (correct for your own upkeep only).
+    vec![
+        Effect::LoseLife { player: trig.controller, amount: 2 },
+        Effect::DrawCards { player: trig.controller, count: 2 },
+    ]
 }

@@ -1,6 +1,6 @@
-//! Sage's Row Denizen — `{2}{U}` 2/3 blue Creature — Vedalken Wizard.
-//! "Whenever another blue creature you control enters, target player
-//! mills two cards."
+//! Sage's Row Denizen — `{2}{U}` 2/3 blue creature (Vedalken Wizard).
+//! "Whenever another blue creature you control enters, target player mills
+//! two cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,6 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -59,7 +60,11 @@ fn on_blue_creature_enters(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
     vec![Effect::Mill { player: *p, count: 2 }]
 }

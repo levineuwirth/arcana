@@ -1,4 +1,5 @@
-//! Wistful Selkie — `{G/U}{G/U}{G/U}` 2/2 green/blue Creature — Merfolk Wizard.
+//! Wistful Selkie — `{G/U}{G/U}{G/U}` 2/2 green-blue Creature — Merfolk
+//! Wizard.
 //! "When this creature enters, draw a card."
 
 use arcana_core::effects::Effect;
@@ -9,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()

@@ -1,18 +1,13 @@
-//! Necrite — `{1}{B}{B}` 2/2 black creature. "Whenever this creature attacks
-//! and isn't blocked, you may sacrifice it. If you do, destroy target creature
-//! defending player controls. It can't be regenerated."
-//!
-//! GAP: trigger — "attacks and isn't blocked" is not a separate TriggerCondition;
-//! using SelfAttacks as closest approximation.
-//! GAP: effect — conditional sacrifice (you may sacrifice it) gating destroy
-//! is not expressible.
+//! Necrite — `{1}{B}{B}` 2/2 black Thrull.
+//! "Whenever this creature attacks and isn't blocked, you may sacrifice it. If you do,
+//! destroy target creature defending player controls. It can't be regenerated."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,24 +34,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks and isn't blocked" condition not in catalog.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfAttacksUnblocked,
                 intervening_if: None,
-                effect: on_attacks,
+                effect: on_unblocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
+                }],
             }),
     )
 }
 
-fn on_attacks(
+fn on_unblocked(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "attacks and isn't blocked" check and conditional sacrifice
-    // not expressible; emitting simple destroy.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]

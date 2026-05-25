@@ -1,5 +1,5 @@
-//! Benalish Veteran — `{2}{W}` 2/2 white creature. "Whenever this creature
-//! attacks, it gets +1/+1 until end of turn."
+//! Benalish Veteran — `{2}{W}` 2/2 white Human Soldier.
+//! "Whenever this creature attacks, it gets +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

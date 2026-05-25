@@ -1,18 +1,18 @@
-//! Decorated Champion — `{1}{G}` 2/2 green Elf Warrior.
-//! "Whenever another Warrior enters the battlefield under your control, put a +1/+1 counter
-//! on this creature."
+//! Decorated Champion — `{1}{G}` 2/2 green Creature — Elf Warrior.
+//! "Whenever another Warrior your team controls enters, put a +1/+1 counter on this creature."
+//! GAP: "your team" (teammate) distinction not in ControllerConstraint; using You.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,15 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: Warrior subtype filter not available in ZoneChange filter at register time
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: counter_self,
+                effect: warrior_enters_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,11 +51,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_self(
+fn warrior_enters_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "Warrior" subtype filter on the entering creature not enforced here
+    // (trigger condition can't filter by subtype on ZoneChange entering object).
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

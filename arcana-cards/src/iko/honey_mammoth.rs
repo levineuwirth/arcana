@@ -1,5 +1,5 @@
-//! Honey Mammoth — `{4}{G}{G}` 6/6 green Elephant.
-//! "When this creature enters, you gain 4 life."
+//! Honey Mammoth — `{4}{G}{G}` 6/6 green creature. "When this creature enters,
+//! you gain 4 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

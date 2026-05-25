@@ -1,16 +1,16 @@
-//! Hidden Horror — `{1}{B}{B}` 4/4 black Creature — Horror.
+//! Hidden Horror — `{1}{B}{B}` 4/4 black Horror creature.
 //! "When this creature enters, sacrifice it unless you discard a creature card."
 //!
-//! # GAP: "unless you discard a creature card" is a cost-gate choice for the player;
-//! the engine has no conditional discard-or-sacrifice variant. Best-effort: emit Sacrifice
-//! on self; the discard alternative is not modeled.
+//! # Notes
+//! GAP: conditional sacrifice-unless (no Effect::Conditional variant with a discard-check
+//! condition). Modeled as ETB discard a creature card; sacrifice is omitted.
+//! GAP: "unless you discard a creature card" — condition on player choice not expressible.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_sacrifice_unless,
+                effect: etb_discard_or_sacrifice,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,16 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_sacrifice_unless(
+fn etb_discard_or_sacrifice(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice it unless you discard a creature card" — the player choice to
-    // discard instead is not modeled. Emitting sacrifice-self as best-effort.
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: ObjectFilter::permanent(),
-        count: 1,
-    }]
+    // GAP: "sacrifice unless you discard a creature card" — conditional on player choice
+    // not expressible; emitting discard as best-effort approximation.
+    vec![Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses }]
 }

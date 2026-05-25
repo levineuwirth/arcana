@@ -1,7 +1,7 @@
 //! Pitiless Vizier — `{3}{B}` 4/2 black Creature — Minotaur Cleric.
 //! "Whenever you cycle or discard a card, this creature gains indestructible
 //! until end of turn."
-//! GAP: trigger — no 'cycle or discard' combined condition; using CardDiscarded(You) as closest.
+//! Note: using CardDiscarded/You as trigger (cycling involves discarding).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -13,7 +13,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -38,12 +37,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'cycle or discard' combined condition; using CardDiscarded(You) as closest
                 trigger_condition: TriggerCondition::CardDiscarded {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: discard_indestructible,
+                effect: on_discard_indestructible,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn discard_indestructible(
+fn on_discard_indestructible(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

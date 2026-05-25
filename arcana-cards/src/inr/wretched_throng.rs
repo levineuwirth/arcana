@@ -1,6 +1,8 @@
-//! Wretched Throng — `{1}{U}` 2/1 blue Zombie Horror creature.
-//! "When this creature dies, you may search your library for a card named Wretched Throng,
-//! reveal it, put it into your hand, then shuffle."
+//! Wretched Throng — `{1}{U}` 2/1 blue Zombie Horror. "When this creature dies, you
+//! may search your library for a card named Wretched Throng, reveal it, put it into
+//! your hand, then shuffle."
+//! GAP: Name-specific tutor filter not directly supported; using TutorToHand with
+//! creature filter as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +13,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,10 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -52,6 +52,7 @@ fn on_dies_tutor(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: name-specific tutor filter not supported; using creature filter as approximation
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::creature(),

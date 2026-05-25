@@ -1,4 +1,4 @@
-//! Gale, Abyssal Conduit — `{3}{U}{B}` 4/5 blue-black Legendary Human Wizard.
+//! Gale, Abyssal Conduit — `{3}{U}{B}` 4/5 legendary blue-black creature.
 //! "Whenever you cast an instant or sorcery spell, each opponent loses 2 life."
 
 use arcana_core::effects::Effect;
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: instant_sorcery_opponents_lose_life,
+                effect: spell_cast_opponents_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn instant_sorcery_opponents_lose_life(
+fn spell_cast_opponents_lose_life(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

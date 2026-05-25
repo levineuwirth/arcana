@@ -16,7 +16,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ambassador Oak");
     let treefolk = reg.interner_mut().intern("Treefolk");
     let warrior = reg.interner_mut().intern("Warrior");
-    let elf = reg.interner_mut().intern("Elf");
+    let _elf = reg.interner_mut().intern("Elf");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treefolk);
     subtypes.0.insert(warrior);
@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_elf_token,
+                effect: etb_elf_warrior_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,13 +45,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_elf_token(
+fn etb_elf_warrior_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let elf = reg.interner().lookup("Elf").expect("Elf interned during register()");
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned during register()");
+    let elf = reg.interner().lookup("Elf")
+        .expect("Elf interned during register()");
+    let warrior = reg.interner().lookup("Warrior")
+        .expect("Warrior interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elf);
     subtypes.0.insert(warrior);

@@ -1,5 +1,6 @@
-//! Phyrexian Vivisector — `{1}{B}` 2/2 black Creature — Phyrexian Human.
+//! Phyrexian Vivisector — `{1}{B}` 2/2 black Phyrexian Human creature.
 //! "Whenever a creature you control dies, scry 1."
+//! Keywords (Scryfall-parsed): Scry (handled via trigger)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -52,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn creature_dies_scry(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Scry { player: trig.controller, count: 1 }]
 }

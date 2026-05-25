@@ -3,3 +3,4 @@ pub mod marisi_s_twinclaws;
 pub mod undermine;
 pub mod hellfire_mongrel;
 pub mod slavering_nulls;
+pub mod dimir_cutpurse;

@@ -1,8 +1,8 @@
-//! Mentor of the Meek — `{2}{W}` 2/2 white Human Soldier.
-//! "Whenever another creature you control with power 2 or less enters,
-//! you may pay {1}. If you do, draw a card."
-//! GAP: optional mana-payment cost on trigger is not expressible;
-//! emitting draw a card unconditionally (the "may pay {1}" guard is dropped).
+//! Mentor of the Meek — `{2}{W}` 2/2 white Human Soldier. "Whenever another
+//! creature you control with power 2 or less enters, you may pay {1}. If you
+//! do, draw a card." ZoneChange trigger on friendly creature with power ≤ 2;
+//! optional {1} payment to draw. GAP: optional mana payment gate not in engine;
+//! emit draw unconditionally (best effort).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_small_etb,
+                effect: on_creature_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,11 +54,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_small_etb(
+fn on_creature_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional pay-{1} trigger cost dropped; drawing unconditionally
+    // GAP: "you may pay {1}" gate not expressible; draw unconditionally.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

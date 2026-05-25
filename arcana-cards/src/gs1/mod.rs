@@ -17,3 +17,5 @@ pub mod journey_for_the_elixir;
 pub mod aggressive_instinct;
 pub mod purple_crystal_crab;
 pub mod reckless_pangolin;
+pub mod earth_origin_yak;
+pub mod nine_tail_white_fox;

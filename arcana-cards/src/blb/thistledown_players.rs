@@ -1,5 +1,6 @@
-//! Thistledown Players — `{2}{W}` 3/3 white Mouse Bard.
-//! "Whenever this creature attacks, untap target nonland permanent."
+//! Thistledown Players — `{2}{W}` 3/3 white Mouse Bard. "Whenever this creature
+//! attacks, untap target nonland permanent." Attack trigger targeting a nonland
+//! permanent; untap it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -56,7 +57,11 @@ fn attack_untap(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::Untap { target: *id }]
 }

@@ -17,7 +17,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let zombie = reg.interner_mut().intern("Zombie");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
-    let _zombie_tok = reg.interner_mut().intern("Zombie");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{5}{B}").expect("valid cost")),
@@ -30,16 +29,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfDies,
-                intervening_if: None,
-                effect: create_zombie_tokens,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfDies,
+            intervening_if: None,
+            effect: create_zombie_tokens,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
@@ -48,7 +46,10 @@ fn create_zombie_tokens(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned during register()");
+    let zombie = reg
+        .interner()
+        .lookup("Zombie")
+        .expect("Zombie interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
     let token = TokenDefinition {
@@ -62,7 +63,13 @@ fn create_zombie_tokens(
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: trig.controller, token: token.clone() },
-        Effect::CreateToken { controller: trig.controller, token },
+        Effect::CreateToken {
+            controller: trig.controller,
+            token: token.clone(),
+        },
+        Effect::CreateToken {
+            controller: trig.controller,
+            token,
+        },
     ]
 }

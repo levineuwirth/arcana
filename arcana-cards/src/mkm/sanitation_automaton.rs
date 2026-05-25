@@ -1,5 +1,5 @@
-//! Sanitation Automaton — `{2}` 2/1 Artifact Creature — Construct.
-//! Colorless. "When this creature enters, surveil 1."
+//! Sanitation Automaton — `{2}` 2/1 Artifact Creature — Construct. "When
+//! this creature enters, surveil 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -21,7 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{2}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_surveil(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Surveil { player: trig.controller, count: 1 }]
 }

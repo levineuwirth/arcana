@@ -1,7 +1,5 @@
-//! Deepwood Wolverine — `{G}` 1/1 green Wolverine creature.
-//! "Whenever this creature becomes blocked, it gets +2/+0 until end of turn."
-//! GAP: trigger — SelfBecomesBlocked not in TriggerCondition catalog;
-//! using SelfAttacks as placeholder.
+//! Deepwood Wolverine — `{G}` 1/1 green Wolverine. "Whenever this creature becomes
+//! blocked, it gets +2/+0 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,20 +24,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
-    // GAP: trigger — SelfBecomesBlocked not in TriggerCondition catalog; using SelfAttacks as placeholder
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: on_blocked_pump,
+                effect: on_becomes_blocked_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_blocked_pump(
+fn on_becomes_blocked_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

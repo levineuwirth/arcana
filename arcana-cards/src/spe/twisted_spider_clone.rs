@@ -1,6 +1,9 @@
-//! Twisted Spider-Clone — `{3}{G}` 4/4 green Spider Human.
-//! "When this creature enters, put a +1/+1 counter on each creature you control with a +1/+1 counter on it."
-//! GAP: ObjectFilter cannot filter "creatures with a +1/+1 counter"; using all creatures you control as proxy.
+//! Twisted Spider-Clone — `{3}{G}` 4/4 green creature. "When this creature
+//! enters, put a +1/+1 counter on each creature you control with a +1/+1 counter
+//! on it."
+//!
+//! GAP: effect — filtering creatures "with a +1/+1 counter on it" not expressible
+//! in ObjectFilter. Emitting counters on all your creatures as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -52,18 +55,18 @@ fn etb_counter_countered_creatures(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "with a +1/+1 counter on it" filter not expressible; applying to all creatures you control
-    let ids = script::ids_matching(
+    // GAP: "with a +1/+1 counter" predicate not expressible; using all your creatures
+    let my_creatures = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::AddCounters {
-            target: arcana_core::objects::NULL_OBJECT_ID,
+    my_creatures
+        .into_iter()
+        .map(|id| Effect::AddCounters {
+            target: id,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
-        }),
-    }]
+        })
+        .collect()
 }

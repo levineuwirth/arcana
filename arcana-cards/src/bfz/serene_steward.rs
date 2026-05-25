@@ -1,15 +1,16 @@
 //! Serene Steward — `{1}{W}` 2/2 white Human Cleric Ally.
 //! "Whenever you gain life, you may pay {W}. If you do, put a +1/+1 counter
 //! on target creature."
-//! GAP: optional mana payment as part of trigger resolution is not in the
-//! Effect catalog; emitting the counter effect unconditionally.
+//!
+//! GAP: "you may pay {W}" optional cost check on trigger resolution is not
+//! expressible. Emitting the counter effect unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,27 +38,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::LifeGained {
-                    player: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: on_life_gain,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::LifeGained {
+                player: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: on_life_gained,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement::target_creature()],
+        }),
     )
 }
 
-fn on_life_gain(
+fn on_life_gained(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional {W} payment before effect — not in catalog
+    // GAP: "you may pay {W}" optional cost not expressible.
     let Some(target) = trig.targets.targets.first() else {
         return Vec::new();
     };

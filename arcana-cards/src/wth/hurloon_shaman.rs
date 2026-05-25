@@ -1,5 +1,5 @@
-//! Hurloon Shaman — `{1}{R}{R}` 2/3 red Minotaur Shaman.
-//! "When this creature dies, each player sacrifices a land of their choice."
+//! Hurloon Shaman — `{1}{R}{R}` 2/3 red creature. "When this creature dies, each
+//! player sacrifices a land."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_each_player_sac_land,
+                effect: dies_each_sac_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,16 +46,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_each_player_sac_land(
+fn dies_each_sac_land(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
     script::all_players(state)
         .into_iter()
         .map(|p| Effect::Sacrifice {
             player: p,
-            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            filter: land_filter.clone(),
             count: 1,
         })
         .collect()

@@ -1,7 +1,6 @@
-//! Mechanized Ninja Cavalry — `{1}{R/W}` 1/1 red/white Artifact Creature —
-//! Robot Ninja.
-//! "When this creature enters, create a 1/1 colorless Robot artifact
-//! creature token."
+//! Mechanized Ninja Cavalry — `{1}{R/W}` 1/1 red-white artifact creature
+//! (Robot Ninja). "When this creature enters, create a 1/1 colorless
+//! Robot artifact creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(robot);
     subtypes.0.insert(ninja);
+    let _ = reg.interner_mut().intern("Robot");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{R/W}").expect("valid cost")),
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,20 +46,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let robot = reg.interner().lookup("Robot")
+    let robot_id = reg.interner().lookup("Robot")
         .expect("Robot interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(robot);
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(robot_id);
     let token = TokenDefinition {
-        name: robot,
+        name: robot_id,
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],

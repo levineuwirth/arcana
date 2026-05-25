@@ -1,16 +1,16 @@
-//! Armament Corps — `{2}{W}{B}{G}` 4/4 white/black/green Human Soldier.
-//! "When this creature enters, distribute two +1/+1 counters among one or two target creatures you control."
-//! GAP: "distribute" (split counters with player choice across up to 2 targets) not expressible;
-//! emitting AddCounters 1 to each of up to 2 targets unconditionally instead.
+//! Armament Corps — `{2}{W}{B}{G}` 4/4 black-green-white creature. "When this
+//! creature enters, distribute two +1/+1 counters among one or two target
+//! creatures you control."
+//!
+//! GAP: target — "distribute among one or two" counter allocation not expressible;
+//! emitting one counter on each of up to two targets.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -45,11 +45,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
+                    filter: TargetFilter::Creature,
                     count: TargetCount::UpTo(2),
-                    controller: None,
+                    controller: Some(ControllerConstraint::You),
                 }],
             }),
     )
@@ -60,8 +58,7 @@ fn etb_distribute_counters(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "distribute two +1/+1 counters among one or two targets" — player-chosen distribution
-    // not expressible; emitting AddCounters 1 to each declared target unconditionally
+    // GAP: distribute two counters; emitting one per target
     trig.targets.targets.iter().filter_map(|t| {
         if let TargetChoice::Object(id) = t {
             Some(Effect::AddCounters {

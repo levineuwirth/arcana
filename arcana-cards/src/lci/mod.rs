@@ -43,3 +43,5 @@ pub mod akal_pakal_first_among_equals;
 pub mod synapse_necromage;
 pub mod brazen_blademaster;
 pub mod scytheclaw_raptor;
+pub mod waylaying_pirates;
+pub mod enterprising_scallywag;

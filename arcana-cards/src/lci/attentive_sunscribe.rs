@@ -1,9 +1,7 @@
-//! Attentive Sunscribe — `{1}{W}` 2/2 white artifact creature. "Whenever
-//! this creature becomes tapped, scry 1."
-//!
-//! GAP: trigger — no TriggerCondition for "whenever this creature becomes
-//! tapped". Using SelfAttacks as closest available; verify pipeline will
-//! flag.
+//! Attentive Sunscribe — `{1}{W}` 2/2 white Artifact Creature — Gnome.
+//! "Whenever this creature becomes tapped, scry 1." A self-tap
+//! triggered ability that resolves into a one-card scry for the
+//! ability's controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,16 +28,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition for "whenever this creature becomes tapped"
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: tapped_scry_1,
+                effect: on_become_tapped_scry_1,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +45,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tapped_scry_1(
+/// "Whenever this creature becomes tapped, scry 1." The ability's
+/// controller looks at the top card of their library.
+fn on_become_tapped_scry_1(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

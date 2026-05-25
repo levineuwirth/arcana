@@ -1,21 +1,20 @@
-//! Genesis — `{4}{G}` 4/4 green Incarnation. "At the beginning of your upkeep, if
-//! this creature is in your graveyard, you may pay {2}{G}. If you do, return target
-//! creature card from your graveyard to your hand."
-//!
-//! GAP: "if this creature is in your graveyard" — trigger zone should be Graveyard
-//! but trigger fires at upkeep; "you may pay {2}{G}" additional cost not expressible.
-//! Emitting upkeep trigger with graveyard zone and return-to-hand effect.
+//! Genesis — `{4}{G}` 4/4 green creature. "At the beginning of your upkeep,
+//! if this creature is in your graveyard, you may pay {2}{G}. If you do,
+//! return target creature card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -43,9 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
+                // intervening_if: "if this creature is in your graveyard" — GAP: intervening-if not supported
+                // trigger fires from graveyard zone in practice; zone check not in engine
                 intervening_if: None,
-                effect: upkeep_reanimate,
-                // Fires from graveyard; oracle says "if this creature is in your graveyard"
+                effect: return_creature_from_graveyard,
                 trigger_zones: vec![Zone::Graveyard(0)],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -60,12 +60,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_reanimate(
+fn return_creature_from_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may pay {2}{G}" additional cost not expressible
+    // GAP: optional-cost payment "{2}{G}" not in catalog
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnFromGraveyardToHand { target: *id }]

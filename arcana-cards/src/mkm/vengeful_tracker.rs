@@ -1,7 +1,8 @@
-//! Vengeful Tracker — `{1}{R}` 2/2 red Human Detective.
-//! "Whenever an opponent sacrifices an artifact, this creature deals 2 damage to them."
-//! GAP: Sacrificed trigger filter cannot restrict to "opponent sacrifices"; using Sacrificed any as proxy.
-//! GAP: "them" (the sacrificing opponent) not accessible via trig; using trig.controller as target proxy.
+//! Vengeful Tracker — `{1}{R}` 2/2 red creature. "Whenever an opponent
+//! sacrifices an artifact, this creature deals 2 damage to them."
+//!
+//! GAP: trigger — Sacrificed does not have a "who" field to restrict to
+//! opponents. Triggering caster used in effect as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -38,12 +39,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: Sacrificed filter cannot restrict to "opponent sacrifices artifact"; using artifact filter
+                // GAP: Sacrificed has no "who" field; fires for any player sacrificing
                 trigger_condition: TriggerCondition::Sacrificed {
                     filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                 },
                 intervening_if: None,
-                effect: opp_sac_artifact_damage,
+                effect: opponent_sac_artifact_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,14 +52,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opp_sac_artifact_damage(
+fn opponent_sac_artifact_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "them" (the sacrificing opponent) not accessible; damage directed at trig.controller as proxy
+    let opponent = trig.triggering_caster().unwrap_or(trig.controller);
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(trig.controller),
+        target: DamageTarget::Player(opponent),
         amount: 2,
         source: trig.source,
     }]

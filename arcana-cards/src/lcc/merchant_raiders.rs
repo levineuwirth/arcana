@@ -1,11 +1,11 @@
-//! Merchant Raiders — `{3}{U}` 2/4 blue Creature — Human Pirate.
-//! "Whenever this creature or another Pirate you control enters, tap up to one target
-//! creature. That creature doesn't untap during its controller's untap step for as long
-//! as you control this creature."
+//! Merchant Raiders — `{3}{U}` 2/4 blue Human Pirate creature.
+//! "Whenever this creature or another Pirate you control enters, tap up to one target creature.
+//! That creature doesn't untap during its controller's untap step for as long as you control
+//! this creature."
 //!
-//! # GAP: "doesn't untap during its controller's untap step for as long as you control
-//! this creature" is a lasting continuous effect not modeled in the Effect catalog.
-//! Emitting Tap only.
+//! # Notes
+//! GAP: "doesn't untap during its controller's untap step for as long as you control this" —
+//! no duration-tied-to-source-control Effect variant. Modeled as tap only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: pirate_etb_tap_creature,
+                effect: pirate_enters_tap,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -59,14 +59,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pirate_etb_tap_creature(
+fn pirate_enters_tap(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "doesn't untap during its controller's untap step for as long as you control
-    // this creature" lasting continuous effect not modeled.
+    // GAP: "doesn't untap during its controller's untap step for as long as you control this" —
+    // no duration-tied-to-source-control Effect variant.
     vec![Effect::Tap { target: *id }]
 }

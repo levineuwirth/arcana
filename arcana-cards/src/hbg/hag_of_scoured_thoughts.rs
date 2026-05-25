@@ -1,14 +1,13 @@
 //! Hag of Scoured Thoughts — `{2}{B}` 2/2 black Hag Warlock.
-//! "At the beginning of your upkeep, each opponent mills five cards. Then
-//! exile each opponent's graveyard."
-//! GAP: "exile each opponent's graveyard" — ExileFromGraveyard requires a
-//! single ObjectId; no bulk-graveyard-exile effect; that part omitted.
+//! "At the beginning of your upkeep, each opponent mills five cards.
+//! Then exile each opponent's graveyard."
+//! GAP: "Exile each opponent's graveyard" (mass exile of a zone) is not
+//! in engine effect catalog; only Mill 5 per opponent is expressed.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
@@ -17,6 +16,7 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hag of Scoured Thoughts");
@@ -34,7 +34,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: mill_opponents,
+                effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,15 +53,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn mill_opponents(
+fn on_upkeep(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "then exile each opponent's graveyard" — bulk graveyard exile not
-    // expressible; only the mill 5 portion is modeled.
+    // Mill 5 each opponent; GAP: exile each opponent's graveyard not in catalog.
     script::opponents(state, trig.controller)
         .into_iter()
-        .map(|p| Effect::Mill { player: p, count: 5 })
+        .map(|opp| Effect::Mill { player: opp, count: 5 })
         .collect()
 }

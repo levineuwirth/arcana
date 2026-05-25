@@ -1,6 +1,6 @@
 //! Agent Bishop, Man in Black — `{2}{W}` 1/2 legendary white Human Soldier.
-//! "At the beginning of combat on your turn, put a +1/+1 counter on each
-//! of up to two target creatures."
+//! "At the beginning of combat on your turn, put a +1/+1 counter on each of
+//! up to two target creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: put_counters_on_targets,
+                effect: on_combat_begins,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -55,10 +55,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn put_counters_on_targets(
+fn on_combat_begins(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     trig.targets.targets.iter().filter_map(|t| {
         if let TargetChoice::Object(id) = t {

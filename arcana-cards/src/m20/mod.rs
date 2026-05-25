@@ -60,3 +60,8 @@ pub mod waterkin_shaman;
 pub mod impassioned_orator;
 pub mod vengeful_warchief;
 pub mod audacious_thief;
+pub mod wildfire_elemental;
+pub mod undead_servant;
+pub mod haazda_officer;
+pub mod rotting_regisaur;
+pub mod sorin_s_guide;

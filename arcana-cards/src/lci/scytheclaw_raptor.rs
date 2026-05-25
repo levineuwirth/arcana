@@ -1,7 +1,11 @@
-//! Scytheclaw Raptor — `{2}{R}` 4/3 red Dinosaur.
-//! "Whenever a player casts a spell, if it's not their turn, this creature deals
-//! 4 damage to them."
-//! GAP: intervening-if "if it's not their turn" not expressible.
+//! Scytheclaw Raptor — `{2}{R}` 4/3 red creature. "Whenever a player casts a
+//! spell, if it's not their turn, this creature deals 4 damage to them."
+//!
+//! GAP: intervening_if — "if it's not their turn" condition not representable.
+//! Emitting damage unconditionally.
+//!
+//! GAP: effect — "deals 4 damage to them" (the caster); using
+//! trig.triggering_caster() accessor.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +13,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,8 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     filter: None,
                     caster: ControllerConstraint::Any,
                 },
-                // GAP: intervening-if "if it's not their turn" not expressible
-                intervening_if: None,
+                intervening_if: None, // GAP: intervening_if — "if it's not their turn"
                 effect: spell_cast_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -55,10 +58,11 @@ fn spell_cast_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the caster is the player who cast the spell (not trig.controller here);
-    // using trig.controller as a proxy.
+    let Some(caster) = trig.triggering_caster() else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(trig.controller),
+        target: DamageTarget::Player(caster),
         amount: 4,
         source: trig.source,
     }]

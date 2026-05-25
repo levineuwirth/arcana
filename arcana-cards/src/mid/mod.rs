@@ -24,3 +24,8 @@ pub mod champion_of_the_perished;
 pub mod arrogant_outlaw;
 pub mod clarion_cathars;
 pub mod bat_whisperer;
+pub mod odric_s_outrider;
+pub mod timberland_guide;
+pub mod organ_hoarder;
+pub mod falkenrath_perforator;
+pub mod diregraf_horde;

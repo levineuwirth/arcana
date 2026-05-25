@@ -1,5 +1,5 @@
-//! Web-Warriors — `{4}{G/W}` 4/3 green/white Spider Hero creature.
-//! "When this creature enters, put a +1/+1 counter on each other creature you control."
+//! Web-Warriors — `{4}{G/W}` 4/3 green/white Spider Hero. "When this creature enters,
+//! put a +1/+1 counter on each other creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +10,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -27,10 +27,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -57,13 +55,12 @@ fn etb_counter_each_other_creature(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    let targets: Vec<_> = ids.into_iter().filter(|id| *id != trig.source).collect();
-    vec![Effect::ForEach {
-        targets,
-        effect: Box::new(Effect::AddCounters {
-            target: arcana_core::objects::NULL_OBJECT_ID,
+    ids.into_iter()
+        .filter(|&id| id != trig.source)
+        .map(|id| Effect::AddCounters {
+            target: id,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
-        }),
-    }]
+        })
+        .collect()
 }

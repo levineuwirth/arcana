@@ -1,10 +1,5 @@
-//! Rimefur Reindeer — `{3}{W}` 3/4 white Elk. "Whenever an enchantment you
-//! control enters, tap target creature an opponent controls."
-//!
-//! GAP: trigger — enchantment ETB with controller-you filter not expressible
-//! via ZoneChange (filter type only, no controller for the entering permanent
-//! simultaneously); using ZoneChange with enchantment type filter as
-//! approximation.
+//! Rimefur Reindeer — `{3}{W}` 3/4 white Elk.
+//! "Whenever an enchantment you control enters, tap target creature an opponent controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,6 +18,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let elk = reg.interner_mut().intern("Elk");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elk);
+    let enchantment_filter = ObjectFilter::permanent()
+        .with_types(TypeLine::ENCHANTMENT.into())
+        .controlled_by(ControllerConstraint::You);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{W}").expect("valid cost")),
@@ -39,9 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::new()
-                        .with_types(TypeLine::ENCHANTMENT.into())
-                        .controlled_by(ControllerConstraint::You),
+                    filter: enchantment_filter,
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -63,7 +59,6 @@ fn on_enchantment_enters(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };
     vec![Effect::Tap { target: *id }]
 }

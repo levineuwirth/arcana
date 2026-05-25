@@ -1,9 +1,10 @@
-//! Adherent of Hope — `{1}{W}` 2/1 white Creature — Human Soldier.
+//! Adherent of Hope — `{1}{W}` 2/1 white Human Soldier creature.
 //! "At the beginning of combat on your turn, if you control a Basri planeswalker,
 //! put a +1/+1 counter on this creature."
 //!
-//! # GAP: intervening-if "if you control a Basri planeswalker" — planeswalker subtype
-//! filtering not available via ObjectFilter in the API.
+//! # Notes
+//! The "if you control a Basri planeswalker" is an intervening-if condition.
+//! GAP: intervening_if condition (control a specific named planeswalker) — not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,9 +45,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     phase: Phase::Combat,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you control a Basri planeswalker" not modeled.
+                // GAP: intervening_if — "if you control a Basri planeswalker" not expressible.
                 intervening_if: None,
-                effect: combat_counter_if_basri,
+                effect: combat_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,15 +55,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn combat_counter_if_basri(
+fn combat_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you control a Basri planeswalker" condition not modeled.
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

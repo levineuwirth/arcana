@@ -24,3 +24,6 @@ pub mod throttle;
 pub mod confront_the_unknown;
 pub mod stoic_builder;
 pub mod lamplighter_of_selhoff;
+pub mod rottenheart_ghoul;
+pub mod drownyard_explorers;
+pub mod byway_courier;

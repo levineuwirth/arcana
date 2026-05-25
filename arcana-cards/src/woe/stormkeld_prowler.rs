@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: add_counters,
+                effect: on_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_counters(
+fn on_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

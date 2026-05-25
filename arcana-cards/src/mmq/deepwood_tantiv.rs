@@ -1,8 +1,5 @@
-//! Deepwood Tantiv — `{4}{G}` 2/4 green Creature — Beast.
+//! Deepwood Tantiv — `{4}{G}` 2/4 green creature (Beast).
 //! "Whenever this creature becomes blocked, you gain 2 life."
-//!
-//! GAP: "becomes blocked" trigger — no TriggerCondition variant for
-//! this event. Using SelfAttacks as structural placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,11 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes blocked"; no TriggerCondition variant.
-                // Using SelfAttacks as structural placeholder.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: on_blocked,
+                effect: on_becomes_blocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_blocked(
+fn on_becomes_blocked(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

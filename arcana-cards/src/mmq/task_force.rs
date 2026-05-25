@@ -1,10 +1,6 @@
-//! Task Force — `{2}{W}` 1/3 white Creature — Human Rebel.
+//! Task Force — `{2}{W}` 1/3 white creature (Human Rebel).
 //! "Whenever this creature becomes the target of a spell or ability,
 //! it gets +0/+3 until end of turn."
-//!
-//! GAP: "becomes the target of a spell or ability" trigger — no
-//! TriggerCondition variant. Using SelfEntersBattlefield as structural
-//! placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,6 +8,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,12 +37,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes the target of a spell or ability";
-                // no TriggerCondition variant. Using SelfEntersBattlefield
-                // as structural placeholder.
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                trigger_condition: TriggerCondition::SelfBecomesTarget {
+                    caster: ControllerConstraint::Any,
+                },
                 intervening_if: None,
-                effect: on_targeted,
+                effect: on_becomes_target,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_targeted(
+fn on_becomes_target(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

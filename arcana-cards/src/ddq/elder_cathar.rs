@@ -1,24 +1,25 @@
-//! Elder Cathar — `{2}{W}` 2/2 white Creature — Human Soldier.
-//! "When this creature dies, put a +1/+1 counter on target creature
-//! you control. If that creature is a Human, put two +1/+1 counters
-//! on it instead."
+//! Elder Cathar — `{2}{W}` 2/2 white creature (Human Soldier).
+//! "When this creature dies, put a +1/+1 counter on target creature you
+//! control. If that creature is a Human, put two +1/+1 counters on it
+//! instead."
 //!
-//! The Human-check conditional cannot be expressed without engine
-//! support for conditional counter amounts. Emit the base case
-//! (one +1/+1 counter) and GAP the conditional extra counter.
+//! GAP: conditional "if target is a Human, put two instead of one" —
+//! the engine's Effect::AddCounters has no conditional path; emitting
+//! AddCounters with count 1 as best effort (the Human bonus is omitted).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -34,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -63,10 +65,14 @@ fn on_dies(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: if target is a Human, put two counters instead of one —
-    // conditional counter amount based on subtype check not expressible.
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "if that creature is a Human, put two instead" — conditional
+    // on target subtype not expressible; emitting base 1 counter only.
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,

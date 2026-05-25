@@ -25,3 +25,7 @@ pub mod jungleborn_pioneer;
 pub mod fathom_fleet_boarder;
 pub mod jade_bearer;
 pub mod sanguine_glorifier;
+pub mod legion_conquistador;
+pub mod jadecraft_artisan;
+pub mod jadelight_ranger;
+pub mod dinosaur_hunter;

@@ -1,17 +1,18 @@
 //! Rowdy Snowballers — `{2}{U}` 2/2 blue Creature — Human Peasant Ally.
-//! "When this creature enters, tap target creature an opponent controls and put a stun counter on it."
-//! GAP: 'put a stun counter on it' — CounterKind::Stun not in API; only tapping the target.
+//! "When this creature enters, tap target creature an opponent controls and
+//! put a stun counter on it."
+//! GAP: CounterKind::Stun not available; emitting Tap only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetRequirement, TargetFilter, TargetCount, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -43,13 +43,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_tap_stun,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
             }),
     )
 }
@@ -61,6 +63,6 @@ fn etb_tap_stun(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'put a stun counter on it' — CounterKind::Stun not in API; only tapping
+    // GAP: CounterKind::Stun not available; emitting Tap only
     vec![Effect::Tap { target: *id }]
 }

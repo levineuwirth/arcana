@@ -12,3 +12,5 @@ pub mod backlash;
 pub mod quirion_trailblazer;
 pub mod loafing_giant;
 pub mod vicious_kavu;
+pub mod vodalian_merchant;
+pub mod quirion_sentinel;

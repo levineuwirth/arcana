@@ -1,12 +1,12 @@
-//! Midnight Guard — `{2}{W}` 2/3 white Human Soldier. "Whenever another
-//! creature enters, untap this creature."
+//! Midnight Guard — `{2}{W}` 2/3 white Human Soldier.
+//! "Whenever another creature enters, untap this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Any),
+                    filter: ObjectFilter::creature(),
                     from: None,
                     to: Zone::Battlefield,
                 },

@@ -1,17 +1,17 @@
-//! Tattered Mummy — `{1}{B}` 1/2 black Zombie Jackal.
+//! Tattered Mummy — `{1}{B}` 1/2 black Creature — Zombie Jackal.
 //! "When this creature dies, each opponent loses 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tattered Mummy");
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: each_opponent_loses_two,
+                effect: dies_opponents_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,14 +45,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_opponent_loses_two(
+fn dies_opponents_lose_life(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    let effects: Vec<Effect> = opponents.into_iter()
-        .map(|opp| Effect::LoseLife { player: opp, amount: 2 })
-        .collect();
-    vec![Effect::Sequence(effects)]
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|p| Effect::LoseLife { player: p, amount: 2 })
+        .collect()
 }

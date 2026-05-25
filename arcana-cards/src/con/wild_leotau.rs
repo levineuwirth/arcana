@@ -1,17 +1,18 @@
-//! Wild Leotau — `{2}{G}{G}` 5/4 green Cat.
+//! Wild Leotau — `{2}{G}{G}` 5/4 green Cat creature.
 //! "At the beginning of your upkeep, sacrifice this creature unless you pay {G}."
-//! GAP: "unless you pay {G}" optional cost not in effect catalog; emitting Sacrifice only.
+//! GAP: "unless you pay {G}" optional mana payment not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -51,12 +52,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn upkeep_sacrifice(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you pay {G}" optional payment not in catalog
+    // GAP: "unless you pay {G}" optional mana payment not expressible.
     vec![Effect::Sacrifice {
         player: trig.controller,
-        filter: ObjectFilter::creature(),
+        filter: ObjectFilter::permanent(),
         count: 1,
     }]
 }

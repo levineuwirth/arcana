@@ -1,4 +1,4 @@
-//! Elderfang Ritualist — `{2}{B}` 3/1 black Creature — Elf Cleric.
+//! Elderfang Ritualist — `{2}{B}` 3/1 black Elf Cleric creature.
 //! "When this creature dies, return another target Elf card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
@@ -12,6 +12,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Elderfang Ritualist");
@@ -31,19 +32,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
     };
+    let elf_filter = script::subtype_filter(reg, "Elf");
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_return_elf_from_graveyard,
+                effect: dies_return_elf,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
+                        filter: elf_filter,
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -52,10 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_return_elf_from_graveyard(
+fn dies_return_elf(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

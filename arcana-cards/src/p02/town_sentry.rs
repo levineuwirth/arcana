@@ -1,7 +1,5 @@
 //! Town Sentry — `{2}{W}` 2/2 white Human Soldier.
 //! "Whenever this creature blocks, it gets +0/+2 until end of turn."
-//! GAP: trigger — "whenever this creature blocks" has no SelfBlocks
-//! TriggerCondition variant. Using SelfAttacks as closest placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -31,18 +29,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever this creature blocks" has no matching
-                // TriggerCondition; using SelfAttacks as placeholder.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
-                effect: pump_self,
+                effect: on_blocks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_self(
+fn on_blocks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,4 +1,4 @@
-//! Infectious Host — `{2}{B}` 1/1 black Zombie.
+//! Infectious Host — `{2}{B}` 1/1 black Zombie creature.
 //! "When this creature dies, target player loses 2 life."
 
 use arcana_core::effects::Effect;
@@ -6,7 +6,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn dies_lose_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };

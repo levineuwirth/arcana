@@ -1,5 +1,5 @@
-//! Elder Auntie — `{2}{R}` 2/2 red Goblin Warlock. "When this creature enters,
-//! create a 1/1 black and red Goblin creature token."
+//! Elder Auntie — `{2}{R}` 2/2 red Goblin Warlock.
+//! "When this creature enters, create a 1/1 black and red Goblin creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -19,6 +19,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(warlock);
+    let _goblin_tok = reg.interner_mut().intern("Goblin");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}").expect("valid cost")),
@@ -49,8 +50,7 @@ fn on_etb(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let goblin = reg.interner().lookup("Goblin")
-        .expect("Goblin interned during register()");
+    let goblin = reg.interner().lookup("Goblin").expect("Goblin interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     let token = TokenDefinition {

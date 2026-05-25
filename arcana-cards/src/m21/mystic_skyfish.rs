@@ -1,8 +1,8 @@
 //! Mystic Skyfish — `{2}{U}` 3/1 blue Fish.
 //! "Whenever you draw your second card each turn, this creature gains
 //! flying until end of turn."
-//! GAP: "your second card each turn" — CardDrawn condition has no
-//! "second card" qualifier. Using CardDrawn with player You as closest.
+//! GAP: "second card each turn" tracking — CardDrawn fires on any
+//! draw; no "second card" filter; using CardDrawn with OncePerTurn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -37,8 +37,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "second card drawn each turn" — no qualifier on
-                // CardDrawn; using OncePerTurn to approximate.
+                // GAP: trigger — "second card each turn" not filterable; using
+                // CardDrawn with OncePerTurn as best approximation
                 trigger_condition: TriggerCondition::CardDrawn {
                     player: ControllerConstraint::You,
                 },
@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn draw_gain_flying(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GrantKeyword {
         target: trig.source,

@@ -1,10 +1,8 @@
 //! Murk Dwellers — `{3}{B}` 2/2 black Creature — Zombie.
-//! "Whenever this creature attacks and isn't blocked, it gets +2/+0 until
-//! end of combat."
-//!
-//! GAP: trigger — no TriggerCondition for "attacks and isn't blocked";
-//! using SelfAttacks as closest approximation; Duration::EndOfTurn used
-//! since EndOfCombat is not available.
+//! "Whenever this creature attacks and isn't blocked, it gets +2/+0 until end
+//! of combat."
+//! Note: "until end of combat" — using Duration::EndOfTurn as closest
+//! available duration.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -38,11 +36,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks and isn't blocked" not expressible;
-                // SelfAttacks used
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfAttacksUnblocked,
                 intervening_if: None,
-                effect: unblocked_pump,
+                effect: on_unblocked_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn unblocked_pump(
+fn on_unblocked_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,16 +1,12 @@
-//! Prized Amalgam — `{1}{U}{B}` 3/3 blue-black Zombie.
-//! "Whenever a creature enters, if it entered from your graveyard or
-//! you cast it from your graveyard, return this card from your graveyard
-//! to the battlefield tapped at the beginning of the next end step."
-//! GAP: trigger condition — "if it entered from your graveyard or cast
-//! from graveyard" has no exact variant; using ZoneChange for any creature
-//! entering as closest approximation.
-//! GAP: trigger fires only when this card is in graveyard (trigger_zones
-//! includes Graveyard) — engine may not support graveyard triggers via
-//! trigger_zones; included as best-effort.
-//! GAP: "return this card from graveyard to battlefield tapped" at next end
-//! step — DelayedAction on a graveyard card is not supported; emitting
-//! ReturnFromGraveyardToBattlefield immediately as approximation.
+//! Prized Amalgam — `{1}{U}{B}` 3/3 blue-black Zombie. "Whenever a creature
+//! enters, if it entered from your graveyard or you cast it from your
+//! graveyard, return this card from your graveyard to the battlefield tapped
+//! at the beginning of the next end step."
+//! GAP: trigger condition — no variant for "whenever a creature enters from
+//! your graveyard or is cast from graveyard". Closest is ZoneChange from
+//! graveyard to battlefield; GAP: no way to also include cast-from-graveyard.
+//! GAP: effect — return this card from graveyard at beginning of next end step
+//! (delayed trigger firing in the graveyard zone). Use zone: vec![Zone::Graveyard(0)].
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,14 +40,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "if entered from graveyard or cast from graveyard" condition
+                // GAP: trigger — should fire when a creature enters from graveyard
+                // OR is cast from graveyard; using ZoneChange graveyard→battlefield
+                // as approximation.
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature(),
-                    from: None,
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
+                    from: Some(Zone::Graveyard(0)),
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_creature_enters,
+                effect: on_gy_creature_etb,
                 trigger_zones: vec![Zone::Graveyard(0)],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -59,12 +58,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_creature_enters(
+fn on_gy_creature_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at the beginning of the next end step, tapped" — approximated as
-    // immediate return without tapped status
+    // GAP: no Effect variant for "return this card from graveyard to
+    // battlefield tapped at beginning of next end step".
+    // ReturnFromGraveyardToBattlefield doesn't model the tapped-delayed form.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: trig.source }]
 }

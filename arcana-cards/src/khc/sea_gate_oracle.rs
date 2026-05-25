@@ -1,10 +1,9 @@
-//! Sea Gate Oracle — `{2}{U}` 1/3 Human Wizard.
-//! "When this creature enters, look at the top two cards of your library.
-//! Put one of them into your hand and the other on the bottom of your
-//! library."
+//! Sea Gate Oracle — `{2}{U}` 1/3 Human Wizard. "When this creature enters,
+//! look at the top two cards of your library. Put one of them into your hand
+//! and the other on the bottom of your library."
 //!
-//! GAP: "look at top two, choose one for hand and one to bottom" not
-//! expressible; approximating with DrawCards 1.
+//! GAP: look-top-2-put-one-to-hand-other-to-bottom is not in the Effect
+//! catalog; using Scry 1 + DrawCards 1 as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,14 +48,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "look at top 2, put one in hand and one on bottom" not expressible
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
-    }]
+    // GAP: look-2-put-one-to-hand-other-to-bottom not in catalog;
+    // emitting Scry 1 + DrawCards 1 as best effort.
+    vec![
+        Effect::Scry { player: trig.controller, count: 1 },
+        Effect::DrawCards { player: trig.controller, count: 1 },
+    ]
 }

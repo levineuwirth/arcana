@@ -8,6 +8,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -16,8 +17,8 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Silverglade Elemental");
-    let _forest = reg.interner_mut().intern("Forest");
     let elemental = reg.interner_mut().intern("Elemental");
+    let _forest = reg.interner_mut().intern("Forest");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elemental);
     let chars = Characteristics {
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_forest,
+                effect: etb_search_forest,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,11 +46,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_forest(
+fn etb_search_forest(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Forest");
-    vec![Effect::TutorToBattlefield { player: trig.controller, filter, tapped: false }]
+    let forest_filter = script::subtype_filter(reg, "Forest")
+        .with_types(TypeLine::LAND.into());
+    vec![Effect::TutorToBattlefield {
+        player: trig.controller,
+        filter: forest_filter,
+        tapped: false,
+    }]
 }

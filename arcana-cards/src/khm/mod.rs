@@ -40,3 +40,7 @@ pub mod aegar_the_freezing_flame;
 pub mod elderfang_ritualist;
 pub mod warchanter_skald;
 pub mod a_elderfang_ritualist;
+pub mod elderfang_disciple;
+pub mod karfell_kennel_master;
+pub mod clarion_spirit;
+pub mod a_elderleaf_mentor;

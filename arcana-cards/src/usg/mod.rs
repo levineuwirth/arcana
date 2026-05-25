@@ -20,3 +20,4 @@ pub mod cave_tiger;
 pub mod reclusive_wight;
 pub mod retromancer;
 pub mod viashino_weaponsmith;
+pub mod electryte;

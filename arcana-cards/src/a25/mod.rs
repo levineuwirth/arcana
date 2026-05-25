@@ -18,3 +18,6 @@ pub mod kavu_climber;
 pub mod eidolon_of_the_great_revel;
 pub mod phantasmal_bear;
 pub mod loyal_sentry;
+pub mod vampire_lacerator;
+pub mod self_assembler;
+pub mod stangg;

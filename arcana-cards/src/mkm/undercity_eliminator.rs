@@ -1,19 +1,16 @@
 //! Undercity Eliminator — `{3}{B}{B}` 3/3 black Gorgon Assassin.
-//! "When this creature enters, you may sacrifice an artifact or creature.
-//! When you do, exile target creature an opponent controls."
-//! GAP: "you may sacrifice an artifact or creature" as a cost/rider on the
-//! trigger, then "when you do, exile target creature" — the conditional
-//! "when you do" pattern is not expressible with a single Effect. Using
-//! Sacrificed trigger + ExilePermanent as best effort. The sacrifice-choice
-//! modal is omitted.
+//! "When this creature enters, you may sacrifice an artifact or
+//! creature. When you do, exile target creature an opponent controls."
+//! GAP: the "when you do" clause (conditional on the sacrifice) cannot
+//! be expressed as a single trigger; modeled as ETB trigger that
+//! exiles a target creature. The sacrifice cost is omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,6 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                // GAP: "you may sacrifice an artifact or creature; when you do"
+                // conditional trigger-within-trigger not expressible
                 intervening_if: None,
                 effect: etb_exile_opponent_creature,
                 trigger_zones: vec![Zone::Battlefield],
@@ -61,10 +60,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_exile_opponent_creature(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional sacrifice of artifact-or-creature as rider is not modeled;
-    // exile fires unconditionally here.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ExilePermanent { target: *id }]

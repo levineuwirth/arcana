@@ -1,6 +1,11 @@
-//! Seedguide Ash — `{4}{G}` 4/4 green Creature — Treefolk Druid.
+//! Seedguide Ash — `{4}{G}` 4/4 green Treefolk Druid creature.
 //! "When this creature dies, you may search your library for up to three Forest cards,
 //! put them onto the battlefield tapped, then shuffle."
+//!
+//! # Notes
+//! GAP: search for up to three specific land cards (Forest subtype) and put onto battlefield
+//! tapped. TutorToBattlefield supports one card; no "up to three" / tapped variant.
+//! Using TutorToBattlefield with Forest filter as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -18,6 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Seedguide Ash");
     let treefolk = reg.interner_mut().intern("Treefolk");
     let druid = reg.interner_mut().intern("Druid");
+    let _forest = reg.interner_mut().intern("Forest");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treefolk);
     subtypes.0.insert(druid);
@@ -49,16 +55,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn dies_tutor_forests(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // Tutor up to three Forest cards to battlefield tapped.
-    // TutorToBattlefield puts one card; repeat three times for "up to three".
-    // GAP: "tapped" parameter on TutorToBattlefield — using tapped: true.
-    // GAP: "up to three" — emitting three separate tutors; controller can find fewer.
-    let filter = ObjectFilter::permanent().with_types(TypeLine::LAND.into());
-    vec![
-        Effect::TutorToBattlefield { player: trig.controller, filter: filter.clone(), tapped: true },
-        Effect::TutorToBattlefield { player: trig.controller, filter: filter.clone(), tapped: true },
-        Effect::TutorToBattlefield { player: trig.controller, filter, tapped: true },
-    ]
+    // GAP: search for up to three Forest cards and put onto battlefield tapped —
+    // TutorToBattlefield supports one card only, tapped not supported.
+    vec![Effect::TutorToBattlefield {
+        player: trig.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: false,
+    }]
 }

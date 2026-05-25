@@ -1,4 +1,4 @@
-//! Knucklebone Witch — `{B}` 1/1 black Creature — Goblin Shaman.
+//! Knucklebone Witch — `{B}` 1/1 black creature (Goblin Shaman).
 //! "Whenever a Goblin you control is put into a graveyard from the
 //! battlefield, you may put a +1/+1 counter on this creature."
 
@@ -13,6 +13,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Knucklebone Witch");
@@ -21,6 +22,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(shaman);
+    let goblin_filter = script::subtype_filter(reg, "Goblin")
+        .controlled_by(ControllerConstraint::You);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{B}").expect("valid cost")),
@@ -37,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: goblin_filter,
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
@@ -53,10 +56,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn on_goblin_dies(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Filter narrows to Goblins via subtype_filter at resolve time.
-    let _goblin_filter = arcana_core::script::subtype_filter(reg, "Goblin");
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

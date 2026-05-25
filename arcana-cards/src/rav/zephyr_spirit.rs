@@ -1,8 +1,5 @@
 //! Zephyr Spirit — `{5}{U}` 0/6 blue Creature — Spirit.
 //! "When this creature blocks, return it to its owner's hand."
-//!
-//! GAP: trigger — no TriggerCondition for "blocks" (only SelfAttacks);
-//! using SelfAttacks as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,10 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "blocks" condition; SelfAttacks used
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
-                effect: blocks_return_to_hand,
+                effect: on_blocks_return_to_hand,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocks_return_to_hand(
+fn on_blocks_return_to_hand(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

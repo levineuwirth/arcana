@@ -1,6 +1,5 @@
 //! Samite Herbalist — `{1}{W}` 2/1 white Creature — Human Cleric.
 //! "Whenever this creature becomes tapped, you gain 1 life and scry 1."
-//! GAP: trigger — no 'becomes tapped' condition; using SelfAttacks as closest.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -35,10 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'becomes tapped' condition; using SelfAttacks as closest
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: tapped_gain_life_scry,
+                effect: on_tapped_gain_life_scry,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tapped_gain_life_scry(
+fn on_tapped_gain_life_scry(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

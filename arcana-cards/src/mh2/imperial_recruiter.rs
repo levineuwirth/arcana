@@ -1,6 +1,8 @@
-//! Imperial Recruiter — `{2}{R}` 1/1 red Creature — Human Advisor. "When
-//! this creature enters, search your library for a creature card with power
-//! 2 or less, reveal it, put it into your hand, then shuffle."
+//! Imperial Recruiter — `{2}{R}` 1/1 Human Advisor. "When this
+//! creature enters, search your library for a creature card with
+//! power 2 or less, reveal it, put it into your hand, then shuffle."
+//! ETB tutor restricted by power; expressed via `Effect::TutorToHand`
+//! over a `creature().with_max_power(2)` filter with `reveal: true`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_small_creature,
+                effect: etb_recruit,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,16 +48,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_small_creature(
+/// ETB tutor — controller searches their library for a creature card
+/// with power 2 or less, reveals it, and puts it into their hand;
+/// the engine shuffles automatically after `TutorToHand`.
+fn etb_recruit(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::permanent()
-            .with_types(TypeLine::CREATURE.into())
-            .with_max_power(2),
+        filter: ObjectFilter::creature().with_max_power(2),
         reveal: true,
     }]
 }

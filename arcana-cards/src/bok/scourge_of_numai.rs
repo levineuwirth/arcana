@@ -1,26 +1,29 @@
-//! Scourge of Numai — `{3}{B}` 4/4 black Creature — Demon Spirit.
+//! Scourge of Numai — `{3}{B}` 4/4 black Demon Spirit creature.
 //! "At the beginning of your upkeep, you lose 2 life if you don't control an Ogre."
 //!
-//! # GAP: intervening-if "if you don't control an Ogre" not modeled;
-//! emitting the life loss unconditionally.
+//! # Notes
+//! GAP: intervening-if "if you don't control an Ogre" — not expressible as intervening_if.
+//! Modeled as upkeep trigger; GAP noted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Scourge of Numai");
     let demon = reg.interner_mut().intern("Demon");
     let spirit = reg.interner_mut().intern("Spirit");
+    let _ogre = reg.interner_mut().intern("Ogre");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(demon);
     subtypes.0.insert(spirit);
@@ -43,9 +46,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you don't control an Ogre" not modeled.
+                // GAP: intervening_if — "if you don't control an Ogre" not expressible.
                 intervening_if: None,
-                effect: upkeep_lose_2_life,
+                effect: upkeep_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,10 +56,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_lose_2_life(
-    _state: &GameState,
+fn upkeep_lose_life(
+    state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::LoseLife { player: trig.controller, amount: 2 }]
+    let ogre_filter = script::subtype_filter(reg, "Ogre")
+        .controlled_by(ControllerConstraint::You);
+    if script::count_matching(state, &ogre_filter, trig.controller) == 0 {
+        vec![Effect::LoseLife { player: trig.controller, amount: 2 }]
+    } else {
+        Vec::new()
+    }
 }

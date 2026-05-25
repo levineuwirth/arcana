@@ -30,3 +30,5 @@ pub mod trelasarra_moon_dancer;
 pub mod celestial_unicorn;
 pub mod hill_giant_herdgorger;
 pub mod bulette;
+pub mod hoard_robber;
+pub mod hired_hexblade;

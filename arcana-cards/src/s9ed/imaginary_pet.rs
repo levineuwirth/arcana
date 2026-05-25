@@ -1,13 +1,15 @@
-//! Imaginary Pet — `{1}{U}` 4/4 blue Illusion.
-//! "At the beginning of your upkeep, if you have a card in hand, return this
-//! creature to its owner's hand."
-//! GAP: intervening_if — "if you have a card in hand" not expressible;
-//! using None and emitting return unconditionally.
+//! Imaginary Pet — `{1}{U}` 4/4 Illusion.
+//! "At the beginning of your upkeep, if you have a card in hand,
+//! return this creature to its owner's hand."
+//!
+//! The intervening-if "if you have a card in hand" can be checked
+//! with script::hand_size.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
@@ -50,11 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_upkeep(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: intervening_if — "if you have a card in hand" not checked.
+fn on_upkeep(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // Intervening-if: "if you have a card in hand"
+    if script::hand_size(state, trig.controller) == 0 {
+        return Vec::new();
+    }
     vec![Effect::ReturnToHand { target: trig.source }]
 }

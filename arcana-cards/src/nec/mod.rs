@@ -3,3 +3,4 @@ pub mod soul_s_majesty;
 pub mod release_to_memory;
 pub mod riddlesmith;
 pub mod ironsoul_enforcer;
+pub mod kaima_the_fractured_calm;

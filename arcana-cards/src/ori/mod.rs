@@ -25,3 +25,5 @@ pub mod ampryn_tactician;
 pub mod guardian_automaton;
 pub mod totem_guide_hartebeest;
 pub mod blightcaster;
+pub mod returned_centaur;
+pub mod woodland_bellower;

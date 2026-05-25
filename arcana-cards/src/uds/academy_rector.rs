@@ -2,8 +2,8 @@
 //! "When this creature dies, you may exile it. If you do, search your
 //! library for an enchantment card, put that card onto the battlefield,
 //! then shuffle."
-//! GAP: "you may exile it (self)" as part of the trigger is not expressible.
-//! Using TutorToBattlefield for enchantment as best effort (unconditional).
+//! GAP: "you may exile it" as the cost/trigger for the tutor is not
+//! expressible; TutorToBattlefield is emitted unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,6 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
+                // GAP: "you may exile it" optional cost before tutoring
                 intervening_if: None,
                 effect: dies_tutor_enchantment,
                 trigger_zones: vec![Zone::Battlefield],
@@ -52,9 +53,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn dies_tutor_enchantment(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may exile ~ first" self-exile rider omitted.
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),

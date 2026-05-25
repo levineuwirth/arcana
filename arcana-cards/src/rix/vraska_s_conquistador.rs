@@ -1,19 +1,20 @@
 //! Vraska's Conquistador — `{1}{B}` 2/1 black Creature — Vampire Soldier.
 //! "Whenever this creature attacks or blocks, if you control a Vraska
 //! planeswalker, target opponent loses 2 life and you gain 2 life."
-//! GAP: trigger — no 'attacks or blocks' variant; using SelfAttacks as closest.
-//! GAP: intervening-if 'you control a Vraska planeswalker' not computable; using None.
+//! GAP: intervening-if "if you control a Vraska planeswalker" not expressible.
+//! Two triggers (attacks / blocks) both use None. Target opponent is read from
+//! target_requirements as a Player target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,28 +30,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
     };
+    let target_reqs = vec![TargetRequirement {
+        filter: TargetFilter::Player,
+        count: TargetCount::Exactly(1),
+        controller: Some(ControllerConstraint::Opponent),
+    }];
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'attacks or blocks' variant; using SelfAttacks as closest
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if 'you control a Vraska planeswalker' not computable
+                // GAP: intervening-if "if you control a Vraska planeswalker" not expressible
                 intervening_if: None,
-                effect: attacks_drain,
+                effect: drain_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: target_reqs.clone(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: drain_opponent,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: target_reqs,
             }),
     )
 }
 
-fn attacks_drain(
+fn drain_opponent(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

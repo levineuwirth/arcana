@@ -1,4 +1,4 @@
-//! Temple Acolyte — `{1}{W}` 1/3 white Human Cleric.
+//! Temple Acolyte — `{1}{W}` 1/3 white Human Cleric creature.
 //! "When this creature enters, you gain 3 life."
 
 use arcana_core::effects::Effect;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_gain_three_life,
+                effect: etb_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,10 +44,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_gain_three_life(
+fn etb_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GainLife { player: trig.controller, amount: 3 }]
 }

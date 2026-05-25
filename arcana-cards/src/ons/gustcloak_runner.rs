@@ -1,7 +1,6 @@
-//! Gustcloak Runner — `{W}` 1/1 white Human Soldier creature.
-//! "Whenever this creature becomes blocked, you may untap it and remove it from combat."
-//! GAP: trigger — "becomes blocked" is not a TriggerCondition variant; using SelfAttacks as closest.
-//! GAP: effect — "remove from combat" not in Effect catalog; emitting Untap only.
+//! Gustcloak Runner — `{W}` 1/1 white Human Soldier. "Whenever this creature becomes
+//! blocked, you may untap it and remove it from combat."
+//! GAP: "remove from combat" not in engine effect catalog; emitting Untap only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,20 +26,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
-    // GAP: trigger — "becomes blocked" not in TriggerCondition catalog
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: on_blocked_untap,
+                effect: on_becomes_blocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +44,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_blocked_untap(
+fn on_becomes_blocked(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "remove from combat" not in Effect catalog
+    // GAP: "remove from combat" not in engine effect catalog
     vec![Effect::Untap { target: trig.source }]
 }

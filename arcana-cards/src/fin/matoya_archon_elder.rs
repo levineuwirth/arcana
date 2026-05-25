@@ -1,10 +1,12 @@
-//! Matoya, Archon Elder — `{2}{U}` 1/4 blue Legendary Creature — Human Warlock.
-//! "Whenever you scry or surveil, draw a card."
+//! Matoya, Archon Elder — `{2}{U}` 1/4 blue legendary creature (Human
+//! Warlock). "Whenever you scry or surveil, draw a card. (Draw after
+//! you scry or surveil.)"
 //!
-//! GAP: "whenever you scry or surveil" trigger — no TriggerCondition
-//! variant for scry/surveil events. Using CardDrawn as closest
-//! structural placeholder (draws trigger draw, not scry). Effect
-//! returns unconditional DrawCards.
+//! GAP: "whenever you scry or surveil" — no TriggerCondition variant
+//! for Scry or Surveil events. Using CardDrawn You as the closest
+//! available trigger approximation (the draw that follows scry/surveil
+//! could re-trigger, but there is no better option without inventing
+//! a variant).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,13 +42,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever you scry or surveil"; no
-                // TriggerCondition variant. Using CardDrawn as placeholder.
+                // GAP: trigger — "whenever you scry or surveil" — no
+                // TriggerCondition for Scry/Surveil events; using
+                // CardDrawn You as closest approximation.
                 trigger_condition: TriggerCondition::CardDrawn {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_scry_surveil,
+                effect: on_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,7 +57,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_scry_surveil(
+fn on_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

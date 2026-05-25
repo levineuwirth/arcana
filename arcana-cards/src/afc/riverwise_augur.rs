@@ -1,9 +1,9 @@
 //! Riverwise Augur — `{3}{U}` 2/2 blue Merfolk Wizard.
 //! "When this creature enters, draw three cards, then put two cards from your
 //! hand on top of your library in any order."
-//! GAP: "put two cards from your hand on top of your library" (player-ordered
-//! put-back) is not directly expressible; approximated as Surveil 2 (closest
-//! analog for library manipulation).
+//! GAP: "put two cards from your hand on top of your library in any order" —
+//! player-chosen hand-to-library placement not in engine effect catalog;
+//! using DrawCards 3 + Surveil 0 as best-effort for the draw step only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,15 +48,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put two cards from hand on top in any order" not expressible;
-    // using Surveil 2 as approximation.
-    vec![
-        Effect::DrawCards { player: trig.controller, count: 3 },
-        Effect::Surveil { player: trig.controller, count: 2 },
-    ]
+    // GAP: "put two cards from your hand on top of your library in any order"
+    // (player-chosen hand-to-library placement) not in engine effect catalog.
+    vec![Effect::DrawCards { player: trig.controller, count: 3 }]
 }

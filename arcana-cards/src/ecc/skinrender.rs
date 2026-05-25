@@ -1,6 +1,5 @@
-//! Skinrender — `{2}{B}{B}` 3/3 Phyrexian Zombie.
-//! "When this creature enters, put three -1/-1 counters on target
-//! creature."
+//! Skinrender — `{2}{B}{B}` 3/3 Phyrexian Zombie. "When this creature
+//! enters, put three -1/-1 counters on target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_minus_counters(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

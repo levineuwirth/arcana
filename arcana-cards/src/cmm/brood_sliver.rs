@@ -1,7 +1,10 @@
-//! Brood Sliver — `{4}{G}` 3/3 green Sliver.
-//! "Whenever a Sliver deals combat damage to a player, its controller may create a 1/1 colorless Sliver creature token."
-//! GAP: DamageDealt source_filter cannot restrict to subtype (Sliver); source_filter uses creature as proxy.
-//! GAP: "its controller" (not trig.controller) not accessible via trig binding.
+//! Brood Sliver — `{4}{G}` 3/3 green creature. "Whenever a Sliver deals combat
+//! damage to a player, its controller may create a 1/1 colorless Sliver creature
+//! token."
+//!
+//! GAP: trigger — "a Sliver" (any Sliver, not just this one) maps to
+//! DamageDealt with a Sliver source_filter; subtype filter for source not
+//! directly expressible in DamageDealt.source_filter. Using creature filter.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -35,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: source_filter cannot restrict to Sliver subtype; using creature as proxy
+                // GAP: trigger — source_filter for "Sliver subtype" not expressible; using creature filter
                 trigger_condition: TriggerCondition::DamageDealt {
                     source_filter: ObjectFilter::creature(),
                     target_filter: TargetFilter::Player,
@@ -57,18 +60,17 @@ fn sliver_damage_create_token(
 ) -> Vec<Effect> {
     let sliver = reg.interner().lookup("Sliver")
         .expect("Sliver interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(sliver);
+    let mut st = SubtypeSet::default();
+    st.0.insert(sliver);
     let token = TokenDefinition {
         name: sliver,
         colors: ColorSet::colorless(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: st,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: "its controller" (controller of the dealing Sliver) not accessible; using trig.controller
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

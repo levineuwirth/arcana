@@ -1,11 +1,17 @@
-//! Mavren Fein, Dusk Apostle — `{2}{W}` 2/2 legendary white Vampire Cleric.
-//! "Whenever one or more nontoken Vampires you control attack, create a 1/1
-//! white Vampire creature token with lifelink."
+//! Mavren Fein, Dusk Apostle — `{2}{W}` 2/2 white Legendary Vampire Cleric.
+//! "Whenever one or more nontoken Vampires you control attack, create a
+//! 1/1 white Vampire creature token with lifelink."
+//!
+//! GAP: trigger — CreatureAttacks fires for each attacking creature; no
+//! variant for "whenever one or more [nontoken Vampires] attack" as a batch.
+//! Using CreatureAttacks with filter for the subtype as closest match;
+//! this fires once per attacking Vampire rather than once per combat.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -36,6 +42,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "whenever one or more nontoken Vampires attack" (once per combat)
+                // is not expressible; using CreatureAttacks per attacking Vampire instead.
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature()
                         .controlled_by(ControllerConstraint::You)

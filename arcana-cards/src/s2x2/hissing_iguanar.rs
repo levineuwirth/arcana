@@ -1,6 +1,6 @@
-//! Hissing Iguanar — `{2}{R}` 3/1 red creature. "Whenever another creature
-//! dies, you may have this creature deal 1 damage to target player or
-//! planeswalker."
+//! Hissing Iguanar — `{2}{R}` 3/1 red Lizard.
+//! "Whenever another creature dies, you may have this creature deal 1 damage to
+//! target player or planeswalker."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -8,7 +8,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };

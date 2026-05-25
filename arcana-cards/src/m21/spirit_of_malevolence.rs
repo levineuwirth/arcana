@@ -30,16 +30,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfDies,
-                intervening_if: None,
-                effect: on_dies,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfDies,
+            intervening_if: None,
+            effect: on_dies,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
@@ -51,8 +50,11 @@ fn on_dies(
     let opponents = script::opponents(state, trig.controller);
     let mut effects: Vec<Effect> = opponents
         .into_iter()
-        .map(|opp| Effect::LoseLife { player: opp, amount: 1 })
+        .map(|p| Effect::LoseLife { player: p, amount: 1 })
         .collect();
-    effects.push(Effect::GainLife { player: trig.controller, amount: 1 });
+    effects.push(Effect::GainLife {
+        player: trig.controller,
+        amount: 1,
+    });
     effects
 }

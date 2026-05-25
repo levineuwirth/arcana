@@ -1,8 +1,6 @@
-//! Hamletback Goliath — `{6}{R}` 6/6 red Giant Warrior creature.
-//! "Whenever another creature enters, you may put X +1/+1 counters on this creature,
-//! where X is that creature's power."
-//! GAP: trigger — "that creature's power" refers to the triggering creature, not this source;
-//! using script::power_of on trig.source as best-effort (correct creature id not available).
+//! Hamletback Goliath — `{6}{R}` 6/6 red Giant Warrior. "Whenever another creature
+//! enters, you may put X +1/+1 counters on this creature, where X is that creature's power."
+//! ZoneChange trigger for any creature entering; power of entering creature via accessor.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +11,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -30,10 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(6)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_creature_enters_counter,
+                effect: on_creature_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,20 +50,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_creature_enters_counter(
+fn on_creature_enters(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — "that creature's power" (the entering creature, not trig.source) not
-    // accessible; using power of this creature (trig.source) as fallback
-    let x = script::power_of(state, trig.source).max(0) as u32;
-    if x == 0 {
+    let id = trig.entering_object().unwrap_or(trig.source);
+    let n = script::power_of(state, id).max(0) as u32;
+    if n == 0 {
         return Vec::new();
     }
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,
-        count: x,
+        count: n,
     }]
 }

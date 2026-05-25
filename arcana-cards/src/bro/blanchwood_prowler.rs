@@ -2,10 +2,9 @@
 //! "When this creature enters, mill three cards. You may put a land card from
 //! among the cards milled this way into your hand. If you don't, put a +1/+1
 //! counter on this creature."
-//!
-//! GAP: effect — "put a land card from among the milled cards into your hand"
-//! (conditional choice based on what was milled) is not expressible; using
-//! Mill as best effort.
+//! GAP: effect — "mill then selectively put a land to hand or else counter"
+//! conditional choice after milling has no catalog equivalent. Effect fn
+//! mills 3 and returns Vec with Mill only; the conditional pick-up is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,6 +53,8 @@ fn etb_mill_three(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional land recovery from milled cards not expressible
+    // GAP: effect — "selectively put a land from milled cards to hand, or
+    // else +1/+1 counter" conditional choice after milling is not in the
+    // effect catalog. Emitting Mill only.
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

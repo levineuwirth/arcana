@@ -1,9 +1,10 @@
-//! Stromkirk Bloodthief — `{2}{B}` 2/2 black Creature — Vampire Rogue.
+//! Stromkirk Bloodthief — `{2}{B}` 2/2 black Vampire Rogue creature.
 //! "At the beginning of your end step, if an opponent lost life this turn,
 //! put a +1/+1 counter on target Vampire you control."
 //!
-//! # GAP: intervening-if condition "if an opponent lost life this turn" is not modeled;
-//! using intervening_if: None.
+//! # Notes
+//! The "if an opponent lost life this turn" is an intervening-if clause.
+//! GAP: intervening_if condition (opponent lost life this turn) — no engine support; using None.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,13 +45,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if an opponent lost life this turn" not modeled.
+                // GAP: intervening_if — "if an opponent lost life this turn" not expressible.
                 intervening_if: None,
                 effect: end_step_counter_on_vampire,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -61,7 +65,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn end_step_counter_on_vampire(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

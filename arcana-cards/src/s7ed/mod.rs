@@ -16,3 +16,4 @@ pub mod infernal_contract;
 pub mod disorder;
 pub mod dakmor_lancer;
 pub mod goblin_gardener;
+pub mod gang_of_elk;

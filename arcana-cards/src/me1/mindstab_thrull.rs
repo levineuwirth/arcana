@@ -1,17 +1,12 @@
-//! Mindstab Thrull — `{1}{B}{B}` 2/2 black creature. "Whenever this creature
-//! attacks and isn't blocked, you may sacrifice it. If you do, defending player
-//! discards three cards."
-//!
-//! GAP: trigger — "attacks and isn't blocked" condition not in TriggerCondition
-//! catalog; using SelfAttacks as closest approximation.
-//! GAP: effect — conditional sacrifice gating discard not expressible.
+//! Mindstab Thrull — `{1}{B}{B}` 2/2 black Thrull.
+//! "Whenever this creature attacks and isn't blocked, you may sacrifice it. If you do,
+//! defending player discards three cards."
 
 use arcana_core::effects::{Effect, DiscardChoice};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::script;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,10 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks and isn't blocked" not in catalog.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfAttacksUnblocked,
                 intervening_if: None,
-                effect: on_attacks,
+                effect: on_unblocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,19 +43,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attacks(
-    state: &GameState,
+fn on_unblocked(
+    _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "attacks and isn't blocked" check and conditional sacrifice
-    // not expressible; emitting discard to opponents as partial approximation.
-    script::opponents(state, trig.controller)
-        .into_iter()
-        .map(|opp| Effect::Discard {
-            player: opp,
-            count: 3,
-            choice: DiscardChoice::ControllerChooses,
-        })
-        .collect()
+    // "defending player discards three cards" — use defending_player accessor.
+    let Some(p) = trig.defending_player() else { return Vec::new(); };
+    vec![Effect::Discard {
+        player: p,
+        count: 3,
+        choice: DiscardChoice::ControllerChooses,
+    }]
 }

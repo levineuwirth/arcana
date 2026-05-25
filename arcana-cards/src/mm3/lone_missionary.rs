@@ -1,5 +1,5 @@
-//! Lone Missionary — `{1}{W}` 2/1 white Kor Monk. "When this creature enters, you
-//! gain 4 life."
+//! Lone Missionary — `{1}{W}` 2/1 white creature. "When this creature enters,
+//! you gain 4 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: gain_life,
+                effect: etb_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_life(
+fn etb_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

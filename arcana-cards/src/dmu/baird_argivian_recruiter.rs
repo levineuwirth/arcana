@@ -1,8 +1,11 @@
 //! Baird, Argivian Recruiter — `{R}{W}` 2/2 legendary red/white Human Soldier.
 //! "At the beginning of your end step, if you control a creature with power
 //! greater than its base power, create a 1/1 white Soldier creature token."
+//! GAP: "power greater than base power" condition (requires tracking both current
+//! and base P/T) not available via script helpers. Emitting intervening_if: None;
+//! effect always fires — verify will flag.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -22,6 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(soldier);
+    let _soldier_token = reg.interner_mut().intern("Soldier");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{R}{W}").expect("valid cost")),
@@ -31,7 +35,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,10 +45,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you control a creature with power greater
-                // than its base power" not expressible; using None.
                 intervening_if: None,
-                effect: create_soldier_token,
+                effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,20 +54,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_soldier_token(
+fn on_end_step(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let soldier = reg.interner().lookup("Soldier")
-        .expect("Soldier interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(soldier);
+    // GAP: "if you control a creature with power > base power" check not available.
+    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(soldier);
     let token = TokenDefinition {
         name: soldier,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],

@@ -1,4 +1,4 @@
-//! Erebor Flamesmith — `{1}{R}` 2/1 red Dwarf Artificer. "Whenever you cast an
+//! Erebor Flamesmith — `{1}{R}` 2/1 red creature. "Whenever you cast an
 //! instant or sorcery spell, this creature deals 1 damage to each opponent."
 
 use arcana_core::effects::Effect;
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: deal_to_each_opponent,
+                effect: damage_each_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_to_each_opponent(
+fn damage_each_opponent(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

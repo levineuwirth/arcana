@@ -1,5 +1,9 @@
-//! Spiderwig Boggart — `{2}{B}` 2/2 black Goblin Shaman.
-//! "When this creature enters, target creature gains fear until end of turn."
+//! Spiderwig Boggart — `{2}{B}` 2/2 Goblin Shaman.
+//! "When this creature enters, target creature gains fear until end
+//! of turn."
+//!
+//! GAP: KeywordAbility::Fear — if Fear is not in the KeywordAbility
+//! catalog, granting it is a GAP.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -41,24 +45,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Creature,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Fear,

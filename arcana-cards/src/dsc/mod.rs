@@ -14,3 +14,7 @@ pub mod kederekt_parasite;
 pub mod mesa_enchantress;
 pub mod harsh_mentor;
 pub mod hydra_omnivore;
+pub mod fate_unraveler;
+pub mod blood_seeker;
+pub mod ondu_spiritdancer;
+pub mod gray_merchant_of_asphodel;

@@ -1,17 +1,13 @@
-//! Wretched Camel — `{1}{B}` 2/1 black Zombie Camel. "When this creature dies, if
-//! you control a Desert or there is a Desert card in your graveyard, target player
-//! discards a card."
-//!
-//! GAP: "if you control a Desert or there is a Desert card in your graveyard" —
-//! no script helper for Desert subtype presence; emitting discard unconditionally
-//! with a GAP note.
+//! Wretched Camel — `{1}{B}` 2/1 black creature. "When this creature dies, if
+//! you control a Desert or there is a Desert card in your graveyard, target
+//! player discards a card."
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,23 +37,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
+                // intervening_if: "if you control a Desert or there is a Desert card in your graveyard" — GAP: subtype-in-graveyard check not in catalog
                 intervening_if: None,
-                effect: on_dies,
+                effect: dies_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_dies(
+fn dies_discard(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you control a Desert or there is a Desert card in your graveyard"
-    // — condition not expressible; emitting discard unconditionally
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::Discard { player: *p, count: 1, choice: DiscardChoice::ControllerChooses }]
+    vec![Effect::Discard {
+        player: *p,
+        count: 1,
+        choice: DiscardChoice::ControllerChooses,
+    }]
 }

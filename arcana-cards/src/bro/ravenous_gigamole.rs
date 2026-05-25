@@ -1,11 +1,12 @@
-//! Ravenous Gigamole — `{3}{B}` 2/3 Mole Horror.
-//! "When this creature enters, mill three cards. You may put a creature
-//! card from among milled into your hand. If you don't, put a +1/+1
-//! counter on this creature."
+//! Ravenous Gigamole — `{3}{B}` 2/3 Mole Horror. "When this creature enters,
+//! mill three cards. You may put a creature card from among the cards milled
+//! this way into your hand. If you don't, put a +1/+1 counter on this
+//! creature."
 //!
-//! GAP: conditional "put from among milled into hand OR counter on self"
-//! choice not expressible; milling and adding counter approximated
-//! unconditionally.
+//! Keywords: Mill noted.
+//! GAP: "from among the cards milled this way" requires tracking the specific
+//! milled cards and offering an optional choice; the conditional counter
+//! (if you don't put a card in hand) is not expressible with the catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_counter,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,22 +52,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_counter(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may put a creature card from among milled into hand" branch not expressible;
-    // applying mill + counter unconditionally
-    vec![
-        Effect::Mill {
-            player: trig.controller,
-            count: 3,
-        },
-        Effect::AddCounters {
-            target: trig.source,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        },
-    ]
+    // GAP: "from among the milled cards" tracking and optional creature-to-hand
+    // or conditional counter cannot be expressed; emitting Mill 3 only.
+    vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

@@ -1,5 +1,5 @@
-//! Temur Tawnyback — `{2/G}{2/U}{2/R}` 4/3 Beast.
-//! "When this creature enters, draw a card, then discard a card."
+//! Temur Tawnyback — `{2/G}{2/U}{2/R}` 4/3 Beast. "When this creature
+//! enters, draw a card, then discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_loot(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },

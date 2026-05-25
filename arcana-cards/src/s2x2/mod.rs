@@ -32,3 +32,6 @@ pub mod sultai_soothsayer;
 pub mod brindle_shoat;
 pub mod burning_tree_emissary;
 pub mod bear_s_companion;
+pub mod dockside_extortionist;
+pub mod seekers_squire;
+pub mod sprouting_thrinax;

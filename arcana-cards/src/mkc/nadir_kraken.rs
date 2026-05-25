@@ -1,8 +1,9 @@
 //! Nadir Kraken — `{1}{U}{U}` 2/3 blue Kraken.
 //! "Whenever you draw a card, you may pay {1}. If you do, put a +1/+1
 //! counter on this creature and create a 1/1 blue Tentacle creature token."
-//! GAP: optional {1} payment as part of trigger resolution is not in the
-//! Effect catalog; emitting counter + token unconditionally.
+//!
+//! GAP: "you may pay {1}" optional mana cost on trigger resolution is not
+//! expressible. Emitting counter + token unconditionally.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,18 +35,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::CardDrawn {
-                    player: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: on_draw,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::CardDrawn {
+                player: ControllerConstraint::You,
+            },
+            // GAP: "you may pay {1}" optional cost not expressible; using None.
+            intervening_if: None,
+            effect: on_draw,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
@@ -54,7 +55,6 @@ fn on_draw(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional {1} payment — emitting counter + token unconditionally.
     let tentacle = reg
         .interner()
         .lookup("Tentacle")
@@ -77,6 +77,9 @@ fn on_draw(
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
         },
-        Effect::CreateToken { controller: trig.controller, token },
+        Effect::CreateToken {
+            controller: trig.controller,
+            token,
+        },
     ]
 }

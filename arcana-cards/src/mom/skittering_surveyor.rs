@@ -1,6 +1,6 @@
-//! Skittering Surveyor — `{3}` 1/2 colorless artifact creature. "When this
-//! creature enters, you may search your library for a basic land card, reveal
-//! it, put it into your hand, then shuffle."
+//! Skittering Surveyor — {3} 1/2 Artifact Creature — Construct.
+//! "When this creature enters, you may search your library for a
+//! basic land card, reveal it, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -19,24 +19,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let construct = reg.interner_mut().intern("Construct");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(construct);
+    
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
+    
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_land_tutor,
+                effect: search_for_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +46,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_land_tutor(
+// GAP: cannot filter for "basic" supertype (tutors for any land);
+// "you may" optionality not modeled (effect is mandatory)
+fn search_for_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

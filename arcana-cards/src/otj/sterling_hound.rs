@@ -9,12 +9,11 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sterling Hound");
-    let artifact_t = reg.interner_mut().intern("Artifact");
     let dog = reg.interner_mut().intern("Dog");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dog);
@@ -24,19 +23,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
-    let _ = artifact_t;
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: surveil_two,
+                effect: etb_surveil,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,10 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn surveil_two(
+fn etb_surveil(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Surveil { player: trig.controller, count: 2 }]
 }

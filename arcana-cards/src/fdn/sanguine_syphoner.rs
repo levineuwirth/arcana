@@ -1,17 +1,17 @@
-//! Sanguine Syphoner — `{1}{B}` 1/3 black Vampire Warlock.
-//! "Whenever this creature attacks, each opponent loses 1 life and you gain 1 life."
+//! Sanguine Syphoner — `{1}{B}` 1/3 black creature. "Whenever this creature
+//! attacks, each opponent loses 1 life and you gain 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sanguine Syphoner");
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_drain,
+                effect: attack_drain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_drain(
+fn attack_drain(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

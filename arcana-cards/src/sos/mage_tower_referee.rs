@@ -1,8 +1,8 @@
-//! Mage Tower Referee — `{2}` 2/1 colorless Artifact Creature — Construct.
-//! "Whenever you cast a multicolored spell, put a +1/+1 counter on this
-//! creature."
-//! GAP: trigger — no multicolor filter on SpellCast; using filter: None as
-//! approximation.
+//! Mage Tower Referee — `{2}` 2/1 Artifact Creature — Construct.
+//! "Whenever you cast a multicolored spell, put a +1/+1 counter on
+//! this creature."
+//!
+//! GAP: SpellCast filter has no multicolored constraint.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,12 +36,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "multicolored spell"; SpellCast has no
+                // multicolor filter. Using SpellCast(You, no filter) as closest.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_multicolor_cast,
+                effect: on_spell_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,12 +51,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_multicolor_cast(
+fn on_spell_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — multicolored filter not in catalog; fires on all spells.
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

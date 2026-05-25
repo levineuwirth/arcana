@@ -1,7 +1,7 @@
-//! Elite Instructor — `{2}{U}` 2/2 blue Human Wizard. "When this creature enters,
+//! Elite Instructor — `{2}{U}` 2/2 blue creature. "When this creature enters,
 //! draw a card, then discard a card."
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: draw_then_discard,
+                effect: draw_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,13 +44,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_then_discard(
+fn draw_discard(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
-        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
+        Effect::Discard {
+            player: trig.controller,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
     ]
 }

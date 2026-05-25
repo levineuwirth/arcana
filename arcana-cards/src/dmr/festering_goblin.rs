@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_minus_one,
+                effect: on_dies_minus_one,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_minus_one(
+fn on_dies_minus_one(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

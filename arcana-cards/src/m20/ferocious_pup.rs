@@ -9,13 +9,12 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ferocious Pup");
     let wolf = reg.interner_mut().intern("Wolf");
-    let _wolf_token = reg.interner_mut().intern("Wolf");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(wolf);
     let chars = Characteristics {
@@ -24,7 +23,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -35,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_create_wolf_token,
+                effect: etb_wolf_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_create_wolf_token(
+fn etb_wolf_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

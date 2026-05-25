@@ -1,17 +1,17 @@
-//! Mary Jane Watson — `{1}{G/W}` 2/2 legendary green-white Human Performer.
-//! "Whenever a Spider you control enters, draw a card. This ability triggers
-//! only once each turn."
+//! Mary Jane Watson — `{1}{G/W}` 2/2 Legendary Human Performer.
+//! "Whenever a Spider you control enters, draw a card. This ability
+//! triggers only once each turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -26,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{G/W}").expect("valid cost")),
-        colors: ColorSet::green() | ColorSet::white(),
+        colors: ColorSet(ColorSet::GREEN | ColorSet::WHITE),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
+                    filter: script::subtype_filter(reg, "Spider")
                         .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,

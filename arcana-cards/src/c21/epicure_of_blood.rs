@@ -1,5 +1,5 @@
-//! Epicure of Blood — `{4}{B}` 4/4 black Vampire. "Whenever you gain life, each
-//! opponent loses 1 life."
+//! Epicure of Blood — `{4}{B}` 4/4 black creature. "Whenever you gain life,
+//! each opponent loses 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: opponents_lose_life,
+                effect: life_gained,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opponents_lose_life(
+fn life_gained(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

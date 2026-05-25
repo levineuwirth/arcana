@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,32 +38,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: tap_all_opponent_creatures,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Player,
                     count: TargetCount::Exactly(1),
-                    controller: None,
+                    controller: Some(ControllerConstraint::Opponent),
                 }],
             }),
     )
 }
 
-fn tap_all_opponent_creatures(
+fn on_etb(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(opponent) = target else { return Vec::new(); };
-    let ids = script::ids_matching(
+    let creature_ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-        *opponent,
+        trig.controller,
     );
     vec![Effect::ForEach {
-        targets: ids,
+        targets: creature_ids,
         effect: Box::new(Effect::Tap { target: NULL_OBJECT_ID }),
     }]
 }

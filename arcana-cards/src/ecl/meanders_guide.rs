@@ -1,19 +1,17 @@
-//! Meanders Guide — `{2}{W}` 3/2 white Creature — Merfolk Scout.
-//! "Whenever this creature attacks, you may tap another untapped
-//! Merfolk you control. When you do, return target creature card with
-//! mana value 3 or less from your graveyard to the battlefield."
+//! Meanders Guide — `{2}{W}` 3/2 white creature (Merfolk Scout).
+//! "Whenever this creature attacks, you may tap another untapped Merfolk you
+//! control. When you do, return target creature card with mana value 3 or
+//! less from your graveyard to the battlefield."
 //!
-//! GAP: optional tap-a-Merfolk cost gating a graveyard return — the
-//! "you may tap another creature as an additional cost" pattern is not
-//! expressible. Approximated as a simple SelfAttacks trigger that
-//! returns a graveyard creature to the battlefield.
+//! GAP: "you may tap another untapped Merfolk you control; when you do" —
+//! optional tap-a-creature condition is not expressible. Emitting the
+//! Reanimate effect with CMC filter as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -44,30 +42,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: arcana_core::targets::ObjectFilter::creature()
-                            .with_max_cmc(3),
-                    },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn on_attack(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional tap-another-Merfolk cost gating the reanimate —
-    // cannot express the "you may [cost]" pattern.
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
+    // GAP: "tap another untapped Merfolk you control; if you do" optional
+    // condition not expressible; emitting Reanimate unconditionally.
+    vec![Effect::Reanimate {
+        player: trig.controller,
+        filter: arcana_core::targets::ObjectFilter::creature().with_max_cmc(3),
+        from_zone: Zone::Graveyard(trig.controller),
+    }]
 }

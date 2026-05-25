@@ -1,4 +1,4 @@
-//! Spider-Byte, Web Warden — `{2}{U}` 2/2 legendary blue Spider Avatar Hero.
+//! Spider-Byte, Web Warden — `{2}{U}` 2/2 blue Legendary Spider Avatar Hero.
 //! "When Spider-Byte enters, return up to one target nonland permanent
 //! to its owner's hand."
 
@@ -40,12 +40,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: bounce_nonland,
+                effect: etb_bounce,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
+                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -54,10 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn bounce_nonland(
+fn etb_bounce(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

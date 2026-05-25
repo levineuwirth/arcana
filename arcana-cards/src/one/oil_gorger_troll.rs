@@ -1,8 +1,8 @@
-//! Oil-Gorger Troll — `{3}{G}{G}` 3/4 green Phyrexian Troll Warrior.
-//! "When this creature enters, you gain 3 life. Then if you control
-//! a permanent with an oil counter on it, draw a card."
-//! GAP: intervening-if condition ("if you control a permanent with an
-//! oil counter") cannot be expressed; emitting gain-3-life only.
+//! Oil-Gorger Troll — `{3}{G}{G}` 3/4 green Phyrexian Troll Warrior. "When this
+//! creature enters, you gain 3 life. Then if you control a permanent with an oil
+//! counter on it, draw a card." ETB trigger; unconditional 3 life + conditional
+//! draw. GAP: no Effect variant for "if you control a permanent with an oil
+//! counter on it, draw a card" (oil counter conditional not in engine).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_gain_life,
+                effect: etb_effect,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,12 +49,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_gain_life(
+fn etb_effect(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: conditional draw ("if you control a permanent with an oil counter")
-    // is not expressible; emitting only the life gain.
+    // not expressible; emit only the unconditional life gain.
     vec![Effect::GainLife { player: trig.controller, amount: 3 }]
 }

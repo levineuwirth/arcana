@@ -1,8 +1,9 @@
-//! Urborg Stalker — `{3}{B}` 2/4 black Horror.
-//! "At the beginning of each player's upkeep, if that player controls a
-//! nonblack, nonland permanent, this creature deals 1 damage to that player."
-//! GAP: per-player upkeep trigger with conditional based on opponent's permanents
-//! not fully expressible; using StepBegins with Any and GAP'ing the condition.
+//! Urborg Stalker — `{3}{B}` 2/4 black creature. "At the beginning of each
+//! player's upkeep, if that player controls a nonblack, nonland permanent, this
+//! creature deals 1 damage to that player."
+//!
+//! GAP: intervening_if — "if that player controls a nonblack, nonland
+//! permanent" not representable. Emitting damage unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -17,7 +18,6 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Urborg Stalker");
@@ -43,8 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                // GAP: intervening-if "if that player controls a nonblack, nonland permanent"
-                intervening_if: None,
+                intervening_if: None, // GAP: intervening_if — "if that player controls nonblack nonland permanent"
                 effect: upkeep_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -58,8 +57,7 @@ fn upkeep_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that player" refers to the player whose upkeep it is, not trig.controller.
-    // No engine field exposes the active player from StepBegins. Using controller as proxy.
+    // GAP: no accessor for "current upkeep player" on PendingTrigger; using controller as fallback
     vec![Effect::DealDamage {
         target: DamageTarget::Player(trig.controller),
         amount: 1,

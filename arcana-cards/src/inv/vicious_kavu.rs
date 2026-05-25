@@ -1,4 +1,4 @@
-//! Vicious Kavu — `{1}{B}{R}` 2/2 black/red Creature — Kavu.
+//! Vicious Kavu — `{1}{B}{R}` 2/2 black-red creature (Kavu).
 //! "Whenever this creature attacks, it gets +2/+0 until end of turn."
 
 use arcana_core::effects::Effect;
@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack(
+fn on_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

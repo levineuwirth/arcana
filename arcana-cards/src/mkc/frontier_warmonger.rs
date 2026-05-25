@@ -1,21 +1,24 @@
 //! Frontier Warmonger — `{3}{R}` 4/4 red Creature — Human Warrior.
 //! "Whenever one or more creatures attack one of your opponents or a
 //! planeswalker they control, those creatures gain menace until end of turn."
-//! GAP: trigger fires on any creature attacking; granting Menace to all attacking creatures you control.
+//! GAP: "attack one of your opponents or a planeswalker they control" filter
+//! and "those attacking creatures" as a dynamic set are not expressible;
+//! CreatureAttacks fires per-creature so using ForEach over all your
+//! attackers is an approximation. Using CreatureAttacks/Any as trigger.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Frontier Warmonger");
@@ -30,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -39,11 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: "attack opponent/planeswalker" filter not expressible;
+                // using CreatureAttacks/Any as approximation
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                 },
                 intervening_if: None,
-                effect: creature_attacks_menace,
+                effect: on_creature_attacks_grant_menace,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,17 +55,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_attacks_menace(
+fn on_creature_attacks_grant_menace(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, trig.controller);
+    // GAP: should target "those creatures" (the attackers); granting menace to
+    // all attacking creatures you control as approximation
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::GrantKeyword {
-            target: arcana_core::objects::NULL_OBJECT_ID,
+            target: NULL_OBJECT_ID,
             keyword: KeywordAbility::Menace,
             duration: Duration::EndOfTurn,
         }),

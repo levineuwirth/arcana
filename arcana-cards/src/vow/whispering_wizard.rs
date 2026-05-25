@@ -1,6 +1,6 @@
-//! Whispering Wizard — `{3}{U}` 3/2 blue Creature — Human Wizard.
-//! "Whenever you cast a noncreature spell, create a 1/1 white Spirit creature token with flying.
-//! This ability triggers only once each turn."
+//! Whispering Wizard — `{3}{U}` 3/2 blue Human Wizard creature.
+//! "Whenever you cast a noncreature spell, create a 1/1 white Spirit creature token with
+//! flying. This ability triggers only once each turn."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -39,11 +39,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(
-                            TypeLine::INSTANT | TypeLine::SORCERY | TypeLine::ENCHANTMENT | TypeLine::ARTIFACT | TypeLine::LAND
-                        )),
+                        types_any: None,
                         ..Default::default()
-                    }),
+                    }.without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
@@ -60,15 +58,14 @@ fn noncreature_spell_spirit_token(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let spirit = reg.interner().lookup("Spirit")
-        .expect("Spirit interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(spirit);
+    let spirit = reg.interner().lookup("Spirit").expect("Spirit interned during register()");
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(spirit);
     let token = TokenDefinition {
         name: spirit,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Flying],

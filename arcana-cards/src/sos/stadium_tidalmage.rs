@@ -1,9 +1,7 @@
-//! Stadium Tidalmage — `{2}{U}{R}` 4/4 blue/red creature. "Whenever this
-//! creature enters or attacks, you may draw a card. If you do, discard a
-//! card."
-//!
-//! Two triggers: ETB and attacks. Both produce the same draw-then-discard
-//! effect.
+//! Stadium Tidalmage — `{2}{U}{R}` 4/4 Djinn Sorcerer. "Whenever this
+//! creature enters or attacks, you may draw a card. If you do,
+//! discard a card." Two triggered abilities sharing one effect fn:
+//! one ETB trigger and one attack trigger.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -23,6 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(djinn);
     subtypes.0.insert(sorcerer);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{U}{R}").expect("valid cost")),
@@ -34,6 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
@@ -57,6 +57,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// "You may draw a card. If you do, discard a card."
+// GAP: the "may" optionality is not expressible — this resolves as
+// an unconditional draw-then-discard rather than offering the choice
+// to skip both.
 fn draw_then_discard(
     _state: &GameState,
     trig: &PendingTrigger,

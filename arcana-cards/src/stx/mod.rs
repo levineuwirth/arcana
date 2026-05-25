@@ -45,3 +45,4 @@ pub mod mage_hunter;
 pub mod promising_duskmage;
 pub mod stonebinder_s_familiar;
 pub mod manifestation_sage;
+pub mod arrogant_poet;

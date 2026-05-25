@@ -1,8 +1,7 @@
-//! Reservoir Walker — `{5}` colorless 3/3 Artifact Creature — Construct.
-//! "When this creature enters, you gain 3 life and get {E}{E}{E}
-//! (three energy counters)."
-//! GAP: energy counters ({E}) are not in the effect catalog; emitting
-//! only the life gain.
+//! Reservoir Walker — `{5}` 3/3 colorless Artifact Creature Construct. "When
+//! this creature enters, you gain 3 life and get {E}{E}{E} (three energy
+//! counters)." ETB trigger; gain 3 life and get 3 energy counters.
+//! GAP: no Effect variant for gaining energy counters.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -50,6 +49,6 @@ fn etb_effect(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: energy counters not in effect catalog
+    // GAP: no Effect variant for gaining energy counters ({E}{E}{E}).
     vec![Effect::GainLife { player: trig.controller, amount: 3 }]
 }

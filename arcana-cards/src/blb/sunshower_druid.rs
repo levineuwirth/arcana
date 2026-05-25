@@ -1,4 +1,4 @@
-//! Sunshower Druid — `{G}` 0/2 green Frog Druid. "When this creature enters, put
+//! Sunshower Druid — `{G}` 0/2 green creature. "When this creature enters, put
 //! a +1/+1 counter on target creature and you gain 1 life."
 
 use arcana_core::effects::Effect;
@@ -6,7 +6,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -53,7 +53,11 @@ fn etb_counter_and_life(
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
-        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
         Effect::GainLife { player: trig.controller, amount: 1 },
     ]
 }

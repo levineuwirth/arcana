@@ -1,8 +1,9 @@
-//! Darien, King of Kjeldor — `{4}{W}{W}` 3/3 white Legendary Human Soldier creature.
+//! Darien, King of Kjeldor — `{4}{W}{W}` 3/3 legendary white Human Soldier.
 //! "Whenever you're dealt damage, you may create that many 1/1 white Soldier creature tokens."
-//! GAP: trigger — "you're dealt damage" (controller is target of damage) filter not expressible;
-//! DamageDealt fires for any damage; damage amount not available in PendingTrigger.
-//! Using DamageDealt with target_filter Player as best-effort, creating 1 token.
+//! GAP: "whenever you're dealt damage" trigger not directly in catalog; using
+//! SelfIsDealtDamage as closest approximation (triggers on damage to the card itself,
+//! not to the player). Using DamageDealt targeting you with source_filter=any as best-effort.
+//! GAP: trig.damage_amount() gives count for token creation.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -19,7 +20,6 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Darien, King of Kjeldor");
     let human = reg.interner_mut().intern("Human");
-    let _soldier = reg.interner_mut().intern("Soldier");
     let soldier = reg.interner_mut().intern("Soldier");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
@@ -33,20 +33,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::new(),
-                    target_filter: TargetFilter::Player,
-                    combat_only: false,
-                },
+                trigger_condition: TriggerCondition::SelfIsDealtDamage { combat_only: false },
                 intervening_if: None,
-                effect: on_damage_create_soldiers,
+                effect: on_dealt_damage_create_soldiers,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,13 +49,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_damage_create_soldiers(
+fn on_dealt_damage_create_soldiers(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — damage amount not accessible in PendingTrigger; creating 1 token as best effort
-    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");
+    let n = trig.damage_amount().unwrap_or(0);
+    if n == 0 {
+        return Vec::new();
+    }
+    let soldier = reg.interner().lookup("Soldier")
+        .expect("Soldier interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(soldier);
     let token = TokenDefinition {
@@ -73,5 +72,7 @@ fn on_damage_create_soldiers(
         keywords: vec![],
         abilities: vec![],
     };
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    (0..n)
+        .map(|_| Effect::CreateToken { controller: trig.controller, token: token.clone() })
+        .collect()
 }

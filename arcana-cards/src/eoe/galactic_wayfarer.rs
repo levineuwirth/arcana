@@ -1,6 +1,5 @@
-//! Galactic Wayfarer — `{2}{G}` 3/3 green Human Scout.
+//! Galactic Wayfarer — `{2}{G}` 3/3 green Human Scout creature.
 //! "When this creature enters, create a Lander token."
-//! GAP: Lander token's activated tutor ability not expressible in TokenDefinition.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: create_lander_token,
+                effect: etb_lander_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_lander_token(
+fn etb_lander_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
@@ -55,7 +54,6 @@ fn create_lander_token(
         .expect("Lander interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(lander);
-    // GAP: Lander token's activated tutor ability not expressible in TokenDefinition
     let token = TokenDefinition {
         name: lander,
         colors: ColorSet::colorless(),

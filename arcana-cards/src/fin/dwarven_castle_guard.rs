@@ -1,4 +1,4 @@
-//! Dwarven Castle Guard — `{1}{W}` 2/1 white Dwarf Soldier.
+//! Dwarven Castle Guard — `{1}{W}` 2/1 white Dwarf Soldier creature.
 //! "When this creature dies, create a 1/1 colorless Hero creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: create_hero_token,
+                effect: dies_hero_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_hero_token(
+fn dies_hero_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

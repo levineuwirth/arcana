@@ -1,5 +1,5 @@
-//! Naga Oracle — `{3}{U}` 2/4 blue Snake Cleric.
-//! "When Naga Oracle enters the battlefield, surveil 3."
+//! Naga Oracle — `{3}{U}` 2/4 blue Snake Cleric. "When this creature enters,
+//! surveil 3." ETB trigger; surveil 3.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,6 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -36,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_effect,
+                effect: etb_surveil,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_effect(
+fn etb_surveil(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

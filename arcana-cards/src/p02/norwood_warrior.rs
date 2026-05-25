@@ -1,6 +1,5 @@
-//! Norwood Warrior — `{2}{G}` 2/2 green Elf Warrior.
-//! "Whenever this creature becomes blocked, it gets +1/+1 until end of turn."
-//! GAP: no TriggerCondition::SelfBecomesBlocked variant; using SelfAttacks as proxy.
+//! Norwood Warrior — `{2}{G}` 2/2 green creature. "Whenever this creature
+//! becomes blocked, it gets +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -36,8 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no SelfBecomesBlocked variant; SelfAttacks used as proxy
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
                 effect: blocked_pump,
                 trigger_zones: vec![Zone::Battlefield],

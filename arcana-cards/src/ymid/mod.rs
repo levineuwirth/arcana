@@ -8,3 +8,4 @@ pub mod divine_purge;
 pub mod conductive_current;
 pub mod begin_anew;
 pub mod ravenous_pursuit;
+pub mod puppet_raiser;

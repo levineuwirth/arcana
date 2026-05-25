@@ -1,9 +1,10 @@
 //! Sinister Gnarlbark — `{2}{B}` 0/4 black Treefolk Warlock.
 //! "At the beginning of your end step, draw a card and blight 1."
-//! GAP: keyword Blight is not in the supported keyword surface; blight-1
-//! side effect (put a -1/-1 counter on a creature you control) cannot be
-//! expressed with any catalog Effect variant — that part returns Vec::new().
-//! The draw-a-card effect is implemented.
+//! Blight is not in the engine effect catalog; GAP noted. Draw a card
+//! is implemented; the blight portion is omitted.
+//!
+//! # Keyword gaps
+//! - `Blight` is not a supported `KeywordAbility` variant; omitted from keywords vec.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(4)),
+        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -56,10 +58,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn end_step_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: blight 1 (put a -1/-1 counter on a creature you control) —
-    // no catalog Effect variant for placing -1/-1 counters on a
-    // controller-chosen permanent.
+    // GAP: blight 1 (put a -1/-1 counter on a creature you control) — no engine variant
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

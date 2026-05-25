@@ -37,3 +37,5 @@ pub mod sumala_woodshaper;
 pub mod district_guide;
 pub mod generous_stray;
 pub mod haazda_marshal;
+pub mod attendant_of_vraska;
+pub mod tenth_district_guard;

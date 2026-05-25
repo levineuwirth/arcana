@@ -1,10 +1,11 @@
-//! Chrome Replicator — `{5}` 4/4 Artifact Creature — Construct.
-//! Colorless. "When this creature enters, if you control two or more
-//! nonland, nontoken permanents with the same name as one another,
-//! create a 4/4 colorless Construct artifact creature token."
+//! Chrome Replicator — `{5}` (colorless) 4/4 Artifact Creature — Construct.
+//! "When this creature enters, if you control two or more nonland, nontoken
+//! permanents with the same name as one another, create a 4/4 colorless
+//! Construct artifact creature token."
 //!
-//! GAP: intervening-if "two or more permanents with same name" not
-//! expressible; token created unconditionally.
+//! GAP: intervening-if "two or more nonland nontoken permanents with the
+//! same name as one another" requires name-matching logic not available in
+//! script helpers.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -19,19 +20,18 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Chrome Replicator");
-    let construct = reg.interner_mut().intern("Construct");
+    let _construct = reg.interner_mut().intern("Construct");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(construct);
+    subtypes.0.insert(reg.interner_mut().intern("Construct"));
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{5}").expect("valid cost")),
-        colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        colors: ColorSet::default(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_construct_token,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,21 +48,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_construct_token(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "two or more permanents with same name" condition not expressible
+    // GAP: cannot check if two or more nonland nontoken permanents share a
+    // name; emitting token creation unconditionally as best effort.
     let construct = reg.interner().lookup("Construct")
         .expect("Construct interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(construct);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(construct);
     let token = TokenDefinition {
         name: construct,
-        colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
-        subtypes: token_subtypes,
+        colors: ColorSet::default(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         keywords: vec![],

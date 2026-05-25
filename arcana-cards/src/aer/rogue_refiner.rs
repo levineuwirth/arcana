@@ -1,6 +1,6 @@
-//! Rogue Refiner — `{1}{G}{U}` 3/2 green/blue Human Rogue creature.
-//! "When this creature enters, draw a card and you get {E}{E} (two energy counters)."
-//! GAP: effect — energy counter mechanic ({E}) is not in the Effect catalog; emitting draw only.
+//! Rogue Refiner — `{1}{G}{U}` 3/2 green/blue Human Rogue. "When this creature enters,
+//! draw a card and you get {E}{E} (two energy counters)."
+//! GAP: Energy counter mechanic not in engine effect catalog; emitting draw only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,10 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw_energy,
+                effect: etb_draw_and_energy,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,11 +44,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_energy(
+fn etb_draw_and_energy(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — {E}{E} energy counter gain not in Effect catalog
+    // GAP: energy counter ({E}{E}) not in engine effect catalog
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

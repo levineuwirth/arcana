@@ -1,16 +1,15 @@
-//! April O'Neil, Human Element — `{3}{U}` 2/5 legendary blue Human Detective.
-//! "Whenever a player casts an artifact, instant, or sorcery spell, you
-//! create a Mutagen token. (It's an artifact with '{1}, {T}, Sacrifice this
-//! token: Put a +1/+1 counter on target creature. Activate only as a sorcery.')"
-//! GAP: Mutagen token has activated abilities that cannot be expressed in
-//! TokenDefinition; emitting a plain colorless Artifact token as approximation.
+//! April O'Neil, Human Element — `{3}{U}` 2/5 Legendary blue Human Detective.
+//! "Whenever a player casts an artifact, instant, or sorcery spell, you create
+//! a Mutagen token." SpellCast trigger (any caster, artifact/instant/sorcery);
+//! create a Mutagen artifact token.
+//! GAP: Mutagen token has a complex activated ability — emit token without it.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
+                    filter: Some(arcana_core::targets::ObjectFilter {
                         types_any: Some(TypeLine(
                             TypeLine::ARTIFACT | TypeLine::INSTANT | TypeLine::SORCERY,
                         )),
@@ -64,9 +63,8 @@ fn create_mutagen(
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mutagen = reg.interner().lookup("Mutagen").expect("Mutagen interned during register()");
-    let subtypes = SubtypeSet::default();
-    // GAP: Mutagen token has an activated ability not expressible in TokenDefinition;
-    // emitting a plain colorless Artifact token as approximation
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(mutagen);
     let token = TokenDefinition {
         name: mutagen,
         colors: ColorSet::colorless(),

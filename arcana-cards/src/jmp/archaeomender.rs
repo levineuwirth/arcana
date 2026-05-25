@@ -1,4 +1,4 @@
-//! Archaeomender — `{2}{U}` 2/3 blue Creature — Human Wizard.
+//! Archaeomender — `{2}{U}` 2/3 blue Human Wizard creature.
 //! "When this creature enters, return target artifact card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
@@ -37,13 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_return_artifact_from_graveyard,
+                effect: etb_return_artifact,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+                        filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -52,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_return_artifact_from_graveyard(
+fn etb_return_artifact(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

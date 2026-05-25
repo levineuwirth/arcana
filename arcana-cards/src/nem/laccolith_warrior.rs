@@ -1,11 +1,11 @@
-//! Laccolith Warrior — `{2}{R}{R}` 3/3 red Beast Warrior.
+//! Laccolith Warrior — `{2}{R}{R}` 3/3 red Beast Warrior creature.
 //! "Whenever this creature becomes blocked, you may have it deal damage equal to its power
 //! to target creature. If you do, this creature assigns no combat damage this turn."
 //!
-//! # GAP: trigger — "whenever this creature becomes blocked" has no matching TriggerCondition
-//! variant. Closest is SelfAttacks; using that with a GAP note.
-//! GAP: "deal damage equal to its power" requires script::power_of at resolve time.
-//! GAP: "this creature assigns no combat damage" is a replacement effect not modeled.
+//! # Notes
+//! The damage is dynamic (equal to its power). Uses script::power_of.
+//! GAP: "this creature assigns no combat damage this turn" — no Effect variant to prevent
+//! a specific creature's combat damage assignment.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -43,11 +43,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever this creature becomes blocked" has no variant;
-                // using SelfAttacks as closest approximation.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: blocked_deal_damage,
+                effect: deal_power_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -55,18 +53,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocked_deal_damage(
+fn deal_power_damage(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let power = script::power_of(state, trig.source).max(0) as u32;
-    // GAP: "this creature assigns no combat damage this turn" replacement effect not modeled.
-    vec![Effect::DealDamage {
-        target: DamageTarget::Object(*id),
-        amount: power,
-        source: trig.source,
-    }]
+    let amount = script::power_of(state, trig.source).max(0) as u32;
+    // GAP: "this creature assigns no combat damage this turn" — no Effect variant available.
+    vec![Effect::DealDamage { target: DamageTarget::Object(*id), amount, source: trig.source }]
 }

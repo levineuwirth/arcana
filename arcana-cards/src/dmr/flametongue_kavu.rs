@@ -1,4 +1,4 @@
-//! Flametongue Kavu — `{3}{R}` 4/2 red Kavu.
+//! Flametongue Kavu — `{3}{R}` 4/2 red Kavu creature.
 //! "When this creature enters, it deals 4 damage to target creature."
 
 use arcana_core::effects::Effect;
@@ -7,7 +7,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_deal_four(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

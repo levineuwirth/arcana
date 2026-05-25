@@ -1,8 +1,12 @@
-//! Magus of the Abyss — `{3}{B}` 4/3 black Human Wizard.
-//! "At the beginning of each player's upkeep, destroy target nonartifact
-//! creature that player controls of their choice. It can't be regenerated."
-//! GAP: target — "that player controls of their choice" means the active
-//! player chooses; using a targeted creature (controller Any) as approximation.
+//! Magus of the Abyss — `{3}{B}` 4/3 Human Wizard.
+//! "At the beginning of each player's upkeep, destroy target
+//! nonartifact creature that player controls of their choice. It
+//! can't be regenerated."
+//!
+//! "of their choice" means the active player chooses — modeled as
+//! targeting a creature controlled by the active player.
+//! "can't be regenerated" — not a catalog field; DestroyPermanent
+//! is used (engine handles regen separately).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,12 +14,12 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::targets::ControllerConstraint;
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -50,27 +54,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::creature()
-                                .without_types(TypeLine(TypeLine::ARTIFACT)),
-                        ),
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .without_types(TypeLine::ARTIFACT.into())
+                            .controlled_by(ControllerConstraint::Any),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_upkeep(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "that player controls of their choice" — active player picks; approximated.
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn on_upkeep(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

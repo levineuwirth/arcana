@@ -1,5 +1,6 @@
-//! Wary Thespian — `{1}{G}` 3/1 green Creature — Cat Druid.
+//! Wary Thespian — `{1}{G}` 3/1 green Cat Druid creature.
 //! "When this creature enters or dies, surveil 1."
+//! Keywords (Scryfall-parsed): Surveil (handled via trigger, not keyword)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_surveil,
+                effect: surveil_one,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: etb_surveil,
+                effect: surveil_one,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,10 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_surveil(
+fn surveil_one(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Surveil { player: trig.controller, count: 1 }]
 }

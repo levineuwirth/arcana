@@ -1,5 +1,5 @@
-//! Sire of Insanity — `{4}{B}{R}` 6/4 black/red Demon creature.
-//! "At the beginning of each end step, each player discards their hand."
+//! Sire of Insanity — `{4}{B}{R}` 6/4 black/red Demon. "At the beginning of each end
+//! step, each player discards their hand."
 
 use arcana_core::effects::{Effect, DiscardChoice};
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -26,10 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black() | ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: on_end_step_all_discard,
+                effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,18 +47,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_end_step_all_discard(
+fn on_end_step(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let all_players = script::all_players(state);
-    let effects: Vec<Effect> = all_players
-        .into_iter()
+    // Each player discards their hand (use hand_size as count)
+    let players = script::all_players(state);
+    players.into_iter()
         .map(|p| {
-            let hand = script::hand_size(state, p);
-            Effect::Discard { player: p, count: hand, choice: DiscardChoice::ControllerChooses }
+            let count = script::hand_size(state, p);
+            Effect::Discard { player: p, count, choice: DiscardChoice::ControllerChooses }
         })
-        .collect();
-    vec![Effect::Sequence(effects)]
+        .collect()
 }

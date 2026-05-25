@@ -1,10 +1,10 @@
-//! Broodrage Mycoid — `{3}{B}` 4/3 black Fungus. "At the beginning of your end
-//! step, if you descended this turn, create a 1/1 black Fungus creature token
-//! with 'This token can't block.'"
+//! Broodrage Mycoid — `{3}{B}` 4/3 black Fungus.
+//! "At the beginning of your end step, if you descended this turn, create a 1/1 black
+//! Fungus creature token with 'This token can't block.'"
 //!
-//! GAP: trigger — intervening-if "if you descended this turn" (permanent card
-//! put into graveyard) not expressible as a condition predicate.
-//! GAP: effect — "can't block" ability on created token not in TokenDefinition.
+//! GAP: "descended this turn" (a permanent card was put into your graveyard from anywhere)
+//! is not expressible as an intervening-if. Emitting unconditionally. Also "can't block"
+//! on a token is not expressible in TokenDefinition.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -24,6 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let fungus = reg.interner_mut().intern("Fungus");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(fungus);
+    let _fungus_tok = reg.interner_mut().intern("Fungus");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{B}").expect("valid cost")),
@@ -43,8 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if — "if you descended this turn" not
-                // expressible as a condition predicate.
+                // GAP: intervening-if "if you descended this turn" — use None
                 intervening_if: None,
                 effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
@@ -59,8 +59,7 @@ fn on_end_step(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let fungus = reg.interner().lookup("Fungus")
-        .expect("Fungus interned during register()");
+    let fungus = reg.interner().lookup("Fungus").expect("Fungus interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(fungus);
     // GAP: "can't block" ability on token not expressible in TokenDefinition.

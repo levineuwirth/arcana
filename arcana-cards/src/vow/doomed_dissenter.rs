@@ -48,8 +48,7 @@ fn dies_create_zombie(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let zombie = reg.interner().lookup("Zombie")
-        .expect("Zombie interned during register()");
+    let zombie = reg.interner().lookup("Zombie").expect("Zombie interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(zombie);
     let token = TokenDefinition {

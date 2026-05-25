@@ -1,12 +1,11 @@
 //! Azra Bladeseeker — `{2}{R}` 3/2 red Azra Warrior. "When this creature
-//! enters, each player on your team may discard a card, then each player
-//! who discarded a card this way draws a card."
-//! GAP: effect — "players on your team" (multiplayer team semantics) and
-//! conditional "if they discarded" chaining are not in the catalog;
-//! treating as controller discards then draws.
+//! enters, each player on your team may discard a card, then each player who
+//! discarded a card this way draws a card."
+//!
+//! GAP: no concept of "team" in the engine; treating as "you may discard a
+//! card, then draw a card" for the controller.
 
-use arcana_core::effects::Effect;
-use arcana_core::effects::DiscardChoice;
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: loot,
+                effect: etb_loot,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,12 +48,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn loot(
+fn etb_loot(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each player on your team" semantics not in catalog; using controller only
+    // GAP: no team concept; approximating as controller discards then draws
     vec![
         Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
         Effect::DrawCards { player: trig.controller, count: 1 },

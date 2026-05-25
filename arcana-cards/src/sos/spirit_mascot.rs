@@ -1,13 +1,14 @@
-//! Spirit Mascot — `{R}{W}` 2/2 red-white Spirit Ox.
-//! "Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature."
-//! GAP: no "cards leave graveyard" TriggerCondition; ZoneChange from graveyard used as proxy.
+//! Spirit Mascot — `{R}{W}` 2/2 red-white creature. "Whenever one or more cards
+//! leave your graveyard, put a +1/+1 counter on this creature."
+//!
+//! GAP: trigger — no "cards leave graveyard" TriggerCondition. Omitting trigger;
+//! emitting stub with Vec::new().
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -32,16 +33,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
+    // GAP: trigger — "cards leave graveyard" not expressible; using SelfBecomesTapped as placeholder stub
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "cards leave graveyard" variant; ZoneChange from graveyard used as proxy
-                trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::new().controlled_by(ControllerConstraint::You),
-                    from: Some(Zone::Graveyard(0)),
-                    to: Zone::Battlefield,
-                },
+                // GAP: no graveyard-leave trigger; entire ability unimplementable
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
                 effect: graveyard_leave_counter,
                 trigger_zones: vec![Zone::Battlefield],
@@ -56,6 +54,7 @@ fn graveyard_leave_counter(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: trigger condition not correct; real ability fires on graveyard leave
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

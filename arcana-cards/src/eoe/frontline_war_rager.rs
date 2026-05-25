@@ -1,8 +1,6 @@
-//! Frontline War-Rager — `{2}{R}` 2/3 red Kavu Soldier.
-//! "At the beginning of your end step, if you control two or more
-//! tapped creatures, put a +1/+1 counter on this creature."
-//! Intervening-if: "if you control two or more tapped creatures" —
-//! GAP: intervening_if not expressible; use None and check at resolution.
+//! Frontline War-Rager — `{2}{R}` 2/3 red Kavu Soldier. "At the beginning of
+//! your end step, if you control two or more tapped creatures, put a +1/+1
+//! counter on this creature." End-step trigger with intervening-if clause.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,7 +42,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening_if "you control two or more tapped creatures"
                 intervening_if: None,
                 effect: end_step_counter,
                 trigger_zones: vec![Zone::Battlefield],
@@ -59,11 +56,14 @@ fn end_step_counter(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let tapped_filter = ObjectFilter::creature()
-        .controlled_by(ControllerConstraint::You)
-        .tapped_only();
-    let count = script::count_matching(state, &tapped_filter, trig.controller);
-    if count >= 2 {
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .tapped_only(),
+        trig.controller,
+    );
+    if n >= 2 {
         vec![Effect::AddCounters {
             target: trig.source,
             kind: CounterKind::PlusOnePlusOne,

@@ -1,6 +1,6 @@
 //! Sylvan Ranger — `{1}{G}` 1/1 green Creature — Elf Scout Ranger.
-//! "When this creature enters, you may search your library for a basic land
-//! card, reveal it, put it into your hand, then shuffle."
+//! "When this creature enters, you may search your library for a
+//! basic land card, reveal it, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_land,
+                effect: etb_tutor_basic_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,11 +48,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_land(
+fn etb_tutor_basic_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
-    vec![Effect::TutorToHand { player: trig.controller, filter, reveal: true }]
+    vec![Effect::TutorToHand {
+        player: trig.controller,
+        filter: ObjectFilter::permanent()
+            .with_types(TypeLine::LAND.into()),
+        reveal: true,
+    }]
 }

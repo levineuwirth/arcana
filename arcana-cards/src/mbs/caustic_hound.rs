@@ -1,4 +1,4 @@
-//! Caustic Hound — `{5}{B}` 4/4 black Creature — Phyrexian Dog.
+//! Caustic Hound — `{5}{B}` 4/4 black creature (Phyrexian Dog).
 //! "When this creature dies, each player loses 4 life."
 
 use arcana_core::effects::Effect;
@@ -26,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -50,7 +51,8 @@ fn on_dies(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let players = script::all_players(state);
-    let effects: Vec<Effect> = players.into_iter()
+    let effects: Vec<Effect> = players
+        .into_iter()
         .map(|p| Effect::LoseLife { player: p, amount: 4 })
         .collect();
     vec![Effect::Sequence(effects)]

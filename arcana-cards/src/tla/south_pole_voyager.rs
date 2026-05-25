@@ -1,8 +1,9 @@
-//! South Pole Voyager — `{1}{W}` 2/2 white Human Scout Ally creature.
-//! "Whenever this creature or another Ally you control enters, you gain 1 life.
-//! If this is the second time this ability has resolved this turn, draw a card."
-//! GAP: trigger — "second time this ability resolved this turn" condition not expressible;
-//! emitting the life gain; the conditional draw is dropped.
+//! South Pole Voyager — `{1}{W}` 2/2 white Human Scout Ally. "Whenever this creature
+//! or another Ally you control enters, you gain 1 life. If this is the second time
+//! this ability has resolved this turn, draw a card."
+//! GAP: "second time this turn" conditional not expressible; emitting gain life only.
+//! frequency: OncePerTurn would suppress, but oracle gains life each time and draws once.
+//! Using EachTime with life gain; draw on second resolution is GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +14,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,10 +32,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -42,12 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_ally_enters_life,
+                effect: on_ally_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,11 +55,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_ally_enters_life(
+fn on_ally_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — "second time this turn" tracking not expressible; conditional draw dropped
+    // GAP: "second time this ability resolved this turn" draw not expressible
     vec![Effect::GainLife { player: trig.controller, amount: 1 }]
 }

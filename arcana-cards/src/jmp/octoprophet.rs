@@ -1,5 +1,5 @@
-//! Octoprophet — `{3}{U}` 3/3 blue creature. "When this creature enters,
-//! scry 2."
+//! Octoprophet — `{3}{U}` 3/3 blue Octopus creature. "When this
+//! creature enters, scry 2." Canonical ETB scry trigger.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,6 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// ETB trigger resolution: the triggering object's controller scries 2.
 fn etb_scry_2(
     _state: &GameState,
     trig: &PendingTrigger,

@@ -33,3 +33,6 @@ pub mod joraga_visionary;
 pub mod angelheart_protector;
 pub mod risen_riptide;
 pub mod guul_draz_mucklord;
+pub mod kor_celebrant;
+pub mod pyroclastic_hellion;
+pub mod cascade_seer;

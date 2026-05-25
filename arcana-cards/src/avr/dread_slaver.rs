@@ -1,11 +1,8 @@
-//! Dread Slaver — `{3}{B}{B}` 3/5 black Zombie Horror creature.
-//! "Whenever a creature dealt damage by this creature this turn dies, return it to the
-//! battlefield under your control. That creature is a black Zombie in addition to its
-//! other colors and types."
-//! GAP: trigger — "creature dealt damage by this creature this turn" is not a standard
-//! ZoneChange filter; using ZoneChange creature-dies as approximation.
-//! GAP: effect — "black Zombie in addition to other colors and types" type/color modification
-//! not in Effect catalog; emitting ReturnFromGraveyardToBattlefield + ChangeControl only.
+//! Dread Slaver — `{3}{B}{B}` 3/5 black Zombie Horror. "Whenever a creature dealt
+//! damage by this creature this turn dies, return it to the battlefield under your
+//! control. That creature is a black Zombie in addition to its other colors and types."
+//! GAP: "creature dealt damage by this creature this turn" tracking not in trigger catalog;
+//! using ZoneChange(BF->GY) as closest approximation. Type/color modification not in catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,7 +13,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -32,25 +29,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(5)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "creature dealt damage by this creature this turn" not expressible;
-                // using any creature dying as approximation
+                // GAP: "creature dealt damage by ~ this turn" tracking not in trigger catalog
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature(),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: on_creature_dies_reanimate,
+                effect: on_creature_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -58,14 +52,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_creature_dies_reanimate(
+fn on_creature_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — color/type modification ("black Zombie in addition") not in catalog
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: trig.source },
-        Effect::ChangeControl { target: trig.source, new_controller: trig.controller },
-    ]
+    let Some(id) = trig.dying_object() else { return Vec::new(); };
+    // GAP: type/color modification (becomes black Zombie) not in engine effect catalog
+    vec![Effect::ReturnFromGraveyardToBattlefield { target: id }]
 }

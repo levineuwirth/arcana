@@ -1,9 +1,9 @@
-//! Endangered Armodon — `{2}{G}{G}` 4/5 green creature. "When you control a
-//! creature with toughness 2 or less, sacrifice this creature."
+//! Endangered Armodon — `{2}{G}{G}` 4/5 green Elephant.
+//! "When you control a creature with toughness 2 or less, sacrifice this creature."
 //!
-//! GAP: trigger — "when you control a creature with toughness 2 or less" has
-//! no matching TriggerCondition variant. Using ZoneChange creature enters as
-//! closest approximation with an intervening-if GAP.
+//! GAP: no "state-based / while-condition" trigger in the catalog. Using ZoneChange
+//! (creature entering your battlefield with toughness ≤ 2) as the closest approximation,
+//! but the self-sacrifice effect is also a GAP (Sacrifice targets a player + filter, not self).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,8 +37,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "when you control a creature with toughness ≤ 2"
-                // has no matching TriggerCondition; using creature enters as approximation.
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature()
                         .controlled_by(ControllerConstraint::You)
@@ -47,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_trigger,
+                effect: on_small_creature_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,14 +53,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_trigger(
+fn on_small_creature_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // Sacrifice self. The Sacrifice effect targets a player + filter; sacrifice this permanent directly.
     vec![Effect::Sacrifice {
         player: trig.controller,
-        filter: ObjectFilter::new(),
+        filter: ObjectFilter::creature(),
         count: 1,
     }]
 }

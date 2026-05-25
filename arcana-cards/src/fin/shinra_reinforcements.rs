@@ -1,4 +1,5 @@
-//! Shinra Reinforcements — `{2}{B}` 2/3 black Human Soldier.
+//! Shinra Reinforcements — `{2}{B}` 2/3 Human Soldier.
+//! Keywords: Mill
 //! "When this creature enters, mill three cards and you gain 3 life."
 
 use arcana_core::effects::Effect;
@@ -44,11 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
         Effect::Mill { player: trig.controller, count: 3 },
         Effect::GainLife { player: trig.controller, amount: 3 },

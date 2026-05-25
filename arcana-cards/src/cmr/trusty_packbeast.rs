@@ -1,12 +1,16 @@
-//! Trusty Packbeast — `{2}{W}` 2/3 white creature. "When this creature
-//! enters, return target artifact card from your graveyard to your hand."
+//! Trusty Packbeast — `{2}{W}` 2/3 Creature — Beast. "When this
+//! creature enters, return target artifact card from your graveyard
+//! to your hand." ETB-trigger with a graveyard-card target.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,13 +39,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_return_artifact_from_graveyard,
+                effect: etb_return_artifact,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+                        filter: ObjectFilter::new()
+                            .with_types(TypeLine::ARTIFACT.into())
+                            .controlled_by(ControllerConstraint::You),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -50,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_return_artifact_from_graveyard(
+fn etb_return_artifact(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

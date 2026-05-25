@@ -1,8 +1,8 @@
 //! Druid of Horns — `{3}{G}` 2/3 green Human Druid.
 //! "Whenever you cast an Aura spell that targets this creature, create a 3/3
 //! green Beast creature token."
-//! GAP: trigger — SpellCast with "targets this creature" predicate not
-//! expressible; using SpellCast(You, Enchantment) as closest placeholder.
+//! GAP: SpellCast filter for "Aura spell that targets this specific creature"
+//! not expressible; using SpellCast Enchantment you as best-effort.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -33,24 +33,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "Aura spell targeting this creature" not
-                // expressible; using SpellCast(You, Enchantment) as placeholder.
+                // GAP: "Aura spell that targets this creature" filter not
+                // expressible; using SpellCast Enchantment you as best-effort.
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::ENCHANTMENT)),
-                        ..Default::default()
-                    }),
+                    filter: Some(
+                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+                    ),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: create_beast_token,
+                effect: on_aura_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -58,19 +56,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_beast_token(
+fn on_aura_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let beast = reg.interner().lookup("Beast").expect("Beast interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(beast);
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(beast);
     let token = TokenDefinition {
         name: beast,
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         keywords: vec![],

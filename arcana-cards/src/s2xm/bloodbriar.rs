@@ -1,12 +1,11 @@
-//! Bloodbriar — `{2}{G}` 2/3 green Plant Elemental. "Whenever you sacrifice
-//! another permanent, put a +1/+1 counter on this creature."
+//! Bloodbriar — `{2}{G}` 2/3 green Plant Elemental.
+//! "Whenever you sacrifice another permanent, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::Sacrificed {
-                    filter: ObjectFilter::new(),
+                    filter: arcana_core::targets::ObjectFilter::permanent(),
                 },
                 intervening_if: None,
                 effect: on_sacrifice,

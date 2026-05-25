@@ -1,5 +1,5 @@
-//! Titania's Chosen — `{2}{G}` 1/1 green creature. "Whenever a player casts
-//! a green spell, put a +1/+1 counter on this creature."
+//! Titania's Chosen — `{2}{G}` 1/1 green Elf Archer.
+//! "Whenever a player casts a green spell, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

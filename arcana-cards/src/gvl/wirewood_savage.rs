@@ -1,16 +1,19 @@
 //! Wirewood Savage — `{2}{G}` 2/2 green Creature — Elf.
 //! "Whenever a Beast enters, you may draw a card."
+//! GAP: Beast subtype filter not available at trigger build time
+//! (subtype_filter requires &CardRegistry, only available at resolve time);
+//! using generic creature ZoneChange as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -34,13 +36,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: Beast subtype filter not available at trigger build time;
+                // using generic creature entering battlefield
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Any),
+                    filter: ObjectFilter::creature(),
                     from: None,
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: beast_enters_draw,
+                effect: on_beast_enters_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,18 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn beast_enters_draw(
+fn on_beast_enters_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ZoneChange filter cannot narrow to Beast subtype specifically via ObjectFilter alone;
-    // using subtype_filter to check but we can only use it with script::ids_matching, not in the trigger filter.
-    // Best effort: draw whenever any creature enters (Beast subtype not filterable in trigger condition).
-    let beast_filter = arcana_core::script::subtype_filter(reg, "Beast")
-        .controlled_by(ControllerConstraint::Any);
-    // We cannot check if the entering creature was the Beast here without state access beyond API.
-    // GAP: no way to check 'entering creature is a Beast' at resolution time; drawing unconditionally.
-    let _ = beast_filter;
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

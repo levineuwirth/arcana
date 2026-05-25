@@ -1,4 +1,4 @@
-//! Toxic Abomination — `{1}{B}` 3/2 black Phyrexian Zombie. "When this creature
+//! Toxic Abomination — `{1}{B}` 3/2 black creature. "When this creature
 //! enters, you lose 2 life."
 
 use arcana_core::effects::Effect;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: lose_life,
+                effect: etb_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn lose_life(
+fn etb_lose_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

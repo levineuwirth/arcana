@@ -1,5 +1,5 @@
-//! Turntimber Ascetic — `{4}{G}` 5/4 green Giant Cleric.
-//! "When this creature enters, you gain 3 life."
+//! Turntimber Ascetic — `{4}{G}` 5/4 green Giant Cleric. "When this creature
+//! enters, you gain 3 life." ETB trigger; gain 3 life.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

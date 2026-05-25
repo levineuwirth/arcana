@@ -1,8 +1,8 @@
 //! Wurmskin Forger — `{5}{G}{G}` 2/2 green Elf Warrior.
-//! "When this creature enters, distribute three +1/+1 counters among one,
-//! two, or three target creatures."
-//! GAP: distributing counters among up to 3 targets requires knowing how many
-//! counters go to each target; modeled as one counter per target (3 targets).
+//! "When this creature enters, distribute three +1/+1 counters among one, two,
+//! or three target creatures."
+//! GAP: Distributed counter placement (player chooses allocation) not in
+//! engine effect catalog. Best-effort: targets as up-to-3 creatures, 1 counter each.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: distribute_counters,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -53,13 +52,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn distribute_counters(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: distribution of exactly 3 counters among chosen targets requires
-    // player input; modeled as 1 counter per chosen target.
+    // GAP: Distributed allocation of 3 counters among targets not in engine.
+    // Best-effort: give 1 counter to each targeted creature.
     trig.targets.targets.iter().filter_map(|t| {
         if let TargetChoice::Object(id) = t {
             Some(Effect::AddCounters {

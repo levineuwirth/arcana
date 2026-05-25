@@ -10,3 +10,5 @@ pub mod dead_ringers;
 pub mod glade_gnarr;
 pub mod flowstone_charger;
 pub mod bog_gnarr;
+pub mod kavu_howler;
+pub mod penumbra_kavu;

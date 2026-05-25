@@ -1,8 +1,9 @@
 //! Hero's Uncle — `{1}{W}` 2/2 white Human.
 //! "When Hero's Uncle dies, you may search your library for a legendary
 //! team-up creature, reveal it, put it into your hand, then shuffle."
-//! GAP: TutorToHand cannot filter by "legendary team-up creature" specifically;
-//! approximated as a legendary creature filter.
+//! GAP: "legendary team-up creature" is not a filter expressible in the engine
+//! (no way to filter for cards that have two legendary characters); using
+//! TutorToHand with creature + legendary filter as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: tutor_team_up,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,12 +47,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tutor_team_up(
+fn on_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "legendary team-up creature" filter not expressible; using creature filter.
+    // GAP: "legendary team-up creature" filter not expressible; using
+    // creature filter as best-effort (verify will flag).
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::creature(),

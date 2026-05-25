@@ -1,8 +1,9 @@
-//! Pothole Mole — `{2}{G}` 2/3 green Mole.
-//! "When this creature enters, mill three cards, then you may return a land card from your
-//! graveyard to your hand."
-//! GAP: "return a land card from your graveyard to your hand" — ReturnFromGraveyardToHand
-//! targets an ObjectId but we don't have a specific land card id; emitting mill only.
+//! Pothole Mole — `{2}{G}` 2/3 green Mole creature.
+//! "When this creature enters, mill three cards, then you may return a land card from
+//! your graveyard to your hand."
+//! GAP: "return a land card from your graveyard to your hand" (targeted graveyard-to-hand
+//! for a land) uses ReturnFromGraveyardToHand which requires an ObjectId target; there's
+//! no non-targeted "choose a land from graveyard" effect. Emitting Mill only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_return_land,
+                effect: etb_mill_three,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,12 +46,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_return_land(
+fn etb_mill_three(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "return a land card from your graveyard to your hand" — requires player choice of
-    // specific graveyard card; no such selector in catalog
+    // GAP: "you may return a land card from your graveyard to your hand" —
+    // non-targeted graveyard land retrieval not expressible.
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

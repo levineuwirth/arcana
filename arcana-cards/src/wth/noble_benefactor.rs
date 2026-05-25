@@ -1,9 +1,9 @@
 //! Noble Benefactor — `{2}{U}` 2/2 blue Human Cleric.
 //! "When this creature dies, each player may search their library for a card
-//! and put that card into their hand. Then each player who searched shuffles."
-//! GAP: "each player may search for any card" — TutorToHand filter accepts
-//! ObjectFilter (typed), not a universal card filter; modeled as each player
-//! TutorToHand with broadest creature filter as placeholder.
+//! and put that card into their hand. Then each player who searched their
+//! library this way shuffles."
+//! GAP: Per-player tutor for all players (including opponents) not in engine
+//! effect catalog (TutorToHand only targets one player).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +34,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -43,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: each_player_tutor,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,19 +50,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_tutor(
+fn on_dies(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "any card" search not expressible; using creature filter as
-    // broadest available placeholder.
-    script::all_players(state)
-        .into_iter()
-        .map(|p| Effect::TutorToHand {
+    // Each player tutors for any card — iterate all players as best-effort.
+    let all = script::all_players(state);
+    let effects: Vec<Effect> = all
+        .iter()
+        .map(|&p| Effect::TutorToHand {
             player: p,
-            filter: ObjectFilter::creature(),
+            filter: ObjectFilter::new(),
             reveal: false,
         })
-        .collect()
+        .collect();
+    effects
 }

@@ -1,21 +1,20 @@
-//! Syr Faren, the Hengehammer — `{G}{G}` 2/2 green Legendary Human Knight.
-//! "Whenever Syr Faren attacks, another target attacking creature gets +X/+X until end of turn,
-//! where X is Syr Faren's power."
+//! Syr Faren, the Hengehammer — `{G}{G}` 2/2 green Legendary Creature — Human Knight.
+//! "Whenever Syr Faren attacks, another target attacking creature gets +X/+X until end
+//! of turn, where X is Syr Faren's power."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter,
-    TargetCount, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Syr Faren, the Hengehammer");
@@ -41,13 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: pump_attacking_creature,
+                effect: attacks_pump_target,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
+                    filter: TargetFilter::Creature,
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -55,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_attacking_creature(
+fn attacks_pump_target(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

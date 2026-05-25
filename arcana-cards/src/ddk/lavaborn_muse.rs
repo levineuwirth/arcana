@@ -1,6 +1,6 @@
-//! Lavaborn Muse — `{3}{R}` 3/3 red Spirit. "At the beginning of each opponent's
-//! upkeep, if that player has two or fewer cards in hand, this creature deals 3
-//! damage to that player."
+//! Lavaborn Muse — `{3}{R}` 3/3 red creature. "At the beginning of each
+//! opponent's upkeep, if that player has two or fewer cards in hand, this
+//! creature deals 3 damage to that player."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Opponent,
                 },
                 intervening_if: None,
-                effect: upkeep_damage,
+                effect: opponent_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,21 +50,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_damage(
+fn opponent_upkeep(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // The trigger fires during each opponent's upkeep; trig.controller is our player.
-    // We need the active player (the opponent whose upkeep it is).
-    // GAP: no direct field for "active player" on PendingTrigger; using opponents list.
+    // GAP: no way to identify "that opponent" from StepBegins; using each opponent
     let opponents = script::opponents(state, trig.controller);
     let mut effects = Vec::new();
-    for opp in opponents {
-        let hand = script::hand_size(state, opp);
-        if hand <= 2 {
+    for p in opponents {
+        if script::hand_size(state, p) <= 2 {
             effects.push(Effect::DealDamage {
-                target: DamageTarget::Player(opp),
+                target: DamageTarget::Player(p),
                 amount: 3,
                 source: trig.source,
             });

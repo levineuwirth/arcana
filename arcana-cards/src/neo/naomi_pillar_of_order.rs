@@ -1,11 +1,10 @@
-//! Naomi, Pillar of Order — `{3}{W}{B}` 4/4 legendary white-black Human
-//! Advisor.
-//! "Whenever Naomi enters or attacks, if you control an artifact and an
-//! enchantment, create a 2/2 white Samurai creature token with vigilance."
-//! GAP: "if you control an artifact and an enchantment" is an intervening-if
-//! clause; using intervening_if: None per convention and noting the gap.
-//! GAP: "enters or attacks" — two trigger conditions; using SelfAttacks as
-//! primary; ETB instance omitted.
+//! Naomi, Pillar of Order — `{3}{W}{B}` 4/4 legendary white-black Human Advisor.
+//! "Whenever Naomi enters or attacks, if you control an artifact and
+//! an enchantment, create a 2/2 white Samurai creature token with
+//! vigilance."
+//! GAP: the "if you control an artifact and an enchantment" intervening
+//! condition is noted; intervening_if uses None per convention.
+//! Two triggers (ETB + attacks) share the same effect fn.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -41,9 +40,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger also fires on ETB; only SelfAttacks modeled here.
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                // GAP: intervening_if — "if you control an artifact and an enchantment"
+                intervening_if: None,
+                effect: create_samurai_token,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "you control an artifact and an enchantment"
+                // GAP: intervening_if — "if you control an artifact and an enchantment"
                 intervening_if: None,
                 effect: create_samurai_token,
                 trigger_zones: vec![Zone::Battlefield],
@@ -58,8 +66,7 @@ fn create_samurai_token(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let samurai = reg.interner().lookup("Samurai")
-        .expect("Samurai interned during register()");
+    let samurai = reg.interner().lookup("Samurai").expect("Samurai interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(samurai);
     let token = TokenDefinition {

@@ -1,14 +1,14 @@
 //! Sedraxis Alchemist — `{2}{B}` 2/2 black Zombie Wizard.
 //! "When this creature enters, if you control a blue permanent, return
 //! target nonland permanent to its owner's hand."
+//! GAP: intervening_if — "if you control a blue permanent".
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,15 +38,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you control a blue permanent"
+                // GAP: intervening_if — "if you control a blue permanent"
                 intervening_if: None,
                 effect: etb_bounce_nonland,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
-                            .without_types(TypeLine::LAND.into()),
+                        ObjectFilter::new().without_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -58,7 +57,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_bounce_nonland(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

@@ -1,4 +1,4 @@
-//! Scroll Thief — `{2}{U}` 1/3 blue Merfolk Rogue. "Whenever this creature deals
+//! Scroll Thief — `{2}{U}` 1/3 blue creature. "Whenever this creature deals
 //! combat damage to a player, draw a card."
 
 use arcana_core::effects::Effect;
@@ -6,7 +6,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetFilter;
+use arcana_core::targets::{ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,12 +36,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: Default::default(),
+                    source_filter: ObjectFilter::new(),
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: draw_on_combat_damage,
+                effect: combat_damage_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_on_combat_damage(
+fn combat_damage_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

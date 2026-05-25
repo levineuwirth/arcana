@@ -1,7 +1,8 @@
 //! Wavebreak Hippocamp — `{2}{U}` 2/2 blue Enchantment Creature — Horse Fish.
 //! "Whenever you cast your first spell during each opponent's turn, draw a card."
-//! GAP: trigger — "first spell during each opponent's turn" (once-per-turn per opponent's turn)
-//! is approximated as SpellCast with caster You; "during opponent's turn" restriction is dropped.
+//! GAP: "first spell during each opponent's turn" trigger not in engine condition catalog;
+//! using SpellCast with opponent turn as closest; frequency OncePerTurn approximates
+//! "first each turn". Cannot restrict to opponent's turn specifically.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +13,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,18 +29,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "during each opponent's turn" restriction not expressible;
-                // using SpellCast by You as approximation
+                // GAP: "first spell during an opponent's turn" not in trigger catalog;
+                // using SpellCast(You) with OncePerTurn as approximation
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,

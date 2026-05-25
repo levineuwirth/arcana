@@ -1,6 +1,6 @@
-//! Nessian Hornbeetle — `{1}{G}` 2/2 green Insect. "At the beginning of combat on
-//! your turn, if you control another creature with power 4 or greater, put a +1/+1
-//! counter on this creature."
+//! Nessian Hornbeetle — `{1}{G}` 2/2 green creature. "At the beginning of
+//! combat on your turn, if you control another creature with power 4 or
+//! greater, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,8 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     phase: Phase::Combat,
                     whose: ControllerConstraint::You,
                 },
+                // intervening_if: "if you control another creature with power 4 or greater" — GAP
                 intervening_if: None,
-                effect: counter_if_big_creature,
+                effect: combat_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,17 +50,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_if_big_creature(
+fn combat_counter(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature()
-        .controlled_by(ControllerConstraint::You)
-        .with_min_power(4);
-    let big_count = script::count_matching(state, &filter, trig.controller);
-    // Check if any "other" creature (not self) has power 4+
-    if big_count == 0 {
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_min_power(4),
+        trig.controller,
+    );
+    if n == 0 {
         return Vec::new();
     }
     vec![Effect::AddCounters {

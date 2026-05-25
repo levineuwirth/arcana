@@ -34,3 +34,4 @@ pub mod wandering_musicians;
 pub mod compassionate_healer;
 pub mod pretending_poxbearers;
 pub mod vengeful_villagers;
+pub mod forecasting_fortune_teller;

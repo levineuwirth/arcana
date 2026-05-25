@@ -1,9 +1,8 @@
-//! Ainok Wayfarer — `{1}{G}` 1/1 green Dog Scout.
-//! "When Ainok Wayfarer enters the battlefield, mill three cards. Then
-//! if a land card was milled this way, you may put that card into your
-//! hand. If not, put a +1/+1 counter on Ainok Wayfarer."
-//! GAP: complex conditional branching (land-in-mill check) not in catalog;
-//! emitting Mill 3 only.
+//! Ainok Wayfarer — `{1}{G}` 1/1 green Dog Scout. "When this creature enters,
+//! mill three cards. You may put a land card from among them into your hand.
+//! If you don't, put a +1/+1 counter on this creature." ETB trigger; mill 3.
+//! GAP: conditional land recovery from graveyard and conditional counter not
+//! expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_effect,
+                effect: etb_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_effect(
+fn etb_mill(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: land-in-mill conditional branching not in catalog; emitting Mill 3 only
+    // GAP: conditional land recovery from graveyard and conditional counter
+    // not expressible; emit mill only.
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

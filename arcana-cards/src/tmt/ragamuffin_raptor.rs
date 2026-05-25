@@ -1,10 +1,11 @@
-//! Ragamuffin Raptor — `{4}{G}` 4/3 green Creature — Dinosaur.
+//! Ragamuffin Raptor — `{4}{G}` 4/3 green Dinosaur creature.
 //! "When this creature enters, return up to one target creature or Food card from your
 //! graveyard to your hand."
 //!
-//! # GAP: target "creature or Food card" — Food is an artifact subtype; the TargetFilter
-//! catalog does not allow combined creature-or-artifact-subtype filtering. Using
-//! Graveyard card target with creature filter as best-effort.
+//! # Notes
+//! Target is either a creature card or a Food artifact card in graveyard.
+//! Using two target requirements — best approximation; engine takes first match.
+//! GAP: "creature or Food" as a single disjunctive target type is not directly expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -58,7 +59,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_return_from_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

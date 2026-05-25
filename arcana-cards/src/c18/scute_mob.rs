@@ -1,14 +1,14 @@
-//! Scute Mob — `{G}` 1/1 green Insect.
-//! "At the beginning of your upkeep, if you control five or more lands, put four +1/+1 counters
-//! on this creature."
-//! GAP: intervening-if "if you control five or more lands" not modeled; emitting None.
+//! Scute Mob — `{G}` 1/1 green Insect creature.
+//! "At the beginning of your upkeep, if you control five or more lands, put four +1/+1
+//! counters on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,9 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you control five or more lands" not modeled
                 intervening_if: None,
-                effect: upkeep_counters,
+                effect: upkeep_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,11 +49,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_counters(
-    _state: &GameState,
+fn upkeep_counter(
+    state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let land_count = script::count_matching(
+        state,
+        &ObjectFilter::new()
+            .with_types(TypeLine::LAND.into())
+            .controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    if land_count < 5 {
+        return Vec::new();
+    }
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

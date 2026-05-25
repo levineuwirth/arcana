@@ -1,10 +1,10 @@
-//! Groffskithur — `{5}{G}` 3/3 green Creature — Beast.
+//! Groffskithur — `{5}{G}` 3/3 green Beast creature.
 //! "Whenever this creature becomes blocked, you may return target card named Groffskithur
 //! from your graveyard to your hand."
 //!
-//! # GAP: trigger — "whenever this creature becomes blocked" has no variant;
-//! using SelfAttacks as closest approximation.
-//! GAP: target "card named Groffskithur" — name-specific targeting not in TargetFilter.
+//! # Notes
+//! GAP: "target card named Groffskithur" — no TargetFilter for named-card matching.
+//! Using graveyard creature card filter as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,16 +38,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever this creature becomes blocked" has no variant;
-                // using SelfAttacks as closest approximation.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: blocked_return_self_from_graveyard,
+                effect: blocked_return_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
+                        // GAP: "named Groffskithur" — no name filter available.
                         filter: ObjectFilter::creature(),
                     },
                     count: TargetCount::UpTo(1),
@@ -57,10 +56,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocked_return_self_from_graveyard(
+fn blocked_return_self(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

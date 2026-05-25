@@ -24,3 +24,7 @@ pub mod mentor_of_the_meek;
 pub mod festival_crasher;
 pub mod slayer_of_the_wicked;
 pub mod dawnhart_disciple;
+pub mod archghoul_of_thraben;
+pub mod mausoleum_guard;
+pub mod inspiring_captain;
+pub mod thraben_inspector;

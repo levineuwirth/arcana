@@ -1,6 +1,6 @@
-//! Cathar's Companion — `{2}{W}` 3/1 white Creature — Dog.
-//! "Whenever you cast a noncreature spell, this creature gains
-//! indestructible until end of turn."
+//! Cathar's Companion — `{2}{W}` 3/1 white creature (Dog).
+//! "Whenever you cast a noncreature spell, this creature gains indestructible
+//! until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -36,15 +36,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(
-                            TypeLine::INSTANT
-                                | TypeLine::SORCERY
-                                | TypeLine::ARTIFACT
-                                | TypeLine::ENCHANTMENT,
-                        )),
-                        ..Default::default()
-                    }),
+                    filter: Some(
+                        ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
+                    ),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,

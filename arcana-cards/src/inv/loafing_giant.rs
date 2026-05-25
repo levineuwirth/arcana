@@ -1,10 +1,9 @@
 //! Loafing Giant — `{4}{R}` 4/6 red Creature — Giant.
-//! "Whenever this creature attacks or blocks, mill a card. If a land card was
-//! milled this way, prevent all combat damage this creature would deal this
-//! turn."
-//!
-//! GAP: "attacks or blocks" is two conditions; SelfAttacks used as best effort.
-//! GAP: conditional damage prevention based on what was milled not expressible.
+//! "Whenever this creature attacks or blocks, mill a card. If a land
+//! card was milled this way, prevent all combat damage this creature
+//! would deal this turn."
+//! GAP: effect — conditional "if a land was milled" prevent-damage
+//! has no catalog equivalent. Emitting Mill 1 only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(6)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,7 +38,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_mill,
+                effect: on_attack_mill,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: on_attack_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +55,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_mill(
+fn on_attack_mill(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "blocks" half of trigger not captured; conditional land-milled
-    // damage prevention not expressible
+    // GAP: effect — "if a land card was milled this way, prevent all
+    // combat damage this creature would deal this turn" has no
+    // catalog equivalent.
     vec![Effect::Mill { player: trig.controller, count: 1 }]
 }

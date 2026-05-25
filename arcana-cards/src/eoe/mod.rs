@@ -47,3 +47,8 @@ pub mod selfcraft_mechan;
 pub mod sunstar_lightsmith;
 pub mod ouroboroid;
 pub mod terrapact_intimidator;
+pub mod dauntless_scrapbot;
+pub mod faller_s_faithful;
+pub mod molecular_modifier;
+pub mod virus_beetle;
+pub mod illvoi_operative;

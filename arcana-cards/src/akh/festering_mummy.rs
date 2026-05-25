@@ -1,12 +1,12 @@
-//! Festering Mummy — `{B}` 1/1 black Zombie. "When this creature dies, you may put
-//! a -1/-1 counter on target creature."
+//! Festering Mummy — `{B}` 1/1 black creature. "When this creature dies, you
+//! may put a -1/-1 counter on target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,19 +35,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: on_dies,
+                effect: dies_minus_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                }],
+                target_requirements: vec![TargetRequirement::target_creature()],
             }),
     )
 }
 
-fn on_dies(
+fn dies_minus_counter(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,8 +1,8 @@
 //! Benthic Criminologists — `{4}{U}` 4/5 blue Creature — Merfolk Wizard.
-//! "Whenever this creature enters or attacks, you may sacrifice an artifact. If you do, draw a card."
-//! GAP: trigger — no 'enters or attacks' compound condition; using SelfEntersBattlefield as primary.
-//! GAP: effect — 'may sacrifice an artifact, if you do draw' conditional cost not expressible;
-//! drawing unconditionally as best effort.
+//! "Whenever this creature enters or attacks, you may sacrifice an artifact.
+//! If you do, draw a card."
+//! GAP: optional sacrifice cost ("you may sacrifice an artifact") not
+//! expressible; emitting DrawCards unconditionally for both triggers.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
@@ -37,10 +36,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'enters or attacks' compound; using SelfEntersBattlefield
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_sac_artifact_draw,
+                effect: on_trigger_draw,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: on_trigger_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +55,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_sac_artifact_draw(
+fn on_trigger_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'may sacrifice an artifact, if you do draw a card' conditional cost not expressible;
-    // drawing unconditionally
+    // GAP: optional "sacrifice an artifact" cost not expressible;
+    // emitting draw unconditionally
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

@@ -1,10 +1,12 @@
 //! Halo-Charged Skaab — `{4}{U}` 4/4 blue Zombie.
-//! "When Halo-Charged Skaab enters the battlefield, each player mills two
-//! cards. Then each player may put an instant, sorcery, or battle card from
-//! their graveyard on top of their library."
-//! GAP: Battle type not in TypeLine catalog; put-on-top-of-library from GY
-//! by card type not in Effect catalog. Only the mill-each-player part is
-//! expressed.
+//! "When this creature enters, each player mills two cards. Then you
+//! may put an instant, sorcery, or battle card from your graveyard
+//! on top of your library."
+//! GAP: "battle" is not a supported TypeLine constant — approximating
+//! as instant or sorcery only.
+//! GAP: "you may put ... on top of your library" is PutOnTopOfLibrary
+//! which is a targeted effect; approximating with Surveil as
+//! placeholder since PutOnTopOfLibrary requires known object id.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,22 +42,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: skaab_etb,
+                effect: etb_mill_all,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn skaab_etb(
+fn etb_mill_all(
     state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: put-on-top-of-library from GY by type not in Effect catalog.
-    script::all_players(state)
+    let mut effects: Vec<Effect> = script::all_players(state)
         .into_iter()
         .map(|p| Effect::Mill { player: p, count: 2 })
-        .collect()
+        .collect();
+    // GAP: "put instant/sorcery/battle from graveyard on top of library" — no targeted
+    // graveyard-to-top-of-library effect in catalog; omitted
+    effects
 }

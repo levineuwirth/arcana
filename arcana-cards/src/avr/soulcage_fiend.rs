@@ -1,4 +1,4 @@
-//! Soulcage Fiend — `{1}{B}{B}` 3/2 black Creature — Demon.
+//! Soulcage Fiend — `{1}{B}{B}` 3/2 black Demon creature.
 //! "When this creature dies, each player loses 3 life."
 
 use arcana_core::effects::Effect;
@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_each_player_lose_3,
+                effect: dies_all_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,14 +43,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_each_player_lose_3(
+fn dies_all_lose_life(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let all_players = script::all_players(state);
-    let effects: Vec<Effect> = all_players.into_iter().map(|p| {
-        Effect::LoseLife { player: p, amount: 3 }
-    }).collect();
-    vec![Effect::Sequence(effects)]
+    script::all_players(state)
+        .into_iter()
+        .map(|p| Effect::LoseLife { player: p, amount: 3 })
+        .collect()
 }

@@ -10,3 +10,4 @@ pub mod vile_deacon;
 pub mod warped_researcher;
 pub mod totem_speaker;
 pub mod goblin_firebug;
+pub mod toxin_sliver;

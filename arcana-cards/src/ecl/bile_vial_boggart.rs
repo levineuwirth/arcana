@@ -1,7 +1,7 @@
-//! Bile-Vial Boggart — `{B}` 1/1 black Goblin Assassin.
-//! "When this creature dies, put a -1/-1 counter on up to one target creature."
+//! Bile-Vial Boggart — `{B}` 1/1 black creature. "When this creature dies,
+//! put a -1/-1 counter on up to one target creature."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_counter,
+                effect: dies_minus_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -49,13 +49,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_counter(
+fn dies_minus_counter(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::MinusOneMinusOne,

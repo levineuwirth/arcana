@@ -1,8 +1,9 @@
 //! Gastal Blockbuster — `{2}{R}` 3/2 red Human Berserker.
-//! "When this creature enters, you may sacrifice a creature or Vehicle. When
-//! you do, destroy target artifact an opponent controls."
-//! GAP: "or Vehicle" subtype filter not directly supported. Modeled as creature.
-//! GAP: "when you do" secondary trigger omitted; modeled as single ETB.
+//! "When this creature enters, you may sacrifice a creature or Vehicle.
+//! When you do, destroy target artifact an opponent controls."
+//! GAP: "or Vehicle" filter not expressible (Vehicle is a subtype, not a type);
+//! "you may sacrifice… when you do" optional cost not in engine effect catalog;
+//! using ETB + Sacrifice creature + DestroyPermanent as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: sacrifice_and_destroy,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -57,17 +57,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn sacrifice_and_destroy(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "you may sacrifice a creature or Vehicle. When you do" — optional cost
+    // not expressible; emitting sacrifice + destroy unconditionally as best-effort.
     vec![
         Effect::Sacrifice {
             player: trig.controller,
-            filter: ObjectFilter::creature(),
+            filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
             count: 1,
         },
         Effect::DestroyPermanent { target: *id },

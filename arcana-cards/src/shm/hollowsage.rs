@@ -1,8 +1,10 @@
-//! Hollowsage — `{3}{B}` 2/2 black Merfolk Wizard.
+//! Hollowsage — `{3}{B}` 2/2 Merfolk Wizard.
 //! "Whenever this creature becomes untapped, you may have target player
 //! discard a card."
-//! GAP: trigger — no variant for "becomes untapped"; using StepBegins Upkeep
-//! as closest approximation.
+//!
+//! GAP: trigger condition "becomes untapped" — SelfBecomesTapped fires
+//! on tapping; there is no SelfBecomesUntapped variant. Using
+//! SelfBecomesTapped as closest available match.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -13,8 +15,6 @@ use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequir
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::targets::ControllerConstraint;
-use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -40,33 +40,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::StepBegins {
-                    step: Step::Upkeep,
-                    whose: ControllerConstraint::You,
-                },
+                // GAP: trigger — "becomes untapped"; no SelfBecomesUntapped variant.
+                // Using SelfBecomesTapped as closest match.
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: on_untap,
+                effect: on_tapped,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Player,
-                        count: TargetCount::Exactly(1),
-                        controller: None,
-                    },
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn on_untap(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: trigger — "becomes untapped" not in catalog; fires at upkeep instead.
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+fn on_tapped(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
     vec![Effect::Discard {
         player: *p,
         count: 1,

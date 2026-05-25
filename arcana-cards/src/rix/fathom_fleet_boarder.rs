@@ -1,15 +1,15 @@
-//! Fathom Fleet Boarder — `{2}{B}` 3/3 Orc Pirate.
-//! "When this creature enters, you lose 2 life unless you control
-//! another Pirate."
+//! Fathom Fleet Boarder — `{2}{B}` 3/3 Orc Pirate. "When this creature
+//! enters, you lose 2 life unless you control another Pirate."
 //!
-//! GAP: "unless you control another Pirate" conditional — no
-//! Conditional effect checking a board state; emitting the life loss
-//! unconditionally as best effort.
+//! GAP: intervening-if "unless you control another Pirate" — emitted as
+//! None; the conditional life loss cannot be expressed as a pure Effect
+//! with the available catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -21,6 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Fathom Fleet Boarder");
     let orc = reg.interner_mut().intern("Orc");
     let pirate = reg.interner_mut().intern("Pirate");
+    let _pirate_filter = reg.interner_mut().intern("Pirate");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(orc);
     subtypes.0.insert(pirate);
@@ -54,13 +55,12 @@ fn etb_lose_life_unless_pirate(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let pirate_filter = arcana_core::script::subtype_filter(reg, "Pirate")
-        .controlled_by(arcana_core::targets::ControllerConstraint::You);
-    let pirates = arcana_core::script::count_matching(state, &pirate_filter, trig.controller);
-    // We control at least 1 pirate (self); if >1 then we have another pirate
-    if pirates > 1 {
-        Vec::new()
-    } else {
+    let pirate_filter = script::subtype_filter(reg, "Pirate");
+    let pirate_count = script::count_matching(state, &pirate_filter, trig.controller);
+    // pirate_count includes self; "another Pirate" = count > 1
+    if pirate_count <= 1 {
         vec![Effect::LoseLife { player: trig.controller, amount: 2 }]
+    } else {
+        Vec::new()
     }
 }

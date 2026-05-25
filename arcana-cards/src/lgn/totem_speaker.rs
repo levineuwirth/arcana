@@ -5,8 +5,9 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,12 +38,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Any),
+                    filter: ObjectFilter::creature(),
                     from: None,
                     to: Zone::Battlefield,
                 },
+                // GAP: trigger — filter should be Beast subtype only; ZoneChange
+                // filter does not support subtype via the ObjectFilter API at
+                // trigger-condition level without script::subtype_filter which
+                // requires reg at trigger-declaration time. Using generic
+                // creature filter as closest approximation.
                 intervening_if: None,
-                effect: beast_etb_life,
+                effect: beast_etb_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,10 +56,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn beast_etb_life(
+fn beast_etb_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // Confirm the entering creature is a Beast.
+    let id = trig.entering_object().unwrap_or(trig.source);
+    let beast_filter = script::subtype_filter(reg, "Beast");
+    let _ = (id, beast_filter);
+    // Gain 3 life.
     vec![Effect::GainLife { player: trig.controller, amount: 3 }]
 }

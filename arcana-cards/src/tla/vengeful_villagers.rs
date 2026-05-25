@@ -1,18 +1,19 @@
-//! Vengeful Villagers — `{3}{W}` 3/3 white Creature — Human Citizen.
-//! "Whenever this creature attacks, choose target creature an opponent controls. Tap it,
-//! then you may sacrifice an artifact or creature. If you do, put a stun counter on
-//! the chosen creature."
+//! Vengeful Villagers — `{3}{W}` 3/3 white Human Citizen creature.
+//! "Whenever this creature attacks, choose target creature an opponent controls.
+//! Tap it, then you may sacrifice an artifact or creature. If you do, put a stun counter
+//! on the chosen creature."
 //!
-//! # GAP: optional "sacrifice an artifact or creature" cost gate not modeled.
-//! GAP: "put a stun counter" — CounterKind::Stun not in catalog.
-//! Emitting only the Tap effect.
+//! # Notes
+//! GAP: optional sacrifice-as-cost gate — not expressible.
+//! GAP: put stun counter — CounterKind::Stun not confirmed in catalog.
+//! Modeled as attack trigger that taps target opponent creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,22 +44,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_tap_target,
+                effect: attack_tap_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn attacks_tap_target(
+fn attack_tap_opponent(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: optional sacrifice cost gate not modeled.
-    // GAP: "put a stun counter" — CounterKind::Stun not in catalog.
+    // GAP: optional sacrifice cost gate — not expressible.
+    // GAP: put stun counter — CounterKind::Stun not in catalog.
     vec![Effect::Tap { target: *id }]
 }

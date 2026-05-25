@@ -1,8 +1,12 @@
-//! Orcish Squatters — `{4}{R}` 2/3 red Orc.
-//! "Whenever this creature attacks and isn't blocked, you may gain control of target land defending player controls for as long as you control this creature. If you do, this creature assigns no combat damage this turn."
-//! GAP: "attacks and isn't blocked" trigger not in catalog; SelfAttacks used as proxy.
-//! GAP: "for as long as you control this creature" duration on ChangeControl not expressible.
-//! GAP: "assigns no combat damage this turn" prevention not in catalog.
+//! Orcish Squatters — `{4}{R}` 2/3 red creature. "Whenever this creature attacks
+//! and isn't blocked, you may gain control of target land defending player
+//! controls for as long as you control this creature. If you do, this creature
+//! assigns no combat damage this turn."
+//!
+//! GAP: effect — "for as long as you control this creature" duration not
+//! expressible (ChangeControl is permanent, ChangeControlEot is end of turn
+//! only). Emitting ChangeControl as best-effort; "assigns no combat damage" rider
+//! GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,10 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "attacks and isn't blocked" variant; SelfAttacks used as proxy
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfAttacksUnblocked,
                 intervening_if: None,
-                effect: attack_unblocked_control_land,
+                effect: unblocked_steal_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -48,21 +51,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                             .with_types(TypeLine::LAND.into())
                             .controlled_by(ControllerConstraint::Opponent),
                     ),
-                    count: TargetCount::Exactly(1),
+                    count: TargetCount::UpTo(1),
                     controller: None,
                 }],
             }),
     )
 }
 
-fn attack_unblocked_control_land(
+fn unblocked_steal_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: duration "for as long as you control this creature" not expressible on ChangeControl
-    // GAP: "assigns no combat damage this turn" not in catalog
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: effect — "for as long as you control this creature" duration; ChangeControl is permanent
+    // GAP: effect — "assigns no combat damage this turn" rider
     vec![Effect::ChangeControl { target: *id, new_controller: trig.controller }]
 }

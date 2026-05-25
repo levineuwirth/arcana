@@ -6,7 +6,6 @@ use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
@@ -31,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,12 +37,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::creature(),
+                    source_filter: ObjectFilter::new(),
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },
                 intervening_if: None,
-                effect: draw_and_discard,
+                effect: on_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,16 +50,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_and_discard(
+fn on_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "draw that many cards" — the amount equals combat damage dealt;
-    // GAP: damage amount not available from trig fields; using power as proxy.
-    // April is 2/2, so approximate with 2.
+    let n = trig.damage_amount().unwrap_or(0);
+    if n == 0 {
+        return Vec::new();
+    }
     vec![
-        Effect::DrawCards { player: trig.controller, count: 2 },
+        Effect::DrawCards { player: trig.controller, count: n },
         Effect::Discard {
             player: trig.controller,
             count: 1,

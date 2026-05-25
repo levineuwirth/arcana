@@ -1,9 +1,6 @@
-//! Phyrexian War Beast — `{3}` colorless 3/4 Artifact Creature — Phyrexian Beast.
-//! "When this creature leaves the battlefield, sacrifice a land and this creature
-//! deals 1 damage to you."
-//!
-//! GAP: no TriggerCondition::SelfLeavesBattlefield; using SelfDies as best-effort
-//! (covers only dying, not other zone changes). The Sacrifice effect uses a land filter.
+//! Phyrexian War Beast — `{3}` 3/4 colorless artifact creature. "When this
+//! creature leaves the battlefield, sacrifice a land and this creature deals 1
+//! damage to you."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -29,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{3}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
@@ -40,10 +37,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition::SelfLeavesBattlefield; SelfDies only covers dying
-                trigger_condition: TriggerCondition::SelfDies,
+                // GAP: "leaves the battlefield" (not just dies) — ZoneChange from:Battlefield to any zone; using SelfDies as closest
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::new().with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
+                    from: Some(Zone::Battlefield),
+                    to: Zone::Graveyard(0),
+                },
                 intervening_if: None,
-                effect: on_leaves,
+                effect: leaves_battlefield,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_leaves(
+fn leaves_battlefield(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

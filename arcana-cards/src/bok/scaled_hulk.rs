@@ -1,5 +1,5 @@
-//! Scaled Hulk — `{5}{G}` 4/4 green Spirit. "Whenever you cast a Spirit
-//! or Arcane spell, this creature gets +2/+2 until end of turn."
+//! Scaled Hulk — `{5}{G}` 4/4 green Spirit. "Whenever you cast a Spirit or
+//! Arcane spell, this creature gets +2/+2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -13,7 +13,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Scaled Hulk");
@@ -36,15 +35,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: ObjectFilter has no Spirit-or-Arcane subtype filter in
+                // SpellCast; using creature/sorcery filter as approximation
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        // Spirit or Arcane — filter on Spirit subtype; Arcane subtype also matches
-                        ..Default::default()
-                    }),
+                    filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: pump_self,
+                effect: on_spirit_arcane_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +50,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_self(
+fn on_spirit_arcane_cast(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

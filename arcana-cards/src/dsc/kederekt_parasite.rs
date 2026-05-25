@@ -1,8 +1,9 @@
 //! Kederekt Parasite — `{B}` 1/1 black Horror.
 //! "Whenever an opponent draws a card, if you control a red permanent, you
 //! may have this creature deal 1 damage to that player."
-//! GAP: intervening-if "if you control a red permanent" is noted; emitting
-//! None per instructions.
+//!
+//! GAP: "if you control a red permanent" intervening-if condition is not
+//! expressible. Emitting the damage effect unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -34,32 +35,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::CardDrawn {
-                    player: ControllerConstraint::Opponent,
-                },
-                // GAP: intervening-if "if you control a red permanent"
-                intervening_if: None,
-                effect: deal_damage_to_drawer,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::CardDrawn {
+                player: ControllerConstraint::Opponent,
+            },
+            // GAP: intervening-if "if you control a red permanent" not
+            // expressible; using None.
+            intervening_if: None,
+            effect: on_opponent_draws,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn deal_damage_to_drawer(
+fn on_opponent_draws(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that player" is the opponent who drew — using trig.controller
-    // as placeholder since the drawing player is not exposed in trig.
-    // GAP: "you may" optional effect — emitting unconditionally.
+    let Some(p) = trig.triggering_caster() else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(trig.controller),
+        target: DamageTarget::Player(p),
         amount: 1,
         source: trig.source,
     }]

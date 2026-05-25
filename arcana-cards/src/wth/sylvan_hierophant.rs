@@ -1,6 +1,6 @@
 //! Sylvan Hierophant — `{1}{G}` 1/2 green Human Cleric.
-//! "When this creature dies, exile it, then return another target creature
-//! card from your graveyard to your hand."
+//! "When this creature dies, exile it, then return another target creature card
+//! from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: return_creature_from_graveyard,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -54,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn return_creature_from_graveyard(
+fn on_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

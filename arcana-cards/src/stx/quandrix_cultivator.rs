@@ -1,6 +1,6 @@
-//! Quandrix Cultivator — `{1}{G}{G/U}{U}` 3/4 green-blue Creature — Turtle
-//! Druid. "When this creature enters, you may search your library for a basic
-//! Forest or Island card, put it onto the battlefield, then shuffle."
+//! Quandrix Cultivator — `{1}{G}{G/U}{U}` 3/4 green-blue Creature — Turtle Druid.
+//! "When this creature enters, you may search your library for a basic Forest
+//! or Island card, put it onto the battlefield, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_fetch_forest_or_island,
+                effect: etb_search_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,14 +46,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_fetch_forest_or_island(
+fn etb_search_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // Search for a basic land (Forest or Island). TutorToBattlefield with a
+    // land filter is the closest fit; the Forest/Island restriction is a GAP.
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-        tapped: false,
+        tapped: true,
     }]
 }

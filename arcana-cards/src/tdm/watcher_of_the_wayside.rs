@@ -1,5 +1,11 @@
-//! Watcher of the Wayside — `{3}` 3/2 colorless artifact creature. "When
-//! this creature enters, target player mills two cards. You gain 2 life."
+//! Watcher of the Wayside — `{3}` 3/2 colorless Artifact Creature — Golem.
+//! "When this creature enters, target player mills two cards. You gain 2
+//! life." ETB trigger with a single player target; resolver mills the
+//! chosen player two and gains the controller 2 life.
+//!
+//! GAP: Scryfall lists `Mill` as a keyword, but it is not in the
+//! engine's keyword enum — recorded via the triggered ability body
+//! instead and `keywords` left empty.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -18,6 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let golem = reg.interner_mut().intern("Golem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(golem);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}").expect("valid cost")),
@@ -27,15 +34,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![],
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_and_lifegain,
+                effect: etb_mill_and_gain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -43,16 +52,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_and_lifegain(
+/// ETB resolution: target player mills two cards; controller gains 2 life.
+fn etb_mill_and_gain(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else {
-        return Vec::new();
+        return vec![Effect::GainLife { player: trig.controller, amount: 2 }];
     };
     let TargetChoice::Player(p) = target else {
-        return Vec::new();
+        return vec![Effect::GainLife { player: trig.controller, amount: 2 }];
     };
     vec![
         Effect::Mill { player: *p, count: 2 },

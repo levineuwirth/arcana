@@ -1,6 +1,7 @@
-//! Brushwagg — `{1}{G}{G}` 3/2 green Brushwagg.
-//! "Whenever this creature blocks or becomes blocked, it gets -2/+2 until end of turn."
-//! GAP: no "blocks or becomes blocked" compound trigger; using SelfAttacks as proxy.
+//! Brushwagg — `{1}{G}{G}` 3/2 green creature. "Whenever this creature blocks
+//! or becomes blocked, it gets -2/+2 until end of turn."
+//!
+//! GAP: trigger — "blocks or becomes blocked" compound; using two defs.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,8 +35,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "blocks or becomes blocked" variant; SelfAttacks used as proxy
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: combat_pump,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
                 effect: combat_pump,
                 trigger_zones: vec![Zone::Battlefield],

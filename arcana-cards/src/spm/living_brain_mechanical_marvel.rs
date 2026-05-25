@@ -1,12 +1,12 @@
-//! Living Brain, Mechanical Marvel — `{4}` 3/3 colorless Legendary
-//! Artifact Creature — Robot Villain.
-//! "At the beginning of combat on your turn, target non-Equipment
-//! artifact you control becomes an artifact creature with base power
-//! and toughness 3/3 until end of turn. Untap it."
+//! Living Brain, Mechanical Marvel — `{4}` 3/3 colorless legendary
+//! artifact creature (Robot Villain). "At the beginning of combat on
+//! your turn, target non-Equipment artifact you control becomes an
+//! artifact creature with base power and toughness 3/3 until end of
+//! turn. Untap it."
 //!
-//! GAP: "becomes an artifact creature" type-change effect — SetBasePT
-//! can set P/T but cannot change types. Approximated as SetBasePT 3/3
-//! + Untap.
+//! GAP: "becomes an artifact creature" — animating an artifact as a
+//! creature is not a supported Effect; SetBasePT alone doesn't change
+//! type. Emitting SetBasePT + Untap as partial approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -14,10 +14,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -52,12 +49,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_combat,
+                effect: on_combat_begins,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
+                        ObjectFilter::default()
                             .with_types(TypeLine::ARTIFACT.into())
                             .controlled_by(ControllerConstraint::You),
                     ),
@@ -68,15 +65,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_combat(
+fn on_combat_begins(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "becomes an artifact creature" type-change not expressible.
-    // Approximating as SetBasePT 3/3 + Untap.
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "becomes an artifact creature" — type change not supported;
+    // emitting SetBasePT + Untap as partial approximation.
     vec![
         Effect::SetBasePT {
             target: *id,

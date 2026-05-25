@@ -1,5 +1,5 @@
-//! Springmane Cervin — `{2}{G}` 3/2 green Elk. "When this creature enters, you
-//! gain 2 life."
+//! Springmane Cervin — `{2}{G}` 3/2 green Elk.
+//! "When this creature enters, you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -47,8 +47,5 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::GainLife {
-        player: trig.controller,
-        amount: 2,
-    }]
+    vec![Effect::GainLife { player: trig.controller, amount: 2 }]
 }

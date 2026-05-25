@@ -1,16 +1,15 @@
-//! Agrus Kos, Wojek Veteran — `{3}{R}{W}` 3/3 legendary red-white Human
-//! Soldier.
+//! Agrus Kos, Wojek Veteran — `{3}{R}{W}` 3/3 legendary red-white Human Soldier.
 //! "Whenever Agrus Kos attacks, attacking red creatures get +2/+0 and
 //! attacking white creatures get +0/+2 until end of turn."
-//! GAP: "attacking red/white creatures" — no script helper for attacking
-//! creatures; using all red/white creatures you control as approximation.
+//! GAP: "attacking red/white creatures" — no filter for attacking
+//! status; using all red/white creatures you control as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::objects::NULL_OBJECT_ID;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -18,7 +17,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Agrus Kos, Wojek Veteran");
@@ -44,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_pump_red_white,
+                effect: attack_pump_red_white,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,40 +50,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump_red_white(
+fn attack_pump_red_white(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacking" qualifier omitted — pumping all red/white you control.
-    let red_filter = ObjectFilter::creature()
-        .controlled_by(ControllerConstraint::You)
-        .with_colors(ColorSet::red());
-    let white_filter = ObjectFilter::creature()
-        .controlled_by(ControllerConstraint::You)
-        .with_colors(ColorSet::white());
-    let red_ids = script::ids_matching(state, &red_filter, trig.controller);
-    let white_ids = script::ids_matching(state, &white_filter, trig.controller);
-    vec![
-        Effect::ForEach {
-            targets: red_ids,
-            effect: Box::new(Effect::Pump {
-                target: NULL_OBJECT_ID,
-                power: 2,
-                toughness: 0,
-                duration: Duration::EndOfTurn,
-                keywords: vec![],
-            }),
-        },
-        Effect::ForEach {
-            targets: white_ids,
-            effect: Box::new(Effect::Pump {
-                target: NULL_OBJECT_ID,
-                power: 0,
-                toughness: 2,
-                duration: Duration::EndOfTurn,
-                keywords: vec![],
-            }),
-        },
-    ]
+    let red_ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::red()),
+        trig.controller,
+    );
+    let white_ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .with_colors(ColorSet::white()),
+        trig.controller,
+    );
+    let mut effects: Vec<Effect> = red_ids
+        .into_iter()
+        .map(|id| Effect::Pump {
+            target: id,
+            power: 2,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        })
+        .collect();
+    for id in white_ids {
+        effects.push(Effect::Pump {
+            target: id,
+            power: 0,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
+    }
+    effects
 }

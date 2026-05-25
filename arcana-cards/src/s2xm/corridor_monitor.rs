@@ -1,5 +1,5 @@
-//! Corridor Monitor — `{1}{U}` 1/4 blue artifact creature Construct. "When this
-//! creature enters, untap target artifact or creature you control."
+//! Corridor Monitor — `{1}{U}` 1/4 blue Artifact Creature — Construct.
+//! "When this creature enters, untap target artifact or creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{1}{U}").expect("valid cost")),
         colors: ColorSet::blue(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
@@ -42,10 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new()
                             .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE))
-                            .controlled_by(ControllerConstraint::You),
+                            .controlled_by(ControllerConstraint::You)
                     ),
                     count: TargetCount::Exactly(1),
-                    controller: Some(ControllerConstraint::You),
+                    controller: None,
                 }],
             }),
     )

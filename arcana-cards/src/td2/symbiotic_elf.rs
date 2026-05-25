@@ -1,5 +1,5 @@
-//! Symbiotic Elf — `{3}{G}` 2/2 green Elf. "When this creature dies, create two
-//! 1/1 green Insect creature tokens."
+//! Symbiotic Elf — `{3}{G}` 2/2 green Elf.
+//! "When this creature dies, create two 1/1 green Insect creature tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -15,9 +15,9 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Symbiotic Elf");
     let elf = reg.interner_mut().intern("Elf");
-    let _insect = reg.interner_mut().intern("Insect");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elf);
+    let _insect = reg.interner_mut().intern("Insect");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{G}").expect("valid cost")),
@@ -48,8 +48,7 @@ fn on_dies(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let insect = reg.interner().lookup("Insect")
-        .expect("Insect interned during register()");
+    let insect = reg.interner().lookup("Insect").expect("Insect interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(insect);
     let token = TokenDefinition {

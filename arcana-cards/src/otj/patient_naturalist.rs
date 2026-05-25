@@ -1,7 +1,8 @@
 //! Patient Naturalist — `{2}{G}` 2/3 green Creature — Human Scout.
 //! "When this creature enters, mill three cards. Put a land card from among
 //! the milled cards into your hand. If you can't, create a Treasure token."
-//! GAP: conditional 'from milled, to hand or else treasure' not expressible; emitting Mill 3 only.
+//! GAP: conditional "put milled land into hand / else Treasure" — Mill
+//! doesn't expose milled cards for selection. Emitting Mill 3 only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,13 +12,14 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Patient Naturalist");
     let human = reg.interner_mut().intern("Human");
     let scout = reg.interner_mut().intern("Scout");
+    let _treasure = reg.interner_mut().intern("Treasure");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(scout);
@@ -27,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -38,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_three,
+                effect: etb_mill_land_or_treasure,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,11 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_three(
+fn etb_mill_land_or_treasure(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional 'land from milled to hand, else Treasure' not expressible
+    // GAP: conditional "put milled land card into hand / else create Treasure"
+    // — Mill does not expose milled cards for conditional selection
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

@@ -1,4 +1,4 @@
-//! Purple-Crystal Crab — `{1}{U}` 1/1 blue Crab creature.
+//! Purple-Crystal Crab — `{1}{U}` 1/1 Creature — Crab.
 //! "When this creature dies, draw a card."
 
 use arcana_core::effects::Effect;
@@ -6,17 +6,16 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Purple-Crystal Crab");
-    let crab = reg.interner_mut().intern("Crab");
+    let crab_sub = reg.interner_mut().intern("Crab");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(crab);
+    subtypes.0.insert(crab_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{U}").expect("valid cost")),
@@ -34,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_draw,
+                effect: purple_crystal_crab_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,10 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_draw(
+fn purple_crystal_crab_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

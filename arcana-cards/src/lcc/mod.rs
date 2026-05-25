@@ -19,3 +19,7 @@ pub mod deathgorge_scavenger;
 pub mod martyr_of_dusk;
 pub mod merchant_raiders;
 pub mod wakening_sun_s_avatar;
+pub mod pantlaza_sun_favored;
+pub mod pitiless_plunderer;
+pub mod surgespanner;
+pub mod sunfrill_imitator;

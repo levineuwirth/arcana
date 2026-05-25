@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -38,13 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine::ENCHANTMENT.into()),
+                        types: Some(TypeLine::ENCHANTMENT.into()),
                         ..Default::default()
                     }),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: enchantment_cast_gain_life,
+                effect: on_enchantment_cast_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn enchantment_cast_gain_life(
+fn on_enchantment_cast_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

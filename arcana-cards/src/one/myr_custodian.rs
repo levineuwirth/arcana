@@ -1,5 +1,8 @@
-//! Myr Custodian — `{3}` 2/3 colorless Artifact Myr. "When this creature
-//! enters, scry 2."
+//! Myr Custodian — `{3}` 2/3 colorless Artifact Creature — Myr. "When this
+//! creature enters, scry 2. Then each opponent may scry 1."
+//!
+//! GAP: no Effect to have opponents each scry 1 conditionally. Emitting
+//! Scry 2 for the controller; opponent scry omitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,22 +37,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: scry_two,
+                effect: etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn scry_two(
+fn etb(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each opponent may also scry 1" omitted; only controller scry.
-    vec![Effect::Scry {
-        player: trig.controller,
-        count: 2,
-    }]
+    // GAP: opponent scry 1 not modeled
+    vec![Effect::Scry { player: trig.controller, count: 2 }]
 }

@@ -1,7 +1,5 @@
-//! Fallowsage — `{3}{U}` 2/2 blue Creature — Merfolk Wizard.
+//! Fallowsage — `{3}{U}` 2/2 blue Merfolk Wizard.
 //! "Whenever this creature becomes tapped, you may draw a card."
-//! GAP: "becomes tapped" trigger is not in the TriggerCondition catalog;
-//! using SelfAttacks as structural placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,22 +31,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                // GAP: "becomes tapped" not in TriggerCondition catalog;
-                // SelfAttacks used as structural placeholder.
-                trigger_condition: TriggerCondition::SelfAttacks,
-                intervening_if: None,
-                effect: on_tap,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfBecomesTapped,
+            intervening_if: None,
+            effect: on_tapped_draw,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn on_tap(
+fn on_tapped_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

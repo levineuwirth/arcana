@@ -1,4 +1,4 @@
-//! Deathcurse Ogre — `{5}{B}` 3/3 black Creature — Ogre Warrior.
+//! Deathcurse Ogre — `{5}{B}` 3/3 black creature (Ogre Warrior).
 //! "When this creature dies, each player loses 3 life."
 
 use arcana_core::effects::Effect;
@@ -11,6 +11,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Deathcurse Ogre");
@@ -46,10 +47,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn on_dies(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    arcana_core::script::all_players(state)
+    script::all_players(state)
         .into_iter()
         .map(|p| Effect::LoseLife { player: p, amount: 3 })
         .collect()

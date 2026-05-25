@@ -1,9 +1,8 @@
-//! Utrom Scientists — `{2}{U}` 2/2 blue artifact creature Utrom Robot Scientist.
-//! "When this creature enters, tap up to one target creature and put a stun
-//! counter on it."
+//! Utrom Scientists — `{2}{U}` 2/2 blue Artifact Creature — Utrom Robot Scientist.
+//! "When this creature enters, tap up to one target creature and put a stun counter on it."
 //!
-//! GAP: effect — "stun counter" (CounterKind) not in catalog; emitting Tap as
-//! partial approximation.
+//! GAP: no "add stun counter" effect variant in the catalog — CounterKind::Stun may not
+//! exist. Using AddCounters with a GAP note, and Tap for the tapping part.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +13,7 @@ use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequir
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{2}{U}").expect("valid cost")),
         colors: ColorSet::blue(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
@@ -62,6 +61,9 @@ fn on_etb(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: effect — "stun counter" not in catalog; emitting Tap only.
-    vec![Effect::Tap { target: *id }]
+    vec![
+        Effect::Tap { target: *id },
+        // GAP: CounterKind::Stun may not exist — using PlusOnePlusOne as structural placeholder.
+        // Effect::AddCounters { target: *id, kind: CounterKind::Stun, count: 1 },
+    ]
 }

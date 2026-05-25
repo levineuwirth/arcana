@@ -1,6 +1,6 @@
-//! Transit Mage — `{2}{U}` 2/2 blue Human Wizard.
-//! "When this creature enters, you may search your library for an artifact card with mana value 4
-//! or 5, reveal it, put it into your hand, then shuffle."
+//! Transit Mage — `{2}{U}` 2/2 blue Human Wizard creature.
+//! "When this creature enters, you may search your library for an artifact card with
+//! mana value 4 or 5, reveal it, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: tutor_artifact,
+                effect: etb_tutor_artifact,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,12 +46,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tutor_artifact(
+fn etb_tutor_artifact(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "mana value 4 or 5" — only with_min_cmc / with_max_cmc available; using 4-5 range
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::new()

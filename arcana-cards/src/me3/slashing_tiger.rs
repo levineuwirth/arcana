@@ -1,9 +1,5 @@
-//! Slashing Tiger — `{2}{G}{G}` 3/3 Cat.
-//! "Whenever this creature becomes blocked, it gets +2/+2 until end
-//! of turn."
-//!
-//! GAP: no TriggerCondition::SelfBecomesBlocked variant; using closest
-//! approximation SelfAttacks and noting the gap.
+//! Slashing Tiger — `{2}{G}{G}` 3/3 Cat. "Whenever this creature
+//! becomes blocked, it gets +2/+2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -37,10 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — SelfBecomesBlocked not in catalog; no matching variant
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: becomes_blocked_pump,
+                effect: on_becomes_blocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,10 +43,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn becomes_blocked_pump(
+fn on_becomes_blocked(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

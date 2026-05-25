@@ -1,8 +1,10 @@
-//! Civil Servant — `{G}{W}` 2/3 green/white Creature — Cat Citizen.
+//! Civil Servant — `{G}{W}` 2/3 green-white Creature — Cat Citizen.
 //! "Whenever this creature attacks, you may tap another untapped Citizen you
 //! control. If you do, this creature gets +1/+0 and gains lifelink until end
 //! of turn."
-//! GAP: conditional 'if you tap another Citizen' cost not modeled; effect fires unconditionally.
+//! GAP: conditional "if you tapped another Citizen" — engine has no
+//! tap-another-creature-as-cost Effect. Using Pump + lifelink directly as
+//! best effort; the tap-cost clause is a GAP.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -13,7 +15,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -40,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_pump_lifelink,
+                effect: on_attack_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +49,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump_lifelink(
+fn on_attack_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional 'if you tap another Citizen' cost not modeled
+    // GAP: "you may tap another untapped Citizen you control" as cost is not
+    // expressible; emitting the pump+lifelink unconditionally as best effort
     vec![Effect::Pump {
         target: trig.source,
         power: 1,

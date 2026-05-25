@@ -1,8 +1,5 @@
-//! Setessan Starbreaker — `{3}{G}` 2/1 green Human Warrior. "When this creature
-//! enters, you may destroy target Aura."
-//!
-//! GAP: target — "Aura" subtype filter not expressible on ObjectFilter; using
-//! enchantment type filter as approximation.
+//! Setessan Starbreaker — `{3}{G}` 2/1 green Human Warrior.
+//! "When this creature enters, you may destroy target Aura."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,11 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                // GAP: target — "Aura" subtype filter not expressible; using
-                // enchantment type as approximation.
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()),
+                        ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into())
                     ),
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -61,7 +56,6 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };
     vec![Effect::DestroyPermanent { target: *id }]
 }

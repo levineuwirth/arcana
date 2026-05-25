@@ -26,3 +26,7 @@ pub mod mage_s_attendant;
 pub mod high_priest_of_penance;
 pub mod nemesis_of_reason;
 pub mod carefree_swinemaster;
+pub mod ingenious_artillerist;
+pub mod bramble_sovereign;
+pub mod malakir_blood_priest;
+pub mod zhentarim_bandit;

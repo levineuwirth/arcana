@@ -1,14 +1,15 @@
-//! Shizuko, Caller of Autumn — `{1}{G}{G}` 2/3 legendary green Snake Shaman.
-//! "At the beginning of each player's upkeep, that player adds {G}{G}{G}.
-//! Until end of turn, they don't lose this mana as steps and phases end."
-//! GAP: effect — mana that doesn't empty at phase/step end is not modelable;
-//! using AddMana with three green pips as best-effort approximation.
+//! Shizuko, Caller of Autumn — `{1}{G}{G}` 2/3 Legendary Snake Shaman.
+//! "At the beginning of each player's upkeep, that player adds
+//! {G}{G}{G}. Until end of turn, they don't lose this mana as steps
+//! and phases end."
+//!
+//! GAP: "don't lose this mana as steps and phases end" — no catalog
+//! variant for persistent/floating mana that doesn't empty between steps.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
@@ -45,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: on_each_upkeep,
+                effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,22 +54,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_each_upkeep(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // "that player" — for each player's upkeep, grant that player the mana.
-    // We use trig.controller as approximation; GAP: "that player" is the
-    // active player whose upkeep it is, not necessarily the ability controller.
-    // GAP: mana doesn't empty at phase end — not expressible.
-    let all = script::all_players(state);
-    all.into_iter().map(|p| Effect::AddMana {
-        player: p,
+fn on_upkeep(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // "that player" — the active player (whose upkeep it is).
+    // The trigger fires once per upkeep; trig.controller gives the
+    // ability's controller; the active player whose upkeep it is
+    // should be trig.defending_player or equivalent, but no accessor
+    // exposes active player directly — use trig.controller as proxy.
+    // GAP: "don't lose this mana as steps and phases end" — no catalog
+    // variant for persistent mana.
+    vec![Effect::AddMana {
+        player: trig.controller,
         mana: vec![
             ManaUnit::plain(ManaColor::Green, trig.source),
             ManaUnit::plain(ManaColor::Green, trig.source),
             ManaUnit::plain(ManaColor::Green, trig.source),
         ],
-    }).collect()
+    }]
 }

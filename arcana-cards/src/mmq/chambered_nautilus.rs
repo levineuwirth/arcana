@@ -1,7 +1,5 @@
-//! Chambered Nautilus — `{2}{U}` 2/2 blue Nautilus Beast. "Whenever this creature
+//! Chambered Nautilus — `{2}{U}` 2/2 blue creature. "Whenever this creature
 //! becomes blocked, you may draw a card."
-//!
-//! GAP: no TriggerCondition::SelfBecomesBlocked; using SelfAttacks as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,10 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition::SelfBecomesBlocked
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: draw_when_blocked,
+                effect: blocked_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_when_blocked(
+fn blocked_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

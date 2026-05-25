@@ -1,10 +1,11 @@
-//! Avenging Druid — `{2}{G}` 1/3 green Creature — Human Druid.
-//! "Whenever this creature deals damage to an opponent, you may reveal cards from the top of
-//! your library until you reveal a land card. If you do, put that card onto the battlefield and
-//! put all other cards revealed this way into your graveyard."
+//! Avenging Druid — `{2}{G}` 1/3 green Human Druid creature.
+//! "Whenever this creature deals damage to an opponent, you may reveal cards from the top
+//! of your library until you reveal a land card. If you do, put that card onto the
+//! battlefield and put all other cards revealed this way into your graveyard."
 //!
-//! # GAP: "reveal cards until you reveal a land" sequential reveal loop is not in the Effect
-//! catalog; emitting TutorToBattlefield as approximation.
+//! # Notes
+//! GAP: "reveal cards until you reveal a land, put that land onto battlefield, rest to graveyard"
+//! — no Effect variant for this. Using TutorToBattlefield with land filter as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,10 +44,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_condition: TriggerCondition::DamageDealt {
                     source_filter: ObjectFilter::new(),
                     target_filter: TargetFilter::Player,
-                    combat_only: true,
+                    combat_only: false,
                 },
                 intervening_if: None,
-                effect: deals_damage_tutor_land,
+                effect: damage_to_opponent_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,16 +55,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deals_damage_tutor_land(
+fn damage_to_opponent_land(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "reveal cards until you find a land" sequential reveal loop not in Effect catalog;
-    // using TutorToBattlefield land as approximation.
+    // GAP: reveal top cards until land, put land to battlefield, rest to graveyard —
+    // using TutorToBattlefield with land filter as approximation.
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
-        filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
-        tapped: true,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: false,
     }]
 }

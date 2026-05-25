@@ -1,6 +1,5 @@
-//! Sythis, Harvest's Hand — `{G}{W}` 1/2 green+white legendary enchantment
-//! creature Nymph. "Whenever you cast an enchantment spell, you gain 1 life and
-//! draw a card."
+//! Sythis, Harvest's Hand — `{G}{W}` 1/2 green/white Legendary Enchantment Creature — Nymph.
+//! "Whenever you cast an enchantment spell, you gain 1 life and draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,7 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{G}{W}").expect("valid cost")),
         colors: ColorSet::green() | ColorSet::white(),
-        types: TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(1)),
@@ -53,13 +52,7 @@ fn on_enchantment_cast(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
-        Effect::GainLife {
-            player: trig.controller,
-            amount: 1,
-        },
-        Effect::DrawCards {
-            player: trig.controller,
-            count: 1,
-        },
+        Effect::GainLife { player: trig.controller, amount: 1 },
+        Effect::DrawCards { player: trig.controller, count: 1 },
     ]
 }

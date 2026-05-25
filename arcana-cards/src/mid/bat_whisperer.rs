@@ -1,10 +1,10 @@
-//! Bat Whisperer — `{3}{B}` 4/2 black Creature — Vampire.
+//! Bat Whisperer — `{3}{B}` 4/2 black creature (Vampire).
 //! "When this creature enters, if an opponent lost life this turn,
 //! create a 1/1 black Bat creature token with flying."
 //!
-//! GAP: intervening-if "if an opponent lost life this turn" — turn-
-//! scoped life-loss tracking not available via script API. Approximated
-//! as unconditional token creation.
+//! GAP: "if an opponent lost life this turn" — intervening-if checking
+//! whether an opponent lost life this turn is not expressible. Creating
+//! the Bat token unconditionally as best effort.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -20,9 +20,9 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Bat Whisperer");
     let vampire = reg.interner_mut().intern("Vampire");
-    let bat = reg.interner_mut().intern("Bat");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(vampire);
+    let _ = reg.interner_mut().intern("Bat");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{B}").expect("valid cost")),
@@ -34,16 +34,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
-    let _ = bat; // interned for token lookup at resolve time
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "opponent lost life this turn" —
-                // turn-scoped life-loss tracking not available.
+                // GAP: "if an opponent lost life this turn" — not
+                // expressible as intervening-if condition.
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,24 +50,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let bat = reg.interner().lookup("Bat")
+    let bat_id = reg.interner().lookup("Bat")
         .expect("Bat interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(bat);
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(bat_id);
     let token = TokenDefinition {
-        name: bat,
+        name: bat_id,
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
+    // GAP: "if an opponent lost life this turn" not evaluated;
+    // creating token unconditionally as best effort.
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

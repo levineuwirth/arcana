@@ -15,3 +15,4 @@ pub mod academy_rector;
 pub mod skittering_horror;
 pub mod goblin_masons;
 pub mod disease_carriers;
+pub mod rayne_academy_chancellor;

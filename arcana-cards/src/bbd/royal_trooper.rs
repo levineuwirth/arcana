@@ -1,5 +1,5 @@
-//! Royal Trooper — `{2}{W}` 2/2 white Human Soldier. "Whenever this
-//! creature blocks, it gets +2/+2 until end of turn."
+//! Royal Trooper — `{2}{W}` 2/2 white Human Soldier. "Whenever this creature
+//! blocks, it gets +2/+2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,10 +35,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no SelfBlocks variant; using SelfAttacks as closest
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
-                effect: pump_self,
+                effect: on_blocks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,10 +45,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_self(
+fn on_blocks(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

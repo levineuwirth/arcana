@@ -1,9 +1,10 @@
 //! Henchbots — `{4}` 2/3 colorless Artifact Creature — Robot.
-//! "When this creature enters, exile target tapped creature an opponent controls until this
-//! creature leaves the battlefield."
+//! "When this creature enters, exile target tapped creature an opponent controls until
+//! this creature leaves the battlefield."
 //!
-//! # GAP: "until this creature leaves the battlefield" duration for exile is not expressible;
-//! ExilePermanent is used without the duration clause.
+//! # Notes
+//! GAP: "exile until this creature leaves the battlefield" — ExilePermanent is permanent exile;
+//! no "exile until source leaves" Effect variant. Using ExilePermanent as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_exile_tapped_creature,
+                effect: etb_exile_tapped,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -55,13 +56,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_exile_tapped_creature(
+fn etb_exile_tapped(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until this creature leaves the battlefield" duration not expressible.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: exile until this creature leaves the battlefield — using permanent exile.
     vec![Effect::ExilePermanent { target: *id }]
 }

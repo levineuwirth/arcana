@@ -1,17 +1,17 @@
-//! Etched Familiar — `{2}{B}` 3/2 black Artifact Creature — Phyrexian Fox.
-//! "When this creature dies, each opponent loses 2 life and you gain 2 life."
+//! Etched Familiar — `{2}{B}` 3/2 black artifact creature. "When this creature
+//! dies, each opponent loses 2 life and you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Etched Familiar");
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_drain,
+                effect: dies_drain_opponents,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_drain(
+fn dies_drain_opponents(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

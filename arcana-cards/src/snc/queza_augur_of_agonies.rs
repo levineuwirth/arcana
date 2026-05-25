@@ -1,4 +1,5 @@
-//! Queza, Augur of Agonies — `{1}{W}{U}{B}` 3/4 Legendary white blue black Creature — Octopus Advisor.
+//! Queza, Augur of Agonies — `{1}{W}{U}{B}` 3/4 white-blue-black Legendary
+//! Creature — Octopus Advisor.
 //! "Whenever you draw a card, target opponent loses 1 life and you gain 1 life."
 
 use arcana_core::effects::Effect;
@@ -6,7 +7,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetFilter, TargetCount, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -40,25 +40,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: draw_drain,
+                effect: on_draw_drain_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Player,
-                    count: TargetCount::Exactly(1),
-                    controller: Some(ControllerConstraint::Opponent),
-                }],
+                target_requirements: vec![TargetRequirement::target_player()],
             }),
     )
 }
 
-fn draw_drain(
+fn on_draw_drain_opponent(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let arcana_core::targets::TargetChoice::Player(p) = target else { return Vec::new(); };
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
     vec![
         Effect::LoseLife { player: *p, amount: 1 },
         Effect::GainLife { player: trig.controller, amount: 1 },

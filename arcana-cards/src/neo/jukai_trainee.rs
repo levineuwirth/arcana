@@ -1,8 +1,8 @@
 //! Jukai Trainee — `{1}{G}` 2/2 green Creature — Human Samurai.
-//! "Whenever this creature blocks or becomes blocked, it gets +1/+1 until
-//! end of turn."
-//! GAP: trigger — no 'blocks or becomes blocked' condition; closest is SelfAttacks.
-//! Using SelfAttacks as nearest available trigger.
+//! "Whenever this creature blocks or becomes blocked, it gets +1/+1 until end
+//! of turn."
+//! Two trigger conditions: SelfBlocks and SelfBecomesBlocked — modeled as two
+//! TriggeredAbilityDefs with the same effect.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -13,7 +13,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -38,10 +37,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'blocks or becomes blocked' variant; using SelfAttacks as closest
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
-                effect: blocks_pump,
+                effect: pump_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
+                intervening_if: None,
+                effect: pump_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blocks_pump(
+fn pump_self(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

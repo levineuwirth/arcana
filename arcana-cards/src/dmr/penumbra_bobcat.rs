@@ -1,4 +1,4 @@
-//! Penumbra Bobcat — `{2}{G}` 2/1 green Cat creature.
+//! Penumbra Bobcat — `{2}{G}` 2/1 green Cat.
 //! "When this creature dies, create a 2/1 black Cat creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -9,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,10 +23,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -35,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: on_dies_create_shadow,
+                effect: on_dies_create_black_cat,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,12 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_dies_create_shadow(
+fn on_dies_create_black_cat(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let cat = reg.interner().lookup("Cat").expect("Cat interned during register()");
+    let cat = reg.interner().lookup("Cat")
+        .expect("Cat interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(cat);
     let token = TokenDefinition {

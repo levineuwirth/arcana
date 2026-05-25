@@ -1,6 +1,6 @@
-//! Blech, Loafing Pest — `{1}{B}{G}` 3/4 legendary black-green Pest.
-//! "Whenever you gain life, put a +1/+1 counter on each Pest, Bat, Insect,
-//! Snake, and Spider you control."
+//! Blech, Loafing Pest — `{1}{B}{G}` 3/4 Legendary Pest.
+//! "Whenever you gain life, put a +1/+1 counter on each Pest, Bat,
+//! Insect, Snake, and Spider you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,7 +8,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -27,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{B}{G}").expect("valid cost")),
-        colors: ColorSet::black() | ColorSet::green(),
+        colors: ColorSet(ColorSet::BLACK | ColorSet::GREEN),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
@@ -51,25 +51,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_life_gained(
-    state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    // Collect all Pest, Bat, Insect, Snake, Spider you control and give each
-    // a +1/+1 counter. We union by iterating each subtype filter.
+fn on_life_gained(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
     let subtypes = ["Pest", "Bat", "Insect", "Snake", "Spider"];
-    let mut all_ids = std::collections::HashSet::new();
-    for s in &subtypes {
-        let filter = script::subtype_filter(reg, s)
+    let mut ids = Vec::new();
+    for st in &subtypes {
+        let filter = script::subtype_filter(reg, st)
             .controlled_by(ControllerConstraint::You);
-        for id in script::ids_matching(state, &filter, trig.controller) {
-            all_ids.insert(id);
-        }
+        ids.extend(script::ids_matching(state, &filter, trig.controller));
     }
-    all_ids.into_iter().map(|id| Effect::AddCounters {
-        target: id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }).collect()
+    // Deduplicate (a creature with multiple matching subtypes should only get one counter)
+    ids.sort();
+    ids.dedup();
+    ids.into_iter()
+        .map(|id| Effect::AddCounters {
+            target: id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        })
+        .collect()
 }

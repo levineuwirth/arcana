@@ -1,4 +1,4 @@
-//! Orc Sureshot — `{3}{B}` 4/2 black Creature — Orc Archer.
+//! Orc Sureshot — `{3}{B}` 4/2 black Orc Archer creature.
 //! "Whenever another creature you control enters, target creature an opponent controls
 //! gets -1/-1 until end of turn."
 
@@ -43,11 +43,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: creature_etb_debuff_opponent,
+                effect: creature_enters_debuff,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -55,10 +57,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_etb_debuff_opponent(
+fn creature_enters_debuff(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

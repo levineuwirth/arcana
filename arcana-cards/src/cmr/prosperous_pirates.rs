@@ -1,7 +1,5 @@
-//! Prosperous Pirates — `{4}{U}` 3/4 blue Human Pirate. "When this
-//! creature enters, create two Treasure tokens."
-//! GAP: TokenDefinition does not have a Treasure template; modeling as
-//! artifact tokens with no subtypes as closest approximation.
+//! Prosperous Pirates — `{4}{U}` 3/4 blue Human Pirate. "When this creature
+//! enters, create two Treasure tokens."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -18,7 +16,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Prosperous Pirates");
     let human = reg.interner_mut().intern("Human");
     let pirate = reg.interner_mut().intern("Pirate");
-    let treasure = reg.interner_mut().intern("Treasure");
+    let _treasure = reg.interner_mut().intern("Treasure");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(pirate);
@@ -39,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: create_treasures,
+                effect: etb_treasure,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,27 +45,41 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_treasures(
+fn etb_treasure(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let treasure = reg.interner().lookup("Treasure")
         .expect("Treasure interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(treasure);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(treasure);
     let token = TokenDefinition {
         name: treasure,
         colors: ColorSet::colorless(),
         types: TypeLine::ARTIFACT.into(),
-        subtypes: token_subtypes,
+        subtypes,
+        power: None,
+        toughness: None,
+        keywords: vec![],
+        abilities: vec![],
+    };
+    let token2 = TokenDefinition {
+        name: treasure,
+        colors: ColorSet::colorless(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes: {
+            let mut s = SubtypeSet::default();
+            s.0.insert(treasure);
+            s
+        },
         power: None,
         toughness: None,
         keywords: vec![],
         abilities: vec![],
     };
     vec![
-        Effect::CreateToken { controller: trig.controller, token: token.clone() },
         Effect::CreateToken { controller: trig.controller, token },
+        Effect::CreateToken { controller: trig.controller, token: token2 },
     ]
 }

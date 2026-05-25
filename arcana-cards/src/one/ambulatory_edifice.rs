@@ -1,9 +1,8 @@
-//! Ambulatory Edifice — `{2}{B}` 3/2 black Artifact Creature — Phyrexian
-//! Construct.
-//! "When this creature enters, you may pay 2 life. When you do, target
-//! creature gets -1/-1 until end of turn."
-//! GAP: "you may pay 2 life" optional life-payment rider is not expressible.
-//! The -1/-1 Pump is implemented unconditionally.
+//! Ambulatory Edifice — `{2}{B}` 3/2 black Artifact Creature — Phyrexian Construct.
+//! "When this creature enters, you may pay 2 life. When you do,
+//! target creature gets -1/-1 until end of turn."
+//! GAP: "you may pay 2 life" optional cost is not in the engine
+//! catalog; the Pump effect is emitted unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,7 +10,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,8 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                // GAP: "you may pay 2 life" optional life cost not expressible
                 intervening_if: None,
-                effect: etb_minus_one,
+                effect: etb_minus_one_minus_one,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -50,12 +50,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_minus_one(
+fn etb_minus_one_minus_one(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional life-payment rider omitted.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::Pump {

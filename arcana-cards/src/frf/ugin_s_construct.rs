@@ -1,5 +1,8 @@
 //! Ugin's Construct — `{4}` 4/5 colorless Artifact Creature — Construct.
 //! "When this creature enters, sacrifice a permanent that's one or more colors."
+//!
+//! GAP: effect — "colored permanent" filter not expressible in ObjectFilter.
+//! Using creature filter as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -48,10 +51,10 @@ fn etb_sac_colored(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "permanent that's one or more colors" filter (without_colors colorless) not expressible via ObjectFilter
+    // GAP: "colored permanent" filter; using creature as best-effort
     vec![Effect::Sacrifice {
         player: trig.controller,
-        filter: ObjectFilter::permanent(),
+        filter: ObjectFilter::creature(),
         count: 1,
     }]
 }

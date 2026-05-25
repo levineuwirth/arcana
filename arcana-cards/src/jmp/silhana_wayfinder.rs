@@ -1,10 +1,11 @@
-//! Silhana Wayfinder — `{1}{G}` 2/1 green Creature — Elf Scout.
+//! Silhana Wayfinder — `{1}{G}` 2/1 green Elf Scout creature.
 //! "When this creature enters, look at the top four cards of your library. You may reveal a
 //! creature or land card from among them and put it on top of your library. Put the rest on
 //! the bottom of your library in a random order."
 //!
-//! # GAP: "look at top four, choose one creature or land for top, rest to bottom random" is
-//! not expressible with the Effect catalog; emitting Scry 4 as approximation.
+//! # Notes
+//! GAP: "look at top 4, choose creature or land, rest to bottom random" — no look-and-choose-
+//! from-top-N effect in engine. Using Scry 1 as closest approximation of library manipulation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -52,9 +53,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_look_top_four(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "look at top four, select creature or land to top, rest to bottom random" —
-    // not expressible; using Scry 4 as approximation.
-    vec![Effect::Scry { player: trig.controller, count: 4 }]
+    // GAP: "look at top 4, choose creature or land for top, rest to bottom random" —
+    // no look-and-choose-from-top-N effect. Using Scry 1 as best approximation.
+    vec![Effect::Scry { player: trig.controller, count: 1 }]
 }

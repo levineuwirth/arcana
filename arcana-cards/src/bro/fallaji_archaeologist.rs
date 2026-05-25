@@ -2,8 +2,9 @@
 //! "When this creature enters, mill three cards. You may put a noncreature,
 //! nonland card from among the cards milled this way into your hand. If you
 //! don't, put a +1/+1 counter on this creature."
-//! GAP: conditional 'from among milled cards' choice and counter-if-not not expressible;
-//! emitting Mill 3 only.
+//! GAP: conditional "put milled noncreature nonland into hand or else counter"
+//! — the engine's Mill doesn't expose milled cards for conditional selection.
+//! Emitting Mill 3 only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +14,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_three,
+                effect: etb_mill_and_maybe_retrieve,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +48,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_three(
+fn etb_mill_and_maybe_retrieve(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: conditional 'from milled cards to hand, else counter on self' not expressible
+    // GAP: conditional retrieve of milled noncreature nonland card or else
+    // put +1/+1 counter — Mill doesn't expose milled cards for selection
     vec![Effect::Mill { player: trig.controller, count: 3 }]
 }

@@ -1,8 +1,8 @@
 //! Abstract Paintmage — `{U}{U/R}{R}` 2/2 red-blue Djinn Sorcerer.
-//! "At the beginning of your first main phase, add {U}{R}. Spend this mana
-//! only to cast instant and sorcery spells."
-//! GAP: "spend this mana only to cast instant and sorcery spells" —
-//! restricted mana cannot be expressed; mana is added without restriction.
+//! "At the beginning of your first main phase, add {U}{R}. Spend
+//! this mana only to cast instant and sorcery spells."
+//! GAP: mana-spending restriction ("only to cast instant/sorcery")
+//! is not expressible in the engine mana effect; plain AddMana emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -14,8 +14,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet,
-    TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{U}{U/R}{R}").expect("valid cost")),
-        colors: ColorSet::blue() | ColorSet::red(),
+        colors: ColorSet::red() | ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet::default(),
@@ -56,9 +55,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn main_phase_add_mana(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "spend only on instant/sorcery" restriction not expressible.
+    // GAP: mana-spending restriction (only for instant/sorcery spells) not expressible
     vec![Effect::AddMana {
         player: trig.controller,
         mana: vec![

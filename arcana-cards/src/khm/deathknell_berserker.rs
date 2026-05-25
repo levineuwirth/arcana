@@ -1,12 +1,12 @@
-//! Deathknell Berserker — `{1}{B}` 2/2 black Elf Berserker.
-//! "When this creature dies, if its power was 3 or greater, create a 2/2 black Zombie Berserker
-//! creature token."
-//! GAP: intervening-if "if its power was 3 or greater" not modeled; emitting None.
+//! Deathknell Berserker — `{1}{B}` 2/2 black Elf Berserker creature.
+//! "When this creature dies, if its power was 3 or greater, create a 2/2 black Zombie
+//! Berserker creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -38,9 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
-                // GAP: intervening-if "if its power was 3 or greater" not modeled
                 intervening_if: None,
-                effect: create_zombie_berserker,
+                effect: dies_if_power_high,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +47,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_zombie_berserker(
-    _state: &GameState,
+fn dies_if_power_high(
+    state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let dying = trig.dying_object().unwrap_or(trig.source);
+    let power = script::power_of(state, dying);
+    if power < 3 {
+        return Vec::new();
+    }
     let zombie = reg.interner().lookup("Zombie")
         .expect("Zombie interned during register()");
     let berserker = reg.interner().lookup("Berserker")

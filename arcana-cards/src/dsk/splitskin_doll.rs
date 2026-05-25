@@ -1,31 +1,26 @@
-//! Splitskin Doll — `{1}{W}` 2/1 white Artifact Creature — Toy.
-//! "When this creature enters, draw a card. Then discard a card unless
-//! you control another creature with power 2 or less."
-//!
-//! GAP: "unless you control another creature with power 2 or less" condition
-//! not expressible; always draws then discards.
+//! Splitskin Doll — `{1}{W}` 2/1 Artifact Creature — Toy.
+//! "When this creature enters, draw a card. Then discard a card unless you control another creature with power 2 or less."
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Splitskin Doll");
-    let toy = reg.interner_mut().intern("Toy");
+    let toy_sub = reg.interner_mut().intern("Toy");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(toy);
+    subtypes.0.insert(toy_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
         colors: ColorSet::white(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::CREATURE | TypeLine::ARTIFACT),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
@@ -38,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw_discard,
+                effect: splitskin_doll_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,18 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_discard(
+fn splitskin_doll_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you control another creature with power 2 or less" not expressible
-    vec![
-        Effect::DrawCards { player: trig.controller, count: 1 },
-        Effect::Discard {
-            player: trig.controller,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
-    ]
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

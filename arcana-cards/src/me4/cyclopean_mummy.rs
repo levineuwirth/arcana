@@ -1,5 +1,9 @@
-//! Cyclopean Mummy — `{1}{B}` black Creature — Zombie.
+//! Cyclopean Mummy — `{1}{B}` 2/1 black Zombie.
 //! "When this creature dies, exile it."
+//!
+//! GAP: "exile it" refers to exiling this card from the graveyard after dying;
+//! Effect::ExileFromGraveyard takes an ObjectId target from trig.targets, but
+//! here the target is the card itself (trig.dying_object). Using trig.dying_object().
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,23 +33,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfDies,
-                intervening_if: None,
-                effect: on_dies,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfDies,
+            intervening_if: None,
+            effect: on_dies_exile_self,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn on_dies(
+fn on_dies_exile_self(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ExileFromGraveyard { target: trig.source }]
+    let id = trig.dying_object().unwrap_or(trig.source);
+    vec![Effect::ExileFromGraveyard { target: id }]
 }

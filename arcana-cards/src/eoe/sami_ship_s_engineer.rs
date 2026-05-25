@@ -1,7 +1,8 @@
-//! Sami, Ship's Engineer — `{2}{R}{W}` 2/4 red/white Legendary Human Artificer creature.
-//! "At the beginning of your end step, if you control two or more tapped creatures, create a
-//! tapped 2/2 colorless Robot artifact creature token."
-//! GAP: effect — "tapped" token state is not a TokenDefinition field; creating an untapped token.
+//! Sami, Ship's Engineer — `{2}{R}{W}` 2/4 legendary red/white Human Artificer.
+//! "At the beginning of your end step, if you control two or more tapped creatures,
+//! create a tapped 2/2 colorless Robot artifact creature token."
+//! GAP: "tapped creatures count" intervening-if not expressible; emitting token creation
+//! with manual count check via tapped_only() filter.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,7 +35,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_end_step_robot,
+                effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,23 +54,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_end_step_robot(
+fn on_end_step(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let tapped_count = script::count_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You).tapped_only(),
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .tapped_only(),
         trig.controller,
     );
     if tapped_count < 2 {
         return Vec::new();
     }
-    let robot = reg.interner().lookup("Robot").expect("Robot interned during register()");
+    let robot = reg.interner().lookup("Robot")
+        .expect("Robot interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(robot);
-    // GAP: effect — "tapped" token initial state not expressible in TokenDefinition
     let token = TokenDefinition {
         name: robot,
         colors: ColorSet::colorless(),
@@ -81,5 +83,6 @@ fn on_end_step_robot(
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: token enters tapped — CreateToken does not model tapped entry
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

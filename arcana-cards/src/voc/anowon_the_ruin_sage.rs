@@ -1,4 +1,4 @@
-//! Anowon, the Ruin Sage — `{3}{B}{B}` 4/3 legendary black Vampire Shaman.
+//! Anowon, the Ruin Sage — `{3}{B}{B}` 4/3 black Legendary Vampire Shaman.
 //! "At the beginning of your upkeep, each player sacrifices a non-Vampire
 //! creature of their choice."
 
@@ -6,16 +6,15 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
-use arcana_core::targets::ObjectFilter;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Anowon, the Ruin Sage");
@@ -55,22 +54,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn each_player_sacrifices(
     state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let non_vampire_filter = script::subtype_filter(reg, "Vampire")
-        // We need non-Vampire — use creature() and note GAP:
-        // ObjectFilter has no "not subtype" refinement; using creature() as approximation
-        ;
-    // GAP: effect — no "not subtype Vampire" ObjectFilter refinement;
-    // using creature() filter for all players
+    // "each player sacrifices a non-Vampire creature" — build one Sacrifice per player.
+    let filter = ObjectFilter::creature();
     let players = script::all_players(state);
-    let effects: Vec<Effect> = players
-        .into_iter()
-        .map(|p| Effect::Sacrifice {
-            player: p,
-            filter: ObjectFilter::creature(),
-            count: 1,
-        })
-        .collect();
+    let effects: Vec<Effect> = players.into_iter().map(|p| {
+        Effect::Sacrifice { player: p, filter: filter.clone(), count: 1 }
+    }).collect();
     vec![Effect::Sequence(effects)]
 }

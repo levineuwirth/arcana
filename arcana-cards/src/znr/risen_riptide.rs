@@ -1,8 +1,10 @@
-//! Risen Riptide — `{2}{U}` 0/5 blue Elemental.
-//! "Whenever you cast a kicked spell, this creature has base power and
-//! toughness 5/5 until end of turn."
-//! GAP: trigger — no variant for "cast a kicked spell"; using SpellCast with
-//! filter: None as closest approximation (kicker condition not checkable).
+//! Risen Riptide — `{2}{U}` 0/5 Elemental.
+//! "Whenever you cast a kicked spell, this creature has base power
+//! and toughness 5/5 until end of turn."
+//!
+//! GAP: trigger condition "whenever you cast a kicked spell" —
+//! SpellCast has no filter for kicked status. Using SpellCast with
+//! caster: You and filter: None as closest match.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -37,6 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "cast a kicked spell"; no SpellCast filter for
+                // kicked status. Using SpellCast(You, no filter) as closest match.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
@@ -55,7 +59,6 @@ fn on_kicked_cast(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger filter — kicker constraint not checkable; fires on all spells.
     vec![Effect::SetBasePT {
         target: trig.source,
         power: 5,

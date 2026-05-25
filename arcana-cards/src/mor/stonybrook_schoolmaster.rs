@@ -1,5 +1,6 @@
-//! Stonybrook Schoolmaster — `{2}{W}` 1/2 white Merfolk Wizard. "Whenever this
-//! creature becomes tapped, you may create a 1/1 blue Merfolk Wizard creature token."
+//! Stonybrook Schoolmaster — `{2}{W}` 1/2 white creature. "Whenever this
+//! creature becomes tapped, you may create a 1/1 blue Merfolk Wizard creature
+//! token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -16,6 +17,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Stonybrook Schoolmaster");
     let merfolk = reg.interner_mut().intern("Merfolk");
     let wizard = reg.interner_mut().intern("Wizard");
+    let _merfolk_token = reg.interner_mut().intern("Merfolk");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(merfolk);
     subtypes.0.insert(wizard);
@@ -34,9 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no TriggerCondition::SelfBecomeTapped variant; closest is SelfAttacks
-                // (tapping from attacks) but the oracle fires on any tap. Using SelfAttacks as best-effort.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
                 effect: create_merfolk_token,
                 trigger_zones: vec![Zone::Battlefield],

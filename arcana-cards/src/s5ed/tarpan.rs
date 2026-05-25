@@ -1,5 +1,4 @@
-//! Tarpan — `{G}` 1/1 green Horse.
-//! "When this creature dies, you gain 1 life."
+//! Tarpan — `{G}` 1/1 green creature. "When this creature dies, you gain 1 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

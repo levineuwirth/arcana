@@ -43,3 +43,7 @@ pub mod ravenous_gigamole;
 pub mod powerstone_engineer;
 pub mod argothian_opportunist;
 pub mod lat_nam_adept;
+pub mod great_desert_prospector;
+pub mod disciples_of_gix;
+pub mod thopter_architect;
+pub mod gixian_skullflayer;

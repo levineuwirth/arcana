@@ -1,17 +1,13 @@
-//! Cabal Slaver — `{2}{B}` 2/1 black Human Cleric.
-//! "Whenever a Goblin deals combat damage to a player, that player discards
-//! a card."
-//! GAP: trigger — no variant for "a Goblin deals combat damage"; using
-//! DamageDealt with creature source filter as closest approximation.
-//! GAP: effect — "that player" (the damaged player) discards; using trig.controller
-//! as approximation.
+//! Cabal Slaver — `{2}{B}` 2/1 Human Cleric.
+//! "Whenever a Goblin deals combat damage to a player, that player
+//! discards a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetFilter};
+use arcana_core::targets::{ControllerConstraint, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -22,7 +18,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Cabal Slaver");
     let human = reg.interner_mut().intern("Human");
     let cleric = reg.interner_mut().intern("Cleric");
-    let _goblin = reg.interner_mut().intern("Goblin");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(cleric);
@@ -42,7 +37,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::creature(),
+                    source_filter: arcana_core::script::subtype_filter(reg, "Goblin")
+                        .controlled_by(ControllerConstraint::Any),
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },
@@ -60,10 +56,11 @@ fn on_goblin_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — source must be a Goblin; not filterable in DamageDealt.
-    // GAP: effect — "that player" is the damaged player, not trig.controller.
+    let Some(p) = trig.damaged_player() else {
+        return Vec::new();
+    };
     vec![Effect::Discard {
-        player: trig.controller,
+        player: p,
         count: 1,
         choice: DiscardChoice::ControllerChooses,
     }]

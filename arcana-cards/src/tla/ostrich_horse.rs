@@ -1,8 +1,8 @@
-//! Ostrich-Horse — `{2}{G}` 3/1 green Bird Horse creature.
-//! "When this creature enters, mill three cards. You may put a land card from among them
-//! into your hand. If you don't, put a +1/+1 counter on this creature."
-//! GAP: effect — "look at milled cards and choose to put one into hand" branching is not
-//! expressible; emitting the mill only.
+//! Ostrich-Horse — `{2}{G}` 3/1 green Bird Horse. "When this creature enters, mill
+//! three cards. You may put a land card from among them into your hand. If you don't,
+//! put a +1/+1 counter on this creature." Keywords: Mill.
+//! GAP: "choose among milled cards" conditional not in engine effect catalog;
+//! emitting mill 3 and counter on self (best-effort).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
@@ -40,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill_three,
+                effect: etb_mill,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +47,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_mill_three(
+fn etb_mill(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — optional land retrieval from milled cards / counter conditional not expressible
-    vec![Effect::Mill { player: trig.controller, count: 3 }]
+    // GAP: "choose a land card from milled cards or counter on self" branching not supported
+    vec![
+        Effect::Mill { player: trig.controller, count: 3 },
+        Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 },
+    ]
 }

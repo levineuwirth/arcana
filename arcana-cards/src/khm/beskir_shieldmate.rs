@@ -1,4 +1,4 @@
-//! Beskir Shieldmate — `{1}{W}` 2/1 white Human Warrior creature.
+//! Beskir Shieldmate — `{1}{W}` 2/1 Creature — Human Warrior.
 //! "When this creature dies, create a 1/1 white Human Warrior creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -6,19 +6,20 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Beskir Shieldmate");
-    let human = reg.interner_mut().intern("Human");
-    let warrior = reg.interner_mut().intern("Warrior");
+    let human_sub = reg.interner_mut().intern("Human");
+    let warrior_sub = reg.interner_mut().intern("Warrior");
+    let _human = reg.interner_mut().intern("Human");
+    let _warrior = reg.interner_mut().intern("Warrior");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(human);
-    subtypes.0.insert(warrior);
+    subtypes.0.insert(human_sub);
+    subtypes.0.insert(warrior_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
@@ -36,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: create_warrior_token,
+                effect: beskir_shieldmate_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,25 +45,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_warrior_token(
+fn beskir_shieldmate_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let human = reg.interner().lookup("Human").expect("Human interned during register()");
-    let warrior = reg.interner().lookup("Warrior").expect("Warrior interned during register()");
+    let human_tok = reg.interner().lookup("Human").expect("Human interned during register()");
+    let warrior_tok = reg.interner().lookup("Warrior").expect("Warrior interned during register()");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(human);
-    subtypes.0.insert(warrior);
-    let token = TokenDefinition {
-        name: warrior,
-        colors: ColorSet::white(),
-        types: TypeLine::CREATURE.into(),
-        subtypes,
-        power: Some(PtValue::Fixed(1)),
-        toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
-        abilities: vec![],
-    };
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    subtypes.0.insert(human_tok);
+    subtypes.0.insert(warrior_tok);
+    vec![Effect::CreateToken {
+        controller: trig.controller,
+        token: TokenDefinition {
+            name: warrior_tok,
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            subtypes,
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![],
+            abilities: vec![],
+        },
+    }]
 }

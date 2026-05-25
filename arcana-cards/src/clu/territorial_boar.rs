@@ -1,9 +1,8 @@
-//! Territorial Boar — `{1}{G}` 2/2 green Boar.
-//! "Whenever a creature you control with power 4 or greater enters, this creature gets +1/+1 and
-//! gains vigilance until end of turn."
+//! Territorial Boar — `{1}{G}` 2/2 green Boar creature.
+//! "Whenever a creature you control with power 4 or greater enters, this creature gets
+//! +1/+1 and gains vigilance until end of turn."
 
-use arcana_core::effects::Effect;
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -44,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: pump_self_vigilance,
+                effect: big_creature_enters_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +51,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_self_vigilance(
+fn big_creature_enters_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

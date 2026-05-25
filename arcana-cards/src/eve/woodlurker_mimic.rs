@@ -1,11 +1,9 @@
-//! Woodlurker Mimic — `{1}{B/G}` 2/1 black-green Creature — Shapeshifter.
+//! Woodlurker Mimic — `{1}{B/G}` 2/1 black-green Shapeshifter.
 //! "Whenever you cast a spell that's both black and green, this creature has
 //! base power and toughness 4/5 until end of turn and gains wither until end
 //! of turn."
-//! GAP: "gains wither until end of turn" — wither keyword not in GrantKeyword
-//! catalog.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -35,35 +33,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        colors: Some(ColorSet::black() | ColorSet::green()),
-                        ..Default::default()
-                    }),
-                    caster: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: pump,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SpellCast {
+                filter: Some(ObjectFilter {
+                    colors: Some(ColorSet::black() | ColorSet::green()),
+                    ..Default::default()
+                }),
+                caster: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: on_black_green_spell,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn pump(
+fn on_black_green_spell(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: wither keyword not in GrantKeyword catalog.
-    vec![Effect::SetBasePT {
-        target: trig.source,
-        power: 4,
-        toughness: 5,
-        duration: Duration::EndOfTurn,
-    }]
+    vec![
+        Effect::SetBasePT {
+            target: trig.source,
+            power: 4,
+            toughness: 5,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: trig.source,
+            keyword: KeywordAbility::Wither,
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }

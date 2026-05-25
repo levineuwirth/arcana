@@ -30,7 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,17 +46,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::new()
-            .with_types(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY))
-            .with_max_cmc(1)
-            .with_min_cmc(1),
+        filter: ObjectFilter {
+            types_any: Some(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+            ..Default::default()
+        }
+        .with_max_cmc(1)
+        .with_min_cmc(1),
         reveal: true,
     }]
 }

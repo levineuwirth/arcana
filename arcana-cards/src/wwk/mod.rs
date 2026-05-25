@@ -14,3 +14,5 @@ pub mod hada_freeblade;
 pub mod grotag_thrasher;
 pub mod halimar_excavator;
 pub mod talus_paladin;
+pub mod shoreline_salvager;
+pub mod novablast_wurm;

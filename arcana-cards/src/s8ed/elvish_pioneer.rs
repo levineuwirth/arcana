@@ -1,6 +1,9 @@
-//! Elvish Pioneer — `{G}` 1/1 green Elf Druid.
-//! "When this creature enters, you may put a basic land card from your hand onto the battlefield tapped."
-//! GAP: "from your hand" + "tapped" TutorToBattlefield not expressible; using TutorToBattlefield basic land.
+//! Elvish Pioneer — `{G}` 1/1 green creature. "When this creature enters, you
+//! may put a basic land card from your hand onto the battlefield tapped."
+//!
+//! GAP: effect — "from your hand" land deployment (not library search); no
+//! TutorToBattlefield equivalent for hand-reveal. Emitting best-effort
+//! TutorToBattlefield with tapped: true.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_land_from_hand,
+                effect: etb_deploy_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,16 +49,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_land_from_hand(
+fn etb_deploy_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "from your hand" zone restriction not expressible; TutorToBattlefield searches library
-    // GAP: "tapped" entry mode for TutorToBattlefield not expressible (tapped: false only)
+    // GAP: effect — "put basic land from hand onto battlefield tapped"; using TutorToBattlefield
+    // (library) as best-effort; actual source should be hand
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
-        tapped: false,
+        tapped: true,
     }]
 }

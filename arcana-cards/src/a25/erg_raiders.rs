@@ -1,8 +1,10 @@
-//! Erg Raiders — `{1}{B}` 2/3 black Human Warrior. "At the beginning of
-//! your end step, if this creature didn't attack this turn, it deals 2
-//! damage to you unless it came under your control this turn."
-//! GAP: intervening_if — checking whether this creature attacked or came
-//! under control this turn is not available.
+//! Erg Raiders — `{1}{B}` 2/3 black Human Warrior. "At the beginning of your
+//! end step, if this creature didn't attack this turn, it deals 2 damage to
+//! you unless it came under your control this turn."
+//!
+//! GAP: no intervening-if condition for "didn't attack this turn" or "came
+//! under your control this turn". Emitting the trigger with None and
+//! approximating: deals 2 damage to controller.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -44,9 +46,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening_if — cannot check "if this didn't attack this turn"
                 intervening_if: None,
-                effect: deal_damage_to_controller,
+                effect: end_step_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,12 +55,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_damage_to_controller(
+fn end_step_damage(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: condition "if didn't attack this turn" not checkable
+    // GAP: intervening-if for "didn't attack this turn" not modeled
     vec![Effect::DealDamage {
         target: DamageTarget::Player(trig.controller),
         amount: 2,

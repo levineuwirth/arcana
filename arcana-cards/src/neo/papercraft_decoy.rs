@@ -1,8 +1,8 @@
 //! Papercraft Decoy — `{2}` 2/1 colorless Artifact Creature — Frog.
 //! "When this creature leaves the battlefield, you may pay {2}. If you do, draw a card."
-//! GAP: trigger — SelfLeavesBattlefield not in TriggerCondition catalog;
-//! GAP: effect — "may pay {2}" optional mana cost not in Effect catalog;
-//! using SelfDies as partial approximation, DrawCards unconditionally.
+//! GAP: "leaves the battlefield" trigger not in the engine trigger condition catalog;
+//! using SelfDies as closest (fires on death only, not on other zone changes).
+//! GAP: optional mana payment cost not expressible; drawing unconditionally as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,17 +26,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
-    // GAP: trigger — SelfLeavesBattlefield not in catalog; using SelfDies as placeholder
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: "leaves the battlefield" trigger not in catalog; using SelfDies
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
                 effect: on_leaves_draw,
@@ -52,6 +50,6 @@ fn on_leaves_draw(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "may pay {2}" optional mana cost not expressible; drawing unconditionally
+    // GAP: optional {2} payment not expressible; drawing unconditionally as best-effort
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

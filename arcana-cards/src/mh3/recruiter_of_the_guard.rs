@@ -1,6 +1,9 @@
-//! Recruiter of the Guard — `{2}{W}` 1/1 white Human Soldier.
-//! "When this creature enters, you may search your library for a creature card with toughness 2 or less, reveal it, put it into your hand, then shuffle."
-//! GAP: "you may" optional not expressible; emitting unconditionally.
+//! Recruiter of the Guard — `{2}{W}` 1/1 white creature. "When this creature
+//! enters, you may search your library for a creature card with toughness 2 or
+//! less, reveal it, put it into your hand, then shuffle."
+//!
+//! GAP: effect — TutorToHand filter cannot express "toughness 2 or less"
+//! predicate. Using creature filter as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_low_toughness,
+                effect: etb_tutor_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,15 +49,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_low_toughness(
+fn etb_tutor_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may" optional not expressible; emitting unconditionally
+    // GAP: "toughness 2 or less" predicate not expressible; using creature filter
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::creature().with_max_toughness(2),
+        filter: ObjectFilter::creature(),
         reveal: true,
     }]
 }

@@ -1,6 +1,5 @@
-//! Dragon Trainer — `{3}{R}{R}` 1/1 Human.
-//! "When this creature enters, create a 4/4 red Dragon creature token
-//! with flying."
+//! Dragon Trainer — `{3}{R}{R}` 1/1 Human. "When this creature enters,
+//! create a 4/4 red Dragon creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -36,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_dragon_token,
+                effect: etb_create_dragon,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,20 +43,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_dragon_token(
+fn etb_create_dragon(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let dragon = reg.interner().lookup("Dragon")
         .expect("Dragon interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(dragon);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(dragon);
     let token = TokenDefinition {
         name: dragon,
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         keywords: vec![KeywordAbility::Flying],

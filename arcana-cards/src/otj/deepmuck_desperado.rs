@@ -1,7 +1,10 @@
-//! Deepmuck Desperado — `{2}{U}` 2/4 blue Homarid Mercenary.
-//! "Whenever you commit a crime, each opponent mills three cards.
-//! This ability triggers only once each turn."
-//! GAP: trigger — no TriggerCondition for "commit a crime" in the catalog.
+//! Deepmuck Desperado — `{2}{U}` 2/4 blue Homarid Mercenary. "Whenever you
+//! commit a crime, each opponent mills three cards. This ability triggers
+//! only once each turn."
+//!
+//! GAP: no TriggerCondition for "commit a crime". Best-effort trigger with
+//! ZoneChange as closest proxy not available — using SpellCast opponent as
+//! closest; GAP noted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,13 +40,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "CommitCrime" TriggerCondition in catalog; using SpellCast as closest
+                // GAP: trigger — no TriggerCondition::CrimeCommitted variant
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: arcana_core::targets::ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: opponents_mill_three,
+                effect: on_crime,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -51,10 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn opponents_mill_three(
+fn on_crime(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     script::opponents(state, trig.controller)
         .into_iter()

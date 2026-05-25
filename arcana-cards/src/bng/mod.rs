@@ -21,3 +21,4 @@ pub mod searing_blood;
 pub mod fated_infatuation;
 pub mod setessan_starbreaker;
 pub mod forsaken_drifters;
+pub mod satyr_firedancer;

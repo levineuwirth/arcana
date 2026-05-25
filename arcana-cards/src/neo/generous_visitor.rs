@@ -1,4 +1,4 @@
-//! Generous Visitor — `{G}` 1/1 green Creature — Spirit.
+//! Generous Visitor — `{G}` 1/1 green Spirit creature.
 //! "Whenever you cast an enchantment spell, put a +1/+1 counter on target creature."
 
 use arcana_core::effects::Effect;
@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: enchant_cast_counter_target,
+                effect: enchantment_cast_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -49,16 +49,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn enchant_cast_counter_target(
+fn enchantment_cast_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::AddCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

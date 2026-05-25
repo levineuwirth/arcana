@@ -1,9 +1,9 @@
-//! False Prophet — `{2}{W}{W}` 2/2 white Human Cleric. "When this creature dies,
+//! False Prophet — `{2}{W}{W}` 2/2 white creature. "When this creature dies,
 //! exile all creatures."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -51,10 +51,15 @@ fn exile_all_creatures(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Any);
-    let ids = script::ids_matching(state, &filter, trig.controller);
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::Any),
+        trig.controller,
+    );
     vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
+        targets,
+        effect: Box::new(Effect::ExilePermanent {
+            target: arcana_core::objects::NULL_OBJECT_ID,
+        }),
     }]
 }

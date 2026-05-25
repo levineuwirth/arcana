@@ -8,3 +8,6 @@ pub mod ertai_s_trickery;
 pub mod march_of_souls;
 pub mod horned_kavu;
 pub mod phyrexian_bloodstock;
+pub mod pygmy_kavu;
+pub mod amphibious_kavu;
+pub mod honorable_scout;

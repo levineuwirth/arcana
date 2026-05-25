@@ -1,9 +1,10 @@
-//! Brazen Blademaster — `{2}{R}` 2/3 red Creature — Orc Pirate.
-//! "Whenever this creature attacks while you control two or more artifacts, it gets +2/+1 until
-//! end of turn."
+//! Brazen Blademaster — `{2}{R}` 2/3 red Orc Pirate creature.
+//! "Whenever this creature attacks while you control two or more artifacts, it gets
+//! +2/+1 until end of turn."
 //!
-//! # GAP: "while you control two or more artifacts" intervening-if condition is not expressible;
-//! using intervening_if: None and dropping the condition.
+//! # Notes
+//! The "while you control two or more artifacts" is an intervening-if condition.
+//! Approximated by computing artifact count at resolution time.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,11 +12,13 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Brazen Blademaster");
@@ -40,9 +43,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: "while you control two or more artifacts" condition not expressible.
                 intervening_if: None,
-                effect: attacks_pump_self,
+                effect: attack_pump_if_artifacts,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,16 +52,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_pump_self(
-    _state: &GameState,
+fn attack_pump_if_artifacts(
+    state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Pump {
-        target: trig.source,
-        power: 2,
-        toughness: 1,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    let artifact_count = script::count_matching(
+        state,
+        &ObjectFilter::permanent()
+            .with_types(TypeLine::ARTIFACT.into())
+            .controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
+    if artifact_count >= 2 {
+        vec![Effect::Pump {
+            target: trig.source,
+            power: 2,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        }]
+    } else {
+        Vec::new()
+    }
 }

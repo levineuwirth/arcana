@@ -1,16 +1,15 @@
-//! Stensia Innkeeper — `{3}{R}` 3/3 red Vampire. "When this creature enters, tap
-//! target land an opponent controls. That land doesn't untap during its controller's
-//! next untap step."
-//!
-//! GAP: "doesn't untap during its controller's next untap step" is not expressible
-//! with the available Effect catalog. Only the Tap is emitted.
+//! Stensia Innkeeper — `{3}{R}` 3/3 red creature. "When this creature enters,
+//! tap target land an opponent controls. That land doesn't untap during its
+//! controller's next untap step."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -62,6 +61,6 @@ fn tap_land(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "doesn't untap during its controller's next untap step" not expressible
+    // GAP: "doesn't untap during its controller's next untap step" — no skip-untap effect in catalog
     vec![Effect::Tap { target: *id }]
 }

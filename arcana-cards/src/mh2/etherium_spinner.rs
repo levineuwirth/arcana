@@ -1,8 +1,6 @@
-//! Etherium Spinner — `{2}{U}` 2/1 blue Artifact Creature — Human Wizard.
-//! "Whenever you cast a spell with mana value 4 or greater, create a 1/1
-//! colorless Thopter artifact creature token with flying."
-//! GAP: trigger — no CMC filter on SpellCast; using filter: None as
-//! approximation (fires on all spells you cast).
+//! Etherium Spinner — `{2}{U}` 2/1 Artifact Creature — Human Wizard.
+//! "Whenever you cast a spell with mana value 4 or greater, create a
+//! 1/1 colorless Thopter artifact creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -44,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_big_spell,
+                effect: on_spell_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,20 +50,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_big_spell(
+fn on_spell_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let thopter = reg.interner().lookup("Thopter")
+    let thopter = reg
+        .interner()
+        .lookup("Thopter")
         .expect("Thopter interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(thopter);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(thopter);
     let token = TokenDefinition {
         name: thopter,
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Flying],

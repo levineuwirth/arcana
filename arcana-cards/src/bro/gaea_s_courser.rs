@@ -1,6 +1,8 @@
 //! Gaea's Courser — `{4}{G}` 4/5 green Centaur Soldier.
-//! "Whenever this creature attacks, if there are three or more creature
-//! cards in your graveyard, draw a card."
+//! "Whenever this creature attacks, if there are three or more
+//! creature cards in your graveyard, draw a card."
+//! GAP: intervening_if — "if there are 3+ creature cards in your
+//! graveyard" (graveyard creature card count not accessible).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +14,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Gaea's Courser");
@@ -37,9 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "three or more creature cards in graveyard"
+                // GAP: intervening_if — "if 3+ creature cards in your graveyard"
                 intervening_if: None,
-                effect: attacks_graveyard_draw,
+                effect: attack_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,15 +48,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_graveyard_draw(
-    state: &GameState,
+fn attack_draw(
+    _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let gy_size = script::graveyard_size(state, trig.controller);
-    if gy_size >= 3 {
-        vec![Effect::DrawCards { player: trig.controller, count: 1 }]
-    } else {
-        Vec::new()
-    }
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

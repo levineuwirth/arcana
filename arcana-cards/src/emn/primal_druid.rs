@@ -1,6 +1,6 @@
 //! Primal Druid — `{1}{G}` 0/3 green Creature — Human Druid.
-//! "When this creature dies, you may search your library for a basic land
-//! card, put it onto the battlefield tapped, then shuffle."
+//! "When this creature dies, you may search your library for a basic land card,
+//! put it onto the battlefield tapped, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_tutor_basic_land,
+                effect: on_dies_fetch_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,14 +45,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_tutor_basic_land(
+fn on_dies_fetch_land(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
-        filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
         tapped: true,
     }]
 }

@@ -1,11 +1,12 @@
-//! Rot Farm Mortipede — `{3}{B}` 3/4 black Creature — Insect.
-//! "Whenever one or more creature cards leave your graveyard, this
-//! creature gets +1/+0 and gains menace and lifelink until end of turn."
+//! Rot Farm Mortipede — `{3}{B}` 3/4 black creature (Insect).
+//! "Whenever one or more creature cards leave your graveyard, this creature
+//! gets +1/+0 and gains menace and lifelink until end of turn."
 //!
-//! GAP: "creature cards leave your graveyard" trigger — ZoneChange
-//! tracks arrivals, not departures; closest available variant is
-//! ZoneChange from graveyard to anywhere (using SelfDies as structural
-//! placeholder). Approximated with ZoneChange from Graveyard.
+//! GAP: trigger — "whenever creature cards leave your graveyard" — the
+//! ZoneChange trigger fires on entering a zone (to:), not leaving. The
+//! "leaves graveyard" direction (from: Graveyard) would be triggered on
+//! the destination zone, not the graveyard. Using ZoneChange from graveyard
+//! as the closest approximation.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -40,17 +41,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "creature cards leave your graveyard"; ZoneChange
-                // models arrivals not departures; using departure from graveyard
-                // (from: Some(Graveyard), to: Battlefield) as closest structural
-                // approximation.
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Graveyard(0)),
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: on_leave_graveyard,
+                effect: on_card_leaves_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -58,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_leave_graveyard(
+fn on_card_leaves_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

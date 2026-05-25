@@ -1,4 +1,4 @@
-//! Battlegate Mimic — `{1}{R/W}` 2/1 red/white Creature — Shapeshifter.
+//! Battlegate Mimic — `{1}{R/W}` 2/1 red-white creature (Shapeshifter).
 //! "Whenever you cast a spell that's both red and white, this creature
 //! has base power and toughness 4/2 until end of turn and gains first
 //! strike until end of turn."
@@ -37,10 +37,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        colors: Some(ColorSet::red() | ColorSet::white()),
-                        ..Default::default()
-                    }),
+                    filter: Some(
+                        ObjectFilter::default()
+                            .with_colors(ColorSet::red() | ColorSet::white()),
+                    ),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,

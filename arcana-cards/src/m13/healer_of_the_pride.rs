@@ -1,6 +1,5 @@
 //! Healer of the Pride — `{3}{W}` 2/3 white Cat Cleric.
-//! "Whenever another creature enters the battlefield under your control,
-//! you gain 2 life."
+//! "Whenever another creature you control enters, you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,18 +42,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: healer_creature_enters,
+                effect: creature_etb_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn healer_creature_enters(
+fn creature_etb_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "another creature" — self-exclusion not enforced; triggers on any creature you control
     vec![Effect::GainLife { player: trig.controller, amount: 2 }]
 }

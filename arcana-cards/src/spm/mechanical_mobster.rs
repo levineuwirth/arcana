@@ -1,9 +1,8 @@
 //! Mechanical Mobster — `{3}` 2/1 colorless Artifact Creature — Human Robot Villain.
+//! Keywords: Connive (not in engine keyword list; omitted).
 //! "When this creature enters, exile up to one target card from a graveyard.
 //! Target creature you control connives."
-//! GAP: keyword Connive is not in the engine keyword surface.
-//! GAP: connive effect (draw then discard, +1/+1 counter if nonland discarded)
-//! is only partially modeled (exile from graveyard is expressible).
+//! GAP: Connive mechanic not in engine effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,22 +43,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_effect,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Card {
+                            zone: Zone::Graveyard(0),
+                            filter: ObjectFilter::default(),
+                        },
+                        count: TargetCount::UpTo(1),
+                        controller: None,
                     },
-                    count: TargetCount::UpTo(1),
-                    controller: None,
-                }],
+                ],
             }),
     )
 }
 
-fn etb_effect(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
@@ -68,6 +69,6 @@ fn etb_effect(
     if let Some(TargetChoice::Object(id)) = trig.targets.targets.first() {
         effects.push(Effect::ExileFromGraveyard { target: *id });
     }
-    // GAP: connive effect not in catalog.
+    // GAP: Connive mechanic not in engine effect catalog.
     effects
 }

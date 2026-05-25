@@ -1,15 +1,16 @@
 //! Syr Konrad's Squire — `{1}{B}` 2/2 black Creature — Human Knight.
 //! "Whenever Syr Konrad's Squire dies, or is put into a graveyard from
-//! anywhere other than the battlefield, or leaves your graveyard, or is
-//! put into exile, or is put into your library, or is returned to your hand
-//! from the battlefield or graveyard, or is phased out, it deals 1 damage
-//! to each opponent."
-//!
-//! GAP: trigger — only SelfDies is available; the full set of zone transitions
-//! cannot be captured; using SelfDies as best effort for the primary case.
+//! anywhere other than the battlefield, or leaves your graveyard, or is put
+//! into exile, or is put into your library, or is returned to your hand from
+//! the battlefield or graveyard, or is phased out, it deals 1 damage to each
+//! opponent."
+//! GAP: trigger — only SelfDies (battlefield→graveyard) can be modeled; the
+//! other trigger clauses (non-battlefield graveyard entry, leaves graveyard,
+//! exile, library, return to hand, phase out) have no catalog variants.
+//! SelfDies used for the primary clause.
 
-use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -43,11 +44,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — only SelfDies used; full multi-zone trigger
-                // not expressible
+                // GAP: trigger — only SelfDies modeled; many other trigger
+                // clauses (non-battlefield GY entry, leaves GY, exile, library,
+                // return to hand, phase out) have no catalog variants.
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_damage_opponents,
+                effect: on_dies_damage_opponents,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,7 +57,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_damage_opponents(
+fn on_dies_damage_opponents(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

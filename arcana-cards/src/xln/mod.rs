@@ -47,3 +47,8 @@ pub mod tempest_caller;
 pub mod vineshaper_mystic;
 pub mod sun_blessed_mount;
 pub mod inspiring_cleric;
+pub mod old_growth_dryads;
+pub mod fleet_swallower;
+pub mod deadeye_quartermaster;
+pub mod wily_goblin;
+pub mod ixalli_s_diviner;

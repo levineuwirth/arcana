@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -37,11 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
+                    filter: Some(
+                        ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
+                    ),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: add_counter,
+                effect: on_noncreature_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_counter(
+fn on_noncreature_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

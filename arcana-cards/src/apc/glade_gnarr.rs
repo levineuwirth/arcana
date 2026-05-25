@@ -1,6 +1,6 @@
 //! Glade Gnarr — `{5}{G}` 4/4 green Creature — Beast.
-//! "Whenever a player casts a blue spell, this creature gets +2/+2 until
-//! end of turn."
+//! "Whenever a player casts a blue spell, this creature gets +2/+2 until end
+//! of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -29,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -44,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: blue_spell_pump,
+                effect: on_blue_spell_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn blue_spell_pump(
+fn on_blue_spell_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

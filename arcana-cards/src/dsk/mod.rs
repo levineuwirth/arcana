@@ -29,3 +29,8 @@ pub mod arabella_abandoned_doll;
 pub mod fear_of_immobility;
 pub mod most_valuable_slayer;
 pub mod attack_in_the_box;
+pub mod unsettling_twins;
+pub mod bashful_beastie;
+pub mod piggy_bank;
+pub mod fanatic_of_the_harrowing;
+pub mod fear_of_failed_tests;

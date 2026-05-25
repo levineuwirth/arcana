@@ -550,6 +550,10 @@ pub mod drc;
 
 pub mod ddf;
 
+pub mod brc;
+
+pub mod m3c;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

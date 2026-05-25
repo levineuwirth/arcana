@@ -1,15 +1,13 @@
-//! A-Blood Artist — `{1}{B}` 0/1 black Vampire.
-//! "Whenever Blood Artist or another creature dies, target opponent
-//! loses 1 life and you gain 1 life."
-//! Trigger: any creature enters graveyard from battlefield (dies).
-//! Target: opponent (player target).
+//! A-Blood Artist — `{1}{B}` 0/1 black Vampire. "Whenever Blood Artist or
+//! another creature dies, target opponent loses 1 life and you gain 1 life."
+//! Dies/zone-change trigger; target opponent loses 1, controller gains 1.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -42,21 +40,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: creature_dies,
+                effect: on_death,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
+                }],
             }),
     )
 }
 
-fn creature_dies(
+fn on_death(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
     vec![
         Effect::LoseLife { player: *p, amount: 1 },
         Effect::GainLife { player: trig.controller, amount: 1 },

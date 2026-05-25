@@ -1,9 +1,6 @@
 //! Phantom Whelp — `{1}{U}` 2/2 blue Creature — Illusion Dog.
-//! "When this creature attacks or blocks, return it to its owner's hand at
-//! end of combat."
-//!
-//! GAP: "attacks or blocks" is two conditions; using SelfAttacks as closest;
-//! "at end of combat" not a DelayedWhen variant — using NextEndStep as best effort.
+//! "When this creature attacks or blocks, return it to its owner's hand at end
+//! of combat."
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
@@ -32,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +37,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_return_eot,
+                effect: on_attack_or_block_return,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfBlocks,
+                intervening_if: None,
+                effect: on_attack_or_block_return,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,12 +54,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_return_eot(
+fn on_attack_or_block_return(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "blocks" half of trigger not captured; NextEndStep used for end-of-combat
+    // "Return at end of combat" — DelayedAction::ReturnToHand at NextEndStep
+    // is the closest available; end-of-combat timing is a GAP.
     vec![Effect::DelayedAction {
         source: trig.source,
         controller: trig.controller,

@@ -13,3 +13,4 @@ pub mod graf_mole;
 pub mod nadir_kraken;
 pub mod kazuul_tyrant_of_the_cliffs;
 pub mod whispering_snitch;
+pub mod ravenous_chupacabra;

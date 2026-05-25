@@ -1,10 +1,10 @@
-//! Inventive Wingsmith — `{2}{W}` 2/4 white Creature — Dwarf Artificer.
+//! Inventive Wingsmith — `{2}{W}` 2/4 white Dwarf Artificer creature.
 //! "At the beginning of your end step, if you haven't cast a spell from your hand this turn
 //! and this creature doesn't have a flying counter on it, put a flying counter on it."
 //!
-//! # GAP: "if you haven't cast a spell from your hand this turn" condition is not trackable;
-//! GAP: "flying counter" is not a CounterKind variant — using PlusOnePlusOne as approximation.
-//! intervening_if: None (condition dropped).
+//! # Notes
+//! GAP: "flying counter" — CounterKind::Flying not in catalog; put +1/+1 counter approximation.
+//! GAP: "if you haven't cast a spell from your hand this turn" — intervening_if not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -45,9 +45,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: "if you haven't cast a spell from your hand this turn" not trackable.
+                // GAP: intervening_if — "if you haven't cast a spell from hand this turn
+                // and this doesn't have a flying counter" not expressible.
                 intervening_if: None,
-                effect: end_step_add_counter,
+                effect: end_step_flying_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,15 +56,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn end_step_add_counter(
+fn end_step_flying_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "flying counter" not a CounterKind variant; using PlusOnePlusOne as approximation.
-    vec![Effect::AddCounters {
-        target: trig.source,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    // GAP: CounterKind::Flying not in catalog — using PlusOnePlusOne as placeholder.
+    vec![Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }

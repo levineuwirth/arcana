@@ -1,6 +1,6 @@
-//! Meldweb Curator — `{3}{U}` 3/4 blue Phyrexian Wizard.
-//! "When this creature enters, put up to one target instant or sorcery card from
-//! your graveyard on top of your library."
+//! Meldweb Curator — `{3}{U}` 3/4 blue creature. "When this creature enters, put
+//! up to one target instant or sorcery card from your graveyard on top of your
+//! library."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,15 +38,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_return_to_library,
+                effect: etb_return_spell_to_library,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::new().with_types(
-                            TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)
-                        ),
+                        filter: ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
                     },
                     count: TargetCount::UpTo(1),
                     controller: None,
@@ -55,12 +53,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_return_to_library(
+fn etb_return_spell_to_library(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::PutOnTopOfLibrary { target: *id }]
 }

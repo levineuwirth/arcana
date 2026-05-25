@@ -1,9 +1,8 @@
-//! Stika, Playtestress — `{2}{W}` 2/3 white legendary creature. "Whenever you
-//! cast a playtest card, draw a card. This ability triggers only once each
-//! turn."
+//! Stika, Playtestress — `{2}{W}` 2/3 white Legendary Human Druid.
+//! "Whenever you cast a playtest card, draw a card. This ability triggers only once each turn."
 //!
-//! GAP: trigger — "playtest card" is not a supported filter in the ObjectFilter
-//! catalog. Using SpellCast with no filter as closest approximation.
+//! GAP: "playtest card" is not a recognized type in ObjectFilter — using filter: None
+//! as the closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "playtest card" filter not available in ObjectFilter catalog.
+                // GAP: "playtest card" type not in ObjectFilter; using filter: None
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,

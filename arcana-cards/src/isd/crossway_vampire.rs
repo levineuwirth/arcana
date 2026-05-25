@@ -1,10 +1,13 @@
-//! Crossway Vampire — `{1}{R}{R}` 3/2 red Creature — Vampire.
+//! Crossway Vampire — `{1}{R}{R}` 3/2 red creature (Vampire).
 //! "When this creature enters, target creature can't block this turn."
 //!
-//! GAP: "can't block this turn" — no Effect variant for applying a
-//! blocking restriction. Approximated as Tap on the target creature.
+//! GAP: "target creature can't block this turn" — no Effect variant
+//! for making a creature unable to block. Using ForbidAttacking as the
+//! closest available restriction effect, though it restricts attacking
+//! rather than blocking.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -38,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -46,14 +49,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "can't block this turn" — no blocking-restriction Effect.
-    // Approximating as Tap.
-    vec![Effect::Tap { target: *id }]
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "can't block this turn" — no Effect for blocking restriction;
+    // using ForbidAttacking as closest approximation.
+    vec![Effect::ForbidAttacking { target: *id, duration: Duration::EndOfTurn }]
 }

@@ -1,13 +1,13 @@
-//! Hada Freeblade — `{W}` 0/1 white Creature — Human Soldier Ally.
-//! "Whenever this creature or another Ally you control enters, you may
-//! put a +1/+1 counter on this creature."
+//! Hada Freeblade — `{W}` 0/1 white creature (Human Soldier Ally).
+//! "Whenever this creature or another Ally you control enters, you may put
+//! a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,7 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: arcana_core::targets::ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },

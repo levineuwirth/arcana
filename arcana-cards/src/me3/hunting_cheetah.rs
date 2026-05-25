@@ -1,5 +1,10 @@
-//! Hunting Cheetah — `{2}{G}` 2/3 green Cat.
-//! "Whenever this creature deals damage to an opponent, you may search your library for a Forest card, reveal that card, put it into your hand, then shuffle."
+//! Hunting Cheetah — `{2}{G}` 2/3 green creature. "Whenever this creature deals
+//! damage to an opponent, you may search your library for a Forest card, reveal
+//! it, put it in hand, then shuffle."
+//!
+//! GAP: trigger — DamageDealt source_filter cannot restrict to "this creature";
+//! using creature source filter as best-effort.
+//! GAP: effect — Forest subtype filter not expressible; using land type filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,7 +21,6 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hunting Cheetah");
     let cat = reg.interner_mut().intern("Cat");
-    let _forest = reg.interner_mut().intern("Forest");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(cat);
     let chars = Characteristics {
@@ -34,6 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: source_filter cannot restrict to "this creature" only
                 trigger_condition: TriggerCondition::DamageDealt {
                     source_filter: ObjectFilter::creature(),
                     target_filter: TargetFilter::Player,
@@ -53,7 +58,7 @@ fn damage_tutor_forest(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Tutor for a Forest (basic land subtype via type filter)
+    // GAP: Forest subtype filter not expressible; using land type
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

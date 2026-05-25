@@ -1,7 +1,8 @@
 //! Lifesmith — `{1}{G}` 2/1 green Creature — Human Artificer.
 //! "Whenever you cast an artifact spell, you may pay {1}. If you do, you gain
 //! 3 life."
-//! GAP: optional mana payment cost within trigger not expressible; effect fires unconditionally.
+//! GAP: "you may pay {1}" optional mana cost within trigger — no Effect for
+//! conditional mana payment. Emitting GainLife unconditionally as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +13,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -38,14 +38,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::ARTIFACT)),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::new().with_types(TypeLine::ARTIFACT.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: artifact_spell_gain_life,
+                effect: on_artifact_spell_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,11 +50,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn artifact_spell_gain_life(
+fn on_artifact_spell_gain_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional 'pay {1}' cost within trigger not expressible; gaining 3 life unconditionally
+    // GAP: "you may pay {1}" optional mana payment not expressible;
+    // emitting GainLife unconditionally as best effort
     vec![Effect::GainLife { player: trig.controller, amount: 3 }]
 }

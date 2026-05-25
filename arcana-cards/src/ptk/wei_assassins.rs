@@ -1,20 +1,17 @@
-//! Wei Assassins — `{3}{B}{B}` 3/2 black Creature — Human Soldier Assassin.
-//! "When this creature enters, target opponent chooses a creature they
-//! control. Destroy that creature."
+//! Wei Assassins — `{3}{B}{B}` 3/2 black creature (Human Soldier
+//! Assassin). "When this creature enters, target opponent chooses a
+//! creature they control. Destroy that creature."
 //!
-//! GAP: "target opponent chooses a creature they control" — OpponentChooses
-//! targeting is not expressible; approximated as DestroyPermanent on a
-//! targeted opponent-controlled creature.
+//! GAP: "target opponent chooses a creature they control" — opponent-
+//! chosen targeted destruction is not directly expressible; using a
+//! standard target creature (opponent controls) destroy as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -47,12 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -61,13 +59,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "opponent chooses" the creature — approximating as controller chooses.
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -1,7 +1,8 @@
 //! Arrogant Outlaw — `{2}{B}` 3/2 black Vampire Noble.
 //! "When this creature enters, if an opponent lost life this turn, each
 //! opponent loses 2 life and you gain 2 life."
-//! GAP: intervening-if "if an opponent lost life this turn" not expressible.
+//! GAP: Intervening-if "if an opponent lost life this turn" is not expressible
+//! as an engine condition; using intervening_if: None as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,9 +39,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if an opponent lost life this turn" not expressible.
+                // GAP: "if an opponent lost life this turn" not expressible.
                 intervening_if: None,
-                effect: drain_all,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,14 +49,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn drain_all(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = script::opponents(state, trig.controller)
-        .into_iter()
-        .map(|p| Effect::LoseLife { player: p, amount: 2 })
+fn on_etb(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let opponents = script::opponents(state, trig.controller);
+    let mut effects: Vec<Effect> = opponents
+        .iter()
+        .map(|&p| Effect::LoseLife { player: p, amount: 2 })
         .collect();
     effects.push(Effect::GainLife { player: trig.controller, amount: 2 });
     effects

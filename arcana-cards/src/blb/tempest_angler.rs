@@ -1,6 +1,5 @@
-//! Tempest Angler — `{1}{U/R}{U/R}` 2/2 Otter Wizard.
-//! "Whenever you cast a noncreature spell, put a +1/+1 counter on
-//! this creature."
+//! Tempest Angler — `{1}{U/R}{U/R}` 2/2 Otter Wizard. "Whenever you
+//! cast a noncreature spell, put a +1/+1 counter on this creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,14 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter {
-                        types_any: None,
+                        types_any: Some(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY | TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::LAND)),
                         ..Default::default()
-                    }
-                    .without_types(TypeLine::CREATURE.into())),
+                    }.without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: noncreature_spell_counter,
+                effect: on_noncreature_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,10 +51,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn noncreature_spell_counter(
+fn on_noncreature_cast(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::AddCounters {
         target: trig.source,

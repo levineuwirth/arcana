@@ -1,9 +1,6 @@
-//! Trophy Mage — `{2}{U}` 2/2 blue Human Wizard. "When this creature enters,
-//! you may search your library for an artifact card with mana value 3, reveal
-//! it, put it into your hand, then shuffle."
-//!
-//! GAP: effect — TutorToHand filter cannot express "mana value exactly 3"
-//! constraint; using artifact type filter as approximation.
+//! Trophy Mage — `{2}{U}` 2/2 blue Human Wizard.
+//! "When this creature enters, you may search your library for an artifact card with mana
+//! value 3, reveal it, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,10 +51,12 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: filter — "mana value exactly 3" not expressible; using artifact type.
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+        filter: ObjectFilter::new()
+            .with_types(TypeLine::ARTIFACT.into())
+            .with_min_cmc(3)
+            .with_max_cmc(3),
         reveal: true,
     }]
 }

@@ -33,3 +33,4 @@ pub mod viashino_racketeer;
 pub mod bazaar_krovod;
 pub mod batterhorn;
 pub mod voidwielder;
+pub mod blistercoil_weird;

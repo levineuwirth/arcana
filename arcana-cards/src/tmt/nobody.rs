@@ -1,15 +1,13 @@
-//! Nobody — `{1}{U/R}{U/R}` 3/2 Artifact Creature — Human Hero.
-//! "When this creature enters, return up to one other target artifact
-//! you control to its owner's hand. Scry 1."
+//! Nobody — `{1}{U/R}{U/R}` 3/2 Artifact Creature — Human Hero. "When
+//! this creature enters, return up to one other target artifact you
+//! control to its owner's hand. Scry 1."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -27,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{1}{U/R}{U/R}").expect("valid cost")),
         colors: ColorSet::red() | ColorSet::blue(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
@@ -47,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::permanent()
+                            ObjectFilter::new()
                                 .with_types(TypeLine::ARTIFACT.into())
                                 .controlled_by(ControllerConstraint::You),
                         ),
@@ -62,14 +60,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_bounce_artifact_scry(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = Vec::new();
+    let mut effects = Vec::new();
     if let Some(target) = trig.targets.targets.first() {
         if let TargetChoice::Object(id) = target {
-            if *id != trig.source {
-                effects.push(Effect::ReturnToHand { target: *id });
-            }
+            effects.push(Effect::ReturnToHand { target: *id });
         }
     }
     effects.push(Effect::Scry { player: trig.controller, count: 1 });

@@ -1,9 +1,6 @@
-//! Scuttling Butler — `{3}` colorless 4/1 Artifact Creature — Construct. "At the
-//! beginning of combat on your turn, if you control two or more multicolored
-//! permanents, this creature gains double strike until end of turn."
-//!
-//! GAP: "if you control two or more multicolored permanents" — no ObjectFilter for
-//! multicolored; using intervening_if: None and emitting GrantKeyword unconditionally.
+//! Scuttling Butler — `{3}` 4/1 colorless artifact creature. "At the beginning
+//! of combat on your turn, if you control two or more multicolored permanents,
+//! this creature gains double strike until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -28,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{3}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
@@ -43,8 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     phase: Phase::Combat,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you control two or more multicolored permanents"
-                // not expressible
+                // intervening_if: "if you control two or more multicolored permanents" — GAP: multicolor filter not in catalog
                 intervening_if: None,
                 effect: gain_double_strike,
                 trigger_zones: vec![Zone::Battlefield],

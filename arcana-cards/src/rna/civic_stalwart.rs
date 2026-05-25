@@ -1,10 +1,10 @@
-//! Civic Stalwart — `{3}{W}` 3/3 white Elephant Soldier. "When this creature
-//! enters, creatures you control get +1/+1 until end of turn."
+//! Civic Stalwart — `{3}{W}` 3/3 white creature. "When this creature enters,
+//! creatures you control get +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: pump_all,
+                effect: pump_all_creatures,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,17 +47,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_all(
+fn pump_all_creatures(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, trig.controller);
+    let targets = script::ids_matching(
+        state,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::Pump {
-            target: NULL_OBJECT_ID,
+            target: arcana_core::objects::NULL_OBJECT_ID,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,

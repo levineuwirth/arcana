@@ -1,9 +1,12 @@
-//! Taj-Nar Swordsmith — `{3}{W}` 2/3 white Cat Soldier.
-//! "When this creature enters, you may pay {X}. If you do, search your library
-//! for an Equipment card with mana value X or less, put that card onto the
-//! battlefield, then shuffle."
-//! GAP: effect — variable-cost payment and mana-value-X Equipment tutor not
-//! expressible; emitting TutorToBattlefield for any Equipment as best-effort.
+//! Taj-Nar Swordsmith — `{3}{W}` 2/3 Cat Soldier.
+//! "When this creature enters, you may pay {X}. If you do, search
+//! your library for an Equipment card with mana value X or less,
+//! put that card onto the battlefield, then shuffle."
+//!
+//! GAP: "you may pay {X}" — optional X-mana payment at resolution
+//! is not expressible via the effect catalog. Emitting unconditional
+//! TutorToBattlefield for an Equipment card; the payment and MV-X
+//! restriction cannot be modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -49,19 +52,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: variable {X} payment and mana-value-X filter not expressible;
-    // emitting TutorToBattlefield for any Equipment as best-effort.
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "you may pay {X}" — optional mana payment not expressible.
+    // GAP: Equipment-subtype filter not in ObjectFilter; using artifact
+    // filter as approximation. GAP: MV ≤ X restriction not applicable.
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
-        filter: arcana_core::targets::ObjectFilter {
-            types_any: Some(TypeLine(TypeLine::ARTIFACT)),
-            ..Default::default()
-        },
+        filter: ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
         tapped: false,
     }]
 }

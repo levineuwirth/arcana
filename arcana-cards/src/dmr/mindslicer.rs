@@ -1,7 +1,7 @@
-//! Mindslicer — `{2}{B}{B}` 4/3 black Horror. "When this creature dies, each player
-//! discards their hand."
+//! Mindslicer — `{2}{B}{B}` 4/3 black creature. "When this creature dies,
+//! each player discards their hand."
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: discard_all_hands,
+                effect: each_player_discards,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,16 +43,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn discard_all_hands(
+fn each_player_discards(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all = script::all_players(state);
     all.into_iter()
-        .map(|p| {
-            let hand = script::hand_size(state, p);
-            Effect::Discard { player: p, count: hand, choice: DiscardChoice::ControllerChooses }
+        .map(|p| Effect::Discard {
+            player: p,
+            count: script::hand_size(state, p),
+            choice: DiscardChoice::ControllerChooses,
         })
         .collect()
 }

@@ -1,11 +1,10 @@
-//! Porcelain Zealot — `{3}{W}` 2/3 white Creature — Phyrexian Soldier.
-//! "At the beginning of combat on your turn, target creature you
-//! control gets +1/+1 until end of turn. If that creature has toxic,
-//! instead it gets +2/+2 until end of turn."
+//! Porcelain Zealot — `{3}{W}` 2/3 white creature (Phyrexian Soldier).
+//! "At the beginning of combat on your turn, target creature you control
+//! gets +1/+1 until end of turn. If that creature has toxic, instead it
+//! gets +2/+2 until end of turn."
 //!
-//! GAP: conditional pump "if that creature has toxic" requires checking
-//! the target's keyword set, which is not available via the script API.
-//! Approximating as unconditional +1/+1.
+//! GAP: "if that creature has toxic" conditional on the target having a
+//! keyword is not expressible with the Effect catalog. Emitting +1/+1 only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -51,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_combat_pump,
+                effect: on_begin_combat,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -65,16 +64,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_combat_pump(
+fn on_begin_combat(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if that creature has toxic, +2/+2 instead" — checking
-    // keyword presence on a target is not available via script API.
-    // Approximating as unconditional +1/+1.
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "if that creature has toxic, +2/+2 instead" — conditional on
+    // target keyword not expressible; emitting base +1/+1 only.
     vec![Effect::Pump {
         target: *id,
         power: 1,

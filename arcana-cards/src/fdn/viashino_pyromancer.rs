@@ -1,7 +1,5 @@
-//! Viashino Pyromancer — `{1}{R}` 2/1 red Lizard Wizard. "When this creature
+//! Viashino Pyromancer — `{1}{R}` 2/1 red creature. "When this creature
 //! enters, it deals 2 damage to target player or planeswalker."
-//!
-//! GAP: "target player or planeswalker" — using target player only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +7,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: deal_two_damage,
+                effect: deal_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -48,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_two_damage(
+fn deal_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

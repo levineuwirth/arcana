@@ -1,9 +1,9 @@
-//! Sygg, River Cutthroat — `{U/B}{U/B}` 1/3 blue+black legendary Merfolk Rogue.
-//! "At the beginning of each end step, if an opponent lost 3 or more life this
-//! turn, you may draw a card."
+//! Sygg, River Cutthroat — `{U/B}{U/B}` 1/3 black/blue Legendary Merfolk Rogue.
+//! "At the beginning of each end step, if an opponent lost 3 or more life this turn,
+//! you may draw a card."
 //!
-//! GAP: trigger — intervening-if "opponent lost 3+ life this turn" not
-//! expressible as a condition predicate.
+//! GAP: intervening-if "if an opponent lost 3 or more life this turn" is not expressible.
+//! Emitting the end-step trigger unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,8 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::Any,
                 },
-                // GAP: intervening-if — "if an opponent lost 3 or more life this
-                // turn" not expressible as a condition predicate.
+                // GAP: intervening-if "if an opponent lost 3+ life this turn" — use None
                 intervening_if: None,
                 effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
@@ -60,8 +59,5 @@ fn on_end_step(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
-    }]
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

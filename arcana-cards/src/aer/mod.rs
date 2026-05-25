@@ -32,3 +32,5 @@ pub mod reservoir_walker;
 pub mod felidar_guardian;
 pub mod salvage_scuttler;
 pub mod filigree_crawler;
+pub mod crackdown_construct;
+pub mod dispersal_technician;

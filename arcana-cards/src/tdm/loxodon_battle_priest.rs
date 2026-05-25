@@ -1,14 +1,13 @@
-//! Loxodon Battle Priest — `{4}{W}` 3/5 white Elephant Cleric.
-//! "At the beginning of combat on your turn, put a +1/+1 counter on another target creature you
-//! control."
+//! Loxodon Battle Priest — `{4}{W}` 3/5 white Elephant Cleric creature.
+//! "At the beginning of combat on your turn, put a +1/+1 counter on another target
+//! creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter,
-    TargetCount, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: counter_on_creature,
+                effect: combat_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -57,10 +56,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn counter_on_creature(
+fn combat_counter(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

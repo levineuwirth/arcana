@@ -1,7 +1,7 @@
-//! Nurturer Initiate — `{G}` 1/1 green Elf Shaman.
-//! "Whenever a player casts a green spell, you may pay {1}. If you do, target creature gets
-//! +1/+1 until end of turn."
-//! GAP: "you may pay {1}" optional cost not in catalog; emitting pump unconditionally.
+//! Nurturer Initiate — `{G}` 1/1 green Elf Shaman creature.
+//! "Whenever a player casts a green spell, you may pay {1}. If you do, target creature
+//! gets +1/+1 until end of turn."
+//! GAP: "you may pay {1}" optional mana payment not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -9,8 +9,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetFilter,
-    TargetCount, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,13 +38,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: green spell color filter not in SpellCast ObjectFilter
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter::new().with_colors(ColorSet::green())),
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: pump_target,
+                effect: green_spell_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -53,14 +51,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_target(
+fn green_spell_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "you may pay {1}; if you do" — optional mana payment not expressible.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "you may pay {1}" optional cost not in catalog
     vec![Effect::Pump {
         target: *id,
         power: 1,

@@ -6,10 +6,11 @@ use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::NULL_OBJECT_ID;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -21,6 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let phyrexian = reg.interner_mut().intern("Phyrexian");
     let zombie = reg.interner_mut().intern("Zombie");
     let mercenary = reg.interner_mut().intern("Mercenary");
+    let _merc2 = mercenary;
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(phyrexian);
     subtypes.0.insert(zombie);
@@ -37,20 +39,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: pump_mercenaries,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_pump_mercenaries,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn pump_mercenaries(
+fn etb_pump_mercenaries(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

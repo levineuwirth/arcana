@@ -32,3 +32,6 @@ pub mod matoya_archon_elder;
 pub mod sahagin;
 pub mod town_greeter;
 pub mod shinra_reinforcements;
+pub mod gilgamesh_master_at_arms;
+pub mod item_shopkeep;
+pub mod ashe_princess_of_dalmasca;

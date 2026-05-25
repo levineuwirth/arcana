@@ -1,11 +1,11 @@
-//! Augur of Bolas — `{1}{U}` 1/3 blue creature. "When this creature enters,
-//! look at the top three cards of your library. You may reveal an instant or
-//! sorcery card from among them and put it into your hand. Put the rest on the
-//! bottom of your library in any order."
+//! Augur of Bolas — `{1}{U}` 1/3 blue Merfolk Wizard.
+//! "When this creature enters, look at the top three cards of your library. You may reveal
+//! an instant or sorcery card from among them and put it into your hand. Put the rest on
+//! the bottom of your library in any order."
 //!
-//! GAP: effect — selective reveal from top N cards and conditional hand-put
-//! is not directly expressible. Using TutorToHand with instant/sorcery filter
-//! and reveal:true as approximation (shuffles, loses "top 3 only" restriction).
+//! GAP: no "look at top N, selectively put one into hand" effect in catalog. Using
+//! TutorToHand with reveal: true as closest approximation (searches library for an
+//! instant or sorcery).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -56,8 +56,8 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — look at top 3 only, conditional reveal-to-hand; using
-    // tutor as approximation (misses "top 3 only" restriction).
+    // GAP: "look at top 3, optionally reveal instant/sorcery to hand" not in catalog.
+    // Using TutorToHand as best-effort approximation.
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),

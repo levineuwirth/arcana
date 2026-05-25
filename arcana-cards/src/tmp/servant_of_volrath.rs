@@ -1,7 +1,7 @@
-//! Servant of Volrath — `{2}{B}` 3/3 black Minion creature.
+//! Servant of Volrath — `{2}{B}` 3/3 black Minion.
 //! "When this creature leaves the battlefield, sacrifice a creature."
-//! GAP: trigger — SelfLeavesBattlefield not in TriggerCondition catalog;
-//! using SelfDies as partial approximation (misses bounce/exile cases).
+//! GAP: "leaves the battlefield" trigger not in the engine trigger condition catalog;
+//! using SelfDies as closest (fires on death only, not on other zone changes like bounce).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,17 +26,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
-    // GAP: trigger — SelfLeavesBattlefield not in catalog; using SelfDies as placeholder
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: "leaves the battlefield" trigger not in catalog; using SelfDies
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
                 effect: on_leaves_sacrifice,

@@ -1,7 +1,7 @@
 //! General Leo Cristophe — `{4}{W}` 2/2 white Legendary Creature — Human Soldier.
-//! "When General Leo Cristophe enters, return up to one target creature card with mana value 3 or
-//! less from your graveyard to the battlefield. Then put a +1/+1 counter on General Leo Cristophe
-//! for each creature you control."
+//! "When General Leo Cristophe enters, return up to one target creature card with mana value
+//! 3 or less from your graveyard to the battlefield. Then put a +1/+1 counter on General Leo
+//! Cristophe for each creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -58,25 +58,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_reanimate_and_counter(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let n = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    let counter_effect = Effect::AddCounters {
+    let mut effects = Vec::new();
+    if let Some(target) = trig.targets.targets.first() {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: *id });
+        }
+    }
+    effects.push(Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,
         count: n,
-    };
-    if let Some(target) = trig.targets.targets.first() {
-        if let TargetChoice::Object(id) = target {
-            return vec![
-                Effect::ReturnFromGraveyardToBattlefield { target: *id },
-                counter_effect,
-            ];
-        }
-    }
-    vec![counter_effect]
+    });
+    effects
 }

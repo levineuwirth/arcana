@@ -1,26 +1,26 @@
 //! Renegade Silent — `{3}{U}` 3/3 blue Alien Horror.
-//! Keywords: Goad (not in supported keyword set — noted as gap).
 //! "At the beginning of your end step, goad up to one target creature you
 //! don't control and put a +1/+1 counter on this creature. This creature
 //! phases out."
-//! GAP: Goad is not a supported KeywordAbility; keywords: vec![].
-//! GAP: Phase out effect is not in the Effect catalog.
-//! The +1/+1 counter on self and goad are partially expressible; phase-out
-//! is a GAP so effect fn returns the counter only.
+//!
+//! GAP: phasing out the source is not expressible with the current Effect
+//! catalog. Goad + counter are emitted; phase-out is omitted.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::CounterKind;
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,40 +39,51 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
+        // GAP: Goad is a keyword listed in Scryfall but it's applied as an
+        // effect here, not a static keyword on the creature itself.
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::StepBegins {
-                    step: Step::End,
-                    whose: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: on_end_step,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(1),
-                    controller: Some(ControllerConstraint::Opponent),
-                }],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::StepBegins {
+                step: Step::End,
+                whose: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: end_step_goad,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                ),
+                count: TargetCount::UpTo(1),
+                controller: None,
+            }],
+        }),
     )
 }
 
-fn on_end_step(
+fn end_step_goad(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: goad effect not in Effect catalog
-    // GAP: phase out effect not in Effect catalog
-    vec![Effect::AddCounters {
+    let mut effects = vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,
         count: 1,
-    }]
+    }];
+    if let Some(target) = trig.targets.targets.first() {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::Goad {
+                target: *id,
+                goader: trig.controller,
+                duration: Duration::EndOfTurn,
+            });
+        }
+    }
+    // GAP: phase out trig.source — no Phase-out Effect variant available.
+    effects
 }

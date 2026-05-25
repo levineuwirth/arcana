@@ -1,5 +1,5 @@
-//! Mesa Enchantress — `{1}{W}{W}` 0/2 white creature. "Whenever you cast an
-//! enchantment spell, you may draw a card."
+//! Mesa Enchantress — `{1}{W}{W}` 0/2 white Human Druid.
+//! "Whenever you cast an enchantment spell, you may draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

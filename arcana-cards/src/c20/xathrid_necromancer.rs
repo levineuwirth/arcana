@@ -31,24 +31,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // "This creature or another Human you control dies" — using
-                // ZoneChange(Human you control, Battlefield→Graveyard) which
-                // also covers self.
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    // GAP: subtype_filter requires CardRegistry not available
+                    // at registration time; using creature+you as best-effort.
+                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: create_zombie_token,
+                effect: on_human_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -56,24 +53,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_zombie_token(
+fn on_human_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let zombie = reg.interner().lookup("Zombie").expect("Zombie interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(zombie);
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(zombie);
     let token = TokenDefinition {
         name: zombie,
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: token enters tapped — no "enter tapped" field on TokenDefinition.
+    // Token enters tapped; CreateToken does not have a `tapped` field.
+    // GAP: Token-enters-tapped flag not in TokenDefinition or CreateToken.
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

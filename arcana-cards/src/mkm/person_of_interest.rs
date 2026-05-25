@@ -1,8 +1,10 @@
-//! Person of Interest — `{3}{R}` 2/2 red Human Rogue.
-//! "When this creature enters, suspect it. Create a 2/2 white and blue
-//! Detective creature token."
-//! GAP: keyword — Suspect mechanic (menace + can't block) not in supported
-//! keyword set.
+//! Person of Interest — `{3}{R}` 2/2 Human Rogue.
+//! Keywords: Suspect (not in catalog — keywords: vec![])
+//! "When this creature enters, suspect it. Create a 2/2 white and
+//! blue Detective creature token."
+//!
+//! GAP: "suspect it" — the Suspect mechanic (gives menace, can't block)
+//! is not in the catalog.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -48,25 +50,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: effect — "suspect it" mechanic not in catalog.
-    let detective = reg.interner().lookup("Detective")
+fn on_etb(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let detective = reg
+        .interner()
+        .lookup("Detective")
         .expect("Detective interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(detective);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(detective);
     let token = TokenDefinition {
         name: detective,
-        colors: ColorSet::white() | ColorSet::blue(),
+        colors: ColorSet(ColorSet::WHITE | ColorSet::BLUE),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         keywords: vec![],
         abilities: vec![],
     };
+    // GAP: "suspect it" — Suspect mechanic not in catalog.
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

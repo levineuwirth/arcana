@@ -26,3 +26,5 @@ pub mod exultant_cultist;
 pub mod enlightened_maniac;
 pub mod laboratory_brute;
 pub mod brazen_wolves;
+pub mod courageous_outrider;
+pub mod ulvenwald_observer;

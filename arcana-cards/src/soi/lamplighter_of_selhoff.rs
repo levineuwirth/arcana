@@ -1,6 +1,9 @@
-//! Lamplighter of Selhoff — `{4}{U}` 3/5 blue Zombie Horror.
-//! "When this creature enters, if you control another Zombie, you may draw a card. If you do, discard a card."
-//! GAP: intervening-if "if you control another Zombie" not expressible; draw+discard emitted unconditionally.
+//! Lamplighter of Selhoff — `{4}{U}` 3/5 blue creature. "When this creature
+//! enters, if you control another Zombie, you may draw a card. If you do,
+//! discard a card."
+//!
+//! GAP: intervening_if — "if you control another Zombie" condition not
+//! representable.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,9 +39,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you control another Zombie" not expressible
-                intervening_if: None,
-                effect: etb_draw_discard,
+                intervening_if: None, // GAP: intervening_if — "if you control another Zombie"
+                effect: etb_loot,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_discard(
+fn etb_loot(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

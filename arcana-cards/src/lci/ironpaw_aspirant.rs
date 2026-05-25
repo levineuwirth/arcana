@@ -1,5 +1,5 @@
-//! Ironpaw Aspirant — `{1}{W}` 1/2 Cat Warrior.
-//! "When this creature enters, put a +1/+1 counter on target creature."
+//! Ironpaw Aspirant — `{1}{W}` 1/2 Cat Warrior. "When this creature
+//! enters, put a +1/+1 counter on target creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_counter,
+                effect: etb_counter_on_target,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -45,10 +45,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_counter(
+fn etb_counter_on_target(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

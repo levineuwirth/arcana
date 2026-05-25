@@ -1,6 +1,8 @@
 //! Dragonmaster Outcast — `{R}` 1/1 red Human Shaman.
 //! "At the beginning of your upkeep, if you control six or more lands,
 //! create a 5/5 red Dragon creature token with flying."
+//! GAP: Intervening-if "if you control six or more lands" not expressible
+//! as an engine condition; using intervening_if: None as best-effort.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -33,7 +35,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -44,9 +45,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you control six or more lands" not expressible.
+                // GAP: "if you control six or more lands" intervening-if not expressible.
                 intervening_if: None,
-                effect: create_dragon,
+                effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,27 +55,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_dragon(
-    state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let land_filter = ObjectFilter::new()
-        .with_types(TypeLine::LAND.into())
-        .controlled_by(ControllerConstraint::You);
-    let land_count = script::count_matching(state, &land_filter, trig.controller);
+fn on_upkeep(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let land_count = script::count_matching(
+        state,
+        &ObjectFilter::new()
+            .with_types(TypeLine::LAND.into())
+            .controlled_by(ControllerConstraint::You),
+        trig.controller,
+    );
     if land_count < 6 {
         return Vec::new();
     }
-    let dragon = reg.interner().lookup("Dragon")
-        .expect("Dragon interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(dragon);
+    let dragon = reg.interner().lookup("Dragon").expect("Dragon interned during register()");
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(dragon);
     let token = TokenDefinition {
         name: dragon,
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(5)),
         keywords: vec![KeywordAbility::Flying],

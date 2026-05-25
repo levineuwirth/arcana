@@ -1,8 +1,10 @@
-//! Dwarven Soldier — `{1}{R}` 2/1 red Dwarf Soldier.
-//! "Whenever this creature blocks or becomes blocked by one or more Orcs,
-//! this creature gets +0/+2 until end of turn."
-//! GAP: trigger — no variant for "blocks or becomes blocked by Orcs";
-//! using SelfAttacks as closest approximation (combat trigger).
+//! Dwarven Soldier — `{1}{R}` 2/1 Dwarf Soldier.
+//! "Whenever this creature blocks or becomes blocked by one or more
+//! Orcs, this creature gets +0/+2 until end of turn."
+//!
+//! GAP: trigger condition "blocks or becomes blocked by one or more
+//! Orcs" — SelfBlocks and SelfBecomesBlocked have no subtype filter.
+//! Using SelfBlocks as closest match (cannot distinguish Orc filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -38,9 +40,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // GAP: trigger — "blocks or becomes blocked by one or more Orcs";
+                // no SelfBlocks/SelfBecomesBlocked filter for attacker subtype.
+                // Using SelfBlocks as closest match.
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
-                effect: on_orc_combat,
+                effect: on_blocks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_orc_combat(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: trigger — "blocks or becomes blocked by Orcs" not in catalog.
+fn on_blocks(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,
         power: 0,

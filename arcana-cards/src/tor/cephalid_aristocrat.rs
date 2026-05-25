@@ -1,16 +1,13 @@
 //! Cephalid Aristocrat — `{4}{U}` 3/3 blue Octopus Noble.
-//! Keywords: Mill (in rules text).
 //! "Whenever this creature becomes the target of a spell or ability, mill
 //! two cards."
-//! GAP: "becomes the target of a spell or ability" trigger is not in the
-//! catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,28 +33,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                // GAP: "becomes target of a spell or ability" not in catalog;
-                // using SpellCast as structural placeholder.
-                trigger_condition: TriggerCondition::SpellCast {
-                    filter: None,
-                    caster: arcana_core::targets::ControllerConstraint::Any,
-                },
-                intervening_if: None,
-                effect: mill_two,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfBecomesTarget {
+                caster: ControllerConstraint::Any,
+            },
+            intervening_if: None,
+            effect: on_targeted_mill,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn mill_two(
+fn on_targeted_mill(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Mill { player: trig.controller, count: 2 }]
+    vec![Effect::Mill {
+        player: trig.controller,
+        count: 2,
+    }]
 }

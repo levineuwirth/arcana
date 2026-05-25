@@ -1,5 +1,5 @@
-//! Phyrexian Gargantua — `{4}{B}{B}` 4/4 Phyrexian Horror.
-//! "When this creature enters, you draw two cards and you lose 2 life."
+//! Phyrexian Gargantua — `{4}{B}{B}` 4/4 Phyrexian Horror. "When this
+//! creature enters, you draw two cards and you lose 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw_lose_life,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,19 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_lose_life(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
-        Effect::DrawCards {
-            player: trig.controller,
-            count: 2,
-        },
-        Effect::LoseLife {
-            player: trig.controller,
-            amount: 2,
-        },
+        Effect::DrawCards { player: trig.controller, count: 2 },
+        Effect::LoseLife { player: trig.controller, amount: 2 },
     ]
 }

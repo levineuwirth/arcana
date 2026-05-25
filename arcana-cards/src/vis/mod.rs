@@ -7,3 +7,5 @@ pub mod dwarven_vigilantes;
 pub mod brood_of_cockroaches;
 pub mod raging_gorilla;
 pub mod femeref_enchantress;
+pub mod bull_elephant;
+pub mod tar_pit_warrior;

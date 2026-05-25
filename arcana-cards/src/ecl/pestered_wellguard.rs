@@ -1,10 +1,6 @@
-//! Pestered Wellguard — `{3}{U}` 3/2 blue Creature — Merfolk Soldier.
+//! Pestered Wellguard — `{3}{U}` 3/2 blue creature (Merfolk Soldier).
 //! "Whenever this creature becomes tapped, create a 1/1 blue and black
 //! Faerie creature token with flying."
-//!
-//! GAP: trigger condition "becomes tapped" — no matching
-//! TriggerCondition variant; using SelfAttacks as structural
-//! placeholder (tapping from attacking is the most common case).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -31,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,11 +36,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes tapped"; no matching
-                // TriggerCondition variant.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
-                effect: on_becomes_tapped,
+                effect: create_faerie_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_becomes_tapped(
+fn create_faerie_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

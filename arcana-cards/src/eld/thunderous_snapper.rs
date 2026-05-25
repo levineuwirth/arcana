@@ -1,6 +1,6 @@
-//! Thunderous Snapper — `{G/U}{G/U}{G/U}{G/U}` 4/4 green-blue Turtle
-//! Hydra.
-//! "Whenever you cast a spell with mana value 5 or greater, draw a card."
+//! Thunderous Snapper — `{G/U}{G/U}{G/U}{G/U}` 4/4 green-blue Turtle Hydra.
+//! "Whenever you cast a spell with mana value 5 or greater, draw a
+//! card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: big_spell_draw,
+                effect: high_cmc_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,10 +49,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn big_spell_draw(
+fn high_cmc_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

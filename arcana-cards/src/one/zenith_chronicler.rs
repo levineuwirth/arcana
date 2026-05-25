@@ -1,12 +1,14 @@
-//! Zenith Chronicler — `{2}` colorless 3/1 Artifact Creature — Phyrexian Construct.
-//! "Whenever a player casts their first multicolored spell each turn, each other player draws a card."
-//! GAP: trigger filter "first multicolored spell" (once-per-turn, multicolor filter) partially
-//! expressible. Effect "each other player draws" uses script::opponents + Sequence.
+//! Zenith Chronicler — `{2}` 3/1 colorless Artifact Creature — Phyrexian Construct.
+//! "Whenever a player casts their first multicolored spell each turn, each other player
+//! draws a card."
+//! GAP: no filter for "multicolored" spells in ObjectFilter/SpellCast. Using SpellCast
+//! with no filter and OncePerTurn as approximation; "each other player" uses all_players.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
@@ -14,7 +16,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Zenith Chronicler");
@@ -27,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{2}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
@@ -38,13 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — multicolored spell filter not in SpellCast ObjectFilter
+                // GAP: no multicolored filter; using SpellCast Any as approximation.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: each_other_player_draws,
+                effect: multicolor_spell_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -52,14 +53,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_other_player_draws(
+fn multicolor_spell_draw(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    let effects: Vec<Effect> = opponents.into_iter()
-        .map(|p| Effect::DrawCards { player: p, count: 1 })
-        .collect();
-    vec![Effect::Sequence(effects)]
+    let caster = trig.triggering_caster().unwrap_or(trig.controller);
+    let all = script::all_players(state);
+    let mut effects = Vec::new();
+    for p in all {
+        if p != caster {
+            effects.push(Effect::DrawCards { player: p, count: 1 });
+        }
+    }
+    effects
 }

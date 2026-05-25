@@ -1,5 +1,5 @@
-//! Amateur Hero — `{2}{W}` 3/3 white Human Hero.
-//! "When this creature enters, you gain 2 life."
+//! Amateur Hero — `{2}{W}` 3/3 white creature. "When this creature enters, you
+//! gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

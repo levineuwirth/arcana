@@ -1,6 +1,5 @@
-//! Ghirapur Gearcrafter — `{2}{R}` 2/1 red Human Artificer creature.
-//! "When this creature enters, create a 1/1 colorless Thopter artifact creature token
-//! with flying."
+//! Ghirapur Gearcrafter — `{2}{R}` 2/1 red Human Artificer. "When this creature enters,
+//! create a 1/1 colorless Thopter artifact creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -10,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,10 +26,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -52,7 +49,8 @@ fn etb_create_thopter(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let thopter = reg.interner().lookup("Thopter").expect("Thopter interned during register()");
+    let thopter = reg.interner().lookup("Thopter")
+        .expect("Thopter interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(thopter);
     let token = TokenDefinition {

@@ -1,6 +1,6 @@
-//! Stromkirk Patrol — `{4}{B}` 4/3 black Vampire Soldier.
-//! "Whenever this creature deals combat damage to a player, put a +1/+1
-//! counter on it."
+//! Stromkirk Patrol — `{4}{B}` 4/3 Vampire Soldier.
+//! "Whenever this creature deals combat damage to a player, put a
+//! +1/+1 counter on it."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
-                    source_filter: ObjectFilter::creature(),
+                    source_filter: ObjectFilter::new(),
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },

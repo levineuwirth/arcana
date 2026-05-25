@@ -1,5 +1,6 @@
-//! Abyssal Gorestalker — `{4}{B}{B}` 6/6 black creature. "When this creature
-//! enters, each player sacrifices two creatures of their choice."
+//! Abyssal Gorestalker — {4}{B}{B} 6/6 black Horror. "When this
+//! creature enters, each player sacrifices two creatures of their
+//! choice."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +12,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -19,24 +20,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let horror = reg.interner_mut().intern("Horror");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(horror);
+    
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{B}{B}").expect("valid cost")),
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(6)),
         ..Default::default()
     };
+    
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_each_sacrifices,
+                effect: etb_each_player_sacrifices,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,18 +46,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_each_sacrifices(
+/// ETB trigger resolution: each player sacrifices two creatures of
+/// their choice.
+fn etb_each_player_sacrifices(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    for player in script::all_players(state) {
-        effects.push(Effect::Sacrifice {
-            player,
+    let players = script::all_players(state);
+    let effects: Vec<Effect> = players
+        .into_iter()
+        .map(|p| Effect::Sacrifice {
+            player: p,
             filter: ObjectFilter::creature(),
             count: 2,
-        });
-    }
-    effects
+        })
+        .collect();
+    vec![Effect::Sequence(effects)]
 }

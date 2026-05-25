@@ -1,5 +1,5 @@
-//! Vithian Renegades — `{1}{R}{G}` 3/2 red+green Human Shaman. "When this
-//! creature enters, destroy target artifact."
+//! Vithian Renegades — `{1}{R}{G}` 3/2 red/green Human Shaman.
+//! "When this creature enters, destroy target artifact."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,9 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
-                    ),
+                    filter: TargetFilter::Permanent(ObjectFilter::new().with_types(TypeLine::ARTIFACT.into())),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

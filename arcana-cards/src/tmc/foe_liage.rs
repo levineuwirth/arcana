@@ -1,13 +1,15 @@
-//! Foe-liage — `{3}{G}` 3/3 green Plant Mutant.
-//! "Whenever a land enters during your turn, put a +1/+1 counter on this creature."
-//! GAP: ZoneChange filter cannot restrict to "during your turn"; trigger fires on any land ETB.
+//! Foe-liage — `{3}{G}` 3/3 green creature. "Whenever a land enters during your
+//! turn, put a +1/+1 counter on this creature."
+//!
+//! GAP: trigger — "during your turn" constraint on ZoneChange not expressible;
+//! trigger fires on any land entering under your control.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,9 +38,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "during your turn" restriction not expressible on ZoneChange trigger
+                // GAP: trigger — "during your turn" filter not expressible
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                    filter: ObjectFilter::new()
+                        .with_types(TypeLine::LAND.into())
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },

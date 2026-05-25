@@ -1,4 +1,4 @@
-//! Midnight Reaper — `{2}{B}` 3/2 black Zombie Knight. "Whenever a nontoken
+//! Midnight Reaper — `{2}{B}` 3/2 black creature. "Whenever a nontoken
 //! creature you control dies, this creature deals 1 damage to you and you draw
 //! a card."
 
@@ -39,13 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You)
-                        .nontoken(),
+                        .nontoken()
+                        .controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Battlefield),
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: on_creature_dies,
+                effect: creature_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_creature_dies(
+fn creature_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

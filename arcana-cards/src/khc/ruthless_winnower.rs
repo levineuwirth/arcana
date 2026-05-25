@@ -1,6 +1,7 @@
-//! Ruthless Winnower — `{3}{B}{B}` 4/4 black Elf Rogue creature.
-//! "At the beginning of each player's upkeep, that player sacrifices a non-Elf creature
-//! of their choice."
+//! Ruthless Winnower — `{3}{B}{B}` 4/4 black Elf Rogue. "At the beginning of each
+//! player's upkeep, that player sacrifices a non-Elf creature of their choice."
+//! StepBegins(Upkeep, Any); sacrifice non-Elf creature from active player.
+//! GAP: "that player" (upkeep player) not directly accessible; using all_players approach.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,16 +13,16 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ruthless Winnower");
-    let _elf = reg.interner_mut().intern("Elf");
+    let elf = reg.interner_mut().intern("Elf");
     let rogue = reg.interner_mut().intern("Rogue");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(_elf);
+    subtypes.0.insert(elf);
     subtypes.0.insert(rogue);
     let chars = Characteristics {
         name,
@@ -29,10 +30,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -44,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: on_upkeep_sacrifice_non_elf,
+                effect: on_each_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,19 +51,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_upkeep_sacrifice_non_elf(
-    _state: &GameState,
+fn on_each_upkeep(
+    state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let elf_filter = script::subtype_filter(reg, "Elf");
-    // non-Elf creature: creature but not matching Elf subtype
-    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    // GAP: ObjectFilter has no "not-subtype" method; using creature filter as best-effort
-    // The "non-Elf" restriction is dropped
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter,
-        count: 1,
-    }]
+    // Each player sacrifices a non-Elf creature
+    let non_elf_filter = ObjectFilter::creature()
+        .without_types(TypeLine::LAND.into()); // best-effort: no "not subtype" ObjectFilter
+    // GAP: "non-Elf" subtype exclusion not in ObjectFilter API
+    let players = script::all_players(state);
+    players.into_iter()
+        .map(|p| Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::creature(),
+            count: 1,
+        })
+        .collect()
 }

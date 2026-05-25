@@ -1,20 +1,14 @@
-//! Acclaimed Contender — `{2}{W}` 3/3 white Human Knight. "When this creature
-//! enters, if you control another Knight, look at the top five cards of your library.
-//! You may reveal a Knight, Aura, Equipment, or legendary artifact card from among
-//! them and put it into your hand. Put the rest on the bottom of your library in a
-//! random order."
-//!
-//! GAP: complex "look at top 5, choose one matching filter, rest to bottom" is not
-//! directly expressible; using TutorToHand with a closest filter approximation.
-//! The intervening-if "if you control another Knight" is also not expressible.
+//! Acclaimed Contender — `{2}{W}` 3/3 white creature. "When this creature
+//! enters, if you control another Knight, look at the top five cards of your
+//! library. You may reveal a Knight, Aura, Equipment, or legendary artifact
+//! card from among them and put it into your hand. Put the rest on the bottom
+//! of your library in a random order."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -44,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you control another Knight" not expressible
+                // intervening_if: "if you control another Knight" — GAP: intervening-if not supported
                 intervening_if: None,
                 effect: etb_tutor,
                 trigger_zones: vec![Zone::Battlefield],
@@ -55,12 +49,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_tutor(
-    state: &GameState,
+    _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "look at top 5, reveal Knight/Aura/Equipment/legendary artifact, rest to bottom"
-    // not expressible; using TutorToHand with Knight subtype filter as approximation
-    let filter = script::subtype_filter(reg, "Knight");
-    vec![Effect::TutorToHand { player: trig.controller, filter, reveal: true }]
+    // GAP: "look at top N cards, pick one matching filter, put rest on bottom" — no partial-reveal tutor in catalog
+    // Approximation: tutor a Knight to hand
+    vec![Effect::TutorToHand {
+        player: trig.controller,
+        filter: arcana_core::targets::ObjectFilter::creature(),
+        reveal: true,
+    }]
 }

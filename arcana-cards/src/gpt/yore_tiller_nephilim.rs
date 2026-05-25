@@ -1,17 +1,15 @@
 //! Yore-Tiller Nephilim — `{W}{U}{B}{R}` 2/2 white-blue-black-red Nephilim.
-//! "Whenever this creature attacks, return target creature card from your
-//! graveyard to the battlefield tapped and attacking."
-//! GAP: "tapped and attacking" — ReturnFromGraveyardToBattlefield does not
-//! support entering tapped+attacking state. Effect is implemented without
-//! those modifiers.
+//! "Whenever this creature attacks, return target creature card from
+//! your graveyard to the battlefield tapped and attacking."
+//! GAP: returning tapped and attacking — ReturnFromGraveyardToBattlefield
+//! doesn't support tapped/attacking modifier; emitting plain return.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_reanimate,
+                effect: attack_reanimate,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -55,13 +53,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_reanimate(
+fn attack_reanimate(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "tapped and attacking" modifiers on ETB not supported.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP: "tapped and attacking" modifier on return — not supported by
+    // ReturnFromGraveyardToBattlefield
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

@@ -27,3 +27,6 @@ pub mod protocol_knight;
 pub mod skittering_surveyor;
 pub mod etched_familiar;
 pub mod scrappy_bruiser;
+pub mod zhalfirin_lancer;
+pub mod axgard_artisan;
+pub mod deeproot_wayfinder;

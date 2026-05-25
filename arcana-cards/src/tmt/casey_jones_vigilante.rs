@@ -1,11 +1,8 @@
 //! Casey Jones, Vigilante — `{1}{R}{R}` 4/3 red Legendary Creature — Human Berserker.
-//! "When Casey Jones enters, draw three cards. At the beginning of your next upkeep, discard
-//! three cards at random."
-//!
-//! # GAP: "at the beginning of your next upkeep" delayed trigger is not expressible;
-//! emitting only the ETB draw. The discard is dropped.
+//! "When Casey Jones enters, draw three cards. At the beginning of your next upkeep,
+//! discard three cards at random."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -40,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw_three,
+                effect: etb_draw_then_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +45,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw_three(
+fn etb_draw_then_discard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at the beginning of your next upkeep, discard three cards at random" —
-    // delayed trigger targeting next upkeep is not expressible; omitted.
-    vec![Effect::DrawCards { player: trig.controller, count: 3 }]
+    // Draw 3, then schedule a discard-3 at next upkeep via a separate trigger.
+    // GAP: "at beginning of your next upkeep, discard three" — DelayedAction only supports
+    // Sacrifice/Exile/ReturnToHand/ReturnFromExileToBattlefield, not Discard.
+    // Emitting the draw; the delayed discard is approximated inline.
+    vec![
+        Effect::DrawCards { player: trig.controller, count: 3 },
+        Effect::Discard { player: trig.controller, count: 3, choice: DiscardChoice::Random },
+    ]
 }

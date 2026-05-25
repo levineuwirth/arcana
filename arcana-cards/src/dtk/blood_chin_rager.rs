@@ -1,24 +1,25 @@
-//! Blood-Chin Rager — `{1}{B}` 2/2 Human Warrior.
-//! "Whenever this creature attacks, Warrior creatures you control gain
-//! menace until end of turn."
+//! Blood-Chin Rager — `{1}{B}` 2/2 Human Warrior. "Whenever this
+//! creature attacks, Warrior creatures you control gain menace until end
+//! of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Blood-Chin Rager");
     let human = reg.interner_mut().intern("Human");
     let warrior = reg.interner_mut().intern("Warrior");
+    let _warrior_lookup = reg.interner_mut().intern("Warrior");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(warrior);
@@ -39,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attack_grant_menace,
+                effect: on_attack_grant_menace,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,19 +48,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attack_grant_menace(
+fn on_attack_grant_menace(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = script::subtype_filter(reg, "Warrior")
-        .controlled_by(arcana_core::targets::ControllerConstraint::You);
-    script::ids_matching(state, &filter, trig.controller)
-        .into_iter()
-        .map(|id| Effect::GrantKeyword {
-            target: id,
+    let filter = script::subtype_filter(reg, "Warrior");
+    let ids = script::ids_matching(state, &filter, trig.controller);
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::GrantKeyword {
+            target: NULL_OBJECT_ID,
             keyword: KeywordAbility::Menace,
             duration: Duration::EndOfTurn,
-        })
-        .collect()
+        }),
+    }]
 }

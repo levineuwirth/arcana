@@ -12,3 +12,5 @@ pub mod smogsteed_rider;
 pub mod yore_tiller_nephilim;
 pub mod gruul_scrapper;
 pub mod dune_brood_nephilim;
+pub mod burning_tree_shaman;
+pub mod abyssal_nocturnus;

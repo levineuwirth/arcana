@@ -1,5 +1,5 @@
-//! Forsaken Drifters — `{3}{B}` 4/2 black Zombie. "When Forsaken Drifters
-//! dies, mill four cards."
+//! Forsaken Drifters — `{3}{B}` 4/2 black Zombie. "When this creature dies,
+//! mill four cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,21 +34,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: mill_four,
+                effect: on_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn mill_four(
+fn on_dies(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Mill {
-        player: trig.controller,
-        count: 4,
-    }]
+    vec![Effect::Mill { player: trig.controller, count: 4 }]
 }

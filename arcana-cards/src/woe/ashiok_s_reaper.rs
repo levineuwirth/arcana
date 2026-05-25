@@ -1,6 +1,6 @@
 //! Ashiok's Reaper — `{3}{B}` 3/3 black Nightmare.
-//! "Whenever an enchantment you control is put into a graveyard from the
-//! battlefield, draw a card."
+//! "Whenever an enchantment you control is put into a graveyard from
+//! the battlefield, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -43,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: draw_card,
+                effect: on_enchantment_dies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_card(
+fn on_enchantment_dies(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

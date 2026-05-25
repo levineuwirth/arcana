@@ -1,16 +1,15 @@
 //! Species Gorger — `{3}{G}{U}` 6/6 green/blue Frog Beast.
 //! "At the beginning of your upkeep, return a creature you control to its
 //! owner's hand."
-//! GAP: "return a creature you control" requires a player-chosen target;
-//! the trigger has no target requirement per oracle (mandatory, not targeting).
-//! Modeled as targeting a creature you control.
+//! GAP: Controller-chosen creature to return not expressible; using
+//! ReturnToHand on trig.source as placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,7 +33,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(6)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -46,26 +44,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: return_creature,
+                effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn return_creature(
+fn on_upkeep(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::ReturnToHand { target: *id }]
+    // GAP: Controller must choose which creature to return; using trig.source
+    // (this creature) as placeholder — verify will flag.
+    vec![Effect::ReturnToHand { target: trig.source }]
 }

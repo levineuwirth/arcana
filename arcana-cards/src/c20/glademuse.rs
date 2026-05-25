@@ -1,7 +1,8 @@
 //! Glademuse — `{2}{G}` 2/4 green Creature — Beast.
 //! "Whenever a player casts a spell, if it's not their turn, that player
 //! draws a card."
-//! GAP: intervening-if 'not their turn' not computable; triggering unconditionally on SpellCast(Any).
+//! GAP: "if it's not their turn" intervening-if condition not expressible;
+//! using SpellCast/Any and emitting DrawCards to the caster unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +13,7 @@ use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -39,9 +39,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     filter: None,
                     caster: ControllerConstraint::Any,
                 },
-                // GAP: intervening-if 'not their turn' not computable
+                // GAP: "if it's not their turn" condition not expressible
                 intervening_if: None,
-                effect: spell_draw,
+                effect: on_flash_spell_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,10 +49,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn spell_draw(
+fn on_flash_spell_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+    // GAP: should only fire "if it's not the caster's turn"; using caster
+    let Some(caster) = trig.triggering_caster() else {
+        return vec![Effect::DrawCards { player: trig.controller, count: 1 }];
+    };
+    vec![Effect::DrawCards { player: caster, count: 1 }]
 }

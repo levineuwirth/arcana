@@ -1,4 +1,4 @@
-//! Thieving Otter — `{2}{U}` 2/2 blue Creature — Otter.
+//! Thieving Otter — `{2}{U}` 2/2 blue Otter creature.
 //! "Whenever this creature deals damage to an opponent, draw a card."
 
 use arcana_core::effects::Effect;
@@ -50,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn damage_to_opponent_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

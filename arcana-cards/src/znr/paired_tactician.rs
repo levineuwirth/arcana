@@ -1,7 +1,8 @@
 //! Paired Tactician — `{2}{W}` 3/2 white Creature — Human Warrior.
 //! "Whenever this creature and at least one other Warrior attack, put a +1/+1
 //! counter on this creature."
-//! GAP: trigger — no 'self and at least one other Warrior attack' variant; using SelfAttacks as closest.
+//! GAP: no "this creature and at least one other Warrior attacks" compound
+//! condition; using SelfAttacks as trigger, intervening_if: None.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +12,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -36,10 +36,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'self and another Warrior attack' variant; using SelfAttacks as closest
+                // GAP: "this and at least one other Warrior attack" compound condition
+                // not expressible; using SelfAttacks
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attacks_counter,
+                effect: on_attack_counter_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn attacks_counter(
+fn on_attack_counter_self(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,16 +1,17 @@
-//! Phyrexian Delver — `{3}{B}{B}` 3/2 black Phyrexian Zombie.
-//! "When this creature enters, return target creature card from your graveyard
-//! to the battlefield. You lose life equal to that card's mana value."
-//! GAP: "lose life equal to target card's mana value" — mana value of graveyard
-//! card is not accessible via script helpers. Reanimate effect expressed; life
-//! loss GAP'd.
+//! Phyrexian Delver — `{3}{B}{B}` 3/2 black creature. "When this creature
+//! enters, return target creature card from your graveyard to the battlefield.
+//! You lose life equal to that card's mana value."
+//!
+//! GAP: effect — "lose life equal to mana value of the returned card"; no
+//! script helper for mana-value-of-a-card-in-graveyard. Emitting the
+//! ReturnFromGraveyardToBattlefield only; the life-loss rider is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -49,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         zone: Zone::Graveyard(0),
                         filter: ObjectFilter::creature(),
                     },
-                    count: TargetCount::Exactly(1),
+                    count: arcana_core::targets::TargetCount::Exactly(1),
                     controller: None,
                 }],
             }),
@@ -61,11 +62,12 @@ fn etb_reanimate(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        // GAP: lose life equal to that card's mana value — mana value not accessible
-        // via script helpers.
-    ]
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: effect — lose life equal to returned card's mana value; no script helper for mana-value-of-graveyard-card
+    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

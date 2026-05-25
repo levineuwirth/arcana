@@ -1,7 +1,8 @@
 //! Kyoshi Warrior Exemplars — `{3}{G}` 4/3 green Human Warrior Ally.
 //! "Whenever this creature attacks, if you control eight or more lands,
 //! creatures you control get +2/+2 until end of turn."
-//! GAP: intervening-if "control 8+ lands" — using None and checking in effect.
+//! GAP: Intervening-if "if you control eight or more lands" not expressible
+//! as an engine condition; using intervening_if: None as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,7 +36,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -43,10 +43,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "control 8+ lands" not expressible;
-                // checked in effect fn instead.
+                // GAP: "if you control eight or more lands" not expressible.
                 intervening_if: None,
-                effect: pump_all_creatures,
+                effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,11 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_all_creatures(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_attacks(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     let land_count = script::count_matching(
         state,
         &ObjectFilter::new()
@@ -69,13 +64,13 @@ fn pump_all_creatures(
     if land_count < 8 {
         return Vec::new();
     }
-    let ids = script::ids_matching(
+    let targets = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
     vec![Effect::ForEach {
-        targets: ids,
+        targets,
         effect: Box::new(Effect::Pump {
             target: NULL_OBJECT_ID,
             power: 2,

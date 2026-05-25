@@ -1,17 +1,17 @@
-//! Pillaging Horde — `{2}{R}{R}` 5/5 red Creature — Human Barbarian.
+//! Pillaging Horde — `{2}{R}{R}` 5/5 red creature (Human Barbarian).
 //! "When this creature enters, sacrifice it unless you discard a card
 //! at random."
 //!
-//! GAP: "unless you [cost]" conditional sacrifice — Effect::Conditional
-//! requires a condition type not available for player-choice payment.
-//! Approximated as unconditional Sacrifice.
+//! GAP: "unless you discard … sacrifice it" conditional choice — the
+//! engine has no Effect for a player-choice branch (pay cost or else).
+//! Emitting Discard as best effort; the sacrifice-unless branch is not
+//! expressible.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: on_etb,
+                effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,17 +50,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
+fn on_enters(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you discard a card at random" — conditional
-    // sacrifice gated on player choosing to discard is not expressible.
-    // Approximating as discard a card at random (the cost side only).
-    vec![Effect::Discard {
-        player: trig.controller,
-        count: 1,
-        choice: DiscardChoice::Random,
-    }]
+    // GAP: "sacrifice unless you discard" — conditional player-choice
+    // branch not expressible; emitting random discard as best effort.
+    vec![Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::Random }]
 }

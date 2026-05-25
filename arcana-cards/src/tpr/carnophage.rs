@@ -1,8 +1,9 @@
-//! Carnophage — `{B}` 2/2 black creature. "At the beginning of your upkeep,
-//! tap this creature unless you pay 1 life."
+//! Carnophage — `{B}` 2/2 black Zombie.
+//! "At the beginning of your upkeep, tap this creature unless you pay 1 life."
 //!
-//! GAP: effect — "unless you pay 1 life" cost alternative (pay or tap) is not
-//! expressible in the catalog. Emitting Tap as partial approximation.
+//! GAP: "unless you pay 1 life" optional cost before tapping is not expressible.
+//! Emitting the upkeep trigger with Tap as best-effort (always taps, missing the
+//! "pay 1 life to prevent" choice).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -55,7 +56,6 @@ fn on_upkeep(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "unless you pay 1 life" alternative not expressible;
-    // emitting unconditional tap as approximation.
+    // GAP: "unless you pay 1 life" optional cost not expressible — taps unconditionally.
     vec![Effect::Tap { target: trig.source }]
 }

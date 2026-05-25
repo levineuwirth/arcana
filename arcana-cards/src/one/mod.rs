@@ -33,3 +33,6 @@ pub mod porcelain_zealot;
 pub mod vraan_executioner_thane;
 pub mod meldweb_curator;
 pub mod shrapnel_slinger;
+pub mod contagious_vorrac;
+pub mod gulping_scraptrap;
+pub mod escaped_experiment;

@@ -1,8 +1,8 @@
-//! Compass Gnome — `{2}` colorless 2/1 Artifact Creature — Gnome.
-//! "When this creature enters, you may search your library for a basic land card or Cave card,
-//! reveal it, then shuffle and put that card on top."
-//! GAP: "or Cave card" — TutorToHand supports basic land filter; Cave subtype filter not composable.
-//! Using TutorToHand with land filter as best approximation.
+//! Compass Gnome — `{2}` 2/1 colorless Artifact Creature — Gnome.
+//! "When this creature enters, you may search your library for a basic land card or Cave
+//! card, reveal it, then shuffle and put that card on top."
+//! GAP: "Cave card" type filter not in ObjectFilter. Using TutorToHand with land filter
+//! as partial approximation (puts to hand not top of library).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -25,7 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         name,
         mana_cost: Some(ManaCost::parse("{2}").expect("valid cost")),
         colors: ColorSet::colorless(),
-        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: tutor_land,
+                effect: etb_tutor_land,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,12 +46,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tutor_land(
+fn etb_tutor_land(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "or Cave card" filter not supported; using land-type filter only
+    // GAP: "put on top of library" not matching TutorToHand; "Cave card" not filterable.
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

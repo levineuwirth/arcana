@@ -1,4 +1,4 @@
-//! Foundry Street Denizen — `{R}` 1/1 red Creature — Goblin Warrior.
+//! Foundry Street Denizen — `{R}` 1/1 red Goblin Warrior creature.
 //! "Whenever another red creature you control enters, this creature gets +1/+0 until end of turn."
 
 use arcana_core::effects::Effect;
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: red_creature_etb_pump_self,
+                effect: pump_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn red_creature_etb_pump_self(
+fn pump_self(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

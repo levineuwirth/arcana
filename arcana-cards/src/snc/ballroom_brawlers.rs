@@ -1,9 +1,10 @@
 //! Ballroom Brawlers — `{3}{W}{W}` 3/5 white Human Warrior.
-//! "Whenever this creature attacks, this creature and up to one other target
-//! creature you control both gain your choice of first strike or lifelink
-//! until end of turn."
-//! GAP: "your choice of first strike or lifelink" player-choice keyword
-//! not in Effect catalog; granting First Strike as approximation.
+//! "Whenever this creature attacks, this creature and up to one other
+//! target creature you control both gain your choice of first strike or
+//! lifelink until end of turn."
+//!
+//! GAP: effect — "your choice of first strike or lifelink" modal keyword
+//! grant is not expressible; granting both as a best effort.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -15,7 +16,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -31,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
@@ -42,34 +42,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: grant_first_strike,
+                effect: grant_keyword,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![
-                    TargetRequirement {
-                        filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-                        ),
-                        count: TargetCount::UpTo(1),
-                        controller: None,
-                    }
-                ],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn grant_first_strike(
-    state: &GameState,
+fn grant_keyword(
+    _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Self always gets the keyword; target gets it too if chosen
+    // GAP: "your choice of first strike or lifelink" modal choice not expressible;
+    // granting first strike to self and to the target.
     let mut effects = vec![
         Effect::GrantKeyword {
             target: trig.source,
             keyword: KeywordAbility::FirstStrike,
             duration: Duration::EndOfTurn,
-        }
+        },
     ];
     if let Some(TargetChoice::Object(id)) = trig.targets.targets.first() {
         effects.push(Effect::GrantKeyword {

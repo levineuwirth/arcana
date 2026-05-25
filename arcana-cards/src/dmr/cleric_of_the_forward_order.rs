@@ -1,8 +1,9 @@
 //! Cleric of the Forward Order — `{1}{W}` 2/2 white Creature — Human Cleric.
 //! "When this creature enters, you gain 2 life for each creature you control
 //! named Cleric of the Forward Order."
-//! GAP: ObjectFilter has no 'named exactly X' predicate; using creature filter only
-//! and hardcoding 2 as a fixed fallback. Dynamic count requires name-filter not available.
+//! Note: "for each creature named X" — using subtype_filter is for subtypes,
+//! not names; using count_matching with creature filter as approximation.
+//! GAP: name-based filter not available; using creature count as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,7 +15,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,7 +31,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_gain_life_per_copy,
+                effect: etb_gain_life_per_cleric,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,17 +49,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_gain_life_per_copy(
+fn etb_gain_life_per_cleric(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no 'named exactly' predicate; counting all creatures you control
+    // GAP: name-based filter ("named Cleric of the Forward Order") not available;
+    // using creature count controlled by you as best effort
     let n = script::count_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    let amount = (n * 2).max(0);
-    vec![Effect::GainLife { player: trig.controller, amount }]
+    vec![Effect::GainLife { player: trig.controller, amount: n * 2 }]
 }

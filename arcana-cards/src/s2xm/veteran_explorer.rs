@@ -1,9 +1,6 @@
-//! Veteran Explorer — `{G}` 1/1 green Human Soldier Scout. "When this creature
-//! dies, each player may search their library for up to two basic land cards, put
+//! Veteran Explorer — `{G}` 1/1 green creature. "When this creature dies,
+//! each player may search their library for up to two basic land cards, put
 //! them onto the battlefield, then shuffle."
-//!
-//! GAP: "each player may search for up to two basic lands" — TutorToBattlefield
-//! targets one player; using all_players loop.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: each_player_tutor_land,
+                effect: each_player_search_lands,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,15 +49,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_tutor_land(
+fn each_player_search_lands(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all = script::all_players(state);
-    let filter = ObjectFilter::new().with_types(TypeLine::LAND.into());
-    // GAP: "up to two" not expressible with TutorToBattlefield (single card); doing one per player
     all.into_iter()
-        .map(|p| Effect::TutorToBattlefield { player: p, filter: filter.clone(), tapped: false })
+        .map(|p| Effect::TutorToBattlefield {
+            player: p,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: false,
+        })
         .collect()
 }

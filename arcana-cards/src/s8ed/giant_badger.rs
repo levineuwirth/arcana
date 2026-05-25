@@ -1,7 +1,5 @@
-//! Giant Badger — `{1}{G}{G}` 2/2 green Badger creature.
-//! "Whenever this creature blocks, it gets +2/+2 until end of turn."
-//! GAP: trigger — SelfBlocks not in TriggerCondition catalog;
-//! using SelfAttacks as placeholder.
+//! Giant Badger — `{1}{G}{G}` 2/2 green Badger. "Whenever this creature blocks, it
+//! gets +2/+2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,18 +24,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
-    // GAP: trigger — SelfBlocks not in TriggerCondition catalog; using SelfAttacks as placeholder
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocks,
                 intervening_if: None,
                 effect: on_blocks_pump,
                 trigger_zones: vec![Zone::Battlefield],

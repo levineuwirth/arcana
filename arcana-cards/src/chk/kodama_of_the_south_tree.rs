@@ -1,16 +1,15 @@
 //! Kodama of the South Tree — `{2}{G}{G}` 4/4 green Legendary Creature — Spirit.
-//! "Whenever you cast a Spirit or Arcane spell, each other creature you control gets +1/+1 and
-//! gains trample until end of turn."
-//! GAP: SpellCast filter cannot select 'Spirit or Arcane' (Arcane is a supertype, not a creature subtype
-//! and TypeLine filter cannot express 'Arcane' as a standalone instant/sorcery type); filtering on
-//! Spirit subtype only as best effort.
+//! "Whenever you cast a Spirit or Arcane spell, each other creature you control
+//! gets +1/+1 and gains trample until end of turn."
+//! GAP: "Spirit or Arcane" type/subtype filter not cleanly expressible for
+//! Arcane (Arcane is a spell subtype); using SpellCast/You filter for
+//! Spirit subtype only as approximation.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -18,6 +17,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Kodama of the South Tree");
@@ -39,13 +39,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: filter cannot express 'Spirit or Arcane' fully; no Arcane type in TypeLine constants
+                // GAP: Spirit subtype on spells not filterable; using all spells
+                // you cast as approximation
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: spirit_spell_pump_all,
+                effect: on_spirit_spell_pump_all,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn spirit_spell_pump_all(
+fn on_spirit_spell_pump_all(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
@@ -63,9 +64,10 @@ fn spirit_spell_pump_all(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         trig.controller,
     );
-    let targets: Vec<_> = ids.into_iter().filter(|id| *id != trig.source).collect();
+    // exclude self
+    let ids: Vec<_> = ids.into_iter().filter(|&id| id != trig.source).collect();
     vec![Effect::ForEach {
-        targets,
+        targets: ids,
         effect: Box::new(Effect::Pump {
             target: NULL_OBJECT_ID,
             power: 1,

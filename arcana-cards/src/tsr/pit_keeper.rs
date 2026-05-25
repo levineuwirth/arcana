@@ -1,9 +1,6 @@
-//! Pit Keeper — `{1}{B}` 2/1 black Human Wizard. "When this creature enters, if
-//! you have four or more creature cards in your graveyard, you may return target
-//! creature card from your graveyard to your hand."
-//!
-//! The "if you have four or more creature cards in your graveyard" is checked at
-//! resolution; using graveyard_size as a proxy (counts all cards, not just creatures).
+//! Pit Keeper — `{1}{B}` 2/1 black creature. "When this creature enters, if
+//! you have four or more creature cards in your graveyard, you may return
+//! target creature card from your graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,8 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                // intervening_if: "if you have four or more creature cards in your graveyard" — GAP
                 intervening_if: None,
-                effect: etb_return,
+                effect: etb_return_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -50,21 +50,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         zone: Zone::Graveyard(0),
                         filter: ObjectFilter::creature(),
                     },
-                    count: TargetCount::UpTo(1),
+                    count: TargetCount::Exactly(1),
                     controller: None,
                 }],
             }),
     )
 }
 
-fn etb_return(
+fn etb_return_creature(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let gy_size = script::graveyard_size(state, trig.controller);
-    // GAP: graveyard_size counts all cards, not just creatures; using as proxy for >= 4
-    if gy_size < 4 {
+    if script::graveyard_size(state, trig.controller) < 4 {
         return Vec::new();
     }
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };

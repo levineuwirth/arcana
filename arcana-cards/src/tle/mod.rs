@@ -34,3 +34,7 @@ pub mod kindly_customer;
 pub mod koala_sheep;
 pub mod kyoshi_warrior_exemplars;
 pub mod fire_nation_sentinels;
+pub mod iroh_firebending_instructor;
+pub mod jet_rebel_leader;
+pub mod aang_and_katara;
+pub mod moku_meandering_drummer;

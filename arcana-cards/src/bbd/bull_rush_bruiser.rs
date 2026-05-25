@@ -1,8 +1,6 @@
-//! Bull-Rush Bruiser — `{3}{R}` 4/3 red Minotaur Warrior. "Whenever this creature
-//! attacks, if your team controls another Warrior, this creature gains first strike
-//! until end of turn."
-//!
-//! The intervening-if condition is not expressible; using intervening_if: None.
+//! Bull-Rush Bruiser — `{3}{R}` 4/3 red creature. "Whenever this creature
+//! attacks, if your team controls another Warrior, this creature gains first
+//! strike until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -39,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "if your team controls another Warrior" not expressible
+                // intervening_if: "if your team controls another Warrior" — GAP: intervening-if not supported
                 intervening_if: None,
                 effect: gain_first_strike,
                 trigger_zones: vec![Zone::Battlefield],

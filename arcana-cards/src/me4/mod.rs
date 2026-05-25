@@ -41,3 +41,4 @@ pub mod cyclopean_mummy;
 pub mod fire_imp;
 pub mod onulet;
 pub mod thing_from_the_deep;
+pub mod citanul_druid;

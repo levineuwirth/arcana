@@ -1,8 +1,5 @@
-//! Towering-Wave Mystic — `{1}{U}` 2/1 blue creature. "Whenever this creature
-//! deals damage, target player mills that many cards."
-//!
-//! GAP: effect — "that many cards" (the damage amount) is not accessible from
-//! PendingTrigger. Using a fixed mill of 1 as approximation.
+//! Towering-Wave Mystic — `{1}{U}` 2/1 blue Merfolk Wizard.
+//! "Whenever this creature deals damage, target player mills that many cards."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     combat_only: false,
                 },
                 intervening_if: None,
-                effect: on_damage,
+                effect: on_deals_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -52,13 +49,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_damage(
+fn on_deals_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let n = trig.damage_amount().unwrap_or(0);
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: "that many cards" = damage amount, not accessible from PendingTrigger.
-    vec![Effect::Mill { player: *p, count: 1 }]
+    vec![Effect::Mill { player: *p, count: n }]
 }

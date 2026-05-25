@@ -12,3 +12,5 @@ pub mod searing_light;
 pub mod tar_snare;
 pub mod loam_larva;
 pub mod reflector_mage;
+pub mod eldrazi_mimic;
+pub mod harvester_troll;

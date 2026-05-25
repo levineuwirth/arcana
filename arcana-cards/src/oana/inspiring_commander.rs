@@ -1,6 +1,6 @@
-//! Inspiring Commander — `{4}{W}{W}` 1/4 white Human Soldier.
-//! "Whenever another creature you control with power 2 or less enters, you gain 1 life and draw
-//! a card."
+//! Inspiring Commander — `{4}{W}{W}` 1/4 white Human Soldier creature.
+//! "Whenever another creature you control with power 2 or less enters, you gain 1 life
+//! and draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: gain_life_draw,
+                effect: small_creature_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gain_life_draw(
+fn small_creature_enters(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::GainLife { player: trig.controller, amount: 1 },

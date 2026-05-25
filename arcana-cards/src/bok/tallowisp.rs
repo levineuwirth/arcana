@@ -1,11 +1,12 @@
-//! Tallowisp — `{1}{W}` 1/3 white Spirit.
-//! "Whenever you cast a Spirit or Arcane spell, you may search your library
-//! for an Aura card with enchant creature, reveal it, put it into your hand,
-//! then shuffle."
-//! GAP: trigger — no Spirit/Arcane filter on SpellCast; using SpellCast with
-//! filter: None as approximation.
-//! GAP: effect — TutorToHand with Aura filter is used as best-effort; the
-//! "enchant creature" restriction is not expressible in ObjectFilter.
+//! Tallowisp — `{1}{W}` 1/3 Spirit.
+//! "Whenever you cast a Spirit or Arcane spell, you may search your
+//! library for an Aura card with enchant creature, reveal it, put it
+//! into your hand, then shuffle."
+//!
+//! TutorToHand with filter for Aura enchantments. "Arcane" is a
+//! spell subtype, not a card type. GAP: filtering for "Aura with
+//! enchant creature" specifically (Aura subtype + ENCHANTMENT type)
+//! and "Spirit or Arcane" spell filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,6 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "Spirit or Arcane spell"; no SpellCast filter
+                // for "Spirit" or "Arcane" subtypes.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
@@ -57,12 +60,10 @@ fn on_spirit_cast(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — Spirit/Arcane filter not in catalog.
-    // GAP: Aura/enchant-creature filter not expressible; using enchantment type.
     vec![Effect::TutorToHand {
         player: trig.controller,
         filter: ObjectFilter {
-            types_any: Some(TypeLine(TypeLine::ENCHANTMENT)),
+            types_any: Some(TypeLine::ENCHANTMENT.into()),
             ..Default::default()
         },
         reveal: true,

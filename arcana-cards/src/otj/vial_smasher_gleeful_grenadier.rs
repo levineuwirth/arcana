@@ -1,7 +1,11 @@
-//! Vial Smasher, Gleeful Grenadier — `{B}{R}` 3/2 black-red Legendary Goblin Mercenary.
-//! "Whenever another outlaw you control enters, Vial Smasher deals 1 damage to target opponent."
-//! GAP: "outlaw" subtype group (Assassin, Mercenary, Pirate, Rogue, Warlock) not filterable as a compound;
-//! using ZoneChange creature you control as proxy (fires for all creatures you control entering).
+//! Vial Smasher, Gleeful Grenadier — `{B}{R}` 3/2 legendary black-red creature.
+//! "Whenever another outlaw you control enters, Vial Smasher deals 1 damage to
+//! target opponent."
+//!
+//! NOTE: "outlaw" is a creature type group (Assassin, Mercenary, Pirate, Rogue,
+//! Warlock). ZoneChange filter captures creature-entering; subtype filter for
+//! outlaw-group not expressible as a single ObjectFilter.
+//! GAP: trigger — "another outlaw" multi-subtype OR filter not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +13,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "outlaw" compound subtype group filter not expressible; creature you control used as proxy
+                // GAP: trigger — "another outlaw" multi-subtype filter; using all creatures you control entering
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     from: None,
@@ -48,11 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: outlaw_enters_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Player,
-                    count: TargetCount::Exactly(1),
-                    controller: Some(ControllerConstraint::Opponent),
-                }],
+                target_requirements: vec![TargetRequirement::target_player()],
             }),
     )
 }
@@ -62,8 +62,12 @@ fn outlaw_enters_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Player(p) = target else {
+        return Vec::new();
+    };
     vec![Effect::DealDamage {
         target: DamageTarget::Player(*p),
         amount: 1,

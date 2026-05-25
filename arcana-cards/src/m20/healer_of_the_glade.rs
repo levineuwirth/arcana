@@ -1,5 +1,5 @@
-//! Healer of the Glade — `{G}` 1/2 green creature. "When this creature
-//! enters, you gain 3 life."
+//! Healer of the Glade — `{G}` 1/2 green Elemental. "When this
+//! creature enters, you gain 3 life." Simple ETB life-gain trigger.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_gain_life,
+                effect: etb_gain_three_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,7 +42,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_gain_life(
+/// ETB trigger: this creature's controller gains 3 life.
+fn etb_gain_three_life(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

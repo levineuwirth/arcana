@@ -4,3 +4,6 @@ pub mod growth_spasm;
 pub mod zombie_apocalypse;
 pub mod syphon_flesh;
 pub mod undead_augur;
+pub mod wild_beastmaster;
+pub mod trostani_s_summoner;
+pub mod kessig_cagebreakers;

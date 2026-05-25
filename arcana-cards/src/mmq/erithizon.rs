@@ -1,15 +1,16 @@
-//! Erithizon — `{2}{G}{G}` 4/4 green Beast.
-//! "Whenever Erithizon attacks, defending player may put a +1/+1
-//! counter on a creature they control. If they don't, Erithizon
-//! gets a +1/+1 counter."
-//! GAP: opponent-chooses target not in Effect catalog;
-//! emitting AddCounters on self unconditionally.
+//! Erithizon — `{2}{G}{G}` 4/4 green Beast. "Whenever this creature attacks,
+//! put a +1/+1 counter on target creature of defending player's choice."
+//! Attack trigger; defending player chooses a target creature to get +1/+1.
+//! GAP: "defending player's choice" — TargetRequirement uses ControllerConstraint
+//! which can't express "defending player chooses". Use any target as
+//! approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,22 +39,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attack_effect,
+                effect: on_attack,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn attack_effect(
+fn on_attack(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: opponent-chooses conditional not in catalog; adding counter on self unconditionally
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    // GAP: "defending player's choice" not enforceable; controller picks target.
     vec![Effect::AddCounters {
-        target: trig.source,
+        target: *id,
         kind: CounterKind::PlusOnePlusOne,
         count: 1,
     }]

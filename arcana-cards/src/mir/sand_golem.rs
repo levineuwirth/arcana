@@ -1,11 +1,14 @@
 //! Sand Golem — `{5}` 3/3 colorless Artifact Creature — Golem.
-//! "When a spell or ability an opponent controls causes you to discard this card, return this card
-//! from your graveyard to the battlefield with a +1/+1 counter on it at the beginning of the next
-//! end step."
+//! "When a spell or ability an opponent controls causes you to discard this card, return
+//! this card from your graveyard to the battlefield with a +1/+1 counter on it at the
+//! beginning of the next end step."
 //!
-//! # GAP: trigger — "when an opponent's spell/ability causes you to discard this card" —
-//! CardDiscarded does not filter for opponent-caused discards or identify the discarded card;
-//! GAP: "at the beginning of the next end step" delayed return is not expressible.
+//! # Notes
+//! GAP: trigger fires when this card is discarded due to opponent — trigger_zones should
+//! include hand/exile; using Graveyard(0) as approximation.
+//! GAP: "at the beginning of the next end step" delayed return from graveyard — DelayedAction
+//! does not support ReturnFromGraveyardToBattlefield. Using ReturnFromGraveyardToBattlefield
+//! immediately as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,13 +42,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "when opponent's ability causes you to discard this card" — no such variant;
-                // using CardDiscarded as approximation.
+                // GAP: trigger — "opponent causes you to discard this card" — using CardDiscarded
+                // opponent trigger as best approximation.
                 trigger_condition: TriggerCondition::CardDiscarded {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: discarded_return_from_graveyard,
+                effect: discarded_return,
                 trigger_zones: vec![Zone::Graveyard(0)],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -53,19 +56,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn discarded_return_from_graveyard(
+fn discarded_return(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at the beginning of the next end step" delayed trigger not expressible;
-    // returning to battlefield immediately with counter.
+    // GAP: delayed "at beginning of next end step" return — using immediate return.
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: trig.source },
-        Effect::AddCounters {
-            target: trig.source,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        },
+        Effect::AddCounters { target: trig.source, kind: CounterKind::PlusOnePlusOne, count: 1 },
     ]
 }

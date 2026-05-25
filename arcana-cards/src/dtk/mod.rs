@@ -30,3 +30,4 @@ pub mod sibsig_icebreakers;
 pub mod youthful_scholar;
 pub mod blood_chin_rager;
 pub mod kolaghan_aspirant;
+pub mod strongarm_monk;

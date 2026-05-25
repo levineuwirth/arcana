@@ -1,8 +1,7 @@
-//! Falconer Adept — `{3}{W}` 2/3 white Human Soldier creature.
-//! "Whenever this creature attacks, create a 1/1 white Bird creature token with flying
-//! that's tapped and attacking."
-//! GAP: effect — "tapped and attacking" token state is not a TokenDefinition field;
-//! emitting CreateToken without the attacking state.
+//! Falconer Adept — `{3}{W}` 2/3 white Human Soldier. "Whenever this creature attacks,
+//! create a 1/1 white Bird creature token with flying that's tapped and attacking."
+//! SelfAttacks trigger; token enters tapped and attacking.
+//! GAP: CreateToken does not support "enters tapped and attacking"; token is created normally.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,10 +28,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: on_attack_create_bird,
+                effect: on_attacks_create_bird,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,15 +46,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attack_create_bird(
+fn on_attacks_create_bird(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let bird = reg.interner().lookup("Bird").expect("Bird interned during register()");
+    let bird = reg.interner().lookup("Bird")
+        .expect("Bird interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(bird);
-    // GAP: effect — "tapped and attacking" token state not expressible in TokenDefinition
     let token = TokenDefinition {
         name: bird,
         colors: ColorSet::white(),
@@ -68,5 +65,6 @@ fn on_attack_create_bird(
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
+    // GAP: token enters "tapped and attacking" — not modeled by CreateToken
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

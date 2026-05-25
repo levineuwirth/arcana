@@ -1,7 +1,8 @@
 //! Mongrel Pack — `{3}{G}` 4/1 green Creature — Dog.
 //! "When this creature dies during combat, create four 1/1 green Dog creature
 //! tokens."
-//! GAP: trigger — no 'dies during combat' condition; using SelfDies as closest.
+//! GAP: trigger condition "dies during combat" — using SelfDies (no
+//! combat-only variant for zone-change). The effect fires on any death.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -11,13 +12,12 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Mongrel Pack");
     let dog = reg.interner_mut().intern("Dog");
-    let _dog_token = reg.interner_mut().intern("Dog");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dog);
     let chars = Characteristics {
@@ -26,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -35,10 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no 'dies during combat' variant; using SelfDies as closest
+                // GAP: trigger — "dies during combat" not distinguishable from all deaths
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_create_dog_tokens,
+                effect: on_dies_create_dogs,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_create_dog_tokens(
+fn on_dies_create_dogs(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,

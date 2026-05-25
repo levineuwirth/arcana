@@ -27,3 +27,7 @@ pub mod quill_slinger_boggart;
 pub mod kithkin_mourncaller;
 pub mod spiderwig_boggart;
 pub mod paperfin_rascal;
+pub mod veteran_of_the_depths;
+pub mod giant_harbinger;
+pub mod judge_of_currents;
+pub mod treefolk_harbinger;

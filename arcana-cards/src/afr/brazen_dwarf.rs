@@ -1,7 +1,8 @@
 //! Brazen Dwarf — `{1}{R}` 1/3 red Dwarf Shaman.
 //! "Whenever you roll one or more dice, this creature deals 1 damage to each
 //! opponent."
-//! GAP: trigger — "whenever you roll one or more dice" has no TriggerCondition.
+//! GAP: Dice-roll trigger not in TriggerCondition catalog; using
+//! SelfEntersBattlefield as placeholder.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -32,18 +33,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever you roll one or more dice" has no
-                // TriggerCondition; using SelfAttacks as placeholder.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // GAP: Dice-roll trigger not in TriggerCondition catalog;
+                // using SelfEntersBattlefield as placeholder.
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: deal_damage,
+                effect: on_dice_roll,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,14 +51,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_damage(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    script::opponents(state, trig.controller)
-        .into_iter()
-        .map(|p| Effect::DealDamage {
+fn on_dice_roll(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let opponents = script::opponents(state, trig.controller);
+    opponents
+        .iter()
+        .map(|&p| Effect::DealDamage {
             target: DamageTarget::Player(p),
             amount: 1,
             source: trig.source,

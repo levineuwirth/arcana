@@ -1,7 +1,8 @@
-//! Stonebound Mentor — `{1}{R}{W}` 3/3 red/white Spirit Advisor.
-//! "Whenever one or more cards leave your graveyard, scry 1."
-//! GAP: trigger — no TriggerCondition for cards leaving graveyard;
-//! using ZoneChange from Graveyard as closest match.
+//! Stonebound Mentor — `{1}{R}{W}` 3/3 red/white Spirit Advisor. "Whenever
+//! one or more cards leave your graveyard, scry 1."
+//!
+//! GAP: trigger — no TriggerCondition for "cards leave graveyard". Best-effort
+//! using ZoneChange from graveyard as proxy.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,14 +38,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — using ZoneChange as best approximation for "cards leave graveyard"
+                // GAP: trigger — no TriggerCondition for cards leaving graveyard;
+                // using ZoneChange from graveyard as closest approximation
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::new().controlled_by(ControllerConstraint::You),
                     from: Some(Zone::Graveyard(0)),
                     to: Zone::Battlefield,
                 },
                 intervening_if: None,
-                effect: scry_one,
+                effect: on_card_leaves_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn scry_one(
+fn on_card_leaves_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Scry { player: trig.controller, count: 1 }]
 }

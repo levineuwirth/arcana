@@ -1,9 +1,9 @@
 //! Ceremonial Guard — `{2}{R}` 3/4 red Human Soldier.
 //! "When this creature attacks or blocks, destroy it at end of combat."
-//! GAP: "destroy at end of combat" delayed destruction and "attacks or blocks"
-//! dual trigger not in catalog; using SelfAttacks + GAP.
+//!
+//! GAP: trigger — "attacks or blocks" needs two triggers; using SelfAttacks.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -11,7 +11,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -36,10 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "attacks or blocks" — SelfAttacks only; no blocks variant
+                // GAP: trigger — "attacks or blocks" not a single condition;
+                // using SelfAttacks.
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: gap_destroy_at_end_of_combat,
+                effect: schedule_destroy,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,12 +47,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gap_destroy_at_end_of_combat(
+fn schedule_destroy(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "destroy at end of combat" — DelayedAction with end-of-combat timing
-    // not in Effect catalog; using immediate DestroyPermanent as approximation
-    vec![Effect::DestroyPermanent { target: trig.source }]
+    vec![Effect::DelayedAction {
+        source: trig.source,
+        controller: trig.controller,
+        when: DelayedWhen::NextEndStep,
+        action: DelayedAction::Sacrifice,
+    }]
 }

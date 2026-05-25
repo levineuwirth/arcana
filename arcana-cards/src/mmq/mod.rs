@@ -33,3 +33,8 @@ pub mod deepwood_tantiv;
 pub mod task_force;
 pub mod alley_grifters;
 pub mod saprazzan_outrigger;
+pub mod pious_warrior;
+pub mod saber_ants;
+pub mod pangosaur;
+pub mod enslaved_horror;
+pub mod skulking_fugitive;

@@ -1,6 +1,6 @@
-//! Thawbringer — `{2}{G}` 4/2 green Insect Scout.
+//! Thawbringer — `{2}{G}` 4/2 green Insect Scout creature.
 //! "When this creature enters or dies, surveil 1."
-//! Two triggers: ETB and dies, both surveil 1.
+//! Two triggers: one for ETB, one for dies.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -57,7 +57,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn surveil_one(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Surveil { player: trig.controller, count: 1 }]
 }

@@ -35,33 +35,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::StepBegins {
-                    step: Step::Upkeep,
-                    whose: ControllerConstraint::You,
-                },
-                intervening_if: None,
-                effect: upkeep_drain,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::StepBegins {
+                step: Step::Upkeep,
+                whose: ControllerConstraint::You,
+            },
+            intervening_if: None,
+            effect: upkeep_drain_opponents,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn upkeep_drain(
+fn upkeep_drain_opponents(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let opponents = script::opponents(state, trig.controller);
-    let opp_count = opponents.len() as u32;
+    let count = opponents.len() as u32;
     let mut effects: Vec<Effect> = opponents
         .into_iter()
-        .map(|opp| Effect::LoseLife { player: opp, amount: 1 })
+        .map(|p| Effect::LoseLife { player: p, amount: 1 })
         .collect();
-    effects.push(Effect::GainLife { player: trig.controller, amount: opp_count });
+    if count > 0 {
+        effects.push(Effect::GainLife {
+            player: trig.controller,
+            amount: count,
+        });
+    }
     effects
 }

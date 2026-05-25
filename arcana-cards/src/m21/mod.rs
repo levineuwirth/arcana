@@ -53,3 +53,5 @@ pub mod daybreak_charger;
 pub mod adherent_of_hope;
 pub mod lorescale_coatl;
 pub mod library_larcenist;
+pub mod keral_keep_disciples;
+pub mod gloom_sower;

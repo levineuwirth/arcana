@@ -1,9 +1,6 @@
-//! Llanowar Empath — `{3}{G}` 2/2 green Elf Shaman. "When this creature enters,
-//! scry 2, then reveal the top card of your library. If it's a creature card, put
-//! it into your hand."
-//!
-//! GAP: "reveal top card and conditionally put in hand if creature" is not
-//! expressible; emitting Scry 2 only.
+//! Llanowar Empath — `{3}{G}` 2/2 green creature. "When this creature enters,
+//! scry 2, then reveal the top card of your library. If it's a creature card,
+//! put it into your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_scry,
+                effect: scry_and_reveal,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +45,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_scry(
+fn scry_and_reveal(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "reveal top card and put in hand if creature" not expressible; emitting scry 2 only
+    // GAP: "reveal top card; if creature, put in hand" — no conditional reveal-top-card in catalog
     vec![Effect::Scry { player: trig.controller, count: 2 }]
 }

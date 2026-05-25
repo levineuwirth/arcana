@@ -46,3 +46,5 @@ pub mod council_of_advisors;
 pub mod flanking_troops;
 pub mod wei_assassins;
 pub mod shu_grain_caravan;
+pub mod shu_defender;
+pub mod ravaging_horde;

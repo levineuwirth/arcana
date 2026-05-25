@@ -1,17 +1,17 @@
-//! Golgari Findbroker — `{B}{B}{G}{G}` 3/4 black/green Creature — Elf Shaman.
-//! "When this creature enters, return target permanent card from your graveyard
-//! to your hand."
+//! Golgari Findbroker — `{B}{B}{G}{G}` 3/4 black-green Creature — Elf Shaman.
+//! "When this creature enters, return target permanent card from your
+//! graveyard to your hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetRequirement, TargetFilter, TargetCount, ObjectFilter, TargetChoice};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black() | ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -41,14 +40,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_return_permanent_from_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Card {
-                        zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::permanent(),
+                target_requirements: vec![
+                    TargetRequirement {
+                        filter: TargetFilter::Card {
+                            zone: Zone::Graveyard(0),
+                            filter: ObjectFilter::permanent(),
+                        },
+                        count: TargetCount::Exactly(1),
+                        controller: None,
                     },
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                ],
             }),
     )
 }

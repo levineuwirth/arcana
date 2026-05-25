@@ -17,3 +17,4 @@ pub mod realms_uncharted;
 pub mod vendetta;
 pub mod enatu_golem;
 pub mod soul_s_attendant;
+pub mod arrogant_bloodlord;

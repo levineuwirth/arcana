@@ -1,6 +1,5 @@
-//! Urbis Protector — `{4}{W}{W}` 1/1 Human Cleric.
-//! "When this creature enters, create a 4/4 white Angel creature
-//! token with flying."
+//! Urbis Protector — `{4}{W}{W}` 1/1 Human Cleric. "When this creature
+//! enters, create a 4/4 white Angel creature token with flying."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -38,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_angel_token,
+                effect: etb_create_angel,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -46,20 +45,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_angel_token(
+fn etb_create_angel(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let angel = reg.interner().lookup("Angel")
         .expect("Angel interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(angel);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(angel);
     let token = TokenDefinition {
         name: angel,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         keywords: vec![KeywordAbility::Flying],

@@ -1,6 +1,7 @@
-//! Nightsky Mimic — `{1}{W/B}` 2/1 white black Shapeshifter.
-//! "Whenever you cast a spell that's both white and black, this creature has
-//! base power and toughness 4/4 until end of turn and gains flying until end of turn."
+//! Nightsky Mimic — `{1}{W/B}` 2/1 white-black Shapeshifter.
+//! "Whenever you cast a spell that's both white and black, this creature
+//! has base power and toughness 4/4 until end of turn and gains flying
+//! until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -12,7 +13,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,10 +24,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W/B}").expect("valid cost")),
-        colors: ColorSet(ColorSet::WHITE | ColorSet::BLACK),
+        colors: ColorSet::white() | ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -35,16 +35,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // Trigger on casting a white-and-black spell (both colors required)
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(
-                        ObjectFilter::permanent()
-                            .with_colors(ColorSet(ColorSet::WHITE | ColorSet::BLACK)),
-                    ),
+                    filter: Some(ObjectFilter::new()
+                        .with_colors(ColorSet::white() | ColorSet::black())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: become_4_4_flying,
+                effect: mimic_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -52,10 +49,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn become_4_4_flying(
+fn mimic_transform(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::SetBasePT {

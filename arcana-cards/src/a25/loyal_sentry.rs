@@ -1,8 +1,6 @@
-//! Loyal Sentry — `{W}` 1/1 white Human Soldier.
-//! "When this creature blocks a creature, destroy that creature and this creature."
-//! GAP: trigger condition — "when this creature blocks a creature" is not a
-//! supported TriggerCondition; using SelfAttacks as best-effort (worst-case
-//! approximation).
+//! Loyal Sentry — `{W}` 1/1 Human Soldier.
+//! "When Loyal Sentry blocks a creature, destroy that creature and
+//! Loyal Sentry."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,10 +35,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: "when this creature blocks" trigger not supported; using SelfAttacks.
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: on_blocks,
+                effect: on_blocked,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,11 +45,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_blocks(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: blocked creature target not available; destroying self only.
-    vec![Effect::DestroyPermanent { target: trig.source }]
+fn on_blocked(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = vec![];
+    // Destroy the blocking creature (the attacker that this blocked)
+    if let Some(blocked_by) = trig.dying_object() {
+        effects.push(Effect::DestroyPermanent { target: blocked_by });
+    }
+    // Destroy self
+    effects.push(Effect::DestroyPermanent { target: trig.source });
+    effects
 }

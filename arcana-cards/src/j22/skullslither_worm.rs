@@ -1,11 +1,10 @@
-//! Skullslither Worm — `{3}{B}` 3/3 black Creature — Worm.
+//! Skullslither Worm — `{3}{B}` 3/3 black creature (Worm).
 //! "When this creature enters, each opponent discards a card. For each
 //! opponent who can't, put two +1/+1 counters on this creature."
 //!
-//! GAP: conditional counters for each opponent who can't discard —
-//! the engine has no Effect variant that tracks "couldn't discard"
-//! per opponent. Emitting the discard for each opponent; GAP the
-//! conditional counter placement.
+//! GAP: "for each opponent who can't discard, put two +1/+1 counters" —
+//! no engine Effect to observe the discard-failure outcome. Emitting the
+//! mass-discard effect only; the counter-rider is omitted.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -30,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -54,11 +54,15 @@ fn on_etb(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let opponents = script::opponents(state, trig.controller);
-    let mut effects: Vec<Effect> = opponents.into_iter().map(|p| {
-        Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses }
-    }).collect();
-    // GAP: for each opponent who can't discard, put two +1/+1 counters on
-    // this creature — conditional counter based on "couldn't discard" is
-    // not expressible with the catalog.
-    effects
+    let mut effects: Vec<Effect> = opponents
+        .into_iter()
+        .map(|p| Effect::Discard {
+            player: p,
+            count: 1,
+            choice: DiscardChoice::OpponentChooses,
+        })
+        .collect();
+    // GAP: "for each opponent who can't discard, put two +1/+1 counters"
+    // — discard failure outcome not observable; counter rider omitted.
+    vec![Effect::Sequence(effects)]
 }

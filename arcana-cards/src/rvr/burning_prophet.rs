@@ -1,6 +1,6 @@
-//! Burning Prophet — `{1}{R}` 1/3 red Creature — Human Wizard.
-//! "Whenever you cast a noncreature spell, this creature gets +1/+0 until end of turn, then
-//! scry 1."
+//! Burning Prophet — `{1}{R}` 1/3 red Human Wizard creature.
+//! "Whenever you cast a noncreature spell, this creature gets +1/+0 until end of turn, then scry 1."
+//! Keywords (Scryfall-parsed): Scry (handled via trigger)
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -38,12 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(
-                            TypeLine::INSTANT | TypeLine::SORCERY | TypeLine::ENCHANTMENT | TypeLine::ARTIFACT | TypeLine::LAND
-                        )),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
@@ -58,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn noncreature_pump_scry(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![
         Effect::Pump {

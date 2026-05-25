@@ -2,7 +2,10 @@
 //! "When this creature enters, if you control a Desert or there is a Desert
 //! card in your graveyard, you may have this creature deal 3 damage to target
 //! creature."
-//! GAP: intervening-if "if you control a Desert or Desert in graveyard" noted.
+//!
+//! GAP: "if you control a Desert or there is a Desert card in your graveyard"
+//! intervening-if condition not expressible. Emitting damage effect
+//! unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +13,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,21 +37,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you control a Desert or Desert in graveyard"
-                intervening_if: None,
-                effect: deal_three_damage,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            // GAP: intervening-if "if you control a Desert or Desert in
+            // graveyard" not expressible; using None.
+            intervening_if: None,
+            effect: etb_damage_creature,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement::target_creature()],
+        }),
     )
 }
 
-fn deal_three_damage(
+fn etb_damage_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

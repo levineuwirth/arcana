@@ -1,9 +1,10 @@
-//! Garenbrig Squire — `{1}{G}` 2/2 green Creature — Human Soldier.
+//! Garenbrig Squire — `{1}{G}` 2/2 green Human Soldier creature.
 //! "Whenever you cast a creature spell that has an Adventure, this creature gets +1/+1 until
 //! end of turn."
 //!
-//! # GAP: "creature spell that has an Adventure" filter is not expressible in ObjectFilter;
-//! using generic creature spell cast as approximation.
+//! # Notes
+//! GAP: "creature spell that has an Adventure" — no Adventure-type filter in ObjectFilter.
+//! Using SpellCast with creature filter as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -40,8 +41,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "creature spell that has an Adventure" — Adventure filter not in ObjectFilter;
-                // using creature spell cast as approximation.
+                // GAP: "creature spell that has an Adventure" — no Adventure filter; using
+                // creature spell cast trigger.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: Some(ObjectFilter {
                         types_any: Some(TypeLine::CREATURE.into()),
@@ -50,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: adventure_cast_pump_self,
+                effect: adventure_creature_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -58,10 +59,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn adventure_cast_pump_self(
+fn adventure_creature_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Pump {
         target: trig.source,

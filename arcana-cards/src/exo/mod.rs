@@ -7,3 +7,4 @@ pub mod zealots_en_dal;
 pub mod ravenous_baboons;
 pub mod avenging_druid;
 pub mod rabid_wolverines;
+pub mod grollub;

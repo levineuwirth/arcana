@@ -1,11 +1,11 @@
 //! Elvish Rejuvenator — `{2}{G}` 1/1 green Creature — Elf Druid.
 //! "When this creature enters, look at the top five cards of your library.
-//! You may put a land card from among them onto the battlefield tapped. Put
-//! the rest on the bottom of your library in a random order."
-//!
-//! GAP: effect — TutorToBattlefield searches the whole library; "look at top
-//! 5 and choose from among them" scry-fetch is not expressible exactly; using
-//! TutorToBattlefield tapped as best effort.
+//! You may put a land card from among them onto the battlefield tapped.
+//! Put the rest on the bottom of your library in a random order."
+//! GAP: effect — "look at top N, selectively put a land onto the battlefield,
+//! bottom the rest" is not directly in the catalog. TutorToBattlefield
+//! searches the full library; there is no "reveal top N and choose" variant.
+//! Using TutorToBattlefield (tapped) as closest approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_fetch_land,
+                effect: etb_land_to_battlefield,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,11 +51,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_fetch_land(
+fn etb_land_to_battlefield(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "look at top 5 and selectively put land onto battlefield tapped"
+    // uses TutorToBattlefield as closest approximation; top-N reveal/select
+    // not modeled.
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),

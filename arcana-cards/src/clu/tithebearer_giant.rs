@@ -1,4 +1,4 @@
-//! Tithebearer Giant — `{5}{B}` 4/5 black Giant Warrior.
+//! Tithebearer Giant — `{5}{B}` 4/5 Giant Warrior.
 //! "When this creature enters, you draw a card and you lose 1 life."
 
 use arcana_core::effects::Effect;
@@ -44,11 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_etb(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
         Effect::LoseLife { player: trig.controller, amount: 1 },

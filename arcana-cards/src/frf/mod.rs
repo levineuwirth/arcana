@@ -22,3 +22,8 @@ pub mod sibsig_host;
 pub mod arashin_cleric;
 pub mod orc_sureshot;
 pub mod ugin_s_construct;
+pub mod arashin_war_beast;
+pub mod merciless_executioner;
+pub mod smoldering_efreet;
+pub mod mardu_woe_reaper;
+pub mod sultai_emissary;

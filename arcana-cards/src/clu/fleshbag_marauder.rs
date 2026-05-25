@@ -1,11 +1,11 @@
-//! Fleshbag Marauder — `{2}{B}` 3/1 black Zombie Warrior.
-//! "When this creature enters, each player sacrifices a creature of their choice."
+//! Fleshbag Marauder — `{2}{B}` 3/1 Zombie Warrior.
+//! "When this creature enters, each player sacrifices a creature
+//! of their choice."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
@@ -13,6 +13,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Fleshbag Marauder");
@@ -46,15 +47,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_etb(
-    state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_etb(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // Each player sacrifices a creature (controller chooses).
     script::all_players(state)
         .into_iter()
-        .map(|player| Effect::Sacrifice {
-            player,
+        .map(|p| Effect::Sacrifice {
+            player: p,
             filter: ObjectFilter::creature(),
             count: 1,
         })

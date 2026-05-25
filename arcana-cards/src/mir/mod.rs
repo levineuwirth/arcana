@@ -30,3 +30,5 @@ pub mod merfolk_seer;
 pub mod nettletooth_djinn;
 pub mod sand_golem;
 pub mod brushwagg;
+pub mod harbinger_of_night;
+pub mod zebra_unicorn;

@@ -1,4 +1,4 @@
-//! Ravenous Giant — `{2}{R}{R}` 5/5 red Creature — Giant.
+//! Ravenous Giant — `{2}{R}{R}` 5/5 red Giant creature.
 //! "At the beginning of your upkeep, this creature deals 1 damage to you."
 
 use arcana_core::effects::Effect;
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: upkeep_deal_1_to_self,
+                effect: upkeep_deal_damage_to_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,10 +48,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn upkeep_deal_1_to_self(
+fn upkeep_deal_damage_to_self(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DealDamage {
         target: DamageTarget::Player(trig.controller),

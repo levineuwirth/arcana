@@ -1,14 +1,14 @@
-//! Homunculus Horde — `{3}{U}` 2/2 blue Creature — Homunculus.
-//! "Whenever you draw your second card each turn, create a token that's
-//! a copy of this creature."
+//! Homunculus Horde — `{3}{U}` 2/2 blue creature (Homunculus).
+//! "Whenever you draw your second card each turn, create a token that's a
+//! copy of this creature."
 //!
-//! GAP: trigger condition "draw your second card each turn" — no
-//! TriggerCondition variant for Nth card drawn; CardDrawn { You } would
-//! fire on every draw. Using CardDrawn as closest approximation;
-//! GAP: token copy of self — TokenDefinition cannot reference the
-//! source permanent's characteristics dynamically.
+//! GAP: "second card drawn each turn" has no matching TriggerCondition;
+//! CardDrawn fires on every draw. Using CardDrawn with OncePerTurn as the
+//! closest approximation (fires once per turn on first matching draw event).
+//! GAP: "create a token that's a copy of this creature" — CopyPermanent
+//! requires a target ObjectId; using trig.source as the object to copy.
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -31,6 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -39,13 +40,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "draw your second card each turn";
-                // CardDrawn fires on every draw, not just the second.
+                // GAP: trigger — "second card drawn each turn" not supported;
+                // using CardDrawn + OncePerTurn as closest approximation.
                 trigger_condition: TriggerCondition::CardDrawn {
                     player: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: on_second_draw,
+                effect: on_card_drawn,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
@@ -53,24 +54,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_second_draw(
+fn on_card_drawn(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let homunculus = reg.interner().lookup("Homunculus")
-        .expect("Homunculus interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(homunculus);
-    let token = TokenDefinition {
-        name: homunculus,
-        colors: ColorSet::blue(),
-        types: TypeLine::CREATURE.into(),
-        subtypes,
-        power: Some(PtValue::Fixed(2)),
-        toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
-        abilities: vec![],
-    };
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    vec![Effect::CopyPermanent { target: trig.source }]
 }

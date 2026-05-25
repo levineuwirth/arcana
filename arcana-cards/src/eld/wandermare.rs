@@ -1,8 +1,8 @@
-//! Wandermare — `{1}{G}{W}` 3/3 G/W Horse.
-//! "Whenever you cast a creature spell that has an Adventure, put a +1/+1
-//! counter on this creature."
-//! GAP: "has an Adventure" spell filter not expressible in ObjectFilter;
-//! using SpellCast(You, creature) as placeholder.
+//! Wandermare — `{1}{G}{W}` 3/3 green-white Horse.
+//! "Whenever you cast a creature spell that has an Adventure, put a
+//! +1/+1 counter on this creature."
+//! GAP: Adventure type/flag is not a filterable property in ObjectFilter;
+//! trigger fires on all creature spells you cast as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,24 +30,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "has an Adventure" filter not expressible; using
-                // SpellCast(You, creature) as placeholder.
+                // GAP: Adventure filter not expressible; fires on all creature spells you cast.
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter {
-                        types_any: Some(TypeLine(TypeLine::CREATURE)),
-                        ..Default::default()
-                    }),
+                    filter: Some(ObjectFilter::new().with_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: add_counter,
+                effect: on_creature_cast,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -55,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_counter(
+fn on_creature_cast(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

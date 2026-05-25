@@ -2,9 +2,9 @@
 //! "When this creature enters, you may sacrifice an artifact. When you do,
 //! put a +1/+1 counter on target creature and draw a card."
 //!
-//! # GAP: "you may sacrifice an artifact" triggers a secondary triggered ability ("when you do");
-//! the engine has no optional sacrifice-then-trigger-secondary model.
-//! The ETB trigger is modeled; the sacrifice cost gate and counter-plus-draw chain are GAP'd.
+//! # Notes
+//! GAP: optional sacrifice-cost gate before the counter+draw — no cost-gate/sacrifice-as-cost
+//! Effect variant available; modeled as unconditional ETB trigger with target creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,9 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                // GAP: "you may sacrifice an artifact" cost gate is not modeled.
-                // GAP: secondary "when you do" trigger chain is not modeled.
-                effect: etb_effect,
+                effect: etb_counter_and_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -52,13 +50,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_effect(
+fn etb_counter_and_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional sacrifice-an-artifact cost gate not modeled.
-    // Emit the counter + draw assuming the cost was paid, as best-effort.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![

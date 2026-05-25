@@ -1,5 +1,7 @@
-//! Martyr of Dusk — `{1}{W}` 2/1 white creature. "When this creature
-//! dies, create a 1/1 white Vampire creature token with lifelink."
+//! Martyr of Dusk — `{1}{W}` 2/1 white Vampire Soldier. "When this
+//! creature dies, create a 1/1 white Vampire creature token with
+//! lifelink." A `SelfDies` trigger producing a single keyworded
+//! creature token.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -16,10 +18,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Martyr of Dusk");
     let vampire = reg.interner_mut().intern("Vampire");
     let soldier = reg.interner_mut().intern("Soldier");
-    let _vampire_token = reg.interner_mut().intern("Vampire");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(vampire);
     subtypes.0.insert(soldier);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
@@ -31,13 +33,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
     };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_create_vampire_lifelink,
+                effect: create_vampire_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,20 +48,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_create_vampire_lifelink(
+/// Death trigger resolution: create a 1/1 white Vampire creature
+/// token with lifelink under this card's controller.
+fn create_vampire_token(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let vampire = reg.interner().lookup("Vampire")
+    let vampire = reg
+        .interner()
+        .lookup("Vampire")
         .expect("Vampire interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(vampire);
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(vampire);
     let token = TokenDefinition {
         name: vampire,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Lifelink],

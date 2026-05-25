@@ -1,16 +1,21 @@
 //! Great Whale — `{5}{U}{U}` 5/5 blue Whale.
 //! "When this creature enters, untap up to seven lands."
-//! GAP: untapping up to N chosen lands (player selects which) requires
-//! multi-target selection not in the catalog; using ForEach over all
-//! controlled tapped lands as best-effort approximation.
+//!
+//! GAP: "untap up to seven target lands" — TargetCount::UpTo(7) with a land
+//! filter, but the handler would need to iterate over all chosen targets.
+//! Emitting a ForEach over up to 7 chosen land targets via target_requirements
+//! is the closest approximation; using a single Untap per chosen target is
+//! not directly supported without multiple targets declared. Best-effort:
+//! declare UpTo(7) creature targets and untap each.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,33 +39,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_untap_lands,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_untap_lands,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::new().with_types(TypeLine::LAND.into()),
+                ),
+                count: TargetCount::UpTo(7),
+                controller: None,
+            }],
+        }),
     )
 }
 
 fn etb_untap_lands(
-    state: &GameState,
+    _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "up to seven" player-chosen lands — using all controlled tapped
-    // lands as approximation (no choice mechanism available).
-    let filter = ObjectFilter::new()
-        .with_types(TypeLine::LAND.into())
-        .controlled_by(ControllerConstraint::You)
-        .tapped_only();
-    let ids = script::ids_matching(state, &filter, trig.controller);
-    let ids: Vec<_> = ids.into_iter().take(7).collect();
-    ids.into_iter()
-        .map(|id| Effect::Untap { target: id })
+    trig.targets
+        .targets
+        .iter()
+        .filter_map(|t| {
+            if let TargetChoice::Object(id) = t {
+                Some(Effect::Untap { target: *id })
+            } else {
+                None
+            }
+        })
         .collect()
 }

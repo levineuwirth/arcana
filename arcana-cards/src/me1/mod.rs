@@ -20,3 +20,4 @@ pub mod phyrexian_war_beast;
 pub mod mindstab_thrull;
 pub mod juz_m_djinn;
 pub mod dwarven_soldier;
+pub mod the_fallen;

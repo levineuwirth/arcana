@@ -1,6 +1,5 @@
 //! Paladin of the Bloodstained — `{3}{W}` 3/2 white Vampire Knight.
-//! "When this creature enters, create a 1/1 white Vampire creature token
-//! with lifelink."
+//! "When this creature enters, create a 1/1 white Vampire creature token with lifelink."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -17,10 +16,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Paladin of the Bloodstained");
     let vampire = reg.interner_mut().intern("Vampire");
     let knight = reg.interner_mut().intern("Knight");
-    let _vampire_token = reg.interner_mut().intern("Vampire");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(vampire);
     subtypes.0.insert(knight);
+    let _vampire_token = reg.interner_mut().intern("Vampire");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{W}").expect("valid cost")),
@@ -30,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -39,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: create_vampire_token,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,20 +45,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn create_vampire_token(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let vampire = reg.interner().lookup("Vampire")
-        .expect("Vampire interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(vampire);
+    let vampire = reg.interner().lookup("Vampire").expect("Vampire interned during register()");
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(vampire);
     let token = TokenDefinition {
         name: vampire,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![KeywordAbility::Lifelink],

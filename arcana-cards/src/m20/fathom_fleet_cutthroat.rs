@@ -1,8 +1,8 @@
 //! Fathom Fleet Cutthroat — `{3}{B}` 3/3 black Human Pirate.
 //! "When this creature enters, destroy target creature an opponent controls
 //! that was dealt damage this turn."
-//! GAP: "was dealt damage this turn" filter on a target is not expressible
-//! in TargetFilter / ObjectFilter.
+//! GAP: "was dealt damage this turn" filter on target not expressible with
+//! current ObjectFilter. Best-effort: target creature an opponent controls.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,12 +40,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: destroy_damaged_creature,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -55,13 +55,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn destroy_damaged_creature(
+fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: "was dealt damage this turn" filter not in ObjectFilter.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "dealt damage this turn" restriction cannot be enforced at resolution.
     vec![Effect::DestroyPermanent { target: *id }]
 }

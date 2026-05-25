@@ -1,5 +1,5 @@
-//! Enlightened Ascetic — `{1}{W}` 1/1 white creature. "When this creature
-//! enters, you may destroy target enchantment."
+//! Enlightened Ascetic — `{1}{W}` 1/1 white Cat Monk.
+//! "When this creature enters, you may destroy target enchantment."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

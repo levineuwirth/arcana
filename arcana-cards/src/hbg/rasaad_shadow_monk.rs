@@ -1,6 +1,6 @@
 //! Rasaad, Shadow Monk — `{2}{W}{B}` 4/4 legendary white-black Human Monk.
-//! "When Rasaad, Shadow Monk dies, create a 4/1 black Skeleton creature token
-//! with menace."
+//! "When Rasaad, Shadow Monk dies, create a 4/1 black Skeleton creature
+//! token with menace."
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -33,16 +33,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfDies,
-                intervening_if: None,
-                effect: create_skeleton_token,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfDies,
+            intervening_if: None,
+            effect: create_skeleton_token,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
@@ -67,5 +66,8 @@ fn create_skeleton_token(
         keywords: vec![KeywordAbility::Menace],
         abilities: vec![],
     };
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    vec![Effect::CreateToken {
+        controller: trig.controller,
+        token,
+    }]
 }

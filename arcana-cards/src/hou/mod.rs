@@ -33,3 +33,4 @@ pub mod quarry_beetle;
 pub mod sand_strangler;
 pub mod cunning_survivor;
 pub mod chaos_maw;
+pub mod god_pharaoh_s_faithful;

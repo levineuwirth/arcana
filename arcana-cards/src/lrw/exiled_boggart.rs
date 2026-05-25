@@ -1,5 +1,5 @@
-//! Exiled Boggart — `{1}{B}` 2/2 Goblin Rogue.
-//! "When this creature dies, discard a card."
+//! Exiled Boggart — `{1}{B}` 2/2 Goblin Rogue. "When this creature dies,
+//! discard a card."
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: dies_discard,
+                effect: on_dies_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,10 +44,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn dies_discard(
+fn on_dies_discard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Discard {
         player: trig.controller,

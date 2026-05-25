@@ -1,14 +1,13 @@
-//! Segmented Wurm — `{3}{R}{G}` 5/5 red-green Wurm.
-//! "Whenever this creature becomes the target of a spell or ability,
-//! put a -1/-1 counter on it."
-//! GAP: trigger — "becomes the target of a spell or ability" has no
-//! TriggerCondition variant; using SelfAttacks as closest approximation.
+//! Segmented Wurm — `{3}{R}{G}` 5/5 red-green Wurm. "Whenever this creature
+//! becomes the target of a spell or ability, put a -1/-1 counter on it."
+//! Becomes-target trigger; add -1/-1 counter to self.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,9 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes the target of a spell or ability"
-                // not in catalog; SelfAttacks used as placeholder
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesTarget {
+                    caster: ControllerConstraint::Any,
+                },
                 intervening_if: None,
                 effect: on_targeted,
                 trigger_zones: vec![Zone::Battlefield],

@@ -32,7 +32,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
-        keywords: vec![],
         ..Default::default()
     };
     reg.register(
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: deal_x_damage,
+                effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -55,22 +54,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn deal_x_damage(
-    state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_etb(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let wizard_filter = script::subtype_filter(reg, "Wizard")
         .controlled_by(ControllerConstraint::You);
-    let x = script::count_matching(state, &wizard_filter, trig.controller);
-    if x == 0 {
+    let n = script::count_matching(state, &wizard_filter, trig.controller);
+    if n == 0 {
         return Vec::new();
     }
     vec![Effect::DealDamage {
         target: DamageTarget::Object(*id),
-        amount: x,
+        amount: n,
         source: trig.source,
     }]
 }

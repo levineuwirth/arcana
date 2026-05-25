@@ -1,5 +1,6 @@
-//! Pretending Poxbearers — `{1}{W/B}` 2/1 black/white Creature — Human Citizen Ally.
-//! "When this creature dies, create a 1/1 white Ally creature token."
+//! Pretending Poxbearers — `{1}{W/B}` 2/1 black-white creature (Human
+//! Citizen Ally). "When this creature dies, create a 1/1 white Ally
+//! creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -21,6 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(human);
     subtypes.0.insert(citizen);
     subtypes.0.insert(ally);
+    let _ = reg.interner_mut().intern("Ally");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W/B}").expect("valid cost")),
@@ -51,15 +53,15 @@ fn on_dies(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let ally = reg.interner().lookup("Ally")
+    let ally_id = reg.interner().lookup("Ally")
         .expect("Ally interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(ally);
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(ally_id);
     let token = TokenDefinition {
-        name: ally,
+        name: ally_id,
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
-        subtypes,
+        subtypes: token_subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],

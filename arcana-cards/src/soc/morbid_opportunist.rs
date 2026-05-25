@@ -1,6 +1,6 @@
 //! Morbid Opportunist — `{2}{B}` 1/3 black Human Rogue.
-//! "Whenever one or more other creatures die, draw a card. This ability
-//! triggers only once each turn."
+//! "Whenever one or more other creatures die, draw a card. This
+//! ability triggers only once each turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,18 +42,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: opportunist_creature_dies,
+                effect: creature_dies_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::OncePerTurn,
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
-fn opportunist_creature_dies(
+fn creature_dies_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

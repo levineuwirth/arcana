@@ -1,9 +1,5 @@
-//! Flight-Deck Coordinator — `{2}{W}` 3/3 Human Soldier.
-//! "At the beginning of your end step, if you control two or more
-//! tapped creatures, you gain 2 life."
-//!
-//! GAP: intervening-if "two or more tapped creatures" not expressible;
-//! emitting gain life with a runtime script check.
+//! Flight-Deck Coordinator — `{2}{W}` 3/3 Human Soldier. "At the beginning of
+//! your end step, if you control two or more tapped creatures, you gain 2 life."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -17,7 +13,6 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Flight-Deck Coordinator");
@@ -46,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: end_step_life,
+                effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -54,19 +49,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn end_step_life(
+fn on_end_step(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    let tapped = script::count_matching(
+    let tapped_count = arcana_core::script::count_matching(
         state,
         &ObjectFilter::creature()
             .controlled_by(ControllerConstraint::You)
             .tapped_only(),
         trig.controller,
     );
-    if tapped >= 2 {
+    if tapped_count >= 2 {
         vec![Effect::GainLife { player: trig.controller, amount: 2 }]
     } else {
         Vec::new()

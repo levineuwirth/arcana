@@ -1,17 +1,18 @@
-//! Pawn of Ulamog — `{1}{B}{B}` 2/2 Vampire Shaman.
-//! "Whenever this creature or another nontoken creature you control
-//! dies, you may create a 0/1 colorless Eldrazi Spawn creature token.
-//! It has 'Sacrifice this token: Add {C}.'"
+//! Pawn of Ulamog — `{1}{B}{B}` 2/2 Vampire Shaman. "Whenever this creature
+//! or another nontoken creature you control dies, you may create a 0/1
+//! colorless Eldrazi Spawn creature token. It has 'Sacrifice this token:
+//! Add {C}.'"
 //!
-//! GAP: Eldrazi Spawn token has an activated mana ability; token
-//! abilities list not expressible via `abilities: vec![]`.
+//! GAP: token ability "Sacrifice this token: Add {C}" cannot be expressed
+//! in the TokenDefinition abilities list; emitting token without the mana
+//! ability. Also, "nontoken" filter for the trigger condition is not
+//! expressible in ZoneChange; using SelfDies only (misses allied creatures).
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -20,10 +21,10 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Pawn of Ulamog");
-    let vampire = reg.interner_mut().intern("Vampire");
-    let shaman = reg.interner_mut().intern("Shaman");
     let _eldrazi = reg.interner_mut().intern("Eldrazi");
     let _spawn = reg.interner_mut().intern("Spawn");
+    let vampire = reg.interner_mut().intern("Vampire");
+    let shaman = reg.interner_mut().intern("Shaman");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(vampire);
     subtypes.0.insert(shaman);
@@ -42,15 +43,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You)
-                        .nontoken(),
-                    from: Some(Zone::Battlefield),
-                    to: Zone::Graveyard(0),
-                },
+                trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: creature_dies_spawn_token,
+                effect: on_dies_spawn,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -58,27 +53,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn creature_dies_spawn_token(
+fn on_dies_spawn(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let spawn = reg.interner().lookup("Spawn")
-        .expect("Spawn interned during register()");
     let eldrazi = reg.interner().lookup("Eldrazi")
         .expect("Eldrazi interned during register()");
-    let mut token_subtypes = SubtypeSet::default();
-    token_subtypes.0.insert(eldrazi);
-    token_subtypes.0.insert(spawn);
+    let spawn = reg.interner().lookup("Spawn")
+        .expect("Spawn interned during register()");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(eldrazi);
+    subtypes.0.insert(spawn);
+    // GAP: token ability "Sacrifice this token: Add {C}" not expressible in
+    // the TokenDefinition abilities list.
     let token = TokenDefinition {
         name: spawn,
-        colors: ColorSet::colorless(),
+        colors: ColorSet::default(),
         types: TypeLine::CREATURE.into(),
-        subtypes: token_subtypes,
+        subtypes,
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(1)),
         keywords: vec![],
-        abilities: vec![], // GAP: "Sacrifice this token: Add {C}" not expressible
+        abilities: vec![],
     };
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

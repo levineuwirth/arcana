@@ -1,15 +1,12 @@
-//! Master of Diversion — `{2}{W}` 2/2 white Human Scout. "Whenever this
-//! creature attacks, tap target creature defending player controls."
-//!
-//! GAP: target — "defending player controls" constraint not expressible on
-//! TargetRequirement; using any creature as target.
+//! Master of Diversion — `{2}{W}` 2/2 white Human Scout.
+//! "Whenever this creature attacks, tap target creature defending player controls."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,11 +40,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                // GAP: target — "defending player controls" not expressible.
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Creature,
                     count: TargetCount::Exactly(1),
-                    controller: None,
+                    controller: Some(ControllerConstraint::Opponent),
                 }],
             }),
     )

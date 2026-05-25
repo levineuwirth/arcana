@@ -1,4 +1,4 @@
-//! Exuberant Wolfbear — `{3}{G}` 4/4 green Creature — Wolf Bear.
+//! Exuberant Wolfbear — `{3}{G}` 4/4 green creature (Wolf Bear).
 //! "Whenever this creature attacks, you may change the base power and
 //! toughness of target Human you control to this creature's power and
 //! toughness until end of turn."
@@ -9,8 +9,10 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
-    TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -20,9 +22,9 @@ use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Exuberant Wolfbear");
+    let _human = reg.interner_mut().intern("Human"); // pre-intern for resolve-time lookup
     let wolf = reg.interner_mut().intern("Wolf");
     let bear = reg.interner_mut().intern("Bear");
-    let _human = reg.interner_mut().intern("Human");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(wolf);
     subtypes.0.insert(bear);
@@ -32,6 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -59,19 +62,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn on_attacks(
     state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // Verify target is a Human using subtype filter
-    let human_filter = script::subtype_filter(reg, "Human");
-    let _ = human_filter; // subtype constraint enforced via target_requirements
-    let power = script::power_of(state, trig.source);
-    let toughness = script::toughness_of(state, trig.source);
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    let p = script::power_of(state, trig.source);
+    let t = script::toughness_of(state, trig.source);
     vec![Effect::SetBasePT {
         target: *id,
-        power,
-        toughness,
+        power: p,
+        toughness: t,
         duration: Duration::EndOfTurn,
     }]
 }

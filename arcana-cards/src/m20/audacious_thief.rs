@@ -1,4 +1,4 @@
-//! Audacious Thief — `{2}{B}` 2/2 black Human Rogue.
+//! Audacious Thief — `{2}{B}` 2/2 Human Rogue.
 //! "Whenever this creature attacks, you draw a card and you lose 1 life."
 
 use arcana_core::effects::Effect;
@@ -44,11 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_attacks(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn on_attacks(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
         Effect::LoseLife { player: trig.controller, amount: 1 },

@@ -1,4 +1,4 @@
-//! Uktabi Orangutan — `{2}{G}` 2/2 green Ape creature.
+//! Uktabi Orangutan — `{2}{G}` 2/2 Creature — Ape.
 //! "When this creature enters, destroy target artifact."
 
 use arcana_core::effects::Effect;
@@ -7,17 +7,16 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Uktabi Orangutan");
-    let ape = reg.interner_mut().intern("Ape");
+    let ape_sub = reg.interner_mut().intern("Ape");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(ape);
+    subtypes.0.insert(ape_sub);
+
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G}").expect("valid cost")),
@@ -35,24 +34,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_destroy_artifact,
+                effect: uktabi_orangutan_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
-                    ),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![TargetRequirement { filter: TargetFilter::Permanent(ObjectFilter { types_any: Some(TypeLine::ARTIFACT.into()), ..Default::default() }), count: TargetCount::Exactly(1), controller: None }],
             }),
     )
 }
 
-fn etb_destroy_artifact(
+fn uktabi_orangutan_trigger(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

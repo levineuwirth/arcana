@@ -1,8 +1,5 @@
-//! Rabid Wolverines — `{3}{G}{G}` 4/4 green Wolverine.
-//! "Whenever this creature becomes blocked by a creature, this creature gets
-//! +1/+1 until end of turn."
-//! GAP: no TriggerCondition::SelfBecomesBlocked variant; using SelfAttacks as
-//! closest available. The pump effect is expressed.
+//! Rabid Wolverines — `{3}{G}{G}` 4/4 green creature. "Whenever this creature
+//! becomes blocked by a creature, this creature gets +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -36,10 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no SelfBecomesBlocked variant; SelfAttacks used as proxy
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
-                effect: becomes_blocked_pump,
+                effect: blocked_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn becomes_blocked_pump(
+fn blocked_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

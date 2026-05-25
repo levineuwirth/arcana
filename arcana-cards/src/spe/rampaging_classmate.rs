@@ -1,4 +1,4 @@
-//! Rampaging Classmate — `{2}{R}` 3/2 red Lizard Berserker. "Whenever this creature
+//! Rampaging Classmate — `{2}{R}` 3/2 red creature. "Whenever this creature
 //! attacks, it gets +1/+0 until end of turn for each other attacking creature."
 
 use arcana_core::effects::Effect;
@@ -6,6 +6,7 @@ use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -13,7 +14,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rampaging Classmate");
@@ -52,21 +52,21 @@ fn pump_per_attacker(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Count attacking creatures you control (approximated as all creatures you control)
-    // GAP: no "attacking" filter in ObjectFilter; using all creatures you control as proxy
+    // Count all attacking creatures you control, then subtract 1 for self
     let n = script::count_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .tapped_only(),
         trig.controller,
     );
-    // Subtract 1 for this creature itself (the "other" part of oracle)
-    let n = if n > 0 { n - 1 } else { 0 };
-    if n == 0 {
+    let bonus = if n > 0 { n - 1 } else { 0 };
+    if bonus == 0 {
         return Vec::new();
     }
     vec![Effect::Pump {
         target: trig.source,
-        power: n as i32,
+        power: bonus as i32,
         toughness: 0,
         duration: Duration::EndOfTurn,
         keywords: vec![],

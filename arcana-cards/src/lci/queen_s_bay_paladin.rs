@@ -1,18 +1,16 @@
-//! Queen's Bay Paladin — `{3}{B}{B}` 5/4 black Vampire Knight. "Whenever this
+//! Queen's Bay Paladin — `{3}{B}{B}` 5/4 black creature. "Whenever this
 //! creature enters or attacks, return up to one target Vampire card from your
-//! graveyard to the battlefield with a finality counter on it. You lose life equal
-//! to its mana value."
-//!
-//! GAP: "finality counter" is not a CounterKind in the catalog; using
-//! ReturnFromGraveyardToBattlefield without the counter. "Lose life equal to its
-//! mana value" requires reading the card's CMC which is not a script helper.
+//! graveyard to the battlefield with a finality counter on it. You lose life
+//! equal to its mana value."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement, TargetChoice,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -81,7 +79,6 @@ fn reanimate_vampire(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: no "finality counter" CounterKind
-    // GAP: "you lose life equal to its mana value" — no CMC-reading script helper
+    // GAP: "with a finality counter" — no counter-on-reanimate variant; "lose life equal to mana value" — no mana value query
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }
