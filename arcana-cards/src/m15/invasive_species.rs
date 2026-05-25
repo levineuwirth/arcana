@@ -1,6 +1,6 @@
-//! Invasive Species — `{2}{G}` 3/3 green Insect.
-//! "When this creature enters, return another permanent you control to
-//! its owner's hand."
+//! Invasive Species — `{2}{G}` 3/3 green Insect. "When this creature
+//! enters, return another permanent you control to its owner's hand."
+//! ETB trigger that bounces another permanent you control.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,6 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -35,12 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_bounce,
+                effect: etb_bounce_permanent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().controlled_by(ControllerConstraint::You),
+                        ObjectFilter::permanent()
+                            .controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -49,12 +51,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_bounce(
+fn etb_bounce_permanent(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "another permanent you control" — targeting handles legality; we return it to hand.
     vec![Effect::ReturnToHand { target: *id }]
 }

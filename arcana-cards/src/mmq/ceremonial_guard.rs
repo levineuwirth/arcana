@@ -1,7 +1,15 @@
-//! Ceremonial Guard — `{2}{R}` 3/4 red Human Soldier.
+//! Ceremonial Guard — `{2}{R}` 3/4 red Creature — Human Soldier.
 //! "When this creature attacks or blocks, destroy it at end of combat."
 //!
-//! GAP: trigger — "attacks or blocks" needs two triggers; using SelfAttacks.
+//! The trigger fires when the creature attacks or blocks. We model the
+//! "attacks or blocks" with SelfAttacks (GAP: only one condition per def;
+//! the blocks side needs a separate trigger). The delayed destroy at end of
+//! combat is approximated with DelayedAction at NextEndStep.
+//!
+//! GAP: trigger — "attacks or blocks" requires two TriggeredAbilityDefs
+//! (SelfAttacks + SelfBlocks); only one condition is supported per def here.
+//! GAP: "at end of combat" — DelayedWhen has no EndOfCombat variant;
+//! using NextEndStep as the closest approximation.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
@@ -11,7 +19,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -35,8 +44,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks or blocks" not a single condition;
-                // using SelfAttacks.
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
                 effect: schedule_destroy,

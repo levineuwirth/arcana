@@ -1,10 +1,8 @@
 //! Sorcerer's Broom — `{2}` 2/1 colorless Artifact Creature — Spirit.
-//! "Whenever you sacrifice another permanent, you may pay {3}. If you
-//! do, create a token that's a copy of this creature."
-//!
-//! GAP: effect — "you may pay {3}" optional mana payment not in catalog.
-//! Creating the copy token unconditionally as best effort.
+//! "Whenever you sacrifice another permanent, you may pay {3}. If you do,
+//! create a token that's a copy of this creature."
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -14,7 +12,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::colorless(),
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -40,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     filter: ObjectFilter::permanent(),
                 },
                 intervening_if: None,
-                effect: copy_self,
+                effect: on_sacrifice,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,12 +47,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn copy_self(
+fn on_sacrifice(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "you may pay {3}" optional mana cost not expressible;
-    // copying unconditionally.
-    vec![Effect::CopyPermanent { target: trig.source }]
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Mana(ManaCost::parse("{3}").expect("valid cost")),
+        then: Box::new(Effect::CopyPermanent { target: trig.source }),
+        else_effect: None,
+    }]
 }

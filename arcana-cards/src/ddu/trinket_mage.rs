@@ -1,7 +1,6 @@
-//! Trinket Mage — `{2}{U}` 2/2 blue Human Wizard.
-//! "When this creature enters, you may search your library for an
-//! artifact card with mana value 1 or less, reveal that card, put it
-//! into your hand, then shuffle."
+//! Trinket Mage — `{2}{U}` 2/2 blue Creature — Human Wizard.
+//! "When this creature enters, you may search your library for an artifact card
+//! with mana value 1 or less, reveal that card, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -51,8 +51,12 @@ fn etb_tutor_artifact(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::permanent()
+    let filter = ObjectFilter::new()
         .with_types(TypeLine::ARTIFACT.into())
         .with_max_cmc(1);
-    vec![Effect::TutorToHand { player: trig.controller, filter, reveal: true }]
+    vec![Effect::TutorToHand {
+        player: trig.controller,
+        filter,
+        reveal: true,
+    }]
 }

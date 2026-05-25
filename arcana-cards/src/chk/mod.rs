@@ -44,3 +44,4 @@ pub mod horizon_seed;
 pub mod deathcurse_ogre;
 pub mod ore_gorger;
 pub mod akki_rockspeaker;
+pub mod silent_chant_zubera;

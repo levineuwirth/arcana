@@ -1,7 +1,7 @@
 //! Nyx Herald — `{2}{G}` 2/3 green Enchantment Creature — Centaur Shaman.
-//! "At the beginning of combat on your turn, target enchanted creature
-//! or enchantment creature you control gets +1/+1 and gains trample
-//! until end of turn."
+//! "At the beginning of combat on your turn, target enchanted creature or
+//! enchantment creature you control gets +1/+1 and gains trample until end
+//! of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -14,7 +14,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,6 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -43,12 +44,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: combat_pump,
+                effect: pump_enchanted_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
+                // GAP: target filter — "enchanted creature or enchantment creature you control"
+                // requires checking whether a creature has an Aura attached OR has the Enchantment
+                // type. ObjectFilter has no `enchanted_only()` predicate; we fall back to
+                // targeting any creature you control and accept the over-broad targeting.
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -57,7 +63,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn combat_pump(
+fn pump_enchanted_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

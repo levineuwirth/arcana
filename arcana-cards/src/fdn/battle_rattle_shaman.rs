@@ -1,8 +1,11 @@
-//! Battle-Rattle Shaman — `{3}{R}` 2/2 red Goblin Shaman.
-//! "At the beginning of combat on your turn, you may have target
-//! creature get +2/+0 until end of turn."
+//! Battle-Rattle Shaman — `{3}{R}` 2/2 red Goblin Shaman. "At the
+//! beginning of combat on your turn, you may have target creature get
+//! +2/+0 until end of turn."
+//!
+//! GAP: "you may" on the trigger (optional targeting) is not expressible
+//! without an `OptionalPayment` cost; modeled as a required target pump.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -13,7 +16,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,6 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -45,7 +49,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: combat_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }

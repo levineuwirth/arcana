@@ -1,6 +1,5 @@
-//! Loporrit Scout — `{2}{G}` 3/2 green Rabbit Scout.
-//! "Whenever another creature you control enters, this creature gets
-//! +1/+1 until end of turn."
+//! Loporrit Scout — `{2}{G}` 3/2 green Rabbit Scout. "Whenever another creature
+//! you control enters, this creature gets +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -8,11 +7,11 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,17 +27,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
+    // "Whenever another creature you control enters" — ZoneChange for creatures
+    // entering the battlefield under your control, excluding this creature itself.
+    // The closest available trigger is ZoneChange with controlled_by(You). The
+    // "another" restriction (not self) is not expressible as an intervening_if filter
+    // in the API, so we use the trigger and apply to self with Pump.
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                    filter: arcana_core::targets::ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You)
+                        .nontoken(),
                     from: None,
                     to: Zone::Battlefield,
                 },

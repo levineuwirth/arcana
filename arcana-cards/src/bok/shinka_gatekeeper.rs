@@ -1,5 +1,5 @@
-//! Shinka Gatekeeper — `{2}{R}` 3/2 red Ogre Warrior.
-//! "Whenever this creature is dealt damage, it deals that much damage to you."
+//! Shinka Gatekeeper — `{2}{R}` 3/2 red Ogre Warrior. "Whenever this
+//! creature is dealt damage, it deals that much damage to you."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +10,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -36,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfIsDealtDamage { combat_only: false },
                 intervening_if: None,
-                effect: redirect_damage,
+                effect: redirect_damage_to_controller,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -44,13 +45,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn redirect_damage(
+fn redirect_damage_to_controller(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let n = trig.damage_amount().unwrap_or(0);
-    if n == 0 { return Vec::new(); }
+    if n == 0 {
+        return Vec::new();
+    }
     vec![Effect::DealDamage {
         target: DamageTarget::Player(trig.controller),
         amount: n,

@@ -15,3 +15,4 @@ pub mod urborg_stalker;
 pub mod hurloon_shaman;
 pub mod tolarian_serpent;
 pub mod bone_dancer;
+pub mod sawtooth_ogre;

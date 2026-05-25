@@ -1,12 +1,16 @@
 //! Anowon, the Ruin Sage — `{3}{B}{B}` 4/3 black Legendary Vampire Shaman.
 //! "At the beginning of your upkeep, each player sacrifices a non-Vampire
-//! creature of their choice."
+//! creature."
+//!
+//! GAP: ObjectFilter has no `.without_subtypes()` or `.without_subtype()`
+//! method; only `.with_subtypes_any()` (SUBTYPE OR) is available. The
+//! "non-Vampire creature" filter cannot be expressed, so the sacrifice
+//! filter is approximated with ObjectFilter::creature() (all creatures).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -15,6 +19,7 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Anowon, the Ruin Sage");
@@ -43,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: each_player_sacrifices,
+                effect: each_player_sacrifices_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,16 +56,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_sacrifices(
+fn each_player_sacrifices_creature(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
-    // "each player sacrifices a non-Vampire creature" — build one Sacrifice per player.
-    let filter = ObjectFilter::creature();
+    // GAP: ObjectFilter has no .without_subtype() — cannot filter "non-Vampire
+    // creature"; using ObjectFilter::creature() as approximation (sacrifices
+    // any creature, including Vampires).
     let players = script::all_players(state);
     let effects: Vec<Effect> = players.into_iter().map(|p| {
-        Effect::Sacrifice { player: p, filter: filter.clone(), count: 1 }
+        Effect::Sacrifice {
+            player: p,
+            filter: ObjectFilter::creature(),
+            count: 1,
+        }
     }).collect();
     vec![Effect::Sequence(effects)]
 }

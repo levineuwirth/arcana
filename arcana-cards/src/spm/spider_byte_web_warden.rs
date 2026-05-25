@@ -1,6 +1,6 @@
-//! Spider-Byte, Web Warden — `{2}{U}` 2/2 blue Legendary Spider Avatar Hero.
-//! "When Spider-Byte enters, return up to one target nonland permanent
-//! to its owner's hand."
+//! Spider-Byte, Web Warden — `{2}{U}` 2/2 blue Legendary Creature — Spider
+//! Avatar Hero. "When Spider-Byte enters, return up to one target nonland
+//! permanent to its owner's hand."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_bounce,
+                effect: bounce_nonland_permanent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_bounce(
+fn bounce_nonland_permanent(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,9 +1,9 @@
-//! Lunk Errant — `{5}{R}` 4/4 red Giant Warrior.
-//! "Whenever this creature attacks alone, it gets +1/+1 and gains
-//! trample until end of turn."
+//! Lunk Errant — `{5}{R}` 4/4 red Giant Warrior. "Whenever this creature attacks
+//! alone, it gets +1/+1 and gains trample until end of turn."
 //!
-//! GAP: trigger — SelfAttacks does not filter to "attacks alone"; using
-//! SelfAttacks as the closest match.
+//! GAP: TriggerCondition::SelfAttacks does not have an "attacks alone" filter.
+//! Using SelfAttacks as the closest match; the verify pipeline will flag that the
+//! "alone" qualifier is not enforced by the engine.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -14,7 +14,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,6 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -38,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — SelfAttacks doesn't filter to "attacks alone"
+                // GAP: trigger — SelfAttacks has no "attacks alone" filter.
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
                 effect: attacks_alone_pump,

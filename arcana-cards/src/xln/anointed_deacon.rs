@@ -1,21 +1,21 @@
-//! Anointed Deacon — `{4}{B}` 3/3 black Vampire Cleric.
-//! "At the beginning of combat on your turn, you may have target Vampire
-//! get +2/+0 until end of turn."
+//! Anointed Deacon — `{4}{B}` 3/3 black Creature — Vampire Cleric.
+//! "At the beginning of combat on your turn, you may have target Vampire get
+//! +2/+0 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Anointed Deacon");
@@ -30,10 +30,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
     };
+    let vampire_filter = script::subtype_filter(reg, "Vampire");
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
@@ -43,19 +45,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: combat_pump_vampire,
+                effect: pump_vampire,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(1),
+                    filter: TargetFilter::Permanent(vampire_filter),
+                    count: TargetCount::Exactly(1),
                     controller: None,
                 }],
             }),
     )
 }
 
-fn combat_pump_vampire(
+fn pump_vampire(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

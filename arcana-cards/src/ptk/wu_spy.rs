@@ -1,10 +1,12 @@
-//! Wu Spy — `{1}{U}` 1/1 blue Human Soldier Rogue.
-//! "When this creature enters, look at the top two cards of target
-//! player's library. Put one of them into their graveyard."
+//! Wu Spy — `{1}{U}` 1/1 blue Human Soldier Rogue. "When this creature
+//! enters, look at the top two cards of target player's library. Put one
+//! of them into their graveyard."
 //!
-//! GAP: effect — no Effect variant for "look at the top N cards and put one
-//! into the graveyard (player chooses)"; using Mill{1} as closest
-//! approximation for the graveyard placement, but the look+choice is absent.
+//! GAP: "look at top N, choose one to put in graveyard" requires a modal
+//! look+choose effect not in the catalog. Closest available is Mill {1}
+//! on the target player (puts the top card in graveyard). The "look and
+//! choose which" selection is not expressible; emitting Mill 1 as best
+//! effort with a GAP note.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,7 +17,7 @@ use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequir
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -33,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -43,22 +46,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_mill,
+                effect: spy_on_library,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }
 
-fn etb_mill(
+fn spy_on_library(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: effect — "look at top 2, put one in graveyard (choice)"; using Mill{1}
-    // as closest approximation (no look+choice variant available).
+    // GAP: "look at top two cards and choose one to put in graveyard" —
+    // no look+choose effect in the catalog; emitting Mill {1} as best effort.
     vec![Effect::Mill { player: *p, count: 1 }]
 }

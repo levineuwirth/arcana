@@ -1,20 +1,20 @@
-//! Strongarm Monk — `{4}{W}` 3/3 white Human Monk.
-//! "Whenever you cast a noncreature spell, creatures you control get
-//! +1/+1 until end of turn."
+//! Strongarm Monk — `{4}{W}` 3/3 white Creature — Human Monk.
+//! "Whenever you cast a noncreature spell, creatures you control get +1/+1
+//! until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Strongarm Monk");
@@ -29,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -38,11 +39,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
+                    filter: Some(ObjectFilter::new()
+                        .without_types(TypeLine::CREATURE.into())),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: pump_all,
+                effect: pump_all_creatures,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -50,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn pump_all(
+fn pump_all_creatures(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
@@ -60,7 +62,7 @@ fn pump_all(
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::Pump {
-            target: arcana_core::objects::NULL_OBJECT_ID,
+            target: NULL_OBJECT_ID,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,

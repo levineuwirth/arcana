@@ -1,11 +1,12 @@
-//! Prismari Pianist — `{1}{R}{R}` 2/1 red Djinn Bard.
+//! Prismari Pianist — `{1}{R}{R}` 2/1 red Creature — Djinn Bard.
 //! "Whenever you cast an instant or sorcery spell, create a 1/1 blue and
-//! red Elemental creature token. If that spell's mana value is 5 or
-//! greater, create three of those tokens instead."
+//! red Elemental creature token. If that spell's mana value is 5 or greater,
+//! create three of those tokens instead."
 //!
-//! GAP: effect — "if that spell's mana value is 5 or greater, create three
-//! instead" conditional on the triggering spell's CMC is not computable
-//! (no accessor for triggering spell's CMC). Creating one token unconditionally.
+//! GAP: the conditional "if that spell's mana value is 5 or greater, create
+//! three instead of one" requires inspecting the triggering spell's CMC via a
+//! script helper not available (no `script::cmc_of_triggering_spell`). We emit
+//! the base case of 1 token and flag the gap.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -16,7 +17,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -33,6 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -64,18 +66,24 @@ fn create_elemental_token(
 ) -> Vec<Effect> {
     let elemental = reg.interner().lookup("Elemental")
         .expect("Elemental interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(elemental);
-    let token = TokenDefinition {
-        name: elemental,
-        colors: ColorSet::blue() | ColorSet::red(),
-        types: TypeLine::CREATURE.into(),
-        subtypes,
-        power: Some(PtValue::Fixed(1)),
-        toughness: Some(PtValue::Fixed(1)),
-        keywords: vec![],
-        abilities: vec![],
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(elemental);
+    let make_token = || {
+        let mut ts = SubtypeSet::default();
+        ts.0.insert(elemental);
+        TokenDefinition {
+            name: elemental,
+            colors: ColorSet::blue() | ColorSet::red(),
+            types: TypeLine::CREATURE.into(),
+            subtypes: ts,
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![],
+            abilities: vec![],
+        }
     };
-    // GAP: effect — "if MV >= 5 create three instead" not computable; creating one.
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    // GAP: "if that spell's mana value is 5 or greater, create three tokens instead"
+    // requires script::cmc_of_triggering_spell which is not in the API.
+    // Emitting base case of 1 token.
+    vec![Effect::CreateToken { controller: trig.controller, token: make_token() }]
 }

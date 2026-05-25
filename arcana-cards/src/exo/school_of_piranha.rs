@@ -1,18 +1,17 @@
-//! School of Piranha — `{1}{U}` 3/3 blue Fish.
-//! "At the beginning of your upkeep, sacrifice this creature unless you pay {1}{U}."
-//! GAP: effect — "sacrifice unless you pay {cost}" (optional cost to avoid sacrifice)
-//! is not in the Effect catalog. Using Sacrifice as best-effort (always sacrifices).
+//! School of Piranha — `{1}{U}` 3/3 blue Fish. "At the beginning of your upkeep,
+//! sacrifice this creature unless you pay {1}{U}."
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -41,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::You,
                 },
                 intervening_if: None,
-                effect: gap_sacrifice_unless_pay,
+                effect: upkeep_pay_or_sacrifice,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,16 +48,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn gap_sacrifice_unless_pay(
+fn upkeep_pay_or_sacrifice(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — "sacrifice unless you pay {1}{U}" optional cost not in catalog;
-    // unconditional Sacrifice used as best-effort
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: ObjectFilter::creature(),
-        count: 1,
+    // "sacrifice this creature unless you pay {1}{U}"
+    // Inverted polarity: punishment in else_effect, then is no-op on pay.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Mana(ManaCost::parse("{1}{U}").expect("valid cost")),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sacrifice {
+            player: trig.controller,
+            filter: arcana_core::targets::ObjectFilter::permanent()
+                .with_types(TypeLine::CREATURE.into()),
+            count: 1,
+        })),
     }]
 }

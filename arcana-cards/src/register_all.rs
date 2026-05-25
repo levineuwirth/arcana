@@ -2883,6 +2883,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ody::cartographer::register(reg); n += 1;
     crate::ody::filthy_cur::register(reg); n += 1;
     crate::ody::spark_mage::register(reg); n += 1;
+    crate::ody::rotting_giant::register(reg); n += 1;
     // --- fut ---
     crate::fut::blind_phantasm::register(reg); n += 1;
     crate::fut::force_of_savagery::register(reg); n += 1;
@@ -2936,6 +2937,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::chk::deathcurse_ogre::register(reg); n += 1;
     crate::chk::ore_gorger::register(reg); n += 1;
     crate::chk::akki_rockspeaker::register(reg); n += 1;
+    crate::chk::silent_chant_zubera::register(reg); n += 1;
     // --- csp ---
     crate::csp::krovikan_scoundrel::register(reg); n += 1;
     crate::csp::chill_to_the_bone::register(reg); n += 1;
@@ -3324,6 +3326,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::wth::hurloon_shaman::register(reg); n += 1;
     crate::wth::tolarian_serpent::register(reg); n += 1;
     crate::wth::bone_dancer::register(reg); n += 1;
+    crate::wth::sawtooth_ogre::register(reg); n += 1;
     // --- dmu ---
     crate::dmu::soaring_drake::register(reg); n += 1;
     crate::dmu::barkweave_crusher::register(reg); n += 1;

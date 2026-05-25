@@ -1,6 +1,6 @@
-//! Goblin Matron — `{2}{R}` 1/1 red Goblin.
-//! "When this creature enters, you may search your library for a Goblin
-//! card, reveal that card, put it into your hand, then shuffle."
+//! Goblin Matron — `{2}{R}` 1/1 red Creature — Goblin.
+//! "When this creature enters, you may search your library for a Goblin card,
+//! reveal that card, put it into your hand, then shuffle."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,6 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -35,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_tutor_goblin,
+                effect: tutor_goblin,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,11 +44,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_tutor_goblin(
+fn tutor_goblin(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let filter = script::subtype_filter(reg, "Goblin");
-    vec![Effect::TutorToHand { player: trig.controller, filter, reveal: true }]
+    vec![Effect::TutorToHand {
+        player: trig.controller,
+        filter,
+        reveal: true,
+    }]
 }

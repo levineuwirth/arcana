@@ -1,6 +1,6 @@
-//! Spring Splasher — `{1}{U}` 2/1 blue Frog Beast.
-//! "Whenever this creature attacks, target creature defending player
-//! controls gets -3/-0 until end of turn."
+//! Spring Splasher — `{1}{U}` 2/1 blue Creature — Frog Beast.
+//! "Whenever this creature attacks, target creature defending player controls
+//! gets -3/-0 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,7 +12,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,6 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -38,12 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: debuff_defender,
+                effect: weaken_defender_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -52,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn debuff_defender(
+fn weaken_defender_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

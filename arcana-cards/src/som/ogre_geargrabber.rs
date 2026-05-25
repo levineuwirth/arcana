@@ -1,7 +1,11 @@
-//! Ogre Geargrabber — `{4}{R}{R}` 4/4 red Ogre Warrior.
-//! "Whenever this creature attacks, gain control of target Equipment an
-//! opponent controls until end of turn. Attach it to this creature.
-//! When you lose control of that Equipment, unattach it."
+//! Ogre Geargrabber — `{4}{R}{R}` 4/4 red Ogre Warrior. "Whenever this creature
+//! attacks, gain control of target Equipment an opponent controls until end of turn.
+//! Attach it to this creature. When you lose control of that Equipment, unattach it."
+//!
+//! GAP: effect — "When you lose control of that Equipment, unattach it" is a
+//! conditional delayed trigger on a loss-of-control event; no DelayedWhen / DelayedAction
+//! variant exists for "on loss of control, unattach". This clause is omitted; the
+//! verify pipeline will flag it.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +16,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,6 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -38,12 +43,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: steal_equipment,
+                effect: grab_equipment,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
+                // target Equipment an opponent controls
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
+                        ObjectFilter::new()
                             .with_types(TypeLine::ARTIFACT.into())
                             .controlled_by(ControllerConstraint::Opponent),
                     ),
@@ -54,13 +60,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn steal_equipment(
+fn grab_equipment(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // Gain control until end of turn, then attach to self.
+    // GAP: "When you lose control of that Equipment, unattach it" — no
+    // DelayedWhen/DelayedAction for loss-of-control unattach; clause omitted.
     vec![
         Effect::ChangeControlEot { target: *id, new_controller: trig.controller },
         Effect::Attach { equipment_or_aura: *id, target: trig.source },

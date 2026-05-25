@@ -1,20 +1,19 @@
-//! Earth-Origin Yak — `{3}{W}` 2/4 white Ox.
-//! "When this creature enters, creatures you control get +1/+1 until
-//! end of turn."
+//! Earth-Origin Yak — `{3}{W}` 2/4 white Creature — Ox.
+//! "When this creature enters, creatures you control get +1/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
+use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Earth-Origin Yak");
@@ -27,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_pump_all,
+                effect: pump_all_creatures,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_pump_all(
+fn pump_all_creatures(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
@@ -55,7 +55,7 @@ fn etb_pump_all(
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::Pump {
-            target: arcana_core::objects::NULL_OBJECT_ID,
+            target: NULL_OBJECT_ID,
             power: 1,
             toughness: 1,
             duration: Duration::EndOfTurn,

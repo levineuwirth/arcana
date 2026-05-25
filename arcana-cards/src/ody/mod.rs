@@ -17,3 +17,4 @@ pub mod minotaur_explorer;
 pub mod cartographer;
 pub mod filthy_cur;
 pub mod spark_mage;
+pub mod rotting_giant;

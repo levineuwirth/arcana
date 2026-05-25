@@ -1,8 +1,14 @@
-//! Runic Armasaur — `{1}{G}{G}` 2/5 green Dinosaur.
-//! "Whenever an opponent activates an ability of a creature or land that
-//! isn't a mana ability, you may draw a card."
-//! GAP: trigger — no TriggerCondition for "opponent activates non-mana ability
-//! of creature or land"; using SpellCast(Opponent) as closest placeholder.
+//! Runic Armasaur — `{1}{G}{G}` 2/5 green Dinosaur. "Whenever an opponent activates
+//! an ability of a creature or land that isn't a mana ability, you may draw a card."
+//!
+//! GAP: TriggerCondition has no variant for "opponent activates a non-mana ability
+//! of a creature or land". The closest available condition is SelfBecomesTarget
+//! (opponent-controlled spells/abilities), but that is not a match for activation
+//! watching. Emitting Vec::new() for the effect body and using SelfBecomesTapped
+//! as a structural placeholder trigger (closest meaningless stand-in); the verify
+//! pipeline will flag the gap.
+//!
+//! GAP (trigger): No ActivatedAbility trigger condition exists in the engine.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -32,18 +38,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
     };
+    // GAP: trigger — no ActivatedAbility(opponent, creature/land, non-mana) variant.
+    // Using SpellCast(opponent) as structural placeholder; engine will flag.
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "opponent activates non-mana ability of creature or land"
-                // not in catalog; SpellCast(Opponent) is a rough placeholder
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::Opponent,
                 },
                 intervening_if: None,
-                effect: draw_a_card,
+                effect: opponent_activates_non_mana,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -51,10 +57,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn draw_a_card(
+fn opponent_activates_non_mana(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: trigger — no ActivatedAbility(opponent, creature/land, non-mana) condition.
+    // Effect would be: you may draw a card.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

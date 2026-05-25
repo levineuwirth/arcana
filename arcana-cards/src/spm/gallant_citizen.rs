@@ -1,5 +1,5 @@
-//! Gallant Citizen — `{G/W}{G/W}` 1/1 green-white Human Citizen.
-//! "When this creature enters, draw a card."
+//! Gallant Citizen — `{G/W}{G/W}` 1/1 green/white Human Citizen. "When
+//! this creature enters, draw a card."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -9,7 +9,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,6 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
@@ -35,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw,
+                effect: etb_draw_a_card,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -43,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw(
+fn etb_draw_a_card(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

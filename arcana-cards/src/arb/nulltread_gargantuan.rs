@@ -1,6 +1,10 @@
-//! Nulltread Gargantuan — `{1}{G}{U}` 5/6 green-blue Beast.
-//! "When this creature enters, put a creature you control on top of
-//! its owner's library."
+//! Nulltread Gargantuan — `{1}{G}{U}` 5/6 green/blue Beast. "When this
+//! creature enters, put a creature you control on top of its owner's
+//! library."
+//!
+//! The ETB trigger requires the controller to choose a creature they
+//! control and put it on top of their library. This is modeled as a
+//! targeted effect on a creature the controller controls.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +15,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::green() | ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(5)),
         toughness: Some(PtValue::Fixed(6)),
         ..Default::default()
@@ -35,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_topdeck,
+                effect: put_creature_on_library,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
@@ -49,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_topdeck(
+fn put_creature_on_library(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

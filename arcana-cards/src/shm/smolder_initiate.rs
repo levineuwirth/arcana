@@ -1,15 +1,14 @@
-//! Smolder Initiate — `{B}` 1/1 black Elemental Shaman.
+//! Smolder Initiate — `{B}` 1/1 black Creature — Elemental Shaman.
 //! "Whenever a player casts a black spell, you may pay {1}. If you do,
 //! target player loses 1 life."
-//! GAP: optional mana payment mid-trigger not in Effect catalog;
-//! GAP: no SpellCast color filter; using SpellCast(Any) + target player LoseLife 1 as approximation.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,13 +37,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: no color filter on SpellCast; using Any caster as approximation
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: None,
+                    filter: Some(ObjectFilter::new().with_colors(ColorSet::black())),
                     caster: ControllerConstraint::Any,
                 },
                 intervening_if: None,
-                effect: lose_life_target,
+                effect: optional_pay_lose_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -52,13 +50,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn lose_life_target(
+fn optional_pay_lose_life(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: optional mana payment not expressible; effect fires unconditionally
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(pid) = target else { return Vec::new(); };
-    vec![Effect::LoseLife { player: *pid, amount: 1 }]
+    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Mana(ManaCost::parse("{1}").expect("valid cost")),
+        then: Box::new(Effect::LoseLife { player: *p, amount: 1 }),
+        else_effect: None,
+    }]
 }

@@ -1,7 +1,5 @@
-//! Sibsig Host — `{4}{B}` 2/6 black Creature — Zombie.
-//! "When this creature enters, each player mills three cards."
-//!
-//! Keywords (Scryfall): Mill (rules text only, not a keyword ability).
+//! Silent-Chant Zubera — `{1}{W}` 1/2 white Zubera Spirit. "When this creature
+//! dies, you gain 2 life for each Zubera that died this turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -16,28 +14,30 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, Ty
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
-    let name = reg.interner_mut().intern("Sibsig Host");
-    let zombie = reg.interner_mut().intern("Zombie");
+    let name = reg.interner_mut().intern("Silent-Chant Zubera");
+    let zubera = reg.interner_mut().intern("Zubera");
+    let spirit = reg.interner_mut().intern("Spirit");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(zombie);
+    subtypes.0.insert(zubera);
+    subtypes.0.insert(spirit);
     let chars = Characteristics {
         name,
-        mana_cost: Some(ManaCost::parse("{4}{B}").expect("valid cost")),
-        colors: ColorSet::black(),
+        mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
+        colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet::default(),
-        power: Some(PtValue::Fixed(2)),
-        toughness: Some(PtValue::Fixed(6)),
+        power: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: each_player_mills_three,
+                effect: on_dies_gain_life,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -45,15 +45,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_mills_three(
+fn on_dies_gain_life(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let players = script::all_players(state);
-    let mills: Vec<Effect> = players
-        .into_iter()
-        .map(|p| Effect::Mill { player: p, count: 3 })
-        .collect();
-    vec![Effect::Sequence(mills)]
+    let n = script::creatures_of_subtype_died_this_turn(state, reg, "Zubera");
+    let amount = n * 2;
+    if amount == 0 {
+        return Vec::new();
+    }
+    vec![Effect::GainLife { player: trig.controller, amount }]
 }

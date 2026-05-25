@@ -1,6 +1,6 @@
-//! Kor Outfitter — `{W}{W}` 2/2 white Kor Soldier.
-//! "When this creature enters, you may attach target Equipment you
-//! control to target creature you control."
+//! Kor Outfitter — `{W}{W}` 2/2 white Creature — Kor Soldier.
+//! "When this creature enters, you may attach target Equipment you control to
+//! target creature you control."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +11,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
@@ -37,14 +38,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_attach,
+                effect: etb_attach_equipment,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                // Two targets: equipment and creature
+                // Two targets: [0] = Equipment you control, [1] = creature you control
                 target_requirements: vec![
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::permanent()
+                            ObjectFilter::new()
                                 .with_types(TypeLine::ARTIFACT.into())
                                 .controlled_by(ControllerConstraint::You),
                         ),
@@ -53,7 +54,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     },
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
-                            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                            ObjectFilter::creature()
+                                .controlled_by(ControllerConstraint::You),
                         ),
                         count: TargetCount::Exactly(1),
                         controller: None,
@@ -63,17 +65,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_attach(
+fn etb_attach_equipment(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(equipment_target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(equipment_id) = equipment_target else { return Vec::new(); };
-    let Some(creature_target) = trig.targets.targets.get(1) else { return Vec::new(); };
-    let TargetChoice::Object(creature_id) = creature_target else { return Vec::new(); };
+    let mut targets = trig.targets.targets.iter();
+    let equipment_id = match targets.next() {
+        Some(TargetChoice::Object(id)) => *id,
+        _ => return Vec::new(),
+    };
+    let creature_id = match targets.next() {
+        Some(TargetChoice::Object(id)) => *id,
+        _ => return Vec::new(),
+    };
     vec![Effect::Attach {
-        equipment_or_aura: *equipment_id,
-        target: *creature_id,
+        equipment_or_aura: equipment_id,
+        target: creature_id,
     }]
 }

@@ -1,4 +1,4 @@
-//! Odric's Outrider — `{3}{W}` 2/4 white Human Knight.
+//! Odric's Outrider — `{3}{W}` 2/4 white Creature — Human Knight.
 //! "Whenever this creature or another creature you control dies, put a
 //! +1/+1 counter on target creature you control."
 
@@ -11,7 +11,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, Tar
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(4)),
         ..Default::default()
@@ -35,6 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                // GAP: trigger — "this creature OR another creature you control dies" is a
+                // disjunction of SelfDies and ZoneChange(creature controlled_by You). Only one
+                // TriggerCondition is supported; we use ZoneChange which also fires on self-death
+                // since this creature is one you control.
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature()
                         .controlled_by(ControllerConstraint::You),
@@ -42,12 +47,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     to: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: add_counter,
+                effect: put_counter_on_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -56,7 +62,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_counter(
+fn put_counter_on_creature(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,

@@ -1,6 +1,11 @@
-//! Keeper of Tresserhorn — `{5}{B}` 6/6 black Avatar.
-//! "Whenever this creature attacks and isn't blocked, it assigns no
-//! combat damage this turn and defending player loses 2 life."
+//! Keeper of Tresserhorn — `{5}{B}` 6/6 black Avatar. "Whenever this creature
+//! attacks and isn't blocked, it assigns no combat damage this turn and the
+//! defending player loses 2 life."
+//!
+//! GAP: "it assigns no combat damage this turn" is a replacement effect on
+//! damage assignment; there is no Effect variant for preventing or replacing
+//! a specific creature's own damage assignment. Only the "defending player
+//! loses 2 life" clause is implemented.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +15,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,6 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(6)),
         toughness: Some(PtValue::Fixed(6)),
         ..Default::default()
@@ -34,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacksUnblocked,
                 intervening_if: None,
-                effect: unblocked_drain,
+                effect: unblocked_rider,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -42,12 +48,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn unblocked_drain(
+fn unblocked_rider(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
+    // GAP: cannot express "this creature assigns no combat damage this turn"
+    // (damage-assignment replacement effect, no API variant available).
+    // Implementing only "defending player loses 2 life."
     let Some(p) = trig.defending_player() else { return Vec::new(); };
-    // "assigns no combat damage this turn" — GAP: no Effect to suppress damage assignment.
     vec![Effect::LoseLife { player: p, amount: 2 }]
 }

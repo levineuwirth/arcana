@@ -1,6 +1,13 @@
-//! Pharika's Mender — `{3}{B}{G}` 4/3 black-green Gorgon.
-//! "When this creature enters, you may return target creature or
-//! enchantment card from your graveyard to your hand."
+//! Pharika's Mender — `{3}{B}{G}` 4/3 black/green Gorgon. "When this creature
+//! enters, you may return target creature or enchantment card from your
+//! graveyard to your hand."
+//!
+//! TargetCount::UpTo(1) models the "you may" optionality. The target is a
+//! card in your graveyard.
+//!
+//! GAP: TargetFilter::Card with a single ObjectFilter cannot express "creature
+//! OR enchantment" as a type-OR for graveyard card targets. Only the creature
+//! card alternative is modeled; the enchantment alternative is gapped.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +18,7 @@ use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,6 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black() | ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
+        supertypes: SupertypeSet::default(),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -38,6 +46,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_return_from_graveyard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
+                // GAP: TargetFilter::Card cannot express "creature OR enchantment"
+                // type-OR; only creature card modeled here.
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
@@ -53,7 +63,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_return_from_graveyard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
