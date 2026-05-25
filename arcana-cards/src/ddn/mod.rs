@@ -2,3 +2,4 @@
 pub mod goblin_deathraiders;
 pub mod lightning_angel;
 pub mod swift_justice;
+pub mod leonin_snarecaster;

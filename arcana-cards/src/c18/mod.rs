@@ -2,3 +2,4 @@
 pub mod dream_cache;
 pub mod tidings;
 pub mod predict;
+pub mod scute_mob;

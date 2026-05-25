@@ -7,3 +7,6 @@ pub mod ticked_off;
 pub mod harmonize;
 pub mod donatello_s_science_lesson;
 pub mod wave_goodbye;
+pub mod april_o_neil_human_element;
+pub mod foe_liage;
+pub mod irma_part_time_mutant;

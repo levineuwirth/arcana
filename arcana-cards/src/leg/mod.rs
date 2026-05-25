@@ -11,3 +11,5 @@ pub mod remove_enchantments;
 pub mod jovial_evil;
 pub mod glyph_of_destruction;
 pub mod typhoon;
+pub mod ichneumon_druid;
+pub mod floral_spuzzem;

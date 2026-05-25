@@ -5,3 +5,6 @@ pub mod zephyr_falcon;
 pub mod wolverine_pack;
 pub mod pikemen;
 pub mod truce;
+pub mod reef_pirates;
+pub mod murk_dwellers;
+pub mod tarpan;

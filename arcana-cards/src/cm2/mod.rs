@@ -6,3 +6,7 @@ pub mod unnerve;
 pub mod grip_of_phyresis;
 pub mod fall_of_the_hammer;
 pub mod incite_rebellion;
+pub mod dreamborn_muse;
+pub mod thundercloud_shaman;
+pub mod magma_giant;
+pub mod riddlekeeper;

@@ -9,3 +9,6 @@ pub mod simoon;
 pub mod tsabo_s_decree;
 pub mod scouting_trek;
 pub mod backlash;
+pub mod quirion_trailblazer;
+pub mod loafing_giant;
+pub mod vicious_kavu;

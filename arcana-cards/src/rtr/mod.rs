@@ -29,3 +29,7 @@ pub mod fall_of_the_gavel;
 pub mod skull_rend;
 pub mod chorus_of_might;
 pub mod jarad_s_orders;
+pub mod viashino_racketeer;
+pub mod bazaar_krovod;
+pub mod batterhorn;
+pub mod voidwielder;

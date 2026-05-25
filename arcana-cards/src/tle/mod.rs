@@ -30,3 +30,7 @@ pub mod cracked_earth_technique;
 pub mod lost_in_the_spirit_world;
 pub mod hog_monkey_rampage;
 pub mod overwhelming_victory;
+pub mod kindly_customer;
+pub mod koala_sheep;
+pub mod kyoshi_warrior_exemplars;
+pub mod fire_nation_sentinels;

@@ -5,3 +5,6 @@ pub mod smother;
 pub mod corpsehatch;
 pub mod consume_the_meek;
 pub mod forked_bolt;
+pub mod emrakul_s_hatcher;
+pub mod tajuru_archer;
+pub mod joraga_bard;

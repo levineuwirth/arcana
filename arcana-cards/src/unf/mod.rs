@@ -10,3 +10,5 @@ pub mod down_for_repairs;
 pub mod park_re_entry;
 pub mod opening_ceremony;
 pub mod finishing_move;
+pub mod d00_dl_caricaturist;
+pub mod impounding_lot_bot;

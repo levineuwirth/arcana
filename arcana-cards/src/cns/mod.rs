@@ -14,3 +14,4 @@ pub mod syphon_soul;
 pub mod selvala_s_charge;
 pub mod rousing_of_souls;
 pub mod bite_of_the_black_rose;
+pub mod howling_wolf;

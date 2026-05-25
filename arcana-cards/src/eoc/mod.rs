@@ -7,3 +7,6 @@ pub mod roiling_regrowth;
 pub mod windgrace_s_judgment;
 pub mod planetary_annihilation;
 pub mod fumigate;
+pub mod satyr_wayfinder;
+pub mod loamcrafter_faun;
+pub mod jhoira_weatherlight_captain;

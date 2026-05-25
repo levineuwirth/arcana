@@ -14,3 +14,5 @@ pub mod ostracize;
 pub mod purify;
 pub mod infernal_contract;
 pub mod disorder;
+pub mod dakmor_lancer;
+pub mod goblin_gardener;

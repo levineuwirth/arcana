@@ -15,3 +15,5 @@ pub mod confidence_from_strength;
 pub mod cleansing_screech;
 pub mod journey_for_the_elixir;
 pub mod aggressive_instinct;
+pub mod purple_crystal_crab;
+pub mod reckless_pangolin;

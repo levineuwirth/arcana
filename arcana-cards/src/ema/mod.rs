@@ -5,3 +5,8 @@ pub mod memory_lapse;
 pub mod hymn_to_tourach;
 pub mod carbonize;
 pub mod sinkhole;
+pub mod monk_idealist;
+pub mod flame_kin_zealot;
+pub mod war_priest_of_thune;
+pub mod screeching_skaab;
+pub mod deadbridge_shaman;

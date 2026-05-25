@@ -18,3 +18,7 @@ pub mod dark_deal;
 pub mod abzan_advantage;
 pub mod grim_contest;
 pub mod rakshasa_s_disdain;
+pub mod sibsig_host;
+pub mod arashin_cleric;
+pub mod orc_sureshot;
+pub mod ugin_s_construct;

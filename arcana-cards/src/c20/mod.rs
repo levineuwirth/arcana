@@ -4,3 +4,6 @@ pub mod natural_connection;
 pub mod deathsprout;
 pub mod curious_herd;
 pub mod ever_after;
+pub mod glademuse;
+pub mod lunar_mystic;
+pub mod xathrid_necromancer;

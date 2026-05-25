@@ -6,3 +6,5 @@ pub mod raging_goblin;
 pub mod zephyr_gull;
 pub mod feral_roar;
 pub mod tactical_advantage;
+pub mod inspiring_commander;
+pub mod spiritual_guardian;

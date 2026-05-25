@@ -2,3 +2,6 @@
 pub mod ancient_craving;
 pub mod urge_to_feed;
 pub mod flood_of_tears;
+pub mod anowon_the_ruin_sage;
+pub mod midnight_arsonist;
+pub mod kami_of_the_crescent_moon;

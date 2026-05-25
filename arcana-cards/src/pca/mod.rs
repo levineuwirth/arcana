@@ -6,3 +6,8 @@ pub mod arc_trail;
 pub mod see_beyond;
 pub mod three_dreams;
 pub mod hellion_eruption;
+pub mod noggle_ransacker;
+pub mod bramble_elemental;
+pub mod tukatongue_thallid;
+pub mod dreampod_druid;
+pub mod ondu_giant;

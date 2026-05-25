@@ -20,3 +20,7 @@ pub mod crush;
 pub mod quicksilver_geyser;
 pub mod virulent_wound;
 pub mod creeping_corrosion;
+pub mod fangren_marauder;
+pub mod nested_ghoul;
+pub mod oculus;
+pub mod caustic_hound;

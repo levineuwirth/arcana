@@ -5,3 +5,4 @@ pub mod their_name_is_death;
 pub mod mandate_of_abaddon;
 pub mod tyranid_invasion;
 pub mod deny_the_witch;
+pub mod technomancer;

@@ -14,3 +14,4 @@ pub mod ranger_s_path;
 pub mod worldfire;
 pub mod boundless_realms;
 pub mod fungal_sprouting;
+pub mod healer_of_the_pride;

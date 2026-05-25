@@ -19,3 +19,6 @@ pub mod bramblecrush;
 pub mod vile_rebirth;
 pub mod hive_stirrings;
 pub mod howl_of_the_night_pack;
+pub mod fleshpulper_giant;
+pub mod advocate_of_the_beast;
+pub mod master_of_diversion;

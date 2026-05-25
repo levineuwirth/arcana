@@ -10,3 +10,8 @@ pub mod encroach;
 pub mod wake_of_destruction;
 pub mod multani_s_decree;
 pub mod flicker;
+pub mod reliquary_monk;
+pub mod academy_rector;
+pub mod skittering_horror;
+pub mod goblin_masons;
+pub mod disease_carriers;

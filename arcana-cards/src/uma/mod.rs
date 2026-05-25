@@ -17,3 +17,7 @@ pub mod appetite_for_brains;
 pub mod miming_slime;
 pub mod grave_strength;
 pub mod songs_of_the_damned;
+pub mod sultai_skullkeeper;
+pub mod wandering_champion;
+pub mod archaeomancer;
+pub mod slum_reaper;

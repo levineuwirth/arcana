@@ -538,6 +538,18 @@ pub mod register_all;
 
 pub mod ltc;
 
+pub mod exo;
+
+pub mod msc;
+
+pub mod hob;
+
+pub mod znc;
+
+pub mod drc;
+
+pub mod ddf;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

@@ -17,3 +17,6 @@ pub mod dry_spell;
 pub mod essence_filter;
 pub mod righteous_fury;
 pub mod broken_visage;
+pub mod farrel_s_zealot;
+pub mod necrite;
+pub mod orcish_squatters;

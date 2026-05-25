@@ -28,3 +28,7 @@ pub mod end_hostilities;
 pub mod bring_low;
 pub mod master_the_way;
 pub mod kin_tree_invocation;
+pub mod rakshasa_vizier;
+pub mod warden_of_the_eye;
+pub mod mardu_blazebringer;
+pub mod armament_corps;

@@ -5,3 +5,8 @@ pub mod colossal_might;
 pub mod scattering_stroke;
 pub mod ruination;
 pub mod trade_secrets;
+pub mod magus_of_the_vineyard;
+pub mod false_prophet;
+pub mod goblin_cadets;
+pub mod celestial_force;
+pub mod monk_realist;

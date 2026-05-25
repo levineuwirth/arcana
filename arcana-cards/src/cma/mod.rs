@@ -7,3 +7,6 @@ pub mod collective_unconscious;
 pub mod grim_flowering;
 pub mod tempt_with_glory;
 pub mod praetor_s_counsel;
+pub mod titania_s_chosen;
+pub mod viridian_emissary;
+pub mod essence_warden;

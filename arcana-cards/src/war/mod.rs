@@ -34,3 +34,6 @@ pub mod chandra_s_pyrohelix;
 pub mod liliana_s_triumph;
 pub mod domri_s_ambush;
 pub mod ignite_the_beacon;
+pub mod augur_of_bolas;
+pub mod teyo_s_lightshield;
+pub mod vraska_s_finisher;

@@ -8,3 +8,8 @@ pub mod reign_of_the_pit;
 pub mod crash_the_party;
 pub mod spiteful_repossession;
 pub mod jailbreak;
+pub mod mitotic_slime;
+pub mod luminarch_aspirant;
+pub mod shield_broker;
+pub mod identity_thief;
+pub mod kamiz_obscura_oculus;

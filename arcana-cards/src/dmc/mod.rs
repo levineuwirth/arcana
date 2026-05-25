@@ -2,3 +2,4 @@
 pub mod fusion_elemental;
 pub mod echoing_truth;
 pub mod kaya_s_wrath;
+pub mod hero_of_precinct_one;

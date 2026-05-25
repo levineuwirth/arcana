@@ -14,3 +14,6 @@ pub mod victorious_destruction;
 pub mod life_s_finale;
 pub mod corrupted_resolve;
 pub mod geosurge;
+pub mod auriok_survivors;
+pub mod kiln_walker;
+pub mod priest_of_urabrask;

@@ -29,3 +29,7 @@ pub mod flashfires;
 pub mod boiling_seas;
 pub mod chastise;
 pub mod persecute;
+pub mod hollow_dogs;
+pub mod rukh_egg;
+pub mod rogue_kavu;
+pub mod imaginary_pet;

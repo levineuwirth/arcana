@@ -13,3 +13,5 @@ pub mod shadowfeed;
 pub mod sangrite_surge;
 pub mod violent_ultimatum;
 pub mod punish_ignorance;
+pub mod blister_beetle;
+pub mod cunning_lethemancer;

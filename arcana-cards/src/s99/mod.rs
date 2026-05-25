@@ -18,3 +18,4 @@ pub mod howling_fury;
 pub mod extinguish;
 pub mod scorching_spear;
 pub mod undo;
+pub mod devout_monk;

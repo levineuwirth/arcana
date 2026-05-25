@@ -15,3 +15,6 @@ pub mod butcher_s_glee;
 pub mod nature_s_claim;
 pub mod mark_of_mutiny;
 pub mod grisly_spectacle;
+pub mod elusive_spellfist;
+pub mod student_of_ojutai;
+pub mod bala_ged_scorpion;

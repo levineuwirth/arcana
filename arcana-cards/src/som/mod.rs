@@ -15,3 +15,7 @@ pub mod withstand_death;
 pub mod melt_terrain;
 pub mod carrion_call;
 pub mod wing_puncture;
+pub mod ogre_geargrabber;
+pub mod lifesmith;
+pub mod tunnel_ignus;
+pub mod oxidda_scrapmelter;

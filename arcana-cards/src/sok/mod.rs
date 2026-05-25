@@ -17,3 +17,8 @@ pub mod cut_the_earthly_bond;
 pub mod kiku_s_shadow;
 pub mod oppressive_will;
 pub mod inner_fire;
+pub mod reki_the_history_of_kamigawa;
+pub mod rushing_tide_zubera;
+pub mod briarknit_kami;
+pub mod descendant_of_masumaro;
+pub mod raving_oni_slave;

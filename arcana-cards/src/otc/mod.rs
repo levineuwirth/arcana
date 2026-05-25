@@ -7,3 +7,7 @@ pub mod thrilling_discovery;
 pub mod windfall;
 pub mod heartless_conscription;
 pub mod predators_hour;
+pub mod talrand_sky_summoner;
+pub mod elvish_rejuvenator;
+pub mod oblivion_sower;
+pub mod murmuring_mystic;

@@ -26,3 +26,7 @@ pub mod shape_the_sands;
 pub mod foul_renewal;
 pub mod tail_slash;
 pub mod descent_of_the_dragons;
+pub mod sibsig_icebreakers;
+pub mod youthful_scholar;
+pub mod blood_chin_rager;
+pub mod kolaghan_aspirant;

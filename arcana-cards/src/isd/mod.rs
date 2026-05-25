@@ -17,3 +17,7 @@ pub mod urgent_exorcism;
 pub mod into_the_maw_of_hell;
 pub mod frightful_delusion;
 pub mod paraselene;
+pub mod village_cannibals;
+pub mod armored_skaab;
+pub mod rage_thrower;
+pub mod crossway_vampire;

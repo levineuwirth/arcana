@@ -1,0 +1,71 @@
+//! Ironclad Revolutionary — `{4}{B}{B}` 4/4 black Aetherborn Artificer creature.
+//! "When this creature enters, you may sacrifice an artifact. If you do, put two +1/+1
+//! counters on this creature and each opponent loses 2 life."
+//! GAP: effect — optional sacrifice ("you may sacrifice") conditional branching not expressible;
+//! emitting the counter + life loss directly.
+
+use arcana_core::effects::Effect;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
+use arcana_core::script;
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Ironclad Revolutionary");
+    let aetherborn = reg.interner_mut().intern("Aetherborn");
+    let artificer = reg.interner_mut().intern("Artificer");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(aetherborn);
+    subtypes.0.insert(artificer);
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{4}{B}{B}").expect("valid cost")),
+        colors: ColorSet::black(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        supertypes: SupertypeSet::default(),
+        power: Some(PtValue::Fixed(4)),
+        toughness: Some(PtValue::Fixed(4)),
+        keywords: vec![],
+        ..Default::default()
+    };
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_counters_and_drain,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
+    )
+}
+
+fn etb_counters_and_drain(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: effect — "you may sacrifice an artifact" optional cost not expressible;
+    // emitting counters + opponent life loss unconditionally
+    let opponents = script::opponents(state, trig.controller);
+    let mut effects: Vec<Effect> = vec![
+        Effect::AddCounters {
+            target: trig.source,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 2,
+        },
+    ];
+    for opp in opponents {
+        effects.push(Effect::LoseLife { player: opp, amount: 2 });
+    }
+    vec![Effect::Sequence(effects)]
+}

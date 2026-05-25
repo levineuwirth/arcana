@@ -15,3 +15,5 @@ pub mod skittering_invasion;
 pub mod spawning_breath;
 pub mod realms_uncharted;
 pub mod vendetta;
+pub mod enatu_golem;
+pub mod soul_s_attendant;

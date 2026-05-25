@@ -4,3 +4,5 @@ pub mod tl_dr;
 pub mod naturalize_2;
 pub mod wrath_of_leknif;
 pub mod you_compleat_me;
+pub mod goblin_gang_leader;
+pub mod tenacious_pup;

@@ -18,3 +18,8 @@ pub mod judge_unworthy;
 pub mod tendrils_of_corruption;
 pub mod minions_murmurs;
 pub mod smallpox;
+pub mod cryptic_annelid;
+pub mod pit_keeper;
+pub mod skittering_monstrosity;
+pub mod primal_forcemage;
+pub mod heartwood_storyteller;

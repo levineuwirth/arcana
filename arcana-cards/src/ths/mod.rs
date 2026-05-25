@@ -32,3 +32,8 @@ pub mod ray_of_dissolution;
 pub mod thassa_s_bounty;
 pub mod hunt_the_hunter;
 pub mod artisan_s_sorrow;
+pub mod nylea_s_disciple;
+pub mod flamespeaker_adept;
+pub mod fanatic_of_mogis;
+pub mod fleshmad_steed;
+pub mod lagonna_band_elder;

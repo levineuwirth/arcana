@@ -19,3 +19,5 @@ pub mod fated_conflagration;
 pub mod fated_retribution;
 pub mod searing_blood;
 pub mod fated_infatuation;
+pub mod setessan_starbreaker;
+pub mod forsaken_drifters;

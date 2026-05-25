@@ -14,3 +14,5 @@ pub mod burning_inquiry;
 pub mod disorient;
 pub mod might_of_oaks;
 pub mod tempest_of_light;
+pub mod bramble_creeper;
+pub mod inferno_elemental;

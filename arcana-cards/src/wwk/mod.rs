@@ -10,3 +10,7 @@ pub mod feral_contest;
 pub mod bull_rush;
 pub mod dead_reckoning;
 pub mod roiling_terrain;
+pub mod hada_freeblade;
+pub mod grotag_thrasher;
+pub mod halimar_excavator;
+pub mod talus_paladin;

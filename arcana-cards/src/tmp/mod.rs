@@ -6,3 +6,8 @@ pub mod thalakos_sentry;
 pub mod winter_s_grasp;
 pub mod serene_offering;
 pub mod apocalypse;
+pub mod fugitive_druid;
+pub mod servant_of_volrath;
+pub mod mongrel_pack;
+pub mod segmented_wurm;
+pub mod dirtcowl_wurm;

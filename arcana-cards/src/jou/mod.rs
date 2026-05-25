@@ -18,3 +18,7 @@ pub mod deicide;
 pub mod starfall;
 pub mod nightmarish_end;
 pub mod spite_of_mogis;
+pub mod satyr_grovedancer;
+pub mod returned_reveler;
+pub mod sigiled_skink;
+pub mod bearer_of_the_heavens;

@@ -7,3 +7,4 @@ pub mod peppersmoke;
 pub mod feudkiller_s_verdict;
 pub mod crush_underfoot;
 pub mod petals_of_insight;
+pub mod riftsweeper;

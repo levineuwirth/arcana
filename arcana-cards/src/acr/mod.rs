@@ -4,3 +4,7 @@ pub mod battlefield_improvisation;
 pub mod tranquilize;
 pub mod become_anonymous;
 pub mod desynchronization;
+pub mod settlement_blacksmith;
+pub mod arbaaz_mir;
+pub mod brotherhood_spy;
+pub mod brotherhood_patriarch;

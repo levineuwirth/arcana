@@ -10,3 +10,8 @@ pub mod consuming_corruption;
 pub mod horrific_assault;
 pub mod signature_slam;
 pub mod invert_polarity;
+pub mod serum_visionary;
+pub mod accursed_marauder;
+pub mod nadier_s_nightblade;
+pub mod reef_worm;
+pub mod recruiter_of_the_guard;

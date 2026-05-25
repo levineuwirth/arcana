@@ -22,3 +22,5 @@ pub mod inner_struggle;
 pub mod behold_the_beyond;
 pub mod throttle;
 pub mod confront_the_unknown;
+pub mod stoic_builder;
+pub mod lamplighter_of_selhoff;

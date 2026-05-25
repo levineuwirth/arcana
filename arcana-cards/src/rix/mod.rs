@@ -20,3 +20,8 @@ pub mod mutiny;
 pub mod release_to_the_wind;
 pub mod angrath_s_fury;
 pub mod arterial_flow;
+pub mod vraska_s_conquistador;
+pub mod jungleborn_pioneer;
+pub mod fathom_fleet_boarder;
+pub mod jade_bearer;
+pub mod sanguine_glorifier;

@@ -15,3 +15,8 @@ pub mod echoing_calm;
 pub mod hunger_of_the_nim;
 pub mod retract;
 pub mod soulscour;
+pub mod nim_abomination;
+pub mod fangren_firstborn;
+pub mod tel_jilad_wolf;
+pub mod roaring_slagwurm;
+pub mod gemini_engine;

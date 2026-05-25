@@ -16,3 +16,7 @@ pub mod flame_rift;
 pub mod suspend;
 pub mod upheaval;
 pub mod blacksmith_s_skill;
+pub mod nested_shambler;
+pub mod young_necromancer;
+pub mod imperial_recruiter;
+pub mod etherium_spinner;

@@ -13,3 +13,7 @@ pub mod shattered_dreams;
 pub mod devour_in_shadow;
 pub mod granulate;
 pub mod channel_the_suns;
+pub mod anodet_lurker;
+pub mod leonin_squire;
+pub mod blind_creeper;
+pub mod fangren_pathcutter;

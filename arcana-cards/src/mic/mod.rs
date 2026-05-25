@@ -3,3 +3,4 @@ pub mod bestial_menace;
 pub mod growth_spasm;
 pub mod zombie_apocalypse;
 pub mod syphon_flesh;
+pub mod undead_augur;

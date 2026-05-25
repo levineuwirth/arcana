@@ -8,3 +8,6 @@ pub mod nissa_s_renewal;
 pub mod taste_of_death;
 pub mod essence_pulse;
 pub mod seething_song;
+pub mod spawning_kraken;
+pub mod epicure_of_blood;
+pub mod quicksmith_genius;

@@ -6,3 +6,4 @@ pub mod churning_eddy;
 pub mod liquify;
 pub mod false_memories;
 pub mod skullscorch;
+pub mod cephalid_aristocrat;

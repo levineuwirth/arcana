@@ -18,3 +18,8 @@ pub mod burning_cloak;
 pub mod cruel_tutor;
 pub mod mind_knives;
 pub mod virtue_s_ruin;
+pub mod fire_snake;
+pub mod charging_bandits;
+pub mod noxious_toad;
+pub mod undying_beast;
+pub mod serpent_assassin;

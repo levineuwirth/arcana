@@ -19,3 +19,7 @@ pub mod march_from_the_tomb;
 pub mod swell_of_growth;
 pub mod dispel;
 pub mod roil_s_retribution;
+pub mod blight_herder;
+pub mod noyan_dar_roil_shaper;
+pub mod serene_steward;
+pub mod nirkana_assassin;

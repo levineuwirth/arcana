@@ -13,3 +13,7 @@ pub mod spell_suck;
 pub mod selfie_preservation;
 pub mod subcontract;
 pub mod success;
+pub mod sly_spy;
+pub mod jackknight;
+pub mod squirrel_dealer;
+pub mod it_that_gets_left_hanging;

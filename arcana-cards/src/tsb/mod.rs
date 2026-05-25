@@ -7,3 +7,4 @@ pub mod stupor;
 pub mod avoid_fate;
 pub mod psionic_blast;
 pub mod hail_storm;
+pub mod essence_sliver;

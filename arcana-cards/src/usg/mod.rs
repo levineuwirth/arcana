@@ -15,3 +15,8 @@ pub mod acidic_soil;
 pub mod titania_s_boon;
 pub mod time_spiral;
 pub mod sunder;
+pub mod great_whale;
+pub mod cave_tiger;
+pub mod reclusive_wight;
+pub mod retromancer;
+pub mod viashino_weaponsmith;

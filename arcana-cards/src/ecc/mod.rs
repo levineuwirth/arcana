@@ -8,3 +8,5 @@ pub mod kodama_s_reach;
 pub mod elemental_spectacle;
 pub mod incremental_blight;
 pub mod shatter_the_sky;
+pub mod sinister_gnarlbark;
+pub mod skinrender;

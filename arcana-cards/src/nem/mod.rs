@@ -2,3 +2,10 @@
 pub mod skyshroud_ridgeback;
 pub mod flowstone_strike;
 pub mod topple;
+pub mod spiteful_bully;
+pub mod phyrexian_driver;
+pub mod chieftain_en_dal;
+pub mod silkenfist_order;
+pub mod rackling;
+pub mod laccolith_warrior;
+pub mod skyshroud_sentinel;

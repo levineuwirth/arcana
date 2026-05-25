@@ -14,3 +14,5 @@ pub mod slaughter_cry;
 pub mod time_reversal;
 pub mod monomania;
 pub mod timely_reinforcements;
+pub mod benalish_veteran;
+pub mod gideon_s_avenger;

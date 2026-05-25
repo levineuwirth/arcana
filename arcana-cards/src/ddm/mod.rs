@@ -4,3 +4,7 @@ pub mod consume_strength;
 pub mod treasured_find;
 pub mod last_kiss;
 pub mod summoner_s_bane;
+pub mod aether_adept;
+pub mod highway_robber;
+pub mod crosstown_courier;
+pub mod leyline_phantom;

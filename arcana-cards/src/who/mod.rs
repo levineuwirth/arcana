@@ -1,2 +1,3 @@
 //! WHO — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod great_intelligence_s_plan;
+pub mod renegade_silent;

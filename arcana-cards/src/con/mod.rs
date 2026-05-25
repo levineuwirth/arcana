@@ -9,3 +9,7 @@ pub mod view_from_above;
 pub mod quenchable_fire;
 pub mod wretched_banquet;
 pub mod voices_from_the_void;
+pub mod wild_leotau;
+pub mod paleoloth;
+pub mod sedraxis_alchemist;
+pub mod rhox_meditant;

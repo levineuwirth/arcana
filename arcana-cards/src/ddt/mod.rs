@@ -3,3 +3,7 @@ pub mod goblin_wardriver;
 pub mod tidal_wave;
 pub mod concentrate;
 pub mod tarfire;
+pub mod scroll_thief;
+pub mod wake_thrasher;
+pub mod tidebinder_mage;
+pub mod foundry_street_denizen;

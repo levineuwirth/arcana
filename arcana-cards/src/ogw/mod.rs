@@ -10,3 +10,5 @@ pub mod natural_state;
 pub mod immolating_glare;
 pub mod searing_light;
 pub mod tar_snare;
+pub mod loam_larva;
+pub mod reflector_mage;

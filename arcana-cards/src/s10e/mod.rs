@@ -25,3 +25,7 @@ pub mod fists_of_the_anvil;
 pub mod shatterstorm;
 pub mod sudden_impact;
 pub mod threaten;
+pub mod treasure_hunter;
+pub mod graveborn_muse;
+pub mod sylvan_basilisk;
+pub mod hidden_horror;
