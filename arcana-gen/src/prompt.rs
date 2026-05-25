@@ -480,6 +480,7 @@ Self — the creature itself:
 - `TriggerCondition::SelfAttacks` (unit) — "Whenever ~ attacks".
 - `TriggerCondition::SelfBecomesBlocked` (unit) — "When ~ becomes blocked".
 - `TriggerCondition::SelfBlocks` (unit) — "Whenever ~ blocks" / "Whenever ~ blocks a creature".
+- `TriggerCondition::SelfBlocksOrBecomesBlocked` (unit) — "Whenever ~ blocks or becomes blocked [by a creature]" (Aisling Leprechaun, Tangle Asp, Rock Basilisk, Sawtooth Ogre, Corrosive Ooze class). Picks BOTH sides of a block in a single trigger. Use `trig.other_combatant()` to read the OTHER creature ("that creature").
 - `TriggerCondition::SelfBecomesTapped` (unit) — "Whenever ~ becomes tapped".
 - `TriggerCondition::SelfAttacksUnblocked` (unit) — "Whenever ~ attacks and isn't blocked".
 - `TriggerCondition::SelfIsDealtDamage { combat_only: bool }` — "Whenever ~ is dealt damage" → `combat_only: false`; "Whenever ~ is dealt combat damage" → `combat_only: true`.
@@ -525,6 +526,7 @@ const TRIGGER_PENDING_ACCESSORS: &str = r#"PENDING-TRIGGER ACCESSORS — beyond 
 - `trig.defending_player() -> Option<PlayerId>` — pairs with `SelfAttacks` / `CreatureAttacks` / `SelfAttacksUnblocked`. For "the defending player loses 1 life": `let Some(p) = trig.defending_player() else { return Vec::new(); };`.
 - `trig.triggering_caster() -> Option<PlayerId>` — pairs with `SpellCast`. For "that player draws a card" / "that player loses life".
 - `trig.entering_object() -> Option<ObjectId>` — pairs with `SelfEntersBattlefield` and battlefield-bound `ZoneChange`. For "put X +1/+1 counters where X = power of the entering creature": `let id = trig.entering_object().unwrap_or(trig.source); let n = script::power_of(state, id).max(0) as u32;`.
+- `trig.other_combatant() -> Option<ObjectId>` — pairs with `SelfBlocks` / `SelfBecomesBlocked` / `SelfBlocksOrBecomesBlocked`. The OTHER creature in this block — the attacker if we're blocking, the (first) blocker if we became blocked. For "that creature becomes green" / "destroy that creature": `let Some(id) = trig.other_combatant() else { return Vec::new(); };`.
 No imports beyond what's already in scope. These accessors are stable engine API — never pattern-match `trig.trigger_event` instead."#;
 
 // =============================================================================

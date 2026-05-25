@@ -192,6 +192,12 @@ pub enum TriggerCondition {
     /// Matches [`GameEvent::CreatureBlocks`] whose blocker is this
     /// source.
     SelfBlocks,
+    /// "Whenever ~ blocks or becomes blocked by a creature."
+    /// Matches either side of a block — [`GameEvent::CreatureBlocks`]
+    /// where source is the blocker, OR [`GameEvent::CreatureBlocked`]
+    /// where source is the attacker. The OTHER creature in the
+    /// combat event is reachable from [`PendingTrigger::other_combatant`].
+    SelfBlocksOrBecomesBlocked,
     /// "Whenever ~ becomes tapped". Matches [`GameEvent::Tapped`]
     /// on this source.
     SelfBecomesTapped,
@@ -270,6 +276,12 @@ impl TriggerCondition {
 
             SelfBlocks => matches!(event,
                 GameEvent::CreatureBlocks { blocker, .. } if *blocker == source),
+
+            SelfBlocksOrBecomesBlocked => match event {
+                GameEvent::CreatureBlocks { blocker, .. } => *blocker == source,
+                GameEvent::CreatureBlocked { attacker, .. } => *attacker == source,
+                _ => false,
+            },
 
             SelfBecomesTapped => matches!(event,
                 GameEvent::Tapped { object_id } if *object_id == source),
@@ -526,6 +538,24 @@ impl PendingTrigger {
             GameEvent::EntersBattlefield { object_id, .. } => Some(*object_id),
             GameEvent::ZoneChange { object_id, to: Zone::Battlefield, .. } =>
                 Some(*object_id),
+            _ => None,
+        }
+    }
+
+    /// The OTHER creature in a block event. For
+    /// [`GameEvent::CreatureBlocks`] (this source is the blocker), the
+    /// attacker. For [`GameEvent::CreatureBlocked`] (this source is the
+    /// attacker), the first declared blocker — multi-blocker phrasings
+    /// like "destroy all creatures blocking this" should iterate the
+    /// full `blockers` vec instead, but cards saying "that creature"
+    /// (Aisling Leprechaun, Tangle Asp, Rock Basilisk) refer to a
+    /// single antecedent, so first-blocker is the standard rendering.
+    /// Pairs with [`TriggerCondition::SelfBlocksOrBecomesBlocked`].
+    pub fn other_combatant(&self) -> Option<ObjectId> {
+        match &self.trigger_event {
+            GameEvent::CreatureBlocks { attacker, .. } => Some(*attacker),
+            GameEvent::CreatureBlocked { blockers, .. } =>
+                blockers.first().copied(),
             _ => None,
         }
     }
@@ -804,6 +834,53 @@ mod tests {
         assert!(TriggerCondition::SelfBlocks.matches(&ev, 8, 0, &s));
         // Source is the attacker, not the blocker — doesn't fire.
         assert!(!TriggerCondition::SelfBlocks.matches(&ev, 7, 0, &s));
+    }
+
+    #[test]
+    fn self_blocks_or_becomes_blocked_matches_either_side() {
+        let s = GameState::new(2, 0);
+        // We are blocking — source is the blocker.
+        let ev = GameEvent::CreatureBlocks { blocker: 8, attacker: 7 };
+        assert!(TriggerCondition::SelfBlocksOrBecomesBlocked
+            .matches(&ev, 8, 0, &s));
+        // We are blocked — source is the attacker.
+        let ev = GameEvent::CreatureBlocked { attacker: 7, blockers: vec![8] };
+        assert!(TriggerCondition::SelfBlocksOrBecomesBlocked
+            .matches(&ev, 7, 0, &s));
+        // We are not in the event at all.
+        assert!(!TriggerCondition::SelfBlocksOrBecomesBlocked
+            .matches(&ev, 99, 0, &s));
+    }
+
+    #[test]
+    fn other_combatant_accessor_returns_partner() {
+        // Blocking side: partner is the attacker.
+        let trig = PendingTrigger {
+            source: 8, trigger_id: 0, controller: 0,
+            trigger_event: GameEvent::CreatureBlocks {
+                blocker: 8, attacker: 7,
+            },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        assert_eq!(trig.other_combatant(), Some(7));
+
+        // Blocked side: partner is the first blocker.
+        let trig = PendingTrigger {
+            source: 7, trigger_id: 0, controller: 0,
+            trigger_event: GameEvent::CreatureBlocked {
+                attacker: 7, blockers: vec![8, 9, 10],
+            },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        assert_eq!(trig.other_combatant(), Some(8));
+
+        // Non-block event: None.
+        let trig = PendingTrigger {
+            source: 1, trigger_id: 0, controller: 0,
+            trigger_event: GameEvent::Dies { object_id: 1 },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        assert_eq!(trig.other_combatant(), None);
     }
 
     #[test]
