@@ -177,6 +177,104 @@ pub fn life(state: &GameState, player: PlayerId) -> i32 {
     state.player(player).life
 }
 
+// =============================================================================
+// Per-turn typed-event counters (Phase A #6)
+// =============================================================================
+//
+// Each helper scans `state.event_log[state.turn_event_log_start..]` —
+// the slice for the current turn — and returns the count matching a
+// predicate. The turn-start cursor is bumped to `event_log.len()` on
+// every TurnBegins emission, so every helper is O(events-this-turn).
+//
+// "this turn" semantics mean only the *active* turn — the slice resets
+// when a new turn begins. Use these for cards that read
+// "[creatures of type X] died this turn", "spells you've cast this
+// turn", "[player] drew/discarded a card this turn", and similar.
+
+/// Slice of `state.event_log` covering only the current turn.
+fn this_turn_events(state: &GameState) -> &[crate::events::GameEvent] {
+    let start = state.turn_event_log_start.min(state.event_log.len());
+    &state.event_log[start..]
+}
+
+/// Number of creatures with `subtype` (interned via `reg`) that died
+/// this turn — used for Silent-Chant Zubera class ("you gain 2 life
+/// for each Zubera that died this turn"). Reads
+/// [`crate::events::GameEvent::Dies`] for objects whose LKI carries
+/// `subtype`. If `subtype` was never interned the count is 0.
+pub fn creatures_of_subtype_died_this_turn(
+    state: &GameState,
+    reg: &CardRegistry,
+    subtype: &str,
+) -> u32 {
+    let Some(sym) = reg.interner().lookup(subtype) else { return 0; };
+    let mut n = 0u32;
+    for ev in this_turn_events(state) {
+        if let crate::events::GameEvent::Dies { object_id } = ev {
+            // Live arena first, then LKI (the typical case — the
+            // creature just left the battlefield).
+            let chars = state.objects.get(*object_id)
+                .map(|o| &o.characteristics)
+                .or_else(|| state.lki.get(object_id).map(|o| &o.characteristics));
+            if let Some(c) = chars {
+                if c.subtypes.contains(sym) { n += 1; }
+            }
+        }
+    }
+    n
+}
+
+/// Number of spells cast this turn matching `filter`. `you` resolves
+/// `ControllerConstraint::You` / `Opponent` inside the filter. For
+/// "instant or sorcery spells you've cast this turn" pass
+/// `ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)).controlled_by(ControllerConstraint::You)`.
+pub fn spells_cast_this_turn(
+    state: &GameState,
+    filter: &ObjectFilter,
+    you: PlayerId,
+) -> u32 {
+    let mut n = 0u32;
+    for ev in this_turn_events(state) {
+        if let crate::events::GameEvent::SpellCast { object_id, .. } = ev {
+            // Look the spell up via arena or LKI to inspect chars.
+            let obj = state.objects.get(*object_id)
+                .or_else(|| state.lki.get(object_id));
+            if let Some(o) = obj {
+                if filter.matches(o, state, you) { n += 1; }
+            }
+        }
+    }
+    n
+}
+
+/// Number of cards `player` has drawn this turn. Counts
+/// [`crate::events::GameEvent::CardDrawn`] events filtered to
+/// `player`. (`0` for an invalid player.)
+pub fn cards_drawn_this_turn(
+    state: &GameState,
+    player: PlayerId,
+) -> u32 {
+    if !valid(state, player) { return 0; }
+    this_turn_events(state).iter()
+        .filter(|ev| matches!(ev,
+            crate::events::GameEvent::DrawCard { player: p, .. } if *p == player))
+        .count() as u32
+}
+
+/// Number of cards `player` has discarded this turn — for
+/// "discarded this turn" / Madness-adjacent / "for each card you've
+/// discarded this turn" scaling.
+pub fn cards_discarded_this_turn(
+    state: &GameState,
+    player: PlayerId,
+) -> u32 {
+    if !valid(state, player) { return 0; }
+    this_turn_events(state).iter()
+        .filter(|ev| matches!(ev,
+            crate::events::GameEvent::Discarded { player: p, .. } if *p == player))
+        .count() as u32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -329,5 +427,81 @@ mod tests {
         assert_eq!(
             graveyard_matching(&s, &ObjectFilter::creature(), 0, 0), 1);
         assert_eq!(graveyard_size(&s, 0), 2);
+    }
+
+    // --- per-turn counters (Phase A #6) -----------------------------
+
+    #[test]
+    fn this_turn_slice_respects_cursor() {
+        let mut s = GameState::new(2, 0);
+        // Pre-turn event (e.g. from setup).
+        s.emit(crate::events::GameEvent::DrawCard {
+            player: 0, object_id: 1 });
+        // Bump the cursor as if a new turn began.
+        s.turn_event_log_start = s.event_log.len();
+        s.emit(crate::events::GameEvent::DrawCard {
+            player: 0, object_id: 2 });
+        s.emit(crate::events::GameEvent::DrawCard {
+            player: 0, object_id: 3 });
+        s.emit(crate::events::GameEvent::DrawCard {
+            player: 1, object_id: 4 });
+        assert_eq!(cards_drawn_this_turn(&s, 0), 2,
+            "pre-turn draw is excluded; both this-turn draws by p0 count");
+        assert_eq!(cards_drawn_this_turn(&s, 1), 1);
+    }
+
+    #[test]
+    fn cards_discarded_this_turn_counts_per_player() {
+        let mut s = GameState::new(2, 0);
+        s.turn_event_log_start = 0;
+        s.emit(crate::events::GameEvent::Discarded {
+            player: 0, object_id: 1 });
+        s.emit(crate::events::GameEvent::Discarded {
+            player: 0, object_id: 2 });
+        assert_eq!(cards_discarded_this_turn(&s, 0), 2);
+        assert_eq!(cards_discarded_this_turn(&s, 1), 0);
+    }
+
+    #[test]
+    fn creatures_of_subtype_died_this_turn_via_lki() {
+        // The dying creature has typically left the battlefield by the
+        // time the resolver runs — we must read characteristics from
+        // LKI. Set up two dies events: one with the subtype, one without.
+        let mut s = GameState::new(2, 0);
+        let mut reg = CardRegistry::new();
+        let zubera = reg.interner_mut().intern("Zubera");
+        let _ = reg.interner_mut().intern("Goblin"); // ensure interned
+
+        let mut subtypes = crate::types::SubtypeSet::default();
+        subtypes.0.insert(zubera);
+        let zubera_chars = Characteristics {
+            types: TypeLine::CREATURE.into(),
+            subtypes,
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            ..Default::default()
+        };
+        let goblin_chars = creature_chars(2, 2); // no Zubera subtype
+
+        // Materialize the creatures, then move them into LKI to mimic
+        // post-death state.
+        let z1 = put(&mut s, Zone::Battlefield, 0, zubera_chars.clone());
+        let z2 = put(&mut s, Zone::Battlefield, 0, zubera_chars);
+        let g  = put(&mut s, Zone::Battlefield, 0, goblin_chars);
+        // Snapshot into LKI before they 'die'.
+        for id in [z1, z2, g] {
+            let obj = s.objects.get(id).unwrap().clone();
+            s.lki.insert(id, obj);
+        }
+        s.turn_event_log_start = 0;
+        s.emit(crate::events::GameEvent::Dies { object_id: z1 });
+        s.emit(crate::events::GameEvent::Dies { object_id: z2 });
+        s.emit(crate::events::GameEvent::Dies { object_id: g });
+
+        assert_eq!(creatures_of_subtype_died_this_turn(&s, &reg, "Zubera"), 2);
+        assert_eq!(creatures_of_subtype_died_this_turn(&s, &reg, "Goblin"), 0,
+            "the Goblin object had no subtype set in this helper test");
+        // Unknown subtype (never interned) -> 0.
+        assert_eq!(creatures_of_subtype_died_this_turn(&s, &reg, "Sliver"), 0);
     }
 }

@@ -2846,6 +2846,9 @@ fn next_turn(state: &mut GameState) {
     // each PW's controller may activate exactly one loyalty ability
     // next turn.
     state.loyalty_activated_this_turn.clear();
+    // Phase A #6 — record where this turn's events start so per-turn
+    // helpers (`script::*_this_turn`) only scan the live slice.
+    state.turn_event_log_start = state.event_log.len();
     state.emit(GameEvent::TurnBegins {
         player: next_ap, turn_number: state.turn.turn_number,
     });

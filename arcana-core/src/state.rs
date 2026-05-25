@@ -191,6 +191,12 @@ pub struct GameState {
     /// so a PW that leaves and re-enters the battlefield is a new
     /// entry for this set.
     pub loyalty_activated_this_turn: crate::collections::HashSet<ObjectId>,
+    /// `event_log` index recording where the current turn's events
+    /// begin. Set on `TurnBegins` emission; consulted by per-turn
+    /// `script::*_this_turn` helpers to scan only the live turn's
+    /// slice instead of the full game log. Resilient to mid-game
+    /// snapshot resets (defaults to 0 = scan-all).
+    pub turn_event_log_start: usize,
 }
 
 /// Parked cascade state between exile-and-prompt and the YesNo
@@ -259,6 +265,7 @@ impl GameState {
             pending_choice_follow_up: None,
             lki: HashMap::default(),
             loyalty_activated_this_turn: crate::collections::HashSet::default(),
+            turn_event_log_start: 0,
         }
     }
 

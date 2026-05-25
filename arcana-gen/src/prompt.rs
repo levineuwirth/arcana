@@ -459,6 +459,10 @@ CARD SCRIPTING — when an amount or a board-wide set is computed at resolution 
 - `script::power_of(state, id) -> i32` · `script::toughness_of(state, id) -> i32`.
 - `script::hand_size(state, p) -> u32` · `script::graveyard_size(state, p) -> u32` · `script::library_size(state, p) -> u32` · `script::life(state, p) -> i32`.
 - `script::all_players(state) -> Vec<PlayerId>` · `script::opponents(state, {BINDING}.controller) -> Vec<PlayerId>`  — for 'each player' / 'each opponent': build one inner `Effect` per player, wrap in `Effect::Sequence`.
+- Per-turn event counters (use for "[N] died this turn" / "spells cast this turn" / "drew this turn" / "discarded this turn" — the turn slice resets on each new turn):
+  · `script::creatures_of_subtype_died_this_turn(state, reg, "Zubera") -> u32`  ('for each Zubera that died this turn' — Silent-Chant Zubera class)
+  · `script::spells_cast_this_turn(state, &filter, {BINDING}.controller) -> u32`  (filtered count; e.g. instant-or-sorcery spells cast this turn → use `ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY))`)
+  · `script::cards_drawn_this_turn(state, p) -> u32`  ·  `script::cards_discarded_this_turn(state, p) -> u32`
 - `script::target_controller(state, id, {BINDING}.controller) -> PlayerId`  — for 'target's controller' / 'its owner'.
 MANDATORY: if the oracle says 'for each', 'for every', 'equal to the number of', 'equal to its power/toughness', or 'X is the number of', the amount is DYNAMIC — compute it with a `script::*` helper (or `Effect::ForEach` over `script::ids_matching`). Do NOT hardcode a literal and do NOT `// GAP` the scaling while emitting a fixed-size effect: a literal where the text is dynamic is a materially WRONG card, auto-quarantined by verify. If you genuinely cannot compute it, GAP the WHOLE effect (`Vec::new()`).
 
