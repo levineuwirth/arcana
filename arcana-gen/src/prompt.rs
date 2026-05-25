@@ -456,10 +456,16 @@ fn effect_catalog(binding: &str) -> String {
 /// instead of inventing one (the dominant T3 layer-1 failure).
 const TRIGGER_CONDITION_CATALOG: &str = r#"TRIGGER CONDITION CATALOG — `TriggeredAbilityDef.trigger_condition` is a `TriggerCondition`. Pick the ONE variant matching the oracle's trigger clause; these are the COMPLETE set. Import `TriggerCondition` (and `TriggerSelf` if used) from `arcana_core::triggers`, `Step` / `Phase` from `arcana_core::turn`, `ControllerConstraint` from `arcana_core::targets`. `ControllerConstraint` ∈ `You` / `Opponent` / `Any`.
 
-Self — the creature itself; unit variants, no fields:
-- `TriggerCondition::SelfEntersBattlefield` — "When ~ enters [the battlefield]". (Elvish Visionary reference.)
-- `TriggerCondition::SelfDies` — "When ~ dies".
-- `TriggerCondition::SelfAttacks` — "Whenever ~ attacks".
+Self — the creature itself:
+- `TriggerCondition::SelfEntersBattlefield` (unit) — "When ~ enters [the battlefield]". (Elvish Visionary reference.)
+- `TriggerCondition::SelfDies` (unit) — "When ~ dies".
+- `TriggerCondition::SelfAttacks` (unit) — "Whenever ~ attacks".
+- `TriggerCondition::SelfBecomesBlocked` (unit) — "When ~ becomes blocked".
+- `TriggerCondition::SelfBlocks` (unit) — "Whenever ~ blocks" / "Whenever ~ blocks a creature".
+- `TriggerCondition::SelfBecomesTapped` (unit) — "Whenever ~ becomes tapped".
+- `TriggerCondition::SelfAttacksUnblocked` (unit) — "Whenever ~ attacks and isn't blocked".
+- `TriggerCondition::SelfIsDealtDamage { combat_only: bool }` — "Whenever ~ is dealt damage" → `combat_only: false`; "Whenever ~ is dealt combat damage" → `combat_only: true`.
+- `TriggerCondition::SelfBecomesTarget { caster: ControllerConstraint }` — CR 702.21a "Whenever ~ becomes the target of a spell or ability [an opponent controls]". `caster` ∈ `You`/`Opponent`/`Any`. (Matches spells + activated abilities only; triggered-ability targets are chosen mid-resolution and don't emit the event.)
 
 Spell cast:
 - `TriggerCondition::SpellCast { filter: Option<ObjectFilter>, caster: ControllerConstraint }` — "Whenever you cast a spell" → `caster: ControllerConstraint::You, filter: None`. "an opponent casts" → `caster: ControllerConstraint::Opponent`. Filtered ("an instant or sorcery") → `filter: Some(ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)))`. (Young Pyromancer reference.)

@@ -185,6 +185,24 @@ pub enum TriggerCondition {
     /// (triggered-ability targets are still chosen mid-resolution and
     /// don't emit the event).
     SelfBecomesTarget { caster: ControllerConstraint },
+    /// "When ~ becomes blocked" (CR 509). Matches
+    /// [`GameEvent::CreatureBlocked`] whose attacker is this source.
+    SelfBecomesBlocked,
+    /// "Whenever ~ blocks" / "Whenever ~ blocks a creature".
+    /// Matches [`GameEvent::CreatureBlocks`] whose blocker is this
+    /// source.
+    SelfBlocks,
+    /// "Whenever ~ becomes tapped". Matches [`GameEvent::Tapped`]
+    /// on this source.
+    SelfBecomesTapped,
+    /// "Whenever ~ is dealt damage". `combat_only: true` restricts
+    /// to CR 510.1c combat damage; `false` accepts any damage source.
+    SelfIsDealtDamage { combat_only: bool },
+    /// "Whenever ~ attacks and isn't blocked". Matches
+    /// [`GameEvent::CreatureNotBlocked`] whose attacker is this
+    /// source. The unblocked classification is settled by combat in
+    /// the DeclareBlockers step.
+    SelfAttacksUnblocked,
     /// "Whenever a creature enters the battlefield under your control".
     ZoneChange { filter: ObjectFilter, from: Option<Zone>, to: Zone },
     /// "Whenever you cast a spell" (optionally filtered).
@@ -246,6 +264,26 @@ impl TriggerCondition {
                 *target == source
                     && caster.matches(*controller, source_controller)
             }
+
+            SelfBecomesBlocked => matches!(event,
+                GameEvent::CreatureBlocked { attacker, .. } if *attacker == source),
+
+            SelfBlocks => matches!(event,
+                GameEvent::CreatureBlocks { blocker, .. } if *blocker == source),
+
+            SelfBecomesTapped => matches!(event,
+                GameEvent::Tapped { object_id } if *object_id == source),
+
+            SelfIsDealtDamage { combat_only } => {
+                let GameEvent::DamageDealt { target, is_combat, .. } = event
+                    else { return false; };
+                if *combat_only && !is_combat { return false; }
+                matches!(target,
+                    crate::events::DamageTarget::Object(id) if *id == source)
+            }
+
+            SelfAttacksUnblocked => matches!(event,
+                GameEvent::CreatureNotBlocked { attacker } if *attacker == source),
 
             ZoneChange { filter, from, to } => {
                 let GameEvent::ZoneChange { object_id, from: evf, to: evt, .. } = event
@@ -668,6 +706,77 @@ mod tests {
         let event = GameEvent::Dies { object_id: 1 };
         assert!(TriggerCondition::SelfDies.matches(&event, 1, 0, &s));
         assert!(!TriggerCondition::SelfDies.matches(&event, 2, 0, &s));
+    }
+
+    #[test]
+    fn self_becomes_blocked_matches() {
+        let s = GameState::new(2, 0);
+        let ev = GameEvent::CreatureBlocked { attacker: 7, blockers: vec![8, 9] };
+        assert!(TriggerCondition::SelfBecomesBlocked.matches(&ev, 7, 0, &s));
+        assert!(!TriggerCondition::SelfBecomesBlocked.matches(&ev, 8, 0, &s));
+    }
+
+    #[test]
+    fn self_blocks_matches() {
+        let s = GameState::new(2, 0);
+        let ev = GameEvent::CreatureBlocks { blocker: 8, attacker: 7 };
+        assert!(TriggerCondition::SelfBlocks.matches(&ev, 8, 0, &s));
+        // Source is the attacker, not the blocker — doesn't fire.
+        assert!(!TriggerCondition::SelfBlocks.matches(&ev, 7, 0, &s));
+    }
+
+    #[test]
+    fn self_becomes_tapped_matches() {
+        let s = GameState::new(2, 0);
+        let ev = GameEvent::Tapped { object_id: 42 };
+        assert!(TriggerCondition::SelfBecomesTapped.matches(&ev, 42, 0, &s));
+        assert!(!TriggerCondition::SelfBecomesTapped.matches(&ev, 7, 0, &s));
+    }
+
+    #[test]
+    fn self_is_dealt_damage_combat_only_flag() {
+        let s = GameState::new(2, 0);
+        let combat = GameEvent::DamageDealt {
+            source: 1,
+            target: crate::events::DamageTarget::Object(42),
+            amount: 3,
+            is_combat: true,
+        };
+        let noncombat = GameEvent::DamageDealt {
+            source: 1,
+            target: crate::events::DamageTarget::Object(42),
+            amount: 3,
+            is_combat: false,
+        };
+        // combat_only=false accepts both.
+        let any = TriggerCondition::SelfIsDealtDamage { combat_only: false };
+        assert!(any.matches(&combat, 42, 0, &s));
+        assert!(any.matches(&noncombat, 42, 0, &s));
+        // combat_only=true accepts only combat damage.
+        let only = TriggerCondition::SelfIsDealtDamage { combat_only: true };
+        assert!(only.matches(&combat, 42, 0, &s));
+        assert!(!only.matches(&noncombat, 42, 0, &s));
+        // Damage to a different object isn't us.
+        assert!(!any.matches(&combat, 7, 0, &s));
+        // Damage to a player isn't us.
+        let to_player = GameEvent::DamageDealt {
+            source: 1,
+            target: crate::events::DamageTarget::Player(0),
+            amount: 3,
+            is_combat: true,
+        };
+        assert!(!any.matches(&to_player, 42, 0, &s));
+    }
+
+    #[test]
+    fn self_attacks_unblocked_matches() {
+        let s = GameState::new(2, 0);
+        let ev = GameEvent::CreatureNotBlocked { attacker: 7 };
+        assert!(TriggerCondition::SelfAttacksUnblocked.matches(&ev, 7, 0, &s));
+        assert!(!TriggerCondition::SelfAttacksUnblocked.matches(&ev, 8, 0, &s));
+        // A BLOCKED-creature event must NOT match unblocked.
+        let blocked = GameEvent::CreatureBlocked { attacker: 7, blockers: vec![8] };
+        assert!(!TriggerCondition::SelfAttacksUnblocked.matches(&blocked, 7, 0, &s));
     }
 
     #[test]
