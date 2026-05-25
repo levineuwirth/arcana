@@ -397,7 +397,8 @@ Single permanent / card target (`id` from the first target):
 - `Effect::PutOnTopOfLibrary { target: id }`  ·  `Effect::PutOnBottomOfLibrary { target: id }`
 - `Effect::ReturnFromGraveyardToHand { target: id }`  ·  `Effect::ReturnFromGraveyardToBattlefield { target: id }`
 - `Effect::ReturnFromExileToBattlefield { target: id }`  (blink/flicker return)
-- `Effect::ChangeControl { target: id, new_controller: {BINDING}.controller }`  (permanent gain-control; there is NO 'until end of turn' variant — `// GAP:` the duration for Threaten-style temporary control)
+- `Effect::ChangeControl { target: id, new_controller: {BINDING}.controller }`  (PERMANENT gain-control — Mind Control / Take Control class).
+- `Effect::ChangeControlEot { target: id, new_controller: {BINDING}.controller }`  (Threaten / Act of Treason — gain control until end of turn; the engine schedules an automatic revert at the next end step). Pair with `Effect::Untap { target: id }` and `Effect::GrantKeyword { target: id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn }` for the full Threaten suite.
 - `Effect::ExileFromGraveyard { target: id }`
 - `Effect::AddCounters { target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }`  ·  `Effect::RemoveCounters { .. }`
 - `Effect::Pump { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }`  ('+X/+X until end of turn'; granted evergreen `KeywordAbility` values go in `keywords`)

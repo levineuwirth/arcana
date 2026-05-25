@@ -263,6 +263,14 @@ pub enum Effect {
 
     // --- state flip --------------------------------------------------------
     ChangeControl { target: ObjectId, new_controller: PlayerId },
+    /// Threaten / Act of Treason — same as [`Self::ChangeControl`]
+    /// but schedules a one-shot delayed trigger at the next end step
+    /// that returns the permanent to its original controller. The
+    /// caller pairs this with [`Self::Untap`] +
+    /// [`Self::GrantKeyword`]`(Haste, EndOfTurn)` for the full
+    /// Threaten suite. The revert silently no-ops if the target has
+    /// left the battlefield.
+    ChangeControlEot { target: ObjectId, new_controller: PlayerId },
     Transform { target: ObjectId },
     Tap { target: ObjectId },
     Untap { target: ObjectId },
@@ -817,6 +825,28 @@ impl Effect {
                     object_id: *target, old, new_ctrl: *new_controller,
                 });
             }
+            Effect::ChangeControlEot { target, new_controller } => {
+                use crate::triggers::{DelayedTrigger, TriggerCondition};
+                let Some(obj) = state.objects.get_mut(*target) else { return; };
+                let original = obj.controller;
+                if original == *new_controller { return; }
+                obj.controller = *new_controller;
+                state.emit(GameEvent::ControlChanged {
+                    object_id: *target, old: original, new_ctrl: *new_controller,
+                });
+                // Schedule the revert at the next end step. The
+                // DelayedTrigger's `source` carries the target's id;
+                // its `controller` field carries the player who gets
+                // it back — see `revert_control_to_original`.
+                state.register_delayed_trigger(DelayedTrigger::one_shot(
+                    *target, original,
+                    TriggerCondition::StepBegins {
+                        step: crate::turn::Step::End,
+                        whose: crate::targets::ControllerConstraint::Any,
+                    },
+                    revert_control_to_original,
+                ));
+            }
             Effect::Transform { target } => {
                 let Some(obj) = state.objects.get_mut(*target) else { return; };
                 obj.status.transformed = !obj.status.transformed;
@@ -1034,6 +1064,23 @@ fn delayed_return_hand(
 ) -> Vec<Effect> {
     vec![Effect::ReturnToHand { target: pt.source }]
 }
+/// Delayed-trigger callback for `Effect::ChangeControlEot` — restores
+/// the target's controller. The trigger's `source` carries the target
+/// id; `controller` carries the player who originally controlled it
+/// (and gets it back at end of turn). No-ops if the target has left
+/// the battlefield (the inner `ChangeControl` is itself a no-op for
+/// missing objects).
+fn revert_control_to_original(
+    _state: &GameState,
+    trig: &crate::triggers::PendingTrigger,
+    _reg: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ChangeControl {
+        target: trig.source,
+        new_controller: trig.controller,
+    }]
+}
+
 fn delayed_return_exile_bf(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
@@ -3161,6 +3208,45 @@ mod tests {
         assert_eq!(s.objects.get(c).unwrap().controller, 1);
         assert!(s.event_log.iter().any(|e| matches!(e,
             GameEvent::ControlChanged { old: 0, new_ctrl: 1, .. })));
+    }
+
+    #[test]
+    fn change_control_eot_flips_and_registers_revert() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let before = s.delayed_triggers.len();
+        Effect::ChangeControlEot {
+            target: c, new_controller: 1,
+        }.execute(&mut s);
+        // Controller flipped now.
+        assert_eq!(s.objects.get(c).unwrap().controller, 1);
+        assert!(s.event_log.iter().any(|e| matches!(e,
+            GameEvent::ControlChanged { old: 0, new_ctrl: 1, .. })));
+        // A delayed-revert trigger was scheduled.
+        assert_eq!(s.delayed_triggers.len(), before + 1);
+        // Fire the next end step; the revert restores control.
+        let fired = s.take_matching_delayed_triggers(
+            &GameEvent::StepBegins { step: crate::turn::Step::End });
+        assert_eq!(fired.len(), 1);
+        let revert_effects = (fired[0].trigger_event.clone(), &fired[0]);
+        let effects = revert_control_to_original(&s, fired.first().unwrap(), &crate::registry::CardRegistry::new());
+        let _ = revert_effects;
+        for e in &effects { e.execute(&mut s); }
+        assert_eq!(s.objects.get(c).unwrap().controller, 0,
+            "revert returned creature to original controller");
+    }
+
+    #[test]
+    fn change_control_eot_noop_when_already_controller() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let before = s.delayed_triggers.len();
+        // Same controller → no-op, no delayed trigger scheduled.
+        Effect::ChangeControlEot {
+            target: c, new_controller: 0,
+        }.execute(&mut s);
+        assert_eq!(s.objects.get(c).unwrap().controller, 0);
+        assert_eq!(s.delayed_triggers.len(), before);
     }
 
     #[test]
