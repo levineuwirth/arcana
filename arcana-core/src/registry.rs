@@ -132,6 +132,13 @@ pub struct CardDefinition {
     /// card. See [`Self::initial_characteristics`] for the hook that
     /// routes hand / library / graveyard objects through this view.
     pub combined_characteristics: Option<Characteristics>,
+    /// Sidecar map: dynamic-X resolvers per triggered-ability id.
+    /// Wire via `with_trigger_dynamic_x(id, fn)`. Read via
+    /// [`crate::triggers::TriggeredAbilityDef::dynamic_x_resolver`].
+    /// Empty for the vast majority of triggers; this sidecar exists
+    /// so card files don't need to thread a new field into every
+    /// `TriggeredAbilityDef` literal (1,800+ files).
+    pub dynamic_x: Vec<(crate::types::TriggerId, crate::triggers::DynamicXFn)>,
 }
 
 impl CardDefinition {
@@ -147,7 +154,21 @@ impl CardDefinition {
             enters_with: Vec::new(),
             alternate_face: None,
             combined_characteristics: None,
+            dynamic_x: Vec::new(),
         }
+    }
+
+    /// Attach a dynamic-X resolver to a triggered-ability id on this
+    /// definition. The resolver fires as the trigger goes on the
+    /// stack; its return is stamped into the entry's `x_value` and
+    /// consumed by `TargetCount::X` in `target_requirements`.
+    pub fn with_trigger_dynamic_x(
+        mut self,
+        trigger_id: crate::types::TriggerId,
+        resolver: crate::triggers::DynamicXFn,
+    ) -> Self {
+        self.dynamic_x.push((trigger_id, resolver));
+        self
     }
 
     /// Characteristics an off-stack game object for this card starts
@@ -1347,5 +1368,62 @@ mod tests {
             bolt_def.initial_characteristics().mana_cost.as_ref().unwrap()
                 .mana_value(),
             1);
+    }
+
+    #[test]
+    fn with_trigger_dynamic_x_attaches_resolver() {
+        // Phase A #5: the sidecar `dynamic_x` map on CardDefinition
+        // pairs a trigger id with a `DynamicXFn`. The engine calls
+        // `dynamic_x_resolver` at trigger-fire time and stamps the
+        // result into `entry.x_value`.
+        use crate::triggers::{
+            DynamicXFn, PendingTrigger, TriggeredAbilityDef,
+        };
+        fn from_damage(pt: &PendingTrigger) -> u32 {
+            pt.damage_amount().unwrap_or(0)
+        }
+        let resolver: DynamicXFn = from_damage;
+
+        let mut r = CardRegistry::new();
+        let name = r.interner_mut().intern("CephTest");
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(ManaCost::parse("{2}{U}").unwrap()),
+            colors: ColorSet::blue(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(crate::types::PtValue::Fixed(2)),
+            toughness: Some(crate::types::PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        let def = CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: crate::triggers::TriggerCondition::SelfDies,
+                intervening_if: None,
+                effect: |_, _, _| Vec::new(),
+                trigger_zones: vec![crate::zones::Zone::Battlefield],
+                frequency: crate::triggers::TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_dynamic_x(1, resolver);
+        let id = r.register(def);
+        let stored = r.get(id).unwrap();
+
+        let found = TriggeredAbilityDef::dynamic_x_resolver(stored, 1);
+        assert!(found.is_some(), "resolver attached under id 1");
+        // Resolver round-trips: feed a synthesized PendingTrigger and
+        // check the closure reads damage_amount.
+        let pt = PendingTrigger {
+            source: 7, trigger_id: 1, controller: 0,
+            trigger_event: crate::events::GameEvent::DamageDealt {
+                source: 7, target: crate::events::DamageTarget::Player(1),
+                amount: 5, is_combat: true,
+            },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        assert_eq!(found.unwrap()(&pt), 5);
+
+        // Unregistered trigger id returns None.
+        assert!(TriggeredAbilityDef::dynamic_x_resolver(stored, 99).is_none());
     }
 }

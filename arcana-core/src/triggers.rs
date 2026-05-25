@@ -78,6 +78,12 @@ pub type EffectFn = fn(&GameState, &PendingTrigger, &crate::registry::CardRegist
 
 /// Function pointer for intervening-if clauses (CR 603.4).
 pub type InterveningIfFn = fn(&GameState) -> bool;
+/// Computes a dynamic X-value at trigger-fire time from a fired-but-not-
+/// yet-on-stack [`PendingTrigger`]. The returned u32 is stamped into
+/// the triggered-ability stack entry's `x_value` and consumed by any
+/// `TargetCount::X` in `target_requirements`. Use for "up to that many"
+/// / "X is the damage dealt" / "X = the discarded card's mana value".
+pub type DynamicXFn = fn(&PendingTrigger) -> u32;
 
 // TODO(serialize): `TriggeredAbilityDef` carries bare `fn` pointers
 // (`intervening_if`, `effect`). Migrate to `ConditionFnId` /
@@ -109,6 +115,28 @@ pub struct TriggeredAbilityDef {
     /// per the combined requirements, the ability doesn't trigger
     /// and never lands on the stack.
     pub target_requirements: Vec<crate::targets::TargetRequirement>,
+}
+
+impl TriggeredAbilityDef {
+    /// Attach an optional dynamic-X resolver to this trigger.
+    ///
+    /// The resolver runs as the trigger fires (between event-match and
+    /// stack-add). Its return value is stamped into the resulting
+    /// stack entry's `x_value`, where `TargetCount::X` reads it. Use
+    /// for "up to that many target X" / "X = the discarded card's
+    /// mana value" / "X = damage just dealt" — anything where the
+    /// number of targets or scaling depends on the triggering event.
+    ///
+    /// The mechanism is a parallel map on `CardDefinition` rather than
+    /// a struct field so the 1,800+ existing trigger literals don't
+    /// need to thread a new field. To wire one, call
+    /// `CardDefinition::with_trigger_dynamic_x(id, fn)` on the def.
+    pub fn dynamic_x_resolver<'a>(
+        def: &'a crate::registry::CardDefinition,
+        trigger_id: TriggerId,
+    ) -> Option<&'a DynamicXFn> {
+        def.dynamic_x.iter().find(|(id, _)| *id == trigger_id).map(|(_, f)| f)
+    }
 }
 
 impl TriggeredAbilityDef {

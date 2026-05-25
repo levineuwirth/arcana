@@ -2053,7 +2053,7 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             if ability_needs_targets(state, registry, &pt) {
                 state.pending_trigger_queue.push_back(pt);
             } else {
-                push_trigger_stack_entry(state, pt, Vec::new());
+                push_trigger_stack_entry(state, registry, pt, Vec::new());
             }
         }
         // Loop — the push emitted no direct events, but on the next
@@ -2087,8 +2087,14 @@ fn ability_needs_targets(
 /// Push a plain triggered-ability stack entry and record its frequency
 /// ledger bump. Returns the new entry's id so targeted-trigger
 /// callers can attach target requirements + choice prompts to it.
+///
+/// If the source card carries a `dynamic_x` resolver for this
+/// `trigger_id`, run it against the pending-trigger snapshot and stamp
+/// the result into the entry's `x_value` — `TargetCount::X` in
+/// `target_requirements` then validates against this materialized N.
 fn push_trigger_stack_entry(
     state: &mut GameState,
+    registry: &CardRegistry,
     pt: crate::triggers::PendingTrigger,
     requirements: Vec<crate::targets::TargetRequirement>,
 ) -> ObjectId {
@@ -2104,6 +2110,16 @@ fn push_trigger_stack_entry(
         Vec::new(),
     );
     entry.target_requirements = requirements;
+    if let Some(obj) = state.object_or_lki(pt.source) {
+        if let Some(def) = registry.get(obj.card_id) {
+            if let Some(resolver) =
+                crate::triggers::TriggeredAbilityDef::dynamic_x_resolver(
+                    def, pt.trigger_id)
+            {
+                entry.x_value = Some(resolver(&pt));
+            }
+        }
+    }
     state.push_stack_entry(entry);
     state.record_trigger_fired(pt.source, pt.trigger_id);
     entry_id
@@ -2137,7 +2153,7 @@ fn drain_one_queued_targeted_trigger(
     if requirements.is_empty() {
         // Defensive: caller mis-queued a non-targeted trigger. Push
         // it like any other untargeted trigger.
-        push_trigger_stack_entry(state, pt, Vec::new());
+        push_trigger_stack_entry(state, registry, pt, Vec::new());
         return false;
     }
     // CR 603.3d — if no legal target set exists, the ability simply
@@ -2147,7 +2163,7 @@ fn drain_one_queued_targeted_trigger(
     {
         return false;
     }
-    let entry_id = push_trigger_stack_entry(state, pt.clone(), requirements.clone());
+    let entry_id = push_trigger_stack_entry(state, registry, pt.clone(), requirements.clone());
     state.pending_target_requirements = Some(requirements);
     state.pending_choice_follow_up = Some(
         crate::actions::ChoiceFollowUp::ApplyTargetsToStackEntry { entry_id });

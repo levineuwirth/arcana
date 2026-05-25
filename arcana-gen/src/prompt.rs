@@ -529,6 +529,10 @@ const TRIGGER_PENDING_ACCESSORS: &str = r#"PENDING-TRIGGER ACCESSORS — beyond 
 - `trig.triggering_caster() -> Option<PlayerId>` — pairs with `SpellCast`. For "that player draws a card" / "that player loses life".
 - `trig.entering_object() -> Option<ObjectId>` — pairs with `SelfEntersBattlefield` and battlefield-bound `ZoneChange`. For "put X +1/+1 counters where X = power of the entering creature": `let id = trig.entering_object().unwrap_or(trig.source); let n = script::power_of(state, id).max(0) as u32;`.
 - `trig.other_combatant() -> Option<ObjectId>` — pairs with `SelfBlocks` / `SelfBecomesBlocked` / `SelfBlocksOrBecomesBlocked`. The OTHER creature in this block — the attacker if we're blocking, the (first) blocker if we became blocked. For "that creature becomes green" / "destroy that creature": `let Some(id) = trig.other_combatant() else { return Vec::new(); };`.
+
+DYNAMIC-X (up-to-that-many targets, where the max comes from the trigger event):
+- For "return up to that many target permanents" / "exile up to N cards where N = X" / "deals X damage to any target, where X is …" — declare `count: TargetCount::X` on the relevant `TargetRequirement`, then attach a `dynamic_x` resolver to the CardDefinition at registration: `.with_trigger_dynamic_x(<TRIGGER_ID>, |trig: &PendingTrigger| -> u32 { trig.damage_amount().unwrap_or(0) })`. The engine evaluates the closure as the trigger fires and stamps the result into the stack entry's `x_value`; `TargetCount::X` then validates the player's chosen target count against that materialized N.
+- Recipe for Cephalid Constable ("deals combat damage to a player → return up to that many target permanents that player controls"): `target_requirements: vec![TargetRequirement { filter: TargetFilter::Permanent(ObjectFilter::permanent()), count: TargetCount::X, controller: None }]` PLUS `.with_trigger_dynamic_x(1, |trig| trig.damage_amount().unwrap_or(0))`.
 No imports beyond what's already in scope. These accessors are stable engine API — never pattern-match `trig.trigger_event` instead."#;
 
 // =============================================================================
