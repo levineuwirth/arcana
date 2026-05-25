@@ -310,6 +310,8 @@ const FS_ELVISH_VISIONARY: &str =
     include_str!("../../arcana-cards/src/lrw/elvish_visionary.rs");
 const FS_YOUNG_PYROMANCER: &str =
     include_str!("../../arcana-cards/src/m14/young_pyromancer.rs");
+const FS_WELDFAST_ENGINEER: &str =
+    include_str!("../../arcana-cards/src/aer/weldfast_engineer.rs");
 const FS_PREORDAIN: &str =
     include_str!("../../arcana-cards/src/m11/preordain.rs");
 const FS_SERVO_EXHIBITION: &str =
@@ -719,6 +721,11 @@ REFERENCE — Young Pyromancer ({{1}}{{R}} 2/1 Human Shaman, 'Whenever you cast 
 {FS_YOUNG_PYROMANCER}
 ```
 
+REFERENCE — Weldfast Engineer ({{1}}{{B}}{{R}} 3/3 Human Artificer, 'At the beginning of combat on your turn, target artifact creature you control gets +2/+0 until end of turn' — a `PhaseBegins{{Combat, You}}` condition AND a targeted trigger: `target_requirements` declares the legal targets up front, and the effect fn reads the chosen object from `trig.targets.targets.first()` via a `TargetChoice::Object(id)` match. Adopt this exact target-read pattern for any 'target X' trigger):
+```rust
+{FS_WELDFAST_ENGINEER}
+```
+
 {trigcat}
 
 {paccess}
@@ -747,6 +754,9 @@ Then build the ONE `TriggeredAbilityDef` whose `trigger_condition` matches the o
         paccess = TRIGGER_PENDING_ACCESSORS,
         cat = effect_catalog("trig"),
         worked = WORKED_TRIGGER_FN,
+        FS_ELVISH_VISIONARY = FS_ELVISH_VISIONARY,
+        FS_YOUNG_PYROMANCER = FS_YOUNG_PYROMANCER,
+        FS_WELDFAST_ENGINEER = FS_WELDFAST_ENGINEER,
     )
 }
 
