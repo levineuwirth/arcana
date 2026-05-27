@@ -372,6 +372,16 @@ pub enum Effect {
         n: u32,
     },
 
+    /// CR 702.176 — "Suspect" `target`. Sets the suspected flag on
+    /// the creature; while suspected it has menace (`block_constraints`
+    /// grants min_blockers=2) and can't block
+    /// (`legal_actions::can_block` returns false). The flag is sticky
+    /// until removed by another effect ("is no longer suspected" —
+    /// not yet modeled). Defensive: missing target is a no-op.
+    Suspect {
+        target: ObjectId,
+    },
+
     // --- mana / phases -----------------------------------------------------
     AddMana { player: PlayerId, mana: Vec<crate::mana::ManaUnit> },
     ExtraTurn { player: PlayerId },
@@ -1038,6 +1048,11 @@ impl Effect {
             }
             Effect::Incubate { controller, n } => {
                 incubate_resolve(state, *controller, *n);
+            }
+            Effect::Suspect { target } => {
+                if let Some(obj) = state.objects.get_mut(*target) {
+                    obj.status.suspected = true;
+                }
             }
             Effect::Attach { equipment_or_aura, target } => {
                 attach(state, *equipment_or_aura, *target);
@@ -4010,6 +4025,21 @@ mod tests {
         assert!(matches!(s.pending_choice_follow_up,
             Some(crate::actions::ChoiceFollowUp::ExploreMayMill { card, player })
                 if card == card_id && player == 0));
+    }
+
+    #[test]
+    fn suspect_sets_status_flag() {
+        // CR 702.176: Effect::Suspect flips obj.status.suspected.
+        // Menace + can't-block effects derive from that flag (tested
+        // in combat.rs / legal_actions.rs).
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        assert!(!s.objects.get(c).unwrap().status.suspected);
+        Effect::Suspect { target: c }.execute(&mut s);
+        assert!(s.objects.get(c).unwrap().status.suspected,
+            "suspected flag set");
+        // Missing target → no-op.
+        Effect::Suspect { target: 9999 }.execute(&mut s);
     }
 
     #[test]

@@ -410,6 +410,11 @@ pub struct PermanentStatus {
     pub transformed: bool,
     pub monstrous: bool,
     pub renowned: bool,
+    /// CR 702.176 — Suspected. A suspected creature has menace and
+    /// can't block. The flag is set by [`crate::effects::Effect::Suspect`]
+    /// and read by the menace grant in
+    /// [`crate::combat::block_constraints`] / [`crate::layers`].
+    pub suspected: bool,
     /// Entered this turn under current controller (CR 302.1).
     pub summoning_sick: bool,
 }

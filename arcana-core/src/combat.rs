@@ -611,7 +611,13 @@ impl GameState {
         let mut c = AttackerBlockConstraints::default_unrestricted();
         // CR 702.110a — Menace: can't be blocked except by two or
         // more creatures. Expressed as min=2.
-        if self.has_keyword(attacker, &KeywordAbility::Menace) {
+        // CR 702.176 — Suspected: menace + can't block. The "can't
+        // block" half lives in legal_actions::can_block; the menace
+        // half is granted here so suspected creatures always need at
+        // least 2 blockers, even without printed menace.
+        let suspected = self.objects.get(attacker)
+            .map(|o| o.status.suspected).unwrap_or(false);
+        if suspected || self.has_keyword(attacker, &KeywordAbility::Menace) {
             c.min_blockers = c.min_blockers.max(2);
         }
         // CR 702.14b — Landwalk. If the defending player controls a

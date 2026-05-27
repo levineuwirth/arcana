@@ -662,7 +662,11 @@ fn can_block(_state: &GameState, obj: &crate::objects::GameObject) -> bool {
     // TODO(keywords): honor Flying/Reach, Menace, Shadow, Protection
     // From, Fear, Landwalk, etc. (Flying/Reach/Menace handled in the
     // per-pairing filter below.)
-    obj.is_creature() && obj.zone.is_battlefield() && !obj.is_tapped()
+    // CR 702.176 — suspected creatures can't block.
+    obj.is_creature()
+        && obj.zone.is_battlefield()
+        && !obj.is_tapped()
+        && !obj.status.suspected
 }
 
 // =============================================================================
