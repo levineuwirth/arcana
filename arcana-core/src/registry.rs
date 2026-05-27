@@ -54,6 +54,37 @@ use crate::types::{CardId, CounterKind, PlayerId, SmallString, StringInterner, S
 pub type SpellEffectFn =
     fn(&GameState, &StackEntry, &CardRegistry) -> Vec<Effect>;
 
+/// Modal-spell dispatcher. Use as a card's `spell_ability.effect`
+/// when the card is modal AND the def carries
+/// [`CardDefinition::mode_effects`]. Reads `entry.modes[0].mode_indices`
+/// and concatenates the chosen per-mode callbacks' effects in card
+/// order (CR 700.2c — sorted ascending by `ModeChoice::new`).
+///
+/// If the def has no `mode_effects` (set-up bug or the card isn't
+/// actually modal), this returns an empty `Vec` rather than panicking
+/// — consistent with [`crate::effects::Effect::execute`]'s defensive
+/// posture toward missing state.
+pub fn dispatch_modal_effect(
+    state: &GameState,
+    entry: &StackEntry,
+    registry: &CardRegistry,
+) -> Vec<Effect> {
+    let card_id = match &entry.kind {
+        crate::stack::StackEntryKind::Spell { card_id, .. } => *card_id,
+        _ => return Vec::new(),
+    };
+    let Some(def) = registry.get(card_id) else { return Vec::new(); };
+    let Some(mode_fns) = def.mode_effects.as_ref() else { return Vec::new(); };
+    let Some(choice) = entry.modes.first() else { return Vec::new(); };
+    let mut out = Vec::new();
+    for &idx in &choice.mode_indices {
+        if let Some(f) = mode_fns.get(idx) {
+            out.extend(f(state, entry, registry));
+        }
+    }
+    out
+}
+
 /// Produces the effect list for a resolving activated ability.
 /// Non-mana activated abilities go on the stack and resolve through
 /// this callback; mana abilities skip the stack and the engine
@@ -139,6 +170,14 @@ pub struct CardDefinition {
     /// so card files don't need to thread a new field into every
     /// `TriggeredAbilityDef` literal (1,800+ files).
     pub dynamic_x: Vec<(crate::types::TriggerId, crate::triggers::DynamicXFn)>,
+    /// Sidecar: per-mode effect callbacks for modal spells (CR 700.2).
+    /// Index by clause position in `SpellAbilityDef.modal.clauses`.
+    /// `None` for non-modal cards. When `Some`, set the spell ability's
+    /// `effect` field to [`dispatch_modal_effect`] — the dispatcher
+    /// reads `entry.modes` and runs every chosen index's callback in
+    /// concatenated card order (CR 700.2c). Sidecar to keep the
+    /// SpellAbilityDef literal stable across 2,400+ card files.
+    pub mode_effects: Option<Vec<SpellEffectFn>>,
 }
 
 impl CardDefinition {
@@ -155,6 +194,7 @@ impl CardDefinition {
             alternate_face: None,
             combined_characteristics: None,
             dynamic_x: Vec::new(),
+            mode_effects: None,
         }
     }
 
@@ -168,6 +208,16 @@ impl CardDefinition {
         resolver: crate::triggers::DynamicXFn,
     ) -> Self {
         self.dynamic_x.push((trigger_id, resolver));
+        self
+    }
+
+    /// Attach per-mode effect callbacks for a modal spell. `mode_fns[i]`
+    /// runs when clause `i` was chosen at cast. Set the spell ability's
+    /// `effect` to [`dispatch_modal_effect`] so the dispatcher reads
+    /// `entry.modes` and concatenates each chosen index's effects in
+    /// card order (CR 700.2c).
+    pub fn with_mode_effects(mut self, mode_fns: Vec<SpellEffectFn>) -> Self {
+        self.mode_effects = Some(mode_fns);
         self
     }
 
@@ -1368,6 +1418,129 @@ mod tests {
             bolt_def.initial_characteristics().mana_cost.as_ref().unwrap()
                 .mana_value(),
             1);
+    }
+
+    #[test]
+    fn dispatch_modal_effect_runs_chosen_modes_in_card_order() {
+        // Phase B: a modal spell with two clauses; the dispatcher
+        // reads entry.modes and concatenates per-mode effects.
+        use crate::events::DamageTarget;
+        use crate::stack::{ModeChoice, StackEntry};
+        use crate::targets::TargetSelection;
+
+        fn mode_a(_: &GameState, _: &StackEntry, _: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::GainLife { player: 0, amount: 3 }]
+        }
+        fn mode_b(_: &GameState, _: &StackEntry, _: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::DealDamage {
+                source: 1,
+                target: DamageTarget::Player(1),
+                amount: 2,
+            }]
+        }
+
+        let mut r = CardRegistry::new();
+        let name = r.interner_mut().intern("Charm-ish");
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(ManaCost::parse("{1}{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        };
+        let card_id = r.register(
+            CardDefinition::new(name, chars)
+                .with_spell_ability(SpellAbilityDef {
+                    text: "Choose one — Gain 3 life; or Deal 2".into(),
+                    target_requirements: Vec::new(),
+                    modal: Some(ModalSpec {
+                        min_modes: 1,
+                        max_modes: 1,
+                        clauses: vec![
+                            ModeClause {
+                                text: "Gain 3 life".into(),
+                                target_requirements: vec![],
+                            },
+                            ModeClause {
+                                text: "Deal 2".into(),
+                                target_requirements: vec![],
+                            },
+                        ],
+                    }),
+                    effect: dispatch_modal_effect,
+                })
+                .with_mode_effects(vec![mode_a, mode_b]));
+
+        // Materialize a fake stack entry that picked mode 1 (deal 2).
+        let entry = StackEntry::new_spell(
+            999, /*controller*/ 0, card_id, Characteristics::default(),
+            TargetSelection::new(),
+            vec![ModeChoice::new(vec![1])],
+            None);
+        let s = GameState::new(2, 0);
+        let effects = dispatch_modal_effect(&s, &entry, &r);
+        assert_eq!(effects.len(), 1);
+        assert!(matches!(effects[0],
+            Effect::DealDamage { amount: 2, .. }));
+
+        // Mode 0 only.
+        let entry0 = StackEntry::new_spell(
+            999, 0, card_id, Characteristics::default(),
+            TargetSelection::new(),
+            vec![ModeChoice::new(vec![0])],
+            None);
+        let effects = dispatch_modal_effect(&s, &entry0, &r);
+        assert_eq!(effects.len(), 1);
+        assert!(matches!(effects[0],
+            Effect::GainLife { player: 0, amount: 3 }));
+
+        // Both modes — concatenated in ascending index order
+        // (ModeChoice::new sorts; CR 700.2c).
+        let entry_both = StackEntry::new_spell(
+            999, 0, card_id, Characteristics::default(),
+            TargetSelection::new(),
+            vec![ModeChoice::new(vec![1, 0])],
+            None);
+        let effects = dispatch_modal_effect(&s, &entry_both, &r);
+        assert_eq!(effects.len(), 2);
+        assert!(matches!(effects[0], Effect::GainLife { .. }));
+        assert!(matches!(effects[1], Effect::DealDamage { .. }));
+    }
+
+    #[test]
+    fn dispatch_modal_effect_safe_with_missing_mode_effects() {
+        // If mode_effects is None (set-up bug), dispatcher returns
+        // empty Vec rather than panicking — same defensive posture
+        // as Effect::execute on missing state.
+        use crate::stack::{ModeChoice, StackEntry};
+        use crate::targets::TargetSelection;
+        let mut r = CardRegistry::new();
+        let name = r.interner_mut().intern("Modal-bad");
+        let chars = Characteristics {
+            name,
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        };
+        let card_id = r.register(
+            CardDefinition::new(name, chars)
+                .with_spell_ability(SpellAbilityDef {
+                    text: "Choose one — ...".into(),
+                    target_requirements: Vec::new(),
+                    modal: Some(ModalSpec {
+                        min_modes: 1, max_modes: 1,
+                        clauses: vec![ModeClause {
+                            text: "x".into(), target_requirements: vec![] }],
+                    }),
+                    effect: dispatch_modal_effect,
+                }));
+        let entry = StackEntry::new_spell(
+            1, 0, card_id, Characteristics::default(),
+            TargetSelection::new(),
+            vec![ModeChoice::new(vec![0])], None);
+        let s = GameState::new(2, 0);
+        assert!(dispatch_modal_effect(&s, &entry, &r).is_empty());
     }
 
     #[test]
