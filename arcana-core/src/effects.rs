@@ -357,6 +357,21 @@ pub enum Effect {
         mana_value: u32,
     },
 
+    /// CR 701.51 — "Incubate N." Create an Incubator artifact token
+    /// (colorless, no P/T, subtype "Incubator") with `n` +1/+1
+    /// counters and the printed "{2}: Transform this token"
+    /// activated ability that flips it into a 0/0 Phyrexian artifact
+    /// creature. v1: the token is minted with the correct subtype +
+    /// counters; the transform activation is a documented engine
+    /// gap (token activated abilities aren't dispatched yet). Cards
+    /// using `Effect::Incubate` will produce a token that sits
+    /// inert until the activation system lands — same posture as
+    /// Treasure / Clue tokens.
+    Incubate {
+        controller: PlayerId,
+        n: u32,
+    },
+
     // --- mana / phases -----------------------------------------------------
     AddMana { player: PlayerId, mana: Vec<crate::mana::ManaUnit> },
     ExtraTurn { player: PlayerId },
@@ -1020,6 +1035,9 @@ impl Effect {
             }
             Effect::Discover { player, mana_value } => {
                 discover_resolve(state, *player, *mana_value);
+            }
+            Effect::Incubate { controller, n } => {
+                incubate_resolve(state, *controller, *n);
             }
             Effect::Attach { equipment_or_aura, target } => {
                 attach(state, *equipment_or_aura, *target);
@@ -2168,6 +2186,37 @@ fn discover_resolve(
             // No valid hit — every exiled card goes to the bottom.
             cascade_shuffle_to_bottom(state, controller, other_exiled);
         }
+    }
+}
+
+/// CR 701.51 — Incubate. Mint an Incubator artifact token under
+/// `controller` with `n` +1/+1 counters. The token's subtype is not
+/// set (interner access unavailable to Effect::execute); the
+/// "{2}: Transform this token" activation is a documented engine gap
+/// pending the token-activated-ability dispatch program.
+fn incubate_resolve(state: &mut GameState, controller: PlayerId, n: u32) {
+    if !valid_player(state, controller) { return; }
+    let token = TokenDefinition {
+        // name handle 0 is "no localized text" (same convention as
+        // YesNo prompts; the agent-facing rendering layer keys off
+        // is_token + types).
+        name: 0,
+        colors: ColorSet::colorless(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes: SubtypeSet::default(),
+        // Incubator's printed P/T is blank on the front face (it
+        // becomes 0/0 only after transforming). Use None on both.
+        power: None,
+        toughness: None,
+        keywords: Vec::new(),
+        // Token activated abilities aren't dispatched yet — leave empty.
+        abilities: Vec::new(),
+    };
+    let Some(id) = create_token(state, controller, &token) else { return; };
+    if n > 0 {
+        state.place_counters(
+            crate::replacement::CounterTarget::Object(id),
+            CounterKind::PlusOnePlusOne, n);
     }
 }
 
@@ -3961,6 +4010,33 @@ mod tests {
         assert!(matches!(s.pending_choice_follow_up,
             Some(crate::actions::ChoiceFollowUp::ExploreMayMill { card, player })
                 if card == card_id && player == 0));
+    }
+
+    #[test]
+    fn incubate_creates_artifact_token_with_counters() {
+        // CR 701.51: a 3-counter Incubator enters the battlefield as
+        // an artifact (no P/T, no subtype yet) with 3 +1/+1 counters.
+        let mut s = GameState::new(2, 0);
+        Effect::Incubate { controller: 0, n: 3 }.execute(&mut s);
+        let tokens: Vec<&GameObject> = s.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.is_token).collect();
+        assert_eq!(tokens.len(), 1, "one Incubator minted");
+        let t = tokens[0];
+        assert!(t.characteristics.types.is_artifact(), "type is artifact");
+        assert!(t.characteristics.power.is_none(), "no front-face power");
+        assert_eq!(t.count_counters(CounterKind::PlusOnePlusOne), 3,
+            "3 +1/+1 counters placed");
+    }
+
+    #[test]
+    fn incubate_zero_counters_is_still_a_token() {
+        // Edge case: Incubate 0 makes a token with no counters.
+        let mut s = GameState::new(2, 0);
+        Effect::Incubate { controller: 0, n: 0 }.execute(&mut s);
+        let tokens: Vec<&GameObject> = s.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.is_token).collect();
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].count_counters(CounterKind::PlusOnePlusOne), 0);
     }
 
     #[test]
