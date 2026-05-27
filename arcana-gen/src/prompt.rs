@@ -1154,15 +1154,43 @@ Generate the Rust source. Output only the file contents.",
     )
 }
 
-/// Per-card prompt block for Battle (MOM mechanic).
+/// Per-card prompt block for Battle (MOM mechanic). Battle is a
+/// permanent type; battles enter with defense counters and are
+/// "attacked" by their owner's opponents (planeswalker-style).
+/// Defeat transforms the battle into its back face.
 fn user_battle(card: &Card) -> String {
     format!(
-        "Generate a BATTLE PERMANENT (MOM). A Battle is a non-creature permanent with the Battle type (and a subtype like Siege) that enters with defense counters; opponents may attack it as a planeswalker-style defender; when its defense counters reach zero it transforms into a creature face the controller controls.
+        "Generate a BATTLE PERMANENT (MOM mechanic, CR 309). A Battle is a non-creature permanent with the Battle type (and typically a subtype like Siege) that enters with defense counters; opponents may attack it as a planeswalker-style defender; when its defense counters reach zero it transforms into a creature face the controller controls.
 
-ENGINE STATUS — battle subsystem NOT yet implemented (no defense counter / attack-battle / flip path). For MVP:
-1. Build the Characteristics with `types: TypeLine::BATTLE.into()` if available, otherwise `TypeLine::ENCHANTMENT.into()` as a fallback (note: `TypeLine::BATTLE` may not exist; emit `// GAP: Battle type bit not in TypeLine`).
-2. Emit `// GAP: Battle defense counter / attack-as-defender / transform-on-defeat all deferred (engine subsystem)` in the doc comment.
-3. Don't attempt the back-face transformation or the attack mechanic — emit no abilities.
+ENGINE STATUS — Battle primitives in core:
+- `TypeLine::BATTLE` exists as a permanent type.
+- `CounterKind::Defense` exists.
+- `EntersWithSpec::Counters {{ kind: CounterKind::Defense, count: N }}` gives the starting defense counters.
+
+DEFERRED engine debt (document as GAPs):
+- 'Battle is attacked by opponents instead of its controller' — combat dispatch for battles is not modeled.
+- 'When last defense counter is removed, exile and transform' — battle defeat → back-face creature is not modeled. The back face (typically a creature) should still be authored faithfully on the front-face CardDefinition, but emit `// GAP: defeat-and-transform not modeled`.
+- 'On enters and attacks, deal damage to defending opponent' / similar siege ETB / attack triggers — author these as TriggeredAbilityDef with the appropriate condition, even though the attack-battle plumbing doesn't fully fire today.
+
+BUILD PATTERN:
+```rust
+let siege_sub = reg.interner_mut().intern(\"Siege\");
+let mut subtypes = SubtypeSet::default();
+subtypes.0.insert(siege_sub);
+let chars = Characteristics {{
+    name, mana_cost: ..., colors: ...,
+    types: TypeLine::BATTLE.into(),
+    subtypes,
+    ..Default::default()
+}};
+reg.register(
+    CardDefinition::new(name, chars)
+        .with_enters_with(EntersWithSpec::Counters {{
+            kind: CounterKind::Defense, count: N,
+        }})
+        // Any printed ETB or other triggers authored as usual.
+)
+```
 
 {cat}
 
