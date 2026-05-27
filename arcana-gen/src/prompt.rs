@@ -1092,15 +1092,56 @@ Generate the Rust source. Output only the file contents.",
     )
 }
 
-/// Per-card prompt block for ClassEnchantment (CR 717).
+/// Per-card prompt block for ClassEnchantment (CR 717). Enchantment
+/// subtype Class; starts at level 1 (CR 717.3); level-up activations
+/// add Level counters; per-level granted abilities are continuous
+/// effects gated on the counter count.
 fn user_class_enchantment(card: &Card) -> String {
     format!(
-        "Generate a CLASS ENCHANTMENT (CR 717). A Class is an Enchantment — Class with level-up activated abilities ({{cost}}: Level {{N}}) that put the card into the next level. Each level grants new printed abilities.
+        "Generate a CLASS ENCHANTMENT (CR 717). A Class is an Enchantment — [type] Class that starts at level 1 (one Level counter on ETB), levels up via activated abilities '{{cost}}: Level N' (sorcery speed; requires you've already reached level N-1), and grants additional abilities at each level.
 
-ENGINE STATUS — class subsystem partially implemented. For MVP:
-1. Build the Characteristics with `types: TypeLine::ENCHANTMENT.into()` and add the 'Class' subtype (intern + insert).
-2. Emit `// GAP: level-up activation not modeled (Class engine deferred)` in the doc comment.
-3. Attach a single placeholder `ActivatedAbilityDef` with the level-up cost from level 1 → 2 (mana_cost only, sorcery speed, no targets, returns `Vec::new()`) so the card has at least one ability and passes basic registration.
+ENGINE STATUS — Class dispatch primitives:
+- `CounterKind::Level` is in the engine.
+- `EntersWithSpec::Counters {{ kind: CounterKind::Level, count: 1 }}` gives the starting level (CR 717.3).
+- Each level-up is a SORCERY-SPEED activated ability: `ActivatedAbilityDef`'s `is_instant_speed: false` (the default for non-mana activated abilities). The activation cost is the printed mana cost; the resolver's effect is `Effect::AddCounters {{ target: ctx.source, kind: CounterKind::Level, count: 1 }}`.
+- DEFERRED engine debt: the 'requires you've reached level N-1' precondition and the per-level granted abilities (continuous effects gated on the counter count) are NOT modeled. The activation will be legal at any level until that lands; emit `// GAP: level-precondition gate + per-level granted abilities deferred (Class engine subsystem)` in the doc comment.
+
+BUILD PATTERN:
+```rust
+let class_sub = reg.interner_mut().intern(\"Class\");
+let mut subtypes = SubtypeSet::default();
+subtypes.0.insert(class_sub);
+// Add any class type subtype (e.g. \"Wizard\") similarly.
+let chars = Characteristics {{
+    name, mana_cost: ..., colors: ...,
+    types: TypeLine::ENCHANTMENT.into(),
+    subtypes,
+    ..Default::default()
+}};
+reg.register(
+    CardDefinition::new(name, chars)
+        .with_enters_with(EntersWithSpec::Counters {{
+            kind: CounterKind::Level, count: 1,
+        }})
+        .with_activated_ability(ActivatedAbilityDef {{
+            text: \"{{2}}{{R}}: Level 2.\".into(),
+            cost: ActivationCost {{
+                mana_cost: ManaCost::parse(\"{{2}}{{R}}\").unwrap(),
+                ..ActivationCost::default()
+            }},
+            target_requirements: vec![],
+            is_mana_ability: false,
+            is_loyalty_ability: false,
+            activation_zone: ActivationZone::Battlefield,
+            is_instant_speed: false,
+            face_gate: None,
+            effect: level_up_to_2,
+        }})
+        // ... one .with_activated_ability per level-up
+)
+```
+
+The per-level granted abilities (\"At level 2 you have …\" / \"While at level 3 …\") are continuous-effect engine debt; document them as GAP comments. The activation cost is what the card-gen models faithfully.
 
 {cat}
 

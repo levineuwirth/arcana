@@ -449,6 +449,9 @@ pub enum CounterKind {
     Stun,
     Lore,
     Defense,
+    /// CR 717.5 — Class enchantment level counter. Starts at 1 on
+    /// ETB (CR 717.3); each "{cost}: Level N+1" activation adds one.
+    Level,
     /// Extensible for set-specific counters (e.g. "verse", "wish").
     Named(SmallString),
 }
