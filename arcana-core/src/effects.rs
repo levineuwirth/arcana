@@ -345,6 +345,18 @@ pub enum Effect {
         target: ObjectId,
     },
 
+    /// CR 701.49 — "Discover N." Exile cards off the top of
+    /// `player`'s library until a nonland card with mana value ≤ N
+    /// is exiled, then the controller casts it for free OR puts it
+    /// into hand (YesNo prompt). The remaining exiled cards go to
+    /// the bottom of the library in seeded-random order regardless
+    /// of choice. If the library empties first, all exiled cards go
+    /// to the bottom and no prompt is pushed.
+    Discover {
+        player: PlayerId,
+        mana_value: u32,
+    },
+
     // --- mana / phases -----------------------------------------------------
     AddMana { player: PlayerId, mana: Vec<crate::mana::ManaUnit> },
     ExtraTurn { player: PlayerId },
@@ -1005,6 +1017,9 @@ impl Effect {
                         );
                     }
                 }
+            }
+            Effect::Discover { player, mana_value } => {
+                discover_resolve(state, *player, *mana_value);
             }
             Effect::Attach { equipment_or_aura, target } => {
                 attach(state, *equipment_or_aura, *target);
@@ -2092,6 +2107,67 @@ pub(crate) fn cascade_shuffle_to_bottom(
         // Library appends. Since we're iterating in shuffle order,
         // the final order respects the shuffle.
         let _ = new_id;
+    }
+}
+
+/// CR 701.49 — Discover. Exile cards off the top of `controller`'s
+/// library until a nonland with mana value ≤ `mv` is exiled. On hit:
+/// stash a [`crate::state::PendingDiscover`] and push a YesNo prompt
+/// (cast-for-free vs hand). On miss: bottom-shuffle all exiled.
+fn discover_resolve(
+    state: &mut GameState,
+    controller: PlayerId,
+    mv: u32,
+) {
+    if !valid_player(state, controller) { return; }
+
+    let mut other_exiled: Vec<ObjectId> = Vec::new();
+    let mut hit: Option<ObjectId> = None;
+
+    while !state.player(controller).library_top_to_bottom.is_empty() {
+        let top_id = state.player_mut(controller)
+            .library_top_to_bottom.remove(0);
+        let (is_land, card_mv) = state.objects.get(top_id)
+            .map(|o| (o.is_land(), o.characteristics.mana_value()))
+            .unwrap_or((false, 0));
+        let new_id = state.move_object_to_zone(
+            top_id, Zone::Exile,
+            crate::events::MoveCause::SpellResolution,
+        );
+        let exiled_id = new_id.unwrap_or(top_id);
+        if !is_land && card_mv <= mv {
+            hit = Some(exiled_id);
+            break;
+        }
+        other_exiled.push(exiled_id);
+    }
+
+    match hit {
+        Some(hit_id) => {
+            // Only prompt if a resolving stack entry is in scope.
+            let Some(resolving) = state.currently_resolving else {
+                // No prompt context — default to the hand branch
+                // for the hit, then bottom-shuffle the rest.
+                let _ = state.move_object_to_zone(
+                    hit_id, Zone::Hand(controller),
+                    crate::events::MoveCause::SpellResolution);
+                cascade_shuffle_to_bottom(state, controller, other_exiled);
+                return;
+            };
+            state.pending_discover = Some(crate::state::PendingDiscover {
+                controller, hit: hit_id, other_exiled,
+            });
+            state.push_pending_choice(
+                controller,
+                crate::actions::ChoiceContext::ResolvingStack(resolving),
+                // prompt 0: "Cast for free? (no → put in hand)"
+                crate::actions::ChoiceKind::YesNo { prompt: 0 },
+            );
+        }
+        None => {
+            // No valid hit — every exiled card goes to the bottom.
+            cascade_shuffle_to_bottom(state, controller, other_exiled);
+        }
     }
 }
 
@@ -3885,6 +3961,93 @@ mod tests {
         assert!(matches!(s.pending_choice_follow_up,
             Some(crate::actions::ChoiceFollowUp::ExploreMayMill { card, player })
                 if card == card_id && player == 0));
+    }
+
+    #[test]
+    fn discover_with_hit_pushes_yes_no_and_stashes_pending() {
+        // CR 701.49: top is a creature with mv 2; Discover 3 hits it.
+        let mut s = GameState::new(2, 0);
+        let resolving = s.allocate_object_id();
+        s.currently_resolving = Some(resolving);
+        // Put a {1}{R} creature (mv=2) on top.
+        let card_id = s.allocate_object_id();
+        let chars = Characteristics {
+            mana_cost: Some(ManaCost::parse("{1}{R}").unwrap()),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        s.objects.insert(GameObject::new(
+            card_id, 0, Zone::Library(0), 9, chars));
+        s.player_mut(0).library_top_to_bottom.push(card_id);
+
+        Effect::Discover { player: 0, mana_value: 3 }.execute(&mut s);
+
+        // Card exiled (re-id'd; check pending_discover.hit).
+        let pd = s.pending_discover.as_ref()
+            .expect("discover pending after hit");
+        assert_eq!(pd.controller, 0);
+        // YesNo prompt is up.
+        let pc = s.pending_choice.as_ref().expect("YesNo pushed");
+        assert!(matches!(pc.kind, crate::actions::ChoiceKind::YesNo { .. }));
+        // Library now empty.
+        assert!(s.player(0).library_top_to_bottom.is_empty());
+    }
+
+    #[test]
+    fn discover_no_hit_bottoms_everything_no_prompt() {
+        // All-land library → discover finds no nonland → exiled
+        // cards bottom-shuffle, no prompt.
+        let mut s = GameState::new(2, 0);
+        let resolving = s.allocate_object_id();
+        s.currently_resolving = Some(resolving);
+        for _ in 0..2 {
+            let id = s.allocate_object_id();
+            let land = Characteristics {
+                types: TypeLine::LAND.into(), ..Default::default()
+            };
+            s.objects.insert(GameObject::new(id, 0, Zone::Library(0), 10, land));
+            s.player_mut(0).library_top_to_bottom.push(id);
+        }
+        Effect::Discover { player: 0, mana_value: 3 }.execute(&mut s);
+        // No hit → no pending_discover, no prompt; cards back on
+        // bottom of library.
+        assert!(s.pending_discover.is_none());
+        assert!(s.pending_choice.is_none());
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 2);
+    }
+
+    #[test]
+    fn discover_mv_threshold_skips_too_expensive() {
+        // Top card mv=4, Discover 2 → skip past it.
+        let mut s = GameState::new(2, 0);
+        let resolving = s.allocate_object_id();
+        s.currently_resolving = Some(resolving);
+        let expensive = s.allocate_object_id();
+        let chars = Characteristics {
+            mana_cost: Some(ManaCost::parse("{2}{R}{R}").unwrap()),
+            types: TypeLine::CREATURE.into(),
+            ..Default::default()
+        };
+        s.objects.insert(GameObject::new(expensive, 0, Zone::Library(0), 11, chars));
+        s.player_mut(0).library_top_to_bottom.push(expensive);
+        // Cheap creature below.
+        let cheap = s.allocate_object_id();
+        let chars = Characteristics {
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            types: TypeLine::CREATURE.into(),
+            ..Default::default()
+        };
+        s.objects.insert(GameObject::new(cheap, 0, Zone::Library(0), 12, chars));
+        s.player_mut(0).library_top_to_bottom.push(cheap);
+
+        Effect::Discover { player: 0, mana_value: 2 }.execute(&mut s);
+
+        // The cheap creature is the hit; the expensive one is in
+        // `other_exiled`.
+        let pd = s.pending_discover.as_ref().expect("hit on cheap");
+        assert_eq!(pd.other_exiled.len(), 1, "expensive card skipped");
     }
 
     #[test]

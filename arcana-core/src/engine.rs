@@ -1274,6 +1274,31 @@ pub(crate) fn apply_resolution_choice(
             // else: leave on top of library.
         }
 
+        // --- YesNo mid-resolution: Discover's cast-vs-hand decision -
+        // The discover_resolve helper stashed a `pending_discover`.
+        // `yes` → cast hit for free (via cascade's cast pathway —
+        // they're identical free-cast semantics). `no` → put in hand.
+        // Either way the other_exiled get bottom-shuffled.
+        (
+            ChoiceKind::YesNo { .. },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::YesNo { answer },
+        ) if state.pending_discover.is_some() => {
+            let pd = state.pending_discover.take().unwrap();
+            if *answer {
+                cast_cascade_hit(state, registry, pd.controller, pd.hit);
+                crate::effects::cascade_shuffle_to_bottom(
+                    state, pd.controller, pd.other_exiled);
+            } else {
+                let _ = state.move_object_to_zone(
+                    pd.hit,
+                    crate::zones::Zone::Hand(pd.controller),
+                    crate::events::MoveCause::SpellResolution);
+                crate::effects::cascade_shuffle_to_bottom(
+                    state, pd.controller, pd.other_exiled);
+            }
+        }
+
         // --- YesNo mid-resolution: cascade may-cast (CR 702.85) ------
         (
             ChoiceKind::YesNo { .. },

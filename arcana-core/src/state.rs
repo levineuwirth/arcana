@@ -197,6 +197,22 @@ pub struct GameState {
     /// slice instead of the full game log. Resilient to mid-game
     /// snapshot resets (defaults to 0 = scan-all).
     pub turn_event_log_start: usize,
+    /// CR 701.49 — companion slot to a pending [`crate::actions::ChoiceKind::YesNo`]
+    /// emitted by [`crate::effects::Effect::Discover`]. On `yes` the
+    /// dispatcher casts `hit` for free; on `no` it moves `hit` to
+    /// `hand`. Either path also re-bottoms `other_exiled` in seeded-
+    /// random order. Set just before the YesNo prompt; consumed by
+    /// the dispatcher on response.
+    pub pending_discover: Option<PendingDiscover>,
+}
+
+/// Parked discover state between exile-and-prompt and the YesNo
+/// response. See [`GameState::pending_discover`].
+#[derive(Clone, Debug)]
+pub struct PendingDiscover {
+    pub controller: PlayerId,
+    pub hit: ObjectId,
+    pub other_exiled: Vec<ObjectId>,
 }
 
 /// Parked cascade state between exile-and-prompt and the YesNo
@@ -266,6 +282,7 @@ impl GameState {
             lki: HashMap::default(),
             loyalty_activated_this_turn: crate::collections::HashSet::default(),
             turn_event_log_start: 0,
+            pending_discover: None,
         }
     }
 
