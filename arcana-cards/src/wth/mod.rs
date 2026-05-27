@@ -16,3 +16,5 @@ pub mod hurloon_shaman;
 pub mod tolarian_serpent;
 pub mod bone_dancer;
 pub mod sawtooth_ogre;
+pub mod tolarian_entrancer;
+pub mod goblin_vandal;

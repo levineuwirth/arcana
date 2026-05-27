@@ -7,3 +7,4 @@ pub mod undead_augur;
 pub mod wild_beastmaster;
 pub mod trostani_s_summoner;
 pub mod kessig_cagebreakers;
+pub mod victory_s_envoy;

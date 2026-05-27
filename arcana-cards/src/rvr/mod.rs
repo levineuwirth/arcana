@@ -32,3 +32,4 @@ pub mod aetherplasm;
 pub mod kiora_s_dambreaker;
 pub mod shadow_alley_denizen;
 pub mod protean_hulk;
+pub mod coiling_oracle;

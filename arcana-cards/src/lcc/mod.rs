@@ -23,3 +23,4 @@ pub mod pantlaza_sun_favored;
 pub mod pitiless_plunderer;
 pub mod surgespanner;
 pub mod sunfrill_imitator;
+pub mod verdant_sun_s_avatar;

@@ -42,3 +42,4 @@ pub mod kami_of_industry;
 pub mod eiganjo_exemplar;
 pub mod sokenzan_smelter;
 pub mod unstoppable_ogre;
+pub mod akki_ember_keeper;

@@ -31,3 +31,4 @@ pub mod slithering_cryptid;
 pub mod mikey_leo_chaos_order;
 pub mod raph_leo_sibling_rivals;
 pub mod courier_of_comestibles;
+pub mod zoo_escapees;

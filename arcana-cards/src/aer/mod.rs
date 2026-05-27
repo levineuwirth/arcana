@@ -34,3 +34,4 @@ pub mod salvage_scuttler;
 pub mod filigree_crawler;
 pub mod crackdown_construct;
 pub mod dispersal_technician;
+pub mod renegade_wheelsmith;

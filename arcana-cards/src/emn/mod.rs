@@ -28,3 +28,4 @@ pub mod laboratory_brute;
 pub mod brazen_wolves;
 pub mod courageous_outrider;
 pub mod ulvenwald_observer;
+pub mod assembled_alphas;

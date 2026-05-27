@@ -33,3 +33,5 @@ pub mod yavimaya_sapherd;
 pub mod ghitu_journeymage;
 pub mod d_avenant_trapper;
 pub mod mishra_s_self_replicator;
+pub mod karplusan_hound;
+pub mod cabal_paladin;

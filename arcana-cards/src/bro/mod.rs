@@ -47,3 +47,4 @@ pub mod great_desert_prospector;
 pub mod disciples_of_gix;
 pub mod thopter_architect;
 pub mod gixian_skullflayer;
+pub mod perimeter_patrol;

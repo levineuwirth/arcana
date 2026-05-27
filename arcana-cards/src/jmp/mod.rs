@@ -84,3 +84,7 @@ pub mod drainpipe_vermin;
 pub mod goblin_shortcutter;
 pub mod primordial_sage;
 pub mod brightmare;
+pub mod bloodrage_brawler;
+pub mod miasmic_mummy;
+pub mod ghoulraiser;
+pub mod ashmouth_hound;

@@ -20,3 +20,5 @@ pub mod soul_charmer;
 pub mod thresher_beast;
 pub mod keldon_berserker;
 pub mod reveille_squad;
+pub mod plague_fiend;
+pub mod death_charmer;

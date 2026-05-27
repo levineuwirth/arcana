@@ -48,3 +48,4 @@ pub mod wei_assassins;
 pub mod shu_grain_caravan;
 pub mod shu_defender;
 pub mod ravaging_horde;
+pub mod zhang_liao_hero_of_hefei;

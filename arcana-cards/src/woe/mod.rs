@@ -33,3 +33,5 @@ pub mod charging_hooligan;
 pub mod redcap_thief;
 pub mod imodane_the_pyrohammer;
 pub mod mintstrosity;
+pub mod tattered_ratter;
+pub mod merry_bards;

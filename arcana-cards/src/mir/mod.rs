@@ -32,3 +32,5 @@ pub mod sand_golem;
 pub mod brushwagg;
 pub mod harbinger_of_night;
 pub mod zebra_unicorn;
+pub mod mtenda_lion;
+pub mod dread_specter;

@@ -55,3 +55,5 @@ pub mod lorescale_coatl;
 pub mod library_larcenist;
 pub mod keral_keep_disciples;
 pub mod gloom_sower;
+pub mod dire_fleet_warmonger;
+pub mod burlfist_oak;

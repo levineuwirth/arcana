@@ -29,3 +29,5 @@ pub mod altac_bloodseeker;
 pub mod tireless_missionaries;
 pub mod shaman_of_spring;
 pub mod necromancer_s_assistant;
+pub mod roaring_primadox;
+pub mod boonweaver_giant;

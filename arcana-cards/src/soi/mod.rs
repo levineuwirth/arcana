@@ -27,3 +27,5 @@ pub mod lamplighter_of_selhoff;
 pub mod rottenheart_ghoul;
 pub mod drownyard_explorers;
 pub mod byway_courier;
+pub mod cult_of_the_waxing_moon;
+pub mod stromkirk_mentor;

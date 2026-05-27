@@ -42,3 +42,4 @@ pub mod soul_of_emancipation;
 pub mod a_mr_orfeo_the_boulder;
 pub mod forge_boss;
 pub mod a_civil_servant;
+pub mod freelance_muscle;

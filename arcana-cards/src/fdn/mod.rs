@@ -101,3 +101,4 @@ pub mod ajani_s_pridemate;
 pub mod frenzied_goblin;
 pub mod vampire_gourmand;
 pub mod elvish_regrower;
+pub mod skeleton_archer;

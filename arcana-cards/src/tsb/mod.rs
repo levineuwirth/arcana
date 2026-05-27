@@ -8,3 +8,4 @@ pub mod avoid_fate;
 pub mod psionic_blast;
 pub mod hail_storm;
 pub mod essence_sliver;
+pub mod spitting_slug;

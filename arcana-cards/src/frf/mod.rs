@@ -27,3 +27,4 @@ pub mod merciless_executioner;
 pub mod smoldering_efreet;
 pub mod mardu_woe_reaper;
 pub mod sultai_emissary;
+pub mod frost_walker;

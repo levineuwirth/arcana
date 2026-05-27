@@ -25,3 +25,4 @@ pub mod raving_oni_slave;
 pub mod michiko_konda_truth_seeker;
 pub mod fiddlehead_kami;
 pub mod dreamcatcher;
+pub mod shape_stealer;

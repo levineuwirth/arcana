@@ -32,3 +32,4 @@ pub mod hill_giant_herdgorger;
 pub mod bulette;
 pub mod hoard_robber;
 pub mod hired_hexblade;
+pub mod jaded_sell_sword;

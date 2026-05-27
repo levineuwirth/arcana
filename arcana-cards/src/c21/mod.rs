@@ -12,3 +12,4 @@ pub mod spawning_kraken;
 pub mod epicure_of_blood;
 pub mod quicksmith_genius;
 pub mod desolation_twin;
+pub mod ageless_entity;

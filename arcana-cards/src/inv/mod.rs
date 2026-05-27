@@ -14,3 +14,5 @@ pub mod loafing_giant;
 pub mod vicious_kavu;
 pub mod vodalian_merchant;
 pub mod quirion_sentinel;
+pub mod phyrexian_reaper;
+pub mod horned_cheetah;

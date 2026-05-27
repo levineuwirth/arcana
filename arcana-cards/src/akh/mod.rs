@@ -27,3 +27,6 @@ pub mod naga_oracle;
 pub mod ornery_kudu;
 pub mod wayward_servant;
 pub mod manticore_of_the_gauntlet;
+pub mod honored_crop_captain;
+pub mod supply_caravan;
+pub mod ruthless_sniper;

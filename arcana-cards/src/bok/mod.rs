@@ -34,3 +34,4 @@ pub mod takenuma_bleeder;
 pub mod yomiji_who_bars_the_way;
 pub mod akki_blizzard_herder;
 pub mod kami_of_tattered_shoji;
+pub mod yukora_the_prisoner;

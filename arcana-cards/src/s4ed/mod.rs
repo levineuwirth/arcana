@@ -7,3 +7,4 @@ pub mod tunnel;
 pub mod energy_tap;
 pub mod nafs_asp;
 pub mod el_hajj_j;
+pub mod abomination;

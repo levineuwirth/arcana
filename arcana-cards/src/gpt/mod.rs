@@ -14,3 +14,6 @@ pub mod gruul_scrapper;
 pub mod dune_brood_nephilim;
 pub mod burning_tree_shaman;
 pub mod abyssal_nocturnus;
+pub mod spelltithe_enforcer;
+pub mod tin_street_hooligan;
+pub mod poisonbelly_ogre;

@@ -38,3 +38,4 @@ pub mod blossoming_bogbeast;
 pub mod sram_senior_edificer;
 pub mod ajani_s_chosen;
 pub mod squee_goblin_nabob;
+pub mod rionya_fire_dancer;

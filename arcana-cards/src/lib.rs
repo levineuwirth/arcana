@@ -554,6 +554,8 @@ pub mod brc;
 
 pub mod m3c;
 
+pub mod ymkm;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

@@ -30,3 +30,4 @@ pub mod ingenious_artillerist;
 pub mod bramble_sovereign;
 pub mod malakir_blood_priest;
 pub mod zhentarim_bandit;
+pub mod treasure_keeper;

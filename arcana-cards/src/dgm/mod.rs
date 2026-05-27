@@ -22,3 +22,4 @@ pub mod species_gorger;
 pub mod haazda_snare_squad;
 pub mod blaze_commando;
 pub mod scion_of_vitu_ghazi;
+pub mod boros_battleshaper;

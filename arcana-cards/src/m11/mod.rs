@@ -13,3 +13,4 @@ pub mod hornet_sting;
 pub mod destructive_force;
 pub mod pyretic_ritual;
 pub mod phantom_beast;
+pub mod cyclops_gladiator;

@@ -22,3 +22,4 @@ pub mod imperial_recruiter;
 pub mod etherium_spinner;
 pub mod herd_baloth;
 pub mod nykthos_paragon;
+pub mod braids_cabal_minion;

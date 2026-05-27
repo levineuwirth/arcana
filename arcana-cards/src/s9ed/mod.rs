@@ -34,3 +34,4 @@ pub mod rukh_egg;
 pub mod rogue_kavu;
 pub mod imaginary_pet;
 pub mod mogg_sentry;
+pub mod deathgazer;

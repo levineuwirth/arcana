@@ -3,3 +3,4 @@ pub mod loxodon_partisan;
 pub mod mortal_s_ardor;
 pub mod gustcloak_sentinel;
 pub mod surrakar_banisher;
+pub mod kinsbaile_skirmisher;

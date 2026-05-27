@@ -15,3 +15,4 @@ pub mod accursed_marauder;
 pub mod nadier_s_nightblade;
 pub mod reef_worm;
 pub mod recruiter_of_the_guard;
+pub mod metastatic_evangel;

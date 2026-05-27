@@ -44,3 +44,5 @@ pub mod elderfang_disciple;
 pub mod karfell_kennel_master;
 pub mod clarion_spirit;
 pub mod a_elderleaf_mentor;
+pub mod immersturm_raider;
+pub mod boreal_outrider;

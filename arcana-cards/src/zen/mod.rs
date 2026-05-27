@@ -26,3 +26,5 @@ pub mod cosi_s_trickster;
 pub mod nimana_sell_sword;
 pub mod kor_outfitter;
 pub mod ondu_cleric;
+pub mod highland_berserker;
+pub mod ruinous_minotaur;

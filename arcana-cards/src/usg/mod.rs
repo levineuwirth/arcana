@@ -21,3 +21,5 @@ pub mod reclusive_wight;
 pub mod retromancer;
 pub mod viashino_weaponsmith;
 pub mod electryte;
+pub mod dromosaur;
+pub mod stern_proctor;

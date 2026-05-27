@@ -33,3 +33,4 @@ pub mod warden_of_the_eye;
 pub mod mardu_blazebringer;
 pub mod armament_corps;
 pub mod mardu_roughrider;
+pub mod kheru_lich_lord;

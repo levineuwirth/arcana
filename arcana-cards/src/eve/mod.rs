@@ -24,3 +24,5 @@ pub mod shorecrasher_mimic;
 pub mod marshdrinker_giant;
 pub mod tilling_treefolk;
 pub mod kithkin_zealot;
+pub mod noggle_bridgebreaker;
+pub mod ashling_the_extinguisher;

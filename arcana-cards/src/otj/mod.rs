@@ -41,3 +41,5 @@ pub mod discerning_peddler;
 pub mod lazav_familiar_stranger;
 pub mod overzealous_muscle;
 pub mod prickly_pair;
+pub mod magebane_lizard;
+pub mod marchesa_dealer_of_death;

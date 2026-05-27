@@ -7,3 +7,4 @@ pub mod dispersal_shield;
 pub mod aphetto_runecaster;
 pub mod vengeful_dead;
 pub mod kurgadon;
+pub mod daru_spiritualist;

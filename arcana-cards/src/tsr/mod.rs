@@ -23,3 +23,5 @@ pub mod pit_keeper;
 pub mod skittering_monstrosity;
 pub mod primal_forcemage;
 pub mod heartwood_storyteller;
+pub mod dream_stalker;
+pub mod sangrophage;

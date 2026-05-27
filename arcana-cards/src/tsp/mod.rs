@@ -7,3 +7,4 @@ pub mod sage_of_epityr;
 pub mod norin_the_wary;
 pub mod herd_gnarr;
 pub mod cyclopean_giant;
+pub mod glass_asp;

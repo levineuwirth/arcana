@@ -17,3 +17,5 @@ pub mod anodet_lurker;
 pub mod leonin_squire;
 pub mod blind_creeper;
 pub mod fangren_pathcutter;
+pub mod tangle_asp;
+pub mod moriok_rigger;

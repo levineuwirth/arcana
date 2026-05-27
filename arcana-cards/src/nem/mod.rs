@@ -13,3 +13,6 @@ pub mod complex_automaton;
 pub mod flint_golem;
 pub mod mossdog;
 pub mod silkenfist_fighter;
+pub mod laccolith_whelp;
+pub mod laccolith_grunt;
+pub mod laccolith_titan;

@@ -19,3 +19,4 @@ pub mod splatter_goblin;
 pub mod baird_argivian_recruiter;
 pub mod automatic_librarian;
 pub mod phyrexian_vivisector;
+pub mod academy_loremaster;

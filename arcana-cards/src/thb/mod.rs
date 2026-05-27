@@ -43,3 +43,5 @@ pub mod dawn_evangel;
 pub mod pheres_band_brawler;
 pub mod heliod_s_pilgrim;
 pub mod leonin_of_the_lost_pride;
+pub mod dreamstalker_manticore;
+pub mod careless_celebrant;

@@ -21,3 +21,4 @@ pub mod mindstab_thrull;
 pub mod juz_m_djinn;
 pub mod dwarven_soldier;
 pub mod the_fallen;
+pub mod thicket_basilisk;

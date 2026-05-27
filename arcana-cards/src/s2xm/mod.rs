@@ -29,3 +29,5 @@ pub mod myr_retriever;
 pub mod dire_fleet_hoarder;
 pub mod conclave_naturalists;
 pub mod woodland_champion;
+pub mod cathodion;
+pub mod salivating_gremlins;

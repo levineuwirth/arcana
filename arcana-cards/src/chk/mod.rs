@@ -45,3 +45,5 @@ pub mod deathcurse_ogre;
 pub mod ore_gorger;
 pub mod akki_rockspeaker;
 pub mod silent_chant_zubera;
+pub mod dripping_tongue_zubera;
+pub mod ashen_skin_zubera;

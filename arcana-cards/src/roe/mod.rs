@@ -18,3 +18,5 @@ pub mod vendetta;
 pub mod enatu_golem;
 pub mod soul_s_attendant;
 pub mod arrogant_bloodlord;
+pub mod merfolk_observer;
+pub mod akoum_boulderfoot;

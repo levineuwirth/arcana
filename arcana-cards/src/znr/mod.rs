@@ -36,3 +36,4 @@ pub mod guul_draz_mucklord;
 pub mod kor_celebrant;
 pub mod pyroclastic_hellion;
 pub mod cascade_seer;
+pub mod a_rockslide_sorcerer;

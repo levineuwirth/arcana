@@ -30,3 +30,6 @@ pub mod scrappy_bruiser;
 pub mod zhalfirin_lancer;
 pub mod axgard_artisan;
 pub mod deeproot_wayfinder;
+pub mod tiller_of_flesh;
+pub mod infected_defector;
+pub mod converter_beast;

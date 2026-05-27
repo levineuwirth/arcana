@@ -52,3 +52,6 @@ pub mod faller_s_faithful;
 pub mod molecular_modifier;
 pub mod virus_beetle;
 pub mod illvoi_operative;
+pub mod lightless_evangel;
+pub mod meltstrider_eulogist;
+pub mod station_monitor;

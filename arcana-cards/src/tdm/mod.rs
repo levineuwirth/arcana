@@ -36,3 +36,6 @@ pub mod rescue_leopard;
 pub mod iceridge_serpent;
 pub mod iridescent_tiger;
 pub mod furious_forebear;
+pub mod descendant_of_storms;
+pub mod yathan_roadwatcher;
+pub mod inspirited_vanguard;

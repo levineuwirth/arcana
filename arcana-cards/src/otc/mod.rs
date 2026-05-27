@@ -12,3 +12,4 @@ pub mod elvish_rejuvenator;
 pub mod oblivion_sower;
 pub mod murmuring_mystic;
 pub mod edric_spymaster_of_trest;
+pub mod hostage_taker;

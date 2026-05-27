@@ -46,3 +46,5 @@ pub mod jungle_wayfinder;
 pub mod thrasher_brute;
 pub mod enthralling_victor;
 pub mod rotfeaster_maggot;
+pub mod tenacious_dead;
+pub mod sparring_mummy;

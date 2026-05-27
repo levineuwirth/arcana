@@ -40,3 +40,6 @@ pub mod azorius_arrester;
 pub mod tithebearer_giant;
 pub mod fleshbag_marauder;
 pub mod mausoleum_turnkey;
+pub mod jeering_homunculus;
+pub mod seller_of_songbirds;
+pub mod ornery_goblin;

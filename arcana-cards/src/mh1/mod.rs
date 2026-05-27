@@ -17,3 +17,4 @@ pub mod warteye_witch;
 pub mod tribute_mage;
 pub mod pondering_mage;
 pub mod nether_spirit;
+pub mod ruination_rioter;

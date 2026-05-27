@@ -40,3 +40,7 @@ pub mod boggart_prankster;
 pub mod gloom_ripper;
 pub mod noggle_robber;
 pub mod wary_farmer;
+pub mod gallant_fowlknight;
+pub mod chaos_spewer;
+pub mod eclipsed_merrow;
+pub mod flaring_cinder;

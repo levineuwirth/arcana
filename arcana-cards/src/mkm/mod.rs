@@ -41,3 +41,7 @@ pub mod seasoned_consultant;
 pub mod sample_collector;
 pub mod slimy_dualleech;
 pub mod marketwatch_phantom;
+pub mod homicide_investigator;
+pub mod rubblebelt_braggart;
+pub mod novice_inspector;
+pub mod cornered_crook;

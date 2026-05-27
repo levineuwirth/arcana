@@ -34,3 +34,4 @@ pub mod bashful_beastie;
 pub mod piggy_bank;
 pub mod fanatic_of_the_harrowing;
 pub mod fear_of_failed_tests;
+pub mod innocuous_rat;

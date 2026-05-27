@@ -38,3 +38,6 @@ pub mod saber_ants;
 pub mod pangosaur;
 pub mod enslaved_horror;
 pub mod skulking_fugitive;
+pub mod quagmire_lamprey;
+pub mod ignoble_soldier;
+pub mod rishadan_footpad;

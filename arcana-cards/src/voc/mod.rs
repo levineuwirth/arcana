@@ -6,3 +6,4 @@ pub mod anowon_the_ruin_sage;
 pub mod midnight_arsonist;
 pub mod kami_of_the_crescent_moon;
 pub mod donal_herald_of_wings;
+pub mod rakish_heir;

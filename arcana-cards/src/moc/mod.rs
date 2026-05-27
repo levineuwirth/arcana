@@ -18,3 +18,4 @@ pub mod rashmi_and_ragavan;
 pub mod juniper_order_ranger;
 pub mod scrap_trawler;
 pub mod vodalian_wave_knight;
+pub mod vulpine_harvester;

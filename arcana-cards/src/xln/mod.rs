@@ -52,3 +52,7 @@ pub mod fleet_swallower;
 pub mod deadeye_quartermaster;
 pub mod wily_goblin;
 pub mod ixalli_s_diviner;
+pub mod tishana_s_wayfinder;
+pub mod dire_fleet_captain;
+pub mod emperor_s_vanguard;
+pub mod merfolk_branchwalker;

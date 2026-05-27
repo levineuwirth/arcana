@@ -46,3 +46,6 @@ pub mod spellseeker;
 pub mod corpse_augur;
 pub mod kemba_kha_regent;
 pub mod shirei_shizo_s_caretaker;
+pub mod sakiko_mother_of_summer;
+pub mod cyclops_electromancer;
+pub mod flux_channeler;

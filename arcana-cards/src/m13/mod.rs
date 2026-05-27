@@ -16,3 +16,4 @@ pub mod boundless_realms;
 pub mod fungal_sprouting;
 pub mod healer_of_the_pride;
 pub mod bond_beetle;
+pub mod mwonvuli_beast_tracker;

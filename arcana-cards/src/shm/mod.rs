@@ -33,3 +33,4 @@ pub mod hollowsage;
 pub mod cultbrand_cinder;
 pub mod drowner_initiate;
 pub mod intimidator_initiate;
+pub mod apothecary_initiate;
