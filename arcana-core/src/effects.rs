@@ -41,6 +41,12 @@ use crate::targets::{CmcCondition, ObjectFilter};
 use crate::types::*;
 use crate::zones::Zone;
 
+// Convenience re-export: `OptionalPaymentKind` canonically lives in
+// `crate::actions` (it's a payload of `ChoiceKind::OptionalCost`), but
+// a common card-gen agent drift is to import it from `effects::` (where
+// `Effect::OptionalPayment` lives). Re-export here so either path works.
+pub use crate::actions::OptionalPaymentKind;
+
 // =============================================================================
 // Effect
 // =============================================================================

@@ -31,3 +31,13 @@ pub use format::{FormatConfig, MulliganRule};
 pub use objects::{ObjectId, ObjectArena, GameObject};
 pub use registry::CardRegistry;
 pub use types::*;
+
+// Synonym module: card-gen agents frequently write
+// `use arcana_core::counters::...` even though no such module exists
+// canonically. This `counters` namespace re-surfaces the counter
+// primitives so wrong-path imports still compile. Equivalent to
+// importing `CounterKind` from `types::`.
+pub mod counters {
+    pub use crate::types::{CounterKind, CounterMap};
+    pub use crate::types::CounterKind as CounterType;
+}

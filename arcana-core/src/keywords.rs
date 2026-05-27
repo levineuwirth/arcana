@@ -15,6 +15,11 @@ use crate::triggers::{TriggeredAbilityDef, TriggerCondition, TriggerFrequency};
 use crate::types::TriggerId;
 use crate::zones::Zone;
 
+// Convenience re-export: `KeywordAbility` canonically lives in
+// `crate::effects` but the more intuitive path is `keywords::`. Both
+// resolve to the same type now.
+pub use crate::effects::KeywordAbility;
+
 // =============================================================================
 // Storm — CR 702.40
 // =============================================================================

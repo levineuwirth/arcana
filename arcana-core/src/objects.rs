@@ -21,6 +21,12 @@ use crate::mana::ManaCost;
 use crate::types::*;
 use crate::zones::{Zone, ZoneKind};
 
+// Convenience re-exports so generated card files that write
+// `use arcana_core::objects::ObjectFilter` (a common drift —
+// `ObjectFilter` lives in `crate::targets`) still compile.
+// These are aliases for the canonical paths; either path works.
+pub use crate::targets::{ObjectFilter, ControllerConstraint};
+
 pub type ObjectId = u32;
 
 /// Sentinel for "no object" — never assigned by the arena. Used by tests

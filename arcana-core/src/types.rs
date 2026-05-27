@@ -418,6 +418,16 @@ pub struct PermanentStatus {
 // CounterKind + CounterMap
 // =============================================================================
 
+/// Alias for [`CounterKind`] — a recurring card-gen agent drift is to
+/// write `arcana_core::types::CounterType` (the MtG-ish noun). Both
+/// names resolve to the same enum.
+pub type CounterType = CounterKind;
+
+/// Re-export of [`crate::effects::KeywordAbility`] under the shorter
+/// MtG-ish name `Keyword`. Recurring card-gen agent drift is to write
+/// `arcana_core::types::Keyword`.
+pub use crate::effects::KeywordAbility as Keyword;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CounterKind {
     PlusOnePlusOne,

@@ -264,6 +264,50 @@ OUTPUT FORMAT
 - Start with a `//!` doc comment naming the card and summarising its rules text.
 - Follow with `use` lines, then the `register` fn, then any resolver / trigger free functions.
 
+CANONICAL IMPORT PRELUDE — use ONLY paths from this list. Most cards need a subset; do NOT improvise other paths. (Wrong paths are by far the #1 layer-1 failure class. ObjectFilter lives in `targets`, NOT `objects`. OptionalPaymentKind lives in `actions`, NOT `effects`. KeywordAbility lives in `effects`, the `keywords::KeywordAbility` re-export also works.)
+```rust
+use arcana_core::actions::OptionalPaymentKind;          // OptionalPayment cost shape
+use arcana_core::effects::{Effect, KeywordAbility};     // Effect variants + KeywordAbility enum
+use arcana_core::events::{DamageTarget, GameEvent};     // DamageTarget for DealDamage; rarely GameEvent
+use arcana_core::layers::Duration;                      // Duration::EndOfTurn / WhileSourceOnBattlefield
+use arcana_core::mana::{ManaCost, ManaUnit};
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;                                 // script::count_matching etc.
+use arcana_core::stack::StackEntry;
+use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
+    TargetFilter, TargetRequirement,
+};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::{Phase, Step};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, ManaColor, PlayerId, PtValue, SubtypeSet,
+    SupertypeSet, TypeLine,
+};
+use arcana_core::zones::Zone;
+```
+Trim unused `use`s from your final file. Do not invent paths like `arcana_core::types::CounterType` / `arcana_core::counters::*` / `arcana_core::keywords::KeywordAbility` (those work via re-export but the canonical path above is preferred). Do NOT write `arcana_core::objects::ObjectFilter` / `arcana_core::effects::OptionalPaymentKind` — those used to fail; they now work via re-export, but `targets::` / `actions::` is canonical.
+
+COMMON L1 ERRORS — pre-emission self-check (these caused the prior 10% L1 fail rate; if you see yourself about to write any of these, STOP and write the right form):
+- `TargetChoice` has FOUR variants: `Object(ObjectId)`, `Player(PlayerId)`, `ObjectOrPlayer(...)`, `ChosenColor(_)`. When you read a target via `match` you MUST handle `ObjectOrPlayer` for any-target effects. For single-`creature` triggers it's fine to `let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };` and skip the rest.
+- `trig.targets` is a `TargetSelection` whose `.targets` field is the `Vec<TargetChoice>`. So it's `trig.targets.targets.first()`, NOT `trig.targets.first()`.
+- `Effect::Pump { target, power, toughness, duration: Duration::EndOfTurn, keywords: vec![] }` — the duration field is `duration`, NOT `until_end_of_turn`.
+- `Effect::GrantKeyword { target, keyword, duration }` — same: field is `duration`.
+- `Effect::CreateToken { controller, token }` has ONLY two fields. There is NO `count` / `owner` / `blueprint`. For 'create N tokens', repeat the `Effect::CreateToken` value N times in the vec.
+- `Effect::AddCounters { target, kind, count }` — the counter-kind field is `kind`, NOT `counter`.
+- `Effect::Sequence(Vec<Effect>)` is a tuple variant — write `Effect::Sequence(vec![Effect::A, Effect::B])`, NOT `Effect::Sequence { effects: ... }`.
+- `Effect::Discard { player, count, choice: DiscardChoice::ControllerChooses }` — the `choice` field is REQUIRED; default is `DiscardChoice::ControllerChooses`. Import `DiscardChoice` from `arcana_core::effects`.
+- `OptionalPaymentKind` variants in v1: ONLY `Mana(ManaCost)` and `Life(u32)`. There is NO `Sacrifice`/`Discard`/`ExileFromGraveyard` (those gates are GAP material).
+- `ObjectFilter`'s controller method is `.controlled_by(ControllerConstraint::You)`, NOT `.with_controller(...)`.
+- `TriggerCondition::ZoneChange { filter, from: Option<Zone>, to: Zone }` — fields are `filter`/`from`/`to`. There is NO `controller_constraint` — restrict via the `filter`'s `.controlled_by(...)`.
+- `Zone` enum has NO `None`/`Any` variants. For "from any zone" pass `from: None` (the field is `Option<Zone>`).
+- `reg.interner_mut().intern("…")` borrows `reg` mutably. Bind all subtype symbols in `register()` ONE AT A TIME with `let s = reg.interner_mut().intern("…");`. Don't try to chain multiple intern calls in the same expression — the second is a duplicate mutable borrow.
+- `script::count_matching(state, &filter, you)` takes THREE arguments. `script::ids_matching(state, &filter, you)` is the same. Don't pass two or four.
+
 ENGINE CONVENTIONS (match the reference examples exactly)
 - Names, subtypes, and any other string identifiers are interned first: `let name = reg.interner_mut().intern("Card Name");`. Always intern before use.
 - Mana costs: `ManaCost::parse("{1}{R}").expect("valid cost")`. Wrap in `Some(...)` when placed in `Characteristics.mana_cost`.
