@@ -926,7 +926,7 @@ Then build ONE `ActivatedAbilityDef` per activated clause in the oracle text. Th
 /// ActivatedAbilityCreature prompt. Mirrors the trigger / target
 /// catalogs in style — each line is a copy-pasteable construction
 /// keyed to a recognisable oracle phrasing.
-const ACTIVATION_COST_CATALOG: &str = r#"ACTIVATION COST CATALOG — `ActivatedAbilityDef.cost` is a `struct ActivationCost { mana_cost, tap, sacrifice, life, remove_self_counter, add_self_counter, discard_self, exile_self }`. Build via struct literal with `..ActivationCost::default()` for unused fields. Map oracle costs to fields as follows:
+const ACTIVATION_COST_CATALOG: &str = r#"ACTIVATION COST CATALOG — `ActivatedAbilityDef.cost` is a `struct ActivationCost { mana_cost, tap, sacrifice, life, remove_self_counter, add_self_counter, discard_self, exile_self, min_self_counters }`. Build via struct literal with `..ActivationCost::default()` for unused fields. Map oracle costs to fields as follows:
 - `{T}: …` (tap alone) → `ActivationCost::tap_only()`.
 - `{N}: …` or `{R}: …` (mana only, no tap) → `ActivationCost { mana_cost: ManaCost::parse("{N}").unwrap(), ..ActivationCost::default() }`.
 - `{N}, {T}: …` (mana + tap) → `ActivationCost { mana_cost: ManaCost::parse("{N}").unwrap(), tap: true, ..ActivationCost::default() }`.
@@ -936,6 +936,7 @@ const ACTIVATION_COST_CATALOG: &str = r#"ACTIVATION COST CATALOG — `ActivatedA
 - `Remove a +1/+1 counter from ~: …` (Walking-Ballista-style) → `ActivationCost { remove_self_counter: Some((CounterKind::PlusOnePlusOne, 1)), ..ActivationCost::default() }`. For other counter kinds use the matching `CounterKind` variant.
 - `Put a +1/+1 counter on ~ : …` (rare; mainly planeswalker loyalty +N) → `ActivationCost { add_self_counter: Some((CounterKind::PlusOnePlusOne, 1)), ..ActivationCost::default() }`. For planeswalkers use `CounterKind::Loyalty`.
 - `{N}, Discard ~: …` (cycling — but cycling cards aren't activated creatures, this is rare) → `ActivationCost { mana_cost: ..., discard_self: true, ..ActivationCost::default() }` PLUS `activation_zone: ActivationZone::Hand`.
+- `min_self_counters: Option<(CounterKind, u32)>` — PURE PRECONDITION (not a cost — counters are not removed; only legality is gated). The source must currently have at least `count` counters of `kind`. Use this for CR 717.5b Class level-up gating: the Level-N activation sets `min_self_counters: Some((CounterKind::Level, N - 1))`. Do NOT use this for "remove N counters" oracle text (that is `remove_self_counter`, which both gates legality and consumes counters). Leave at `None` for activations with no counter precondition.
 
 OTHER FIELDS on `ActivatedAbilityDef`:
 - `text: String` — the oracle text of THIS ability only, e.g. `"{T}: Add {G}.".into()`.
@@ -1104,7 +1105,8 @@ ENGINE STATUS — Class dispatch primitives:
 - `CounterKind::Level` is in the engine.
 - `EntersWithSpec::Counters {{ kind: CounterKind::Level, count: 1 }}` gives the starting level (CR 717.3).
 - Each level-up is a SORCERY-SPEED activated ability: `ActivatedAbilityDef`'s `is_instant_speed: false` (the default for non-mana activated abilities). The activation cost is the printed mana cost; the resolver's effect is `Effect::AddCounters {{ target: ctx.source, kind: CounterKind::Level, count: 1 }}`.
-- DEFERRED engine debt: the 'requires you've reached level N-1' precondition and the per-level granted abilities (continuous effects gated on the counter count) are NOT modeled. The activation will be legal at any level until that lands; emit `// GAP: level-precondition gate + per-level granted abilities deferred (Class engine subsystem)` in the doc comment.
+- LEVEL-PRECONDITION GATE (CR 717.5b) is now wired: set `cost.min_self_counters = Some((CounterKind::Level, N - 1))` on the Level-N activation. The engine's `legal_actions` filter consults this and only offers the activation when the Class has at least N-1 level counters. The field is a pure precondition — it does NOT remove counters (your effect does the +1 via `Effect::AddCounters`); it only gates legality.
+- STILL DEFERRED engine debt: the per-level granted abilities (continuous effects like \"While at level 2 you have …\" / \"At level 3 …\" that are passively true whenever the Class is at that level or above) are NOT modeled. Document those as `// GAP: per-level granted abilities deferred (continuous-effect engine subsystem)` in the doc comment.
 
 BUILD PATTERN:
 ```rust
@@ -1127,6 +1129,8 @@ reg.register(
             text: \"{{2}}{{R}}: Level 2.\".into(),
             cost: ActivationCost {{
                 mana_cost: ManaCost::parse(\"{{2}}{{R}}\").unwrap(),
+                // CR 717.5b — Level-2 requires you to already be at level 1.
+                min_self_counters: Some((CounterKind::Level, 1)),
                 ..ActivationCost::default()
             }},
             target_requirements: vec![],
@@ -1137,11 +1141,29 @@ reg.register(
             face_gate: None,
             effect: level_up_to_2,
         }})
-        // ... one .with_activated_ability per level-up
+        .with_activated_ability(ActivatedAbilityDef {{
+            text: \"{{4}}{{R}}: Level 3.\".into(),
+            cost: ActivationCost {{
+                mana_cost: ManaCost::parse(\"{{4}}{{R}}\").unwrap(),
+                // Level-3 requires level 2.
+                min_self_counters: Some((CounterKind::Level, 2)),
+                ..ActivationCost::default()
+            }},
+            target_requirements: vec![],
+            is_mana_ability: false,
+            is_loyalty_ability: false,
+            activation_zone: ActivationZone::Battlefield,
+            is_instant_speed: false,
+            face_gate: None,
+            effect: level_up_to_3,
+        }})
+        // ... one .with_activated_ability per printed level-up.
+        // Apply `min_self_counters: Some((CounterKind::Level, N - 1))`
+        // for the Level-N activation.
 )
 ```
 
-The per-level granted abilities (\"At level 2 you have …\" / \"While at level 3 …\") are continuous-effect engine debt; document them as GAP comments. The activation cost is what the card-gen models faithfully.
+The per-level granted abilities (\"At level 2 you have …\" / \"While at level 3 …\") are continuous-effect engine debt; document them as GAP comments. The activation cost AND the level precondition are what the card-gen models faithfully.
 
 {cat}
 

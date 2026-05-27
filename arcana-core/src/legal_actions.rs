@@ -1963,6 +1963,15 @@ fn ability_is_activatable(
             return false;
         }
     }
+    // Pure-precondition counter gate (CR 717.5b — Class level-up,
+    // among other things): source must have at least `count` counters
+    // of `kind`, but they are NOT removed by activation. Distinct
+    // from `remove_self_counter` above (which both gates and consumes).
+    if let Some((kind, count)) = ability.cost.min_self_counters {
+        if obj.count_counters(kind) < count {
+            return false;
+        }
+    }
     // Mana abilities can be activated at any time a player has
     // priority. Non-mana activated abilities default to sorcery
     // speed; `is_instant_speed` lifts that gate (CR 702.29a
@@ -2723,6 +2732,81 @@ mod tests {
             crate::actions::AdditionalCostPayment::RemoveCounters {
                 source: s, kind: CounterKind::PlusOnePlusOne, count: 1,
             } if *s == obj)));
+    }
+
+    // --- min_self_counters precondition (Class level-up CR 717.5b) -------
+
+    /// Build a permanent with a single activated ability whose only
+    /// gate is a `min_self_counters: Some((Level, 1))` precondition —
+    /// "Level 2" on a Class enchantment. The activation has no cost
+    /// and a trivial effect; we only care about the legality filter.
+    fn register_class_level_2_stub(reg: &mut CardRegistry) -> CardId {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let name = reg.interner_mut().intern("Class Stub");
+        let chars = creature_chars(0, 0);
+        reg.register(
+            CardDefinition::new(name, chars)
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Level 2".into(),
+                    cost: ActivationCost {
+                        min_self_counters: Some((CounterKind::Level, 1)),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        )
+    }
+
+    #[test]
+    fn min_self_counters_gate_blocks_when_count_too_low() {
+        let mut reg = CardRegistry::new();
+        let cid = register_class_level_2_stub(&mut reg);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let chars = creature_chars(0, 0);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, chars, cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+
+        // No Level counters → the Level-2 activation is gated out.
+        let actions = legal_actions(&s, &reg);
+        assert!(!actions.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)),
+            "Level-2 activation must be illegal with 0 Level counters");
+    }
+
+    #[test]
+    fn min_self_counters_gate_passes_at_or_above_threshold() {
+        let mut reg = CardRegistry::new();
+        let cid = register_class_level_2_stub(&mut reg);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let chars = creature_chars(0, 0);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, chars, cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+        s.objects.get_mut(obj).unwrap()
+            .add_counters(CounterKind::Level, 1);
+
+        let actions = legal_actions(&s, &reg);
+        let activation = actions.iter().find(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj));
+        let action = activation.expect("Level-2 activation should be legal at level 1");
+        // Crucially: the precondition does NOT translate into a
+        // RemoveCounters / AddCounters additional-cost — the counter
+        // stays put, only the legality gate consults it.
+        let Action::ActivateAbility { additional_costs, .. } = action else {
+            unreachable!()
+        };
+        assert!(!additional_costs.iter().any(|c| matches!(c,
+            crate::actions::AdditionalCostPayment::RemoveCounters { .. }
+                | crate::actions::AdditionalCostPayment::AddCounters { .. })),
+            "min_self_counters is a precondition, not a cost — \
+             no counter payment should be emitted");
     }
 
     #[test]

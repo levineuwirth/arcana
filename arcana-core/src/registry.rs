@@ -921,6 +921,24 @@ pub struct ActivationCost {
     /// exile. Distinct from [`Self::sacrifice`] (battlefield→graveyard)
     /// and [`Self::discard_self`] (hand→graveyard).
     pub exile_self: bool,
+    /// Pure precondition (NOT a cost — nothing is removed or paid):
+    /// the source must have at least `count` counters of the given
+    /// `kind` for the ability to be legal. Walks like a cost in the
+    /// legality filter, but the counters stay on the object when the
+    /// ability resolves.
+    ///
+    /// CR 717.5b — Class level-up: a "Level N" activation requires
+    /// the Class to already have at least `N - 1` level counters. The
+    /// activation then *adds* a level counter via its effect (not via
+    /// [`Self::add_self_counter`], which is the planeswalker
+    /// pay-loyalty pattern). For "Level 2" → `Some((Level, 1))`; for
+    /// "Level 3" → `Some((Level, 2))`.
+    ///
+    /// Distinct from [`Self::remove_self_counter`] (cost that consumes
+    /// counters) and [`Self::add_self_counter`] (cost that places
+    /// counters). This field changes nothing on resolution — it only
+    /// gates whether the ability is offered as legal at all.
+    pub min_self_counters: Option<(CounterKind, u32)>,
 }
 
 impl ActivationCost {
