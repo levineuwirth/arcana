@@ -169,6 +169,22 @@ impl Card {
     pub fn is_battle(&self) -> bool {
         type_part(&self.type_line).contains("Battle")
     }
+    pub fn is_saga(&self) -> bool {
+        // Sagas are Enchantment subtype "Saga"; the layout column is
+        // a reliable proxy on modern Scryfall dumps.
+        self.layout == "saga" || self.type_line.contains("Saga")
+    }
+    pub fn is_class(&self) -> bool {
+        // Class enchantments (CR 717) include "Class" as a subtype.
+        self.type_line.contains("Class")
+            && type_part(&self.type_line).contains("Enchantment")
+    }
+    pub fn is_adventure_layout(&self) -> bool {
+        self.layout == "adventure"
+    }
+    pub fn is_mdfc_layout(&self) -> bool {
+        self.layout == "modal_dfc"
+    }
 
     /// Oracle text surface usable by downstream analysis.
     /// For single-face cards this is just `self.oracle_text`.

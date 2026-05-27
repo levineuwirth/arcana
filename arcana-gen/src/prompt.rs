@@ -75,6 +75,23 @@ pub enum PromptShape {
     /// granters). Excludes creatures with triggered abilities (those
     /// route to [`Self::TriggeredAbilityCreature`]).
     ActivatedAbilityCreature,
+    /// CR 715 — Adventurer. Creature card with an Adventure (instant
+    /// or sorcery) face. Layout "adventure" in Scryfall.
+    AdventureCreature,
+    /// CR 712.4 — Modal double-faced card (MDFC). Both faces are
+    /// first-class; either can be cast/played. Layout "modal_dfc".
+    ModalDfcCreature,
+    /// CR 716 — Saga enchantment. Adds a lore counter on enter + on
+    /// post-draw, with chapter abilities triggered by counter
+    /// placements. Layout "saga".
+    Saga,
+    /// CR 717 — Class enchantment. Levels up via activated abilities;
+    /// each level grants new abilities. Typeline includes "Class".
+    ClassEnchantment,
+    /// MOM Battles. Battle subtype permanent that enters with defense
+    /// counters; attackers attack the battle's controller. Layout
+    /// "battle".
+    Battle,
 }
 
 /// Why a (card, tier) combination is not currently renderable. The
@@ -184,6 +201,11 @@ fn user_for_shape(card: &Card, shape: PromptShape) -> String {
         PromptShape::SingleEffectSpell => user_single_effect_spell(card),
         PromptShape::TriggeredAbilityCreature => user_triggered_ability_creature(card),
         PromptShape::ActivatedAbilityCreature => user_activated_ability_creature(card),
+        PromptShape::AdventureCreature => user_adventure_creature(card),
+        PromptShape::ModalDfcCreature => user_mdfc_creature(card),
+        PromptShape::Saga => user_saga(card),
+        PromptShape::ClassEnchantment => user_class_enchantment(card),
+        PromptShape::Battle => user_battle(card),
     }
 }
 
@@ -203,6 +225,30 @@ fn format_compile_error(err: &CompileError) -> String {
 }
 
 fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
+    // Tier 4/5 are explicitly out-of-scope for the classifier; refuse
+    // before any typed-card pre-dispatch so the out-of-scope contract
+    // is preserved (see `retry_prompt_respects_unsupported_shapes`).
+    if matches!(tier, Tier::Four | Tier::Five) {
+        return Err(Unsupported::TierOutOfScope(tier));
+    }
+    // Typed-card layouts take precedence over tier-based routing —
+    // these cards need their own prompt regardless of how the
+    // classifier scored their oracle text.
+    if card.is_adventure_layout() && card.is_creature() {
+        return Ok(PromptShape::AdventureCreature);
+    }
+    if card.is_mdfc_layout() && card.is_creature() {
+        return Ok(PromptShape::ModalDfcCreature);
+    }
+    if card.is_saga() {
+        return Ok(PromptShape::Saga);
+    }
+    if card.is_class() {
+        return Ok(PromptShape::ClassEnchantment);
+    }
+    if card.is_battle() {
+        return Ok(PromptShape::Battle);
+    }
     match tier {
         Tier::One => {
             // Basic lands route through a hand-written helper — not
@@ -368,6 +414,8 @@ const FS_LLANOWAR_ELVES: &str =
     include_str!("../../arcana-cards/src/lea/llanowar_elves.rs");
 const FS_PRODIGAL_SORCERER: &str =
     include_str!("../../arcana-cards/src/lea/prodigal_sorcerer.rs");
+const FS_BONECRUSHER_GIANT: &str =
+    include_str!("../../arcana-cards/src/eld/bonecrusher_giant.rs");
 const FS_PREORDAIN: &str =
     include_str!("../../arcana-cards/src/m11/preordain.rs");
 const FS_SERVO_EXHIBITION: &str =
@@ -915,6 +963,129 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 ```"#;
+
+/// Per-card prompt block for AdventureCreature (CR 715). The card has
+/// a creature main face AND an Adventure (instant/sorcery) face with
+/// its own name + mana cost + text. Engine wiring already complete via
+/// `.with_adventure(CardFace)`.
+fn user_adventure_creature(card: &Card) -> String {
+    format!(
+        "Generate an ADVENTURE CARD (CR 715 — Adventurer): a creature card with a printed Adventure face (instant or sorcery). Engine wires via `.with_adventure(CardFace {{ name, characteristics, spell_ability: Some(...) }})` on the CardDefinition; the cast pipeline routes Adventure casts to the face's spell ability and exiles the card on resolution (CR 715.4); the owner may later cast it as a creature from exile.
+
+REFERENCE — Bonecrusher Giant // Stomp ({{1}}{{R}} Giant 4/3 creature face + 'Stomp' {{1}}{{R}} instant face dealing 2 damage to any target). Shows the full `with_adventure` wiring with separate name/chars/spell_ability for the Adventure face:
+```rust
+{FS_BONECRUSHER_GIANT}
+```
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+BONES — both faces:
+- Creature face: `mana_cost`/`colors`/`types`/subtypes/power/toughness from the main type-line entry (the creature half).
+- Adventure face: separate `name` (Scryfall lists the face name e.g. 'Stomp'), separate `mana_cost`, `types` (Instant or Sorcery), and a `SpellAbilityDef` with the Adventure's effect.
+
+Build via:
+```rust
+let main_chars = Characteristics {{ name, mana_cost: ..., colors: ..., types: TypeLine::CREATURE.into(), subtypes, power, toughness, ..Default::default() }};
+let adv_chars = Characteristics {{ name: adv_name, mana_cost: ..., colors: ..., types: TypeLine::INSTANT.into() /* or SORCERY */, ..Default::default() }};
+let adv_ability = SpellAbilityDef {{ text: \"…\".into(), target_requirements: vec![...], modal: None, effect: adv_resolve }};
+let adventure = CardFace {{ name: adv_name, characteristics: adv_chars, spell_ability: Some(adv_ability) }};
+reg.register(CardDefinition::new(name, main_chars).with_adventure(adventure))
+```
+If the Adventure's effect can't be expressed with any catalog variant, the spell-ability `effect` fn returns `Vec::new()` with `// GAP: <missing>` — never invent a variant. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        cat = effect_catalog("entry"),
+        FS_BONECRUSHER_GIANT = FS_BONECRUSHER_GIANT,
+    )
+}
+
+/// Per-card prompt block for ModalDfcCreature (CR 712.4). Two
+/// first-class faces — either may be cast. Engine wiring exists via
+/// `AlternateFace::Mdfc(CardFace)` and `with_mdfc_back`.
+fn user_mdfc_creature(card: &Card) -> String {
+    format!(
+        "Generate a MODAL DOUBLE-FACED CARD (CR 712.4 / 717): two first-class faces, either castable for its own printed mana cost. Engine wires via `.with_mdfc_back(CardFace {{ name, characteristics, spell_ability }})` on CardDefinition.
+
+For MVP: build the front (main) face fully — name, mana_cost, colors, types, subtypes, P/T, abilities — exactly as you'd build a normal creature/spell. Attach a back face via `with_mdfc_back`. If the back face is a land or a permanent type other than instant/sorcery, set `spell_ability: None` (the back face will resolve as a permanent into play on cast — engine routes via CastModifier::MdfcBack). If the back face is instant/sorcery, give it a SpellAbilityDef like a normal spell.
+
+Many MDFC mechanics are engine debt — back-face-as-permanent resolution is partial; the back-face's own activated abilities work via `face_gate: Some(1)` on each ActivatedAbilityDef. If unclear, build only the front face and emit `// GAP: MDFC back face not modeled (mechanic deferred)` in the doc comment.
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        cat = effect_catalog("entry"),
+    )
+}
+
+/// Per-card prompt block for Saga (CR 716). Enchantment subtype Saga;
+/// gains lore counters on ETB + post-draw; chapter abilities trigger
+/// on counter placement; sacrificed when the final chapter resolves.
+fn user_saga(card: &Card) -> String {
+    format!(
+        "Generate a SAGA ENCHANTMENT (CR 716). A saga is an Enchantment — Saga that enters with one lore counter and adds a lore counter at the beginning of its controller's post-draw step. When a lore counter is added, the chapter ability with the matching roman numeral triggers (I, II, III, ...). When the last chapter resolves, the saga is sacrificed.
+
+ENGINE STATUS — saga subsystem is partially implemented. Recognize the saga shape but the lore-counter-and-chapter dispatch is engine debt. For MVP:
+1. Build the Characteristics with `types: TypeLine::ENCHANTMENT.into()` and add the 'Saga' subtype (intern via `reg.interner_mut().intern(\"Saga\")` then insert into a `SubtypeSet`).
+2. Emit `// GAP: chapter triggers not modeled (Saga engine deferred)` in the doc comment and a single placeholder `TriggeredAbilityDef` with `trigger_condition: TriggerCondition::SelfEntersBattlefield` returning `Vec::new()` for the body (this passes L2 with min_triggered_abilities ≥ 1).
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        cat = effect_catalog("trig"),
+    )
+}
+
+/// Per-card prompt block for ClassEnchantment (CR 717).
+fn user_class_enchantment(card: &Card) -> String {
+    format!(
+        "Generate a CLASS ENCHANTMENT (CR 717). A Class is an Enchantment — Class with level-up activated abilities ({{cost}}: Level {{N}}) that put the card into the next level. Each level grants new printed abilities.
+
+ENGINE STATUS — class subsystem partially implemented. For MVP:
+1. Build the Characteristics with `types: TypeLine::ENCHANTMENT.into()` and add the 'Class' subtype (intern + insert).
+2. Emit `// GAP: level-up activation not modeled (Class engine deferred)` in the doc comment.
+3. Attach a single placeholder `ActivatedAbilityDef` with the level-up cost from level 1 → 2 (mana_cost only, sorcery speed, no targets, returns `Vec::new()`) so the card has at least one ability and passes basic registration.
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        cat = effect_catalog("ctx"),
+    )
+}
+
+/// Per-card prompt block for Battle (MOM mechanic).
+fn user_battle(card: &Card) -> String {
+    format!(
+        "Generate a BATTLE PERMANENT (MOM). A Battle is a non-creature permanent with the Battle type (and a subtype like Siege) that enters with defense counters; opponents may attack it as a planeswalker-style defender; when its defense counters reach zero it transforms into a creature face the controller controls.
+
+ENGINE STATUS — battle subsystem NOT yet implemented (no defense counter / attack-battle / flip path). For MVP:
+1. Build the Characteristics with `types: TypeLine::BATTLE.into()` if available, otherwise `TypeLine::ENCHANTMENT.into()` as a fallback (note: `TypeLine::BATTLE` may not exist; emit `// GAP: Battle type bit not in TypeLine`).
+2. Emit `// GAP: Battle defense counter / attack-as-defender / transform-on-defeat all deferred (engine subsystem)` in the doc comment.
+3. Don't attempt the back-face transformation or the attack mechanic — emit no abilities.
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        cat = effect_catalog("entry"),
+    )
+}
 
 // =============================================================================
 // tests

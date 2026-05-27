@@ -437,11 +437,19 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                         "activated" | "activatedabilitycreature" => {
                             "ActivatedAbilityCreature"
                         }
+                        "adventure" | "adventurecreature" => "AdventureCreature",
+                        "mdfc" | "modal-dfc" | "modaldfccreature" => {
+                            "ModalDfcCreature"
+                        }
+                        "saga" => "Saga",
+                        "class" | "classenchantment" => "ClassEnchantment",
+                        "battle" => "Battle",
                         other => {
                             return Err(anyhow!(
                                 "--shapes: unknown shape '{other}' \
                                  (use vanilla, french-vanilla, spell, \
-                                 triggered, activated)"
+                                 triggered, activated, adventure, mdfc, \
+                                 saga, class, battle)"
                             ))
                         }
                     };
