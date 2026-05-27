@@ -464,6 +464,18 @@ pub struct Characteristics {
     /// (must be on a creature) without walking the interner.
     #[serde(default)]
     pub is_fortification: bool,
+    /// CR 716.5d (Saga sacrifice) — for Saga enchantments, the
+    /// printed number of the final chapter (the maximum chapter
+    /// number across the card's chapter triggers). `None` for
+    /// non-Sagas. Synthesized at
+    /// [`crate::registry::CardRegistry::register`] by scanning the
+    /// card's [`TriggerCondition::CounterAdded`] arms whose
+    /// `chapter` field is set, taking the maximum. The
+    /// state-based-action loop reads this directly so it can
+    /// sacrifice the Saga once it has at least this many Lore
+    /// counters AND the chapter ability has fully resolved.
+    #[serde(default)]
+    pub saga_final_chapter: Option<u32>,
 }
 
 impl Characteristics {
@@ -513,6 +525,7 @@ mod tests {
             keywords: vec![],
             is_aura: false,
             is_fortification: false,
+            saga_final_chapter: None,
         }
     }
 

@@ -1034,6 +1034,15 @@ impl CardRegistry {
         if definition.base_characteristics.subtypes.contains(fort_sym) {
             definition.base_characteristics.is_fortification = true;
         }
+        // CR 716.5d — synthesize the Saga's final-chapter number by
+        // taking the max over the card's chapter-keyed CounterAdded
+        // triggers. This lets the SBA loop sacrifice the Saga without
+        // a registry lookup. `None` for non-Sagas; for Sagas with no
+        // chapter triggers (malformed, but we don't panic) `None` too,
+        // which is a safe no-op.
+        if let Some(n) = compute_saga_final_chapter(&definition) {
+            definition.base_characteristics.saga_final_chapter = Some(n);
+        }
         // CR 711.4 — a Split card's off-stack characteristics combine
         // both halves. Synthesize and stash now, while the interner is
         // available to intern the combined name.
@@ -1099,6 +1108,26 @@ impl CardRegistry {
     pub fn is_empty(&self) -> bool { self.definitions.is_empty() }
 }
 
+/// Compute the printed final-chapter number of a Saga card by scanning
+/// its triggered abilities for the highest chapter-keyed
+/// [`crate::triggers::TriggerCondition::CounterAdded`] arm. The
+/// state-based-action loop reads the result off
+/// [`Characteristics::saga_final_chapter`] to know when the card's
+/// chapter sequence is complete and the Saga should be sacrificed
+/// (CR 716.5d).
+///
+/// Returns `None` for non-Saga cards or for malformed Sagas with no
+/// chapter triggers — in either case the SBA simply never fires.
+fn compute_saga_final_chapter(definition: &CardDefinition) -> Option<u32> {
+    use crate::triggers::TriggerCondition;
+    definition.triggered_abilities.iter()
+        .filter_map(|t| match &t.trigger_condition {
+            TriggerCondition::CounterAdded { chapter: Some(n), .. } => Some(*n),
+            _ => None,
+        })
+        .max()
+}
+
 /// CR 711.4 — merge the characteristics of a split card's two halves
 /// into the view an object reports while in zones other than the
 /// stack. Name becomes `"{left} // {right}"` (newly interned); mana
@@ -1149,6 +1178,9 @@ fn combine_split_characteristics(
         keywords,
         is_aura: left.is_aura || right.is_aura,
         is_fortification: left.is_fortification || right.is_fortification,
+        // Split cards aren't Sagas — neither half can be one, since
+        // Sagas are a layout in their own right.
+        saga_final_chapter: None,
     }
 }
 

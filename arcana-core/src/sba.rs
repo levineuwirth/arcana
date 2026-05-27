@@ -31,7 +31,8 @@
 //! | 704.5q  | Equipment attached to illegal perm  | ✅ |
 //! | 704.5r  | Fortification attached to illegal perm | ✅ |
 //! | 704.5n  | Aura illegally attached or unattached | ✅ (zone-only; type-filter deferred) |
-//! | 704.5s,t,u | Saga/battle/dungeon/ownership    | ⬜ (deferred) |
+//! | 704.5s  | Saga sacrificed after final chapter | ✅ |
+//! | 704.5t,u | battle/dungeon/ownership          | ⬜ (deferred) |
 //!
 //! The legend rule per CR 704.5j says "that player chooses one" —
 //! for Phase 1 we **deterministically keep the legendary permanent
@@ -93,6 +94,7 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
         fired |= check_attachment_illegal(state);     // CR 704.5q
         fired |= check_fortification_illegal(state);  // CR 704.5r
         fired |= check_aura_illegal(state);           // CR 704.5n
+        fired |= check_saga_sacrifice(state);         // CR 704.5s
         fired |= check_player_losses(state);          // CR 704.5a, 704.5b, 704.5c
         if !fired { break; }
         iterations += 1;
@@ -112,6 +114,7 @@ pub fn has_pending_state_based_actions(state: &GameState) -> bool {
         || pending_attachment_illegal(state)
         || pending_fortification_illegal(state)
         || pending_aura_illegal(state)
+        || pending_saga_sacrifice(state)
 }
 
 // =============================================================================
@@ -540,6 +543,66 @@ fn is_legal_aura_state(
 ) -> bool {
     let Some(target) = aura.attached_to else { return false; };
     state.objects.get(target).is_some_and(|t| t.zone.is_battlefield())
+}
+
+// =============================================================================
+// 704.5s — Saga sacrificed after the final chapter ability leaves the stack
+// =============================================================================
+
+/// CR 716.5d — "After the last chapter ability of a Saga has left the
+/// stack, that Saga's controller sacrifices it."
+///
+/// Detection rides on the [`Characteristics::saga_final_chapter`]
+/// number synthesized at [`crate::registry::CardRegistry::register`]
+/// from the card's chapter-keyed CounterAdded triggers. Sacrifice
+/// fires only when:
+/// 1. The Saga has at least `saga_final_chapter` Lore counters
+///    (so the final chapter has triggered at least once).
+/// 2. No stack entry is sourced from the Saga (the chapter ability
+///    has left the stack).
+/// 3. No pending trigger is queued from the Saga (no chapter ability
+///    is waiting to go on the stack — without this guard the SBA
+///    would race the trigger queue and sacrifice the Saga before its
+///    own final chapter goes on the stack).
+fn check_saga_sacrifice(state: &mut GameState) -> bool {
+    use crate::types::CounterKind;
+    let to_sacrifice: Vec<(ObjectId, PlayerId)> = state.objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter_map(|obj| {
+            let final_chapter = obj.characteristics.saga_final_chapter?;
+            (obj.count_counters(CounterKind::Lore) >= final_chapter)
+                .then_some((obj.id, obj.controller))
+        })
+        .filter(|(id, _)| {
+            // Chapter ability has fully resolved (no live stack entry).
+            !state.stack.iter().any(|e| e.source == *id)
+            // ...and is not still pending a trip onto the stack.
+            && !state.pending_trigger_queue.iter().any(|t| t.source == *id)
+        })
+        .collect();
+    if to_sacrifice.is_empty() { return false; }
+    for (id, controller) in to_sacrifice {
+        let Some(owner) = state.objects.get(id).map(|o| o.owner) else { continue; };
+        // Emit the sacrifice event (CR 701.16) so "whenever you
+        // sacrifice an enchantment / a permanent" triggers see it,
+        // then route the card to graveyard.
+        state.emit(GameEvent::Sacrifice { player: controller, object_id: id });
+        state.move_object_to_zone(
+            id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+    }
+    true
+}
+
+fn pending_saga_sacrifice(state: &GameState) -> bool {
+    use crate::types::CounterKind;
+    state.objects.objects_in_zone(Zone::Battlefield).any(|obj| {
+        let Some(final_chapter) = obj.characteristics.saga_final_chapter else {
+            return false;
+        };
+        obj.count_counters(CounterKind::Lore) >= final_chapter
+            && !state.stack.iter().any(|e| e.source == obj.id)
+            && !state.pending_trigger_queue.iter().any(|t| t.source == obj.id)
+    })
 }
 
 // =============================================================================
@@ -1220,5 +1283,124 @@ mod tests {
         assert!(pending_attachment_illegal(&s));
         apply_state_based_actions(&mut s);
         assert_eq!(s.objects.get(equip).unwrap().attached_to, None);
+    }
+
+    // === 704.5s — Saga sacrifice =========================================
+
+    fn put_saga(s: &mut GameState, owner: PlayerId, final_chapter: u32)
+        -> ObjectId
+    {
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::ENCHANTMENT.into(),
+            saga_final_chapter: Some(final_chapter),
+            ..Default::default()
+        };
+        let mut obj = GameObject::new(id, owner, Zone::Battlefield, 1, chars);
+        obj.controller = owner;
+        s.objects.insert(obj);
+        id
+    }
+
+    #[test]
+    fn saga_not_sacrificed_before_final_chapter_count_reached() {
+        let mut s = GameState::new(2, 0);
+        let saga = put_saga(&mut s, 0, 3);
+        // Two lore counters — chapter II just resolved, but the
+        // final chapter (III) hasn't fired yet.
+        s.objects.get_mut(saga).unwrap()
+            .add_counters(CounterKind::Lore, 2);
+        assert!(!pending_saga_sacrifice(&s));
+        apply_state_based_actions(&mut s);
+        assert!(s.objects.get(saga).unwrap().zone.is_battlefield(),
+            "Saga must stay on the battlefield until the final chapter");
+    }
+
+    #[test]
+    fn saga_sacrificed_once_final_chapter_count_reached() {
+        let mut s = GameState::new(2, 0);
+        let saga = put_saga(&mut s, 0, 3);
+        s.objects.get_mut(saga).unwrap()
+            .add_counters(CounterKind::Lore, 3);
+        // Stack is empty and no pending triggers → SBA fires.
+        assert!(pending_saga_sacrifice(&s));
+        apply_state_based_actions(&mut s);
+        // Zone-change re-IDs the object (CR 400.7); look up the new
+        // id by ZoneChange event so we can assert on the post-move
+        // identity. Saga isn't a creature, so it doesn't die — the
+        // Dies event isn't emitted; ZoneChange + Sacrifice are.
+        let new_id = s.event_log.iter().find_map(|e| match e {
+            crate::events::GameEvent::ZoneChange { object_id, new_id, .. }
+                if *object_id == saga => Some(*new_id),
+            _ => None,
+        }).expect("saga moved via ZoneChange");
+        let obj = s.objects.get(new_id).expect("saga lives at its new id");
+        assert!(matches!(obj.zone, Zone::Graveyard(0)),
+            "saga moved to controller's graveyard after final chapter");
+        // The sacrifice path emitted a Sacrifice event (not just a
+        // bare zone-change) so "whenever you sacrifice" can react.
+        assert!(s.event_log.iter().any(|e| matches!(e,
+            crate::events::GameEvent::Sacrifice { player: 0, object_id }
+                if *object_id == saga)),
+            "sacrifice event emitted for the saga (pre-zone-change id)");
+        assert!(!pending_saga_sacrifice(&s),
+            "SBA settles after the saga leaves the battlefield");
+    }
+
+    #[test]
+    fn saga_not_sacrificed_while_chapter_pending_on_stack() {
+        let mut s = GameState::new(2, 0);
+        let saga = put_saga(&mut s, 0, 3);
+        s.objects.get_mut(saga).unwrap()
+            .add_counters(CounterKind::Lore, 3);
+        // Simulate: chapter III is currently on the stack (the
+        // CounterAdded trigger fired and was put on the stack but
+        // hasn't resolved yet). The SBA must wait.
+        let stack_id = s.allocate_object_id();
+        let entry = crate::stack::StackEntry::new_triggered_ability(
+            stack_id,
+            saga,
+            0,
+            1,
+            crate::events::GameEvent::CounterAdded {
+                object_id: saga,
+                kind: CounterKind::Lore,
+                count: 3,
+            },
+            "Chapter III".into(),
+            crate::targets::TargetSelection::default(),
+            Vec::new(),
+        );
+        s.stack.push(entry);
+        assert!(!pending_saga_sacrifice(&s),
+            "saga must not be sacrificed while its chapter is on the stack");
+        apply_state_based_actions(&mut s);
+        assert!(s.objects.get(saga).unwrap().zone.is_battlefield());
+    }
+
+    #[test]
+    fn saga_not_sacrificed_while_chapter_trigger_pending_in_queue() {
+        let mut s = GameState::new(2, 0);
+        let saga = put_saga(&mut s, 0, 3);
+        s.objects.get_mut(saga).unwrap()
+            .add_counters(CounterKind::Lore, 3);
+        // Simulate: the chapter-III trigger has matched but is still
+        // waiting in the pending queue (hasn't been put on the stack
+        // yet). SBA must wait — without this guard it would race the
+        // queue and sacrifice the saga before its own chapter fires.
+        s.pending_trigger_queue.push_back(crate::triggers::PendingTrigger {
+            source: saga,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: crate::events::GameEvent::CounterAdded {
+                object_id: saga,
+                kind: CounterKind::Lore,
+                count: 3,
+            },
+            targets: crate::targets::TargetSelection::default(),
+        });
+        assert!(!pending_saga_sacrifice(&s));
+        apply_state_based_actions(&mut s);
+        assert!(s.objects.get(saga).unwrap().zone.is_battlefield());
     }
 }

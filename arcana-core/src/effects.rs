@@ -1367,6 +1367,8 @@ impl TokenDefinition {
             keywords: self.keywords.clone(),
             is_aura: false,
             is_fortification: false,
+            // Tokens are never Sagas.
+            saga_final_chapter: None,
         }
     }
 }
