@@ -728,6 +728,14 @@ pub enum ChoiceFollowUp {
         then: crate::effects::Effect,
         else_effect: Option<crate::effects::Effect>,
     },
+    /// Pair with a [`ChoiceKind::YesNo`] response from an Explore
+    /// (CR 701.40) on the "may put the revealed nonland card into
+    /// the graveyard" decision. `yes` → move `card` to
+    /// `Graveyard(player)`. `no` → leave on top.
+    ExploreMayMill {
+        card: ObjectId,
+        player: PlayerId,
+    },
 }
 
 // =============================================================================

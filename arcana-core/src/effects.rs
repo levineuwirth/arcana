@@ -331,6 +331,20 @@ pub enum Effect {
         else_effect: Option<Box<Effect>>,
     },
 
+    /// CR 701.40 — "[Creature] explores." Reveal the top card of
+    /// `player`'s library. If it's a land card, put it into their
+    /// hand. Otherwise, put a +1/+1 counter on `target` and the
+    /// controller may put the revealed card into their graveyard
+    /// (else it stays on top). The "may put on graveyard" branch
+    /// is dispatched through a `YesNo` ChoiceKind paired with a
+    /// `ChoiceFollowUp::ExploreMayMill` stash.
+    ///
+    /// Defensive: missing target / empty library no-ops cleanly.
+    Explore {
+        player: PlayerId,
+        target: ObjectId,
+    },
+
     // --- mana / phases -----------------------------------------------------
     AddMana { player: PlayerId, mana: Vec<crate::mana::ManaUnit> },
     ExtraTurn { player: PlayerId },
@@ -949,6 +963,48 @@ impl Effect {
                         cost: cost.clone(),
                     },
                 );
+            }
+            Effect::Explore { player, target } => {
+                // CR 701.40. Defensive: invalid player / missing
+                // target / empty library no-op.
+                if !valid_player(state, *player) { return; }
+                if state.objects.get(*target).is_none() { return; }
+                let Some(top_id) = state.top_of_library(*player) else { return; };
+                let is_land = state.objects.get(top_id)
+                    .map(|o| o.is_land()).unwrap_or(false);
+                if is_land {
+                    // Move land to hand.
+                    state.move_object_to_zone(
+                        top_id, Zone::Hand(*player),
+                        MoveCause::SpellResolution);
+                } else {
+                    // +1/+1 counter on exploring creature; then prompt
+                    // the controller for the optional graveyard move.
+                    let controller = state.objects.get(*target)
+                        .map(|o| o.controller).unwrap_or(*player);
+                    state.place_counters(
+                        crate::replacement::CounterTarget::Object(*target),
+                        CounterKind::PlusOnePlusOne, 1);
+                    // Only prompt if we have a resolving stack entry
+                    // to attach the choice to. (Synthesized contexts
+                    // outside the stack — tests — quietly skip the
+                    // "may put on graveyard" decision and leave the
+                    // card on top.)
+                    if let Some(resolving) = state.currently_resolving {
+                        state.pending_choice_follow_up = Some(
+                            crate::actions::ChoiceFollowUp::ExploreMayMill {
+                                card: top_id, player: *player });
+                        state.push_pending_choice(
+                            controller,
+                            crate::actions::ChoiceContext::ResolvingStack(resolving),
+                            // prompt: SmallString is an interner key
+                            // (u32); 0 = "no localized text" — the
+                            // semantic meaning is encoded by the
+                            // paired ChoiceFollowUp::ExploreMayMill.
+                            crate::actions::ChoiceKind::YesNo { prompt: 0 },
+                        );
+                    }
+                }
             }
             Effect::Attach { equipment_or_aura, target } => {
                 attach(state, *equipment_or_aura, *target);
@@ -3754,6 +3810,95 @@ mod tests {
         assert!(matches!(&pc.kind,
             ChoiceKind::OptionalCost {
                 cost: OptionalPaymentKind::Life(2) }));
+    }
+
+    #[test]
+    fn explore_with_land_on_top_moves_to_hand() {
+        // CR 701.40: if the revealed top card is a land, it goes to
+        // hand; no counter on the exploring creature; no prompt.
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        // Put a land on top of player 0's library.
+        let land_id = s.allocate_object_id();
+        let land_chars = Characteristics {
+            types: TypeLine::LAND.into(), ..Default::default()
+        };
+        s.objects.insert(GameObject::new(
+            land_id, 0, Zone::Library(0), 7, land_chars));
+        s.player_mut(0).library_top_to_bottom.push(land_id);
+
+        let before_pt = s.objects.get(creature).unwrap()
+            .count_counters(CounterKind::PlusOnePlusOne);
+
+        Effect::Explore { player: 0, target: creature }.execute(&mut s);
+
+        // Land moved to hand; library now empty. (CR 400.7 re-ids
+        // the object on zone change, so we don't check land_id —
+        // instead, check that Hand(0) gained an object.)
+        assert!(s.player(0).library_top_to_bottom.is_empty());
+        let hand_count = s.objects.objects_in_zone(Zone::Hand(0)).count();
+        assert_eq!(hand_count, 1, "land entered hand");
+        // No counter on exploring creature.
+        assert_eq!(
+            s.objects.get(creature).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            before_pt);
+        // No pending choice (no "may put in graveyard" — that's only
+        // on the nonland branch).
+        assert!(s.pending_choice.is_none());
+    }
+
+    #[test]
+    fn explore_with_nonland_top_adds_counter_and_prompts() {
+        // CR 701.40: nonland reveal → +1/+1 counter on exploring
+        // creature, then prompt the controller for the may-mill.
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        // Need a resolving stack entry for the choice to attach.
+        let dummy_resolving = s.allocate_object_id();
+        s.currently_resolving = Some(dummy_resolving);
+        // Put a creature card on top of player 0's library.
+        let card_id = s.allocate_object_id();
+        let card_chars = Characteristics {
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(3)),
+            toughness: Some(PtValue::Fixed(3)),
+            ..Default::default()
+        };
+        s.objects.insert(GameObject::new(
+            card_id, 0, Zone::Library(0), 8, card_chars));
+        s.player_mut(0).library_top_to_bottom.push(card_id);
+
+        Effect::Explore { player: 0, target: creature }.execute(&mut s);
+
+        // Counter placed.
+        assert_eq!(
+            s.objects.get(creature).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            1);
+        // Library top unchanged — the may-mill is in the follow-up.
+        assert_eq!(s.player(0).library_top_to_bottom.first(), Some(&card_id));
+        // YesNo + ExploreMayMill stash pushed.
+        let pc = s.pending_choice.as_ref().expect("YesNo pushed");
+        assert_eq!(pc.choosing_player, 0);
+        assert!(matches!(pc.kind, crate::actions::ChoiceKind::YesNo { .. }));
+        assert!(matches!(s.pending_choice_follow_up,
+            Some(crate::actions::ChoiceFollowUp::ExploreMayMill { card, player })
+                if card == card_id && player == 0));
+    }
+
+    #[test]
+    fn explore_empty_library_noop() {
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        Effect::Explore { player: 0, target: creature }.execute(&mut s);
+        // No counter, no pending choice — empty-library is a clean
+        // no-op consistent with Effect::execute's defensive posture.
+        assert_eq!(
+            s.objects.get(creature).unwrap()
+                .count_counters(CounterKind::PlusOnePlusOne),
+            0);
+        assert!(s.pending_choice.is_none());
     }
 
     #[test]

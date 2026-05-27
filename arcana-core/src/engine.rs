@@ -1251,6 +1251,29 @@ pub(crate) fn apply_resolution_choice(
             }
         }
 
+        // --- YesNo mid-resolution: Explore's may-mill decision ------
+        // The Effect::Explore push stashed an `ExploreMayMill` follow-
+        // up. On `yes` the revealed top card moves to graveyard; on
+        // `no` it stays on top (no-op).
+        (
+            ChoiceKind::YesNo { .. },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::YesNo { answer },
+        ) if matches!(state.pending_choice_follow_up,
+            Some(crate::actions::ChoiceFollowUp::ExploreMayMill { .. })) =>
+        {
+            let follow_up = state.pending_choice_follow_up.take().unwrap();
+            let crate::actions::ChoiceFollowUp::ExploreMayMill { card, player } =
+                follow_up else { unreachable!() };
+            if *answer {
+                state.move_object_to_zone(
+                    card,
+                    crate::zones::Zone::Graveyard(player),
+                    crate::events::MoveCause::SpellResolution);
+            }
+            // else: leave on top of library.
+        }
+
         // --- YesNo mid-resolution: cascade may-cast (CR 702.85) ------
         (
             ChoiceKind::YesNo { .. },
@@ -1731,6 +1754,13 @@ fn apply_choice_follow_up(
                 "apply_choice_follow_up: OptionalPaymentBranch should be \
                  consumed at the ChoiceKind::OptionalCost dispatch arm, \
                  not from PickCards");
+        }
+        ChoiceFollowUp::ExploreMayMill { .. } => {
+            // Paired with ChoiceKind::YesNo for Explore's mill
+            // decision; dispatch lives inline in apply_resolution_choice.
+            panic!(
+                "apply_choice_follow_up: ExploreMayMill should be consumed \
+                 at the ChoiceKind::YesNo dispatch arm");
         }
     }
 }
