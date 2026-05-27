@@ -434,10 +434,14 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                         "triggered" | "triggeredabilitycreature" => {
                             "TriggeredAbilityCreature"
                         }
+                        "activated" | "activatedabilitycreature" => {
+                            "ActivatedAbilityCreature"
+                        }
                         other => {
                             return Err(anyhow!(
                                 "--shapes: unknown shape '{other}' \
-                                 (use vanilla, french-vanilla, spell, triggered)"
+                                 (use vanilla, french-vanilla, spell, \
+                                 triggered, activated)"
                             ))
                         }
                     };

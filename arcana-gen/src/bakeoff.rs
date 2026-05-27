@@ -765,6 +765,7 @@ fn prompt_shape_name(s: PromptShape) -> &'static str {
         PromptShape::FrenchVanillaCreature => "FrenchVanillaCreature",
         PromptShape::SingleEffectSpell => "SingleEffectSpell",
         PromptShape::TriggeredAbilityCreature => "TriggeredAbilityCreature",
+        PromptShape::ActivatedAbilityCreature => "ActivatedAbilityCreature",
     }
 }
 

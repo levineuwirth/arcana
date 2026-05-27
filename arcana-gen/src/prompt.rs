@@ -70,6 +70,11 @@ pub enum PromptShape {
     FrenchVanillaCreature,
     SingleEffectSpell,
     TriggeredAbilityCreature,
+    /// Creature whose only printed text is one or more activated
+    /// abilities (mana dorks, pingers, sac-for-value, equipment-style
+    /// granters). Excludes creatures with triggered abilities (those
+    /// route to [`Self::TriggeredAbilityCreature`]).
+    ActivatedAbilityCreature,
 }
 
 /// Why a (card, tier) combination is not currently renderable. The
@@ -178,6 +183,7 @@ fn user_for_shape(card: &Card, shape: PromptShape) -> String {
         PromptShape::FrenchVanillaCreature => user_french_vanilla_creature(card),
         PromptShape::SingleEffectSpell => user_single_effect_spell(card),
         PromptShape::TriggeredAbilityCreature => user_triggered_ability_creature(card),
+        PromptShape::ActivatedAbilityCreature => user_activated_ability_creature(card),
     }
 }
 
@@ -240,10 +246,11 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
             ) {
                 Ok(PromptShape::TriggeredAbilityCreature)
             } else {
-                Err(Unsupported::NoFewShotForShape {
-                    tier,
-                    detail: "activated-only creature (no triggered ability)",
-                })
+                // Tier::Three with no triggered ability — must have at
+                // least one activated ability (otherwise the
+                // classifier would have routed elsewhere). Route to
+                // the activated-permanent prompt.
+                Ok(PromptShape::ActivatedAbilityCreature)
             }
         }
         Tier::Four | Tier::Five => Err(Unsupported::TierOutOfScope(tier)),
@@ -357,6 +364,10 @@ const FS_YOUNG_PYROMANCER: &str =
     include_str!("../../arcana-cards/src/m14/young_pyromancer.rs");
 const FS_WELDFAST_ENGINEER: &str =
     include_str!("../../arcana-cards/src/aer/weldfast_engineer.rs");
+const FS_LLANOWAR_ELVES: &str =
+    include_str!("../../arcana-cards/src/lea/llanowar_elves.rs");
+const FS_PRODIGAL_SORCERER: &str =
+    include_str!("../../arcana-cards/src/lea/prodigal_sorcerer.rs");
 const FS_PREORDAIN: &str =
     include_str!("../../arcana-cards/src/m11/preordain.rs");
 const FS_SERVO_EXHIBITION: &str =
@@ -818,6 +829,93 @@ Then build the ONE `TriggeredAbilityDef` whose `trigger_condition` matches the o
     )
 }
 
+/// Per-card prompt block for ActivatedAbilityCreature — a creature
+/// whose only printed text is one or more activated abilities. Common
+/// archetypes: mana dorks (`{T}: Add {C}`), pingers (`{T}: deals 1
+/// damage`), sac-for-value (`Sacrifice ~: do X`), pump activations
+/// (`{2}{R}: ~ gets +X/+X until end of turn`), counter-tap-untap loops.
+fn user_activated_ability_creature(card: &Card) -> String {
+    format!(
+        "Generate a CREATURE WITH ONE OR MORE ACTIVATED ABILITIES — a `CardDefinition` carrying one or more `ActivatedAbilityDef` values plus a free `effect` fn (referenced as a fn pointer) for each ability.
+
+REFERENCE — Llanowar Elves ({{G}} 1/1 Elf Druid, '{{T}}: Add {{G}}' — the mana-dork archetype: `ActivationCost::tap_only()` + `is_mana_ability: true` + an `Effect::AddMana` resolver):
+```rust
+{FS_LLANOWAR_ELVES}
+```
+
+REFERENCE — Prodigal Sorcerer ({{2}}{{U}} 1/1 Human Wizard, '{{T}}: this creature deals 1 damage to any target' — the pinger archetype: tap-cost + `TargetRequirement::any_target()` + a `TargetChoice` match that handles all three variants `Object` / `Player` / `ObjectOrPlayer` and yields a `DamageTarget`):
+```rust
+{FS_PRODIGAL_SORCERER}
+```
+
+REFERENCE — Walking Ballista (the counter-removal-as-cost archetype with TWO activated abilities on one card: `{{4}}` + 'put a +1/+1 counter on it' AND 'remove a +1/+1 counter: deal 1 damage to any target'). The same source has multiple `.with_activated_ability(...)` chained on the `CardDefinition`. Read the canonical version at `arcana-cards/src/aer/walking_ballista.rs` if you need a non-tap cost + counter manipulation pattern.
+
+{actcost}
+
+ACTIVATED EFFECT FN BINDING — your effect fn's signature is `fn(_: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect>`. `ctx` carries `ctx.controller` (the activator), `ctx.source` (this creature's `ObjectId`), `ctx.targets` (the declared targets, same `TargetSelection` shape as triggered abilities — read via `ctx.targets.targets.first()` + a `TargetChoice` match), `ctx.x_value: Option<u32>` (for X-cost activations), and `ctx.card_id` (the printed-form id). Targets are read EXACTLY the same way as the spell program.
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference cards (those are for code structure only). Transcribe verbatim:
+- `mana_cost`: exactly the spec's `Mana cost` string into `ManaCost::parse(\"…\")`.
+- `colors`: exactly the colored pips of that cost; never add a color the cost lacks.
+- `types`: exactly the spec's `Type line` (Creature → `TypeLine::CREATURE.into()`).
+- power/toughness: exactly as in the spec.
+
+Then build ONE `ActivatedAbilityDef` per activated clause in the oracle text. The ability's `cost` field is built from the oracle's cost (e.g. `{{T}}: …` → `ActivationCost::tap_only()`; `{{2}}{{R}}: …` → `ActivationCost {{ mana_cost: ManaCost::parse(\"{{2}}{{R}}\").unwrap(), ..ActivationCost::default() }}`; `{{1}}, {{T}}: …` → `ActivationCost {{ mana_cost: ManaCost::parse(\"{{1}}\").unwrap(), tap: true, ..ActivationCost::default() }}`; `Sacrifice ~: …` → `ActivationCost {{ sacrifice: true, ..ActivationCost::default() }}`; `Pay 2 life: …` → `ActivationCost {{ life: 2, ..ActivationCost::default() }}`). If the effect genuinely cannot be expressed with any catalog variant, the effect fn returns `Vec::new()` with a `// GAP: <what is missing>` comment — never invent an `Effect` / `ActivationCost` field. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        actcost = ACTIVATION_COST_CATALOG,
+        cat = effect_catalog("ctx"),
+        FS_LLANOWAR_ELVES = FS_LLANOWAR_ELVES,
+        FS_PRODIGAL_SORCERER = FS_PRODIGAL_SORCERER,
+    )
+}
+
+/// Canonical catalog of `ActivationCost` shapes for the
+/// ActivatedAbilityCreature prompt. Mirrors the trigger / target
+/// catalogs in style — each line is a copy-pasteable construction
+/// keyed to a recognisable oracle phrasing.
+const ACTIVATION_COST_CATALOG: &str = r#"ACTIVATION COST CATALOG — `ActivatedAbilityDef.cost` is a `struct ActivationCost { mana_cost, tap, sacrifice, life, remove_self_counter, add_self_counter, discard_self, exile_self }`. Build via struct literal with `..ActivationCost::default()` for unused fields. Map oracle costs to fields as follows:
+- `{T}: …` (tap alone) → `ActivationCost::tap_only()`.
+- `{N}: …` or `{R}: …` (mana only, no tap) → `ActivationCost { mana_cost: ManaCost::parse("{N}").unwrap(), ..ActivationCost::default() }`.
+- `{N}, {T}: …` (mana + tap) → `ActivationCost { mana_cost: ManaCost::parse("{N}").unwrap(), tap: true, ..ActivationCost::default() }`.
+- `Sacrifice ~: …` (sacrifice-self only) → `ActivationCost { sacrifice: true, ..ActivationCost::default() }`. The engine routes the sacrifice automatically as part of activation cost payment.
+- `{N}, Sacrifice ~: …` → mana_cost + sacrifice: true.
+- `Pay N life: …` → `ActivationCost { life: N, ..ActivationCost::default() }`.
+- `Remove a +1/+1 counter from ~: …` (Walking-Ballista-style) → `ActivationCost { remove_self_counter: Some((CounterKind::PlusOnePlusOne, 1)), ..ActivationCost::default() }`. For other counter kinds use the matching `CounterKind` variant.
+- `Put a +1/+1 counter on ~ : …` (rare; mainly planeswalker loyalty +N) → `ActivationCost { add_self_counter: Some((CounterKind::PlusOnePlusOne, 1)), ..ActivationCost::default() }`. For planeswalkers use `CounterKind::Loyalty`.
+- `{N}, Discard ~: …` (cycling — but cycling cards aren't activated creatures, this is rare) → `ActivationCost { mana_cost: ..., discard_self: true, ..ActivationCost::default() }` PLUS `activation_zone: ActivationZone::Hand`.
+
+OTHER FIELDS on `ActivatedAbilityDef`:
+- `text: String` — the oracle text of THIS ability only, e.g. `"{T}: Add {G}.".into()`.
+- `target_requirements: Vec<TargetRequirement>` — empty for non-targeted; `vec![TargetRequirement::target_creature()]` for "target creature", `vec![TargetRequirement::any_target()]` for "any target" (creature OR player OR planeswalker — read via the THREE-arm match including the `TargetChoice::ObjectOrPlayer(ObjectOrPlayer::{Object,Player})` shape).
+- `is_mana_ability: true` ONLY when the cost has no target AND the effect's ONLY result is `Effect::AddMana` (CR 605). Mana abilities skip the stack. For everything else (pingers, sac creatures, pump activations), `is_mana_ability: false`.
+- `is_loyalty_ability: false` for creatures (loyalty is planeswalker-only).
+- `activation_zone: ActivationZone::Battlefield` — the default for creature activated abilities. Use `ActivationZone::Hand` only for cycling / channel / "you may activate from hand" specials.
+- `is_instant_speed: false` for the default sorcery-speed activated abilities of permanents (but tap-for-mana mana abilities are implicitly instant-speed via `is_mana_ability`).
+- `face_gate: None` — single-face cards. (`Some(n)` is for MDFC back-face abilities.)
+- `effect: <your_resolver_fn>` — the `ActivatedEffectFn` you author below.
+
+CHAINING multiple activated abilities — chain `.with_activated_ability(...)` per ability:
+```
+reg.register(
+    CardDefinition::new(name, chars)
+        .with_activated_ability(ActivatedAbilityDef { /* first ability */ })
+        .with_activated_ability(ActivatedAbilityDef { /* second ability */ })
+)
+```
+
+Import the activated-ability primitives from `arcana_core::registry`:
+```rust
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
+};
+```"#;
+
 // =============================================================================
 // tests
 // =============================================================================
@@ -959,10 +1057,10 @@ mod tests {
     }
 
     #[test]
-    fn t3_activated_only_creature_returns_no_few_shot_for_shape() {
-        // A creature whose sole ability is activated (a mana dork) is
-        // classified T3 but has no trigger — the triggered few-shot
-        // pack can't serve it, so select_shape defers it.
+    fn t3_activated_only_creature_routes_to_activated() {
+        // A creature whose sole ability is activated (a mana dork)
+        // routes to the ActivatedAbilityCreature few-shot pack
+        // (Pass 2 — previously this was deferred as NoFewShotForShape).
         let c = mk_card(|c| {
             c.name = "Llanowar Elves".into();
             c.type_line = "Creature — Elf Druid".into();
@@ -970,16 +1068,14 @@ mod tests {
             c.power = Some("1".into());
             c.toughness = Some("1".into());
         });
-        match render_prompt(&c, Tier::Three).unwrap_err() {
-            Unsupported::NoFewShotForShape { tier, detail } => {
-                assert_eq!(tier, Tier::Three);
-                assert!(
-                    detail.contains("activated"),
-                    "detail should name the activated-only reason, got {detail:?}"
-                );
-            }
-            other => panic!("expected NoFewShotForShape, got {other:?}"),
-        }
+        let p = render_prompt(&c, Tier::Three)
+            .expect("activated-only T3 creature now renders");
+        assert_eq!(p.shape, PromptShape::ActivatedAbilityCreature);
+        // The activated few-shots (Llanowar Elves, Prodigal Sorcerer)
+        // must be embedded in the user prompt.
+        assert!(p.user.contains("Llanowar Elves"));
+        assert!(p.user.contains("Prodigal Sorcerer"));
+        assert!(p.user.contains("ACTIVATION COST CATALOG"));
     }
 
     #[test]

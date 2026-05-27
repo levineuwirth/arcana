@@ -28,6 +28,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::lea::disintegrate::register(reg); n += 1;
     crate::lea::serra_angel::register(reg); n += 1;
     crate::lea::giant_spider::register(reg); n += 1;
+    crate::lea::llanowar_elves::register(reg); n += 1;
+    crate::lea::prodigal_sorcerer::register(reg); n += 1;
     // --- lrw ---
     crate::lrw::elvish_visionary::register(reg); n += 1;
     crate::lrw::axegrinder_giant::register(reg); n += 1;

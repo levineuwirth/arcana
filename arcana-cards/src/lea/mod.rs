@@ -13,3 +13,5 @@ pub mod counterspell;
 pub mod disintegrate;
 pub mod serra_angel;
 pub mod giant_spider;
+pub mod llanowar_elves;
+pub mod prodigal_sorcerer;
