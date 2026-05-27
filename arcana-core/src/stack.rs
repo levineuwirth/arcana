@@ -257,7 +257,9 @@ impl StackEntry {
             id,
             source,
             controller,
-            kind: StackEntryKind::ActivatedAbility { card_id, ability_id, text },
+            kind: StackEntryKind::ActivatedAbility {
+                card_id, ability_id, text, resolved_effect: None,
+            },
             targets,
             modes,
             x_value,
@@ -271,6 +273,37 @@ impl StackEntry {
             pre_split_characteristics: None,
             colors_spent: crate::types::ColorSet::new(),
         }
+    }
+
+    /// Variant of [`Self::new_activated_ability`] that snapshots the
+    /// ability's effect fn so the resolver can dispatch it without a
+    /// `registry.get(card_id)` lookup. Required for commodity-token
+    /// intrinsic activations (Treasure / Clue / Food / Powerstone /
+    /// Incubator) because token `card_id` is `0` and the source token
+    /// is often sacrificed as part of its activation cost before the
+    /// ability resolves.
+    pub fn new_activated_ability_with_effect(
+        id: ObjectId,
+        source: ObjectId,
+        controller: PlayerId,
+        card_id: CardId,
+        ability_id: AbilityId,
+        effect: crate::registry::ActivatedEffectFn,
+        text: String,
+        targets: TargetSelection,
+        modes: Vec<ModeChoice>,
+        x_value: Option<u32>,
+    ) -> Self {
+        let mut entry = Self::new_activated_ability(
+            id, source, controller, card_id, ability_id,
+            text, targets, modes, x_value,
+        );
+        if let StackEntryKind::ActivatedAbility { resolved_effect, .. } =
+            &mut entry.kind
+        {
+            *resolved_effect = Some(effect);
+        }
+        entry
     }
 
     /// Construct a new triggered-ability stack entry.
@@ -366,6 +399,16 @@ pub enum StackEntryKind {
         /// Oracle-text snippet for logging / debug; the actual effect
         /// dispatch goes through `CardRegistry`.
         text: String,
+        /// Snapshot of the ability's effect fn taken at the moment the
+        /// stack entry was pushed. Required for commodity-token
+        /// intrinsic activations (which aren't keyed off `card_id`)
+        /// because their source token is typically sacrificed as part
+        /// of the cost before resolution. For registry-backed
+        /// activations this is `Some` too (snapshot is harmless), but
+        /// the resolver falls back to a registry lookup if the field
+        /// is `None` — keeping older test constructors working.
+        #[serde(skip)]
+        resolved_effect: Option<crate::registry::ActivatedEffectFn>,
     },
     TriggeredAbility {
         trigger_id: TriggerId,

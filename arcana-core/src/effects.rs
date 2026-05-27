@@ -154,6 +154,27 @@ pub enum Effect {
     /// on the SBA tick after it hits the graveyard) and consistent
     /// with `DelayedAction::Sacrifice`.
     CreateTokenSacEot { controller: PlayerId, token: TokenDefinition },
+    /// Create a commodity artifact token with its canonical activated
+    /// ability already wired (Treasure, Clue, Food, Powerstone — and
+    /// Incubator's bare entity, sans its transform activation which
+    /// is still engine debt). The activation is stashed on the
+    /// minted [`crate::objects::GameObject`]'s
+    /// `intrinsic_activated_abilities` so
+    /// [`crate::legal_actions::legal_actions`] can enumerate it and
+    /// the engine can resolve it through the normal stack /
+    /// mana-ability paths without a `CardRegistry` definition.
+    ///
+    /// Cards that already mint these tokens via plain
+    /// [`Self::CreateToken`] continue to emit inert tokens — this
+    /// new variant is the path forward; future card-gen and a
+    /// catalog sweep can migrate the legacy ones over.
+    CreateCommodityToken {
+        controller: PlayerId,
+        kind: CommodityToken,
+        /// How many tokens to mint (e.g. Brass's Bounty mints one
+        /// Treasure per land you control). `count: 0` is a no-op.
+        count: u32,
+    },
     CopySpell { target: ObjectId },
     CopyPermanent { target: ObjectId },
 
@@ -782,6 +803,16 @@ impl Effect {
                     ));
                 }
             }
+            Effect::CreateCommodityToken { controller, kind, count } => {
+                for _ in 0..*count {
+                    let (token, activations) = commodity_token_spec(*kind);
+                    let Some(new_id) = create_token(state, *controller, &token)
+                        else { continue; };
+                    if let Some(obj) = state.objects.get_mut(new_id) {
+                        obj.intrinsic_activated_abilities = activations.clone();
+                    }
+                }
+            }
             Effect::CopySpell { target } => {
                 copy_spell_on_stack(state, *target);
             }
@@ -1340,6 +1371,49 @@ pub struct TokenDefinition {
     pub abilities: Vec<crate::triggers::TriggeredAbilityDef>,
 }
 
+/// Canonical commodity-token kinds whose printed activated abilities
+/// the engine knows how to wire. Each variant has a hardcoded
+/// [`TokenDefinition`] (types, colors, P/T, name) plus a canonical
+/// [`crate::registry::ActivatedAbilityDef`] list that
+/// [`Effect::CreateCommodityToken`] stashes on the minted
+/// [`crate::objects::GameObject`]'s `intrinsic_activated_abilities`.
+///
+/// The token is colorless and a plain artifact unless noted. Activations
+/// are listed alongside their CR / fidelity notes — anything labeled
+/// **FIDELITY GAP** mints correctly but resolves with a documented
+/// approximation pending more engine work.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CommodityToken {
+    /// CR 701.55 — Treasure. `{T}, Sacrifice this artifact: Add one
+    /// mana of any color.` **FIDELITY GAP**: a color-choice prompt
+    /// isn't wired into the activation path yet, so the activation
+    /// is currently emitted only as the *cost* shape (mana-ability
+    /// tap+sacrifice); the effect adds one colorless mana as a
+    /// placeholder. Future work routes through a `ChooseManaColor`
+    /// follow-up, after which Treasure becomes faithful.
+    Treasure,
+    /// CR 701.50 — Clue. `{2}, Sacrifice this artifact: Draw a card.`
+    /// Fully wired.
+    Clue,
+    /// CR 701.48 — Food. `{2}, {T}, Sacrifice this artifact: You gain
+    /// 3 life.` Fully wired.
+    Food,
+    /// CR 701.56 — Powerstone. `{T}: Add {C}. This mana can't be
+    /// spent to cast a nonartifact spell.` **FIDELITY GAP**: the
+    /// "can't be spent on …" restriction (CR 106.7) isn't yet
+    /// implemented; the activation simply adds `{C}`. The basic mana
+    /// production unblocks every Powerstone-touching card.
+    Powerstone,
+    /// CR 701.51 — Incubator. Currently mints the token (a colorless
+    /// `0/0` Phyrexian artifact creature with the printed +1/+1
+    /// counters from the Incubate effect upstream) but does NOT yet
+    /// wire the `{2}: Transform this artifact` activation, which
+    /// depends on the multi-face / transform engine subsystem still
+    /// outstanding. Listed here so it can light up once transform is
+    /// online.
+    Incubator,
+}
+
 /// Definition for [`Effect::CreateEmblem`]. Emblems are objects in
 /// the command zone with no characteristics beyond a name — their
 /// behavior is entirely their `abilities` vector.
@@ -1849,6 +1923,203 @@ fn create_token(
         object_id: id, from_zone: Zone::Stack, was_cast: false,
     });
     Some(id)
+}
+
+/// Canonical TokenDefinition + activated-ability list for a commodity
+/// token. Returned as a pair so [`Effect::CreateCommodityToken`] can
+/// mint the bare token through the existing `create_token` path AND
+/// stash the activations on the resulting `GameObject`.
+///
+/// The TokenDefinition's `name` and `subtypes` are intentionally left
+/// at `SmallString::default()` because [`Effect::execute`] has no
+/// interner access — display layers that want a label can read
+/// [`CommodityToken`] off the (future) provenance metadata. Engine
+/// behavior doesn't depend on the SmallString interning; it depends
+/// on `types`, P/T, color, and the activated abilities.
+fn commodity_token_spec(
+    kind: CommodityToken,
+) -> (TokenDefinition, Vec<crate::registry::ActivatedAbilityDef>) {
+    use crate::registry::{ActivatedAbilityDef, ActivationCost, ActivationZone};
+    use crate::mana::ManaCost;
+    use crate::targets::TargetRequirement;
+    let blank: SmallString = SmallString::default();
+    match kind {
+        CommodityToken::Treasure => {
+            let token = TokenDefinition {
+                name: blank,
+                colors: ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                subtypes: SubtypeSet::default(),
+                power: None,
+                toughness: None,
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            let activation = ActivatedAbilityDef {
+                text: "{T}, Sacrifice this artifact: Add one mana of any color.".into(),
+                cost: ActivationCost {
+                    tap: true,
+                    sacrifice: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: true,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: treasure_add_one_colorless_mana,
+            };
+            (token, vec![activation])
+        }
+        CommodityToken::Clue => {
+            let token = TokenDefinition {
+                name: blank,
+                colors: ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                subtypes: SubtypeSet::default(),
+                power: None,
+                toughness: None,
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            let activation = ActivatedAbilityDef {
+                text: "{2}, Sacrifice this artifact: Draw a card.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{2}").unwrap(),
+                    sacrifice: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: clue_draw_a_card,
+            };
+            (token, vec![activation])
+        }
+        CommodityToken::Food => {
+            let token = TokenDefinition {
+                name: blank,
+                colors: ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                subtypes: SubtypeSet::default(),
+                power: None,
+                toughness: None,
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            let activation = ActivatedAbilityDef {
+                text: "{2}, {T}, Sacrifice this artifact: You gain 3 life.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{2}").unwrap(),
+                    tap: true,
+                    sacrifice: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: food_gain_three_life,
+            };
+            (token, vec![activation])
+        }
+        CommodityToken::Powerstone => {
+            let token = TokenDefinition {
+                name: blank,
+                colors: ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                subtypes: SubtypeSet::default(),
+                power: None,
+                toughness: None,
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            let activation = ActivatedAbilityDef {
+                text: "{T}: Add {C}. This mana can't be spent to cast \
+                       a nonartifact spell.".into(),
+                cost: ActivationCost::tap_only(),
+                target_requirements: Vec::new(),
+                is_mana_ability: true,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: powerstone_add_one_colorless,
+            };
+            (token, vec![activation])
+        }
+        CommodityToken::Incubator => {
+            // Bare Incubator token; the printed `{2}: Transform` is
+            // engine debt (multi-face transform). Mint with empty
+            // activations.
+            let token = TokenDefinition {
+                name: blank,
+                colors: ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                subtypes: SubtypeSet::default(),
+                power: None,
+                toughness: None,
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            (token, Vec::new())
+        }
+    }
+}
+
+// --- canonical commodity-token activated-effect fns -----------------------
+
+/// Treasure's "add one mana of any color" — FIDELITY GAP placeholder
+/// that adds colorless mana until the color-choice prompt lands. The
+/// activation cost (tap + sacrifice) is paid through the standard
+/// path before this fn is called, so we only need to mint the mana.
+fn treasure_add_one_colorless_mana(
+    _state: &GameState,
+    ctx: &crate::registry::ActivationContext,
+    _registry: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![crate::mana::ManaUnit::plain(
+            crate::types::ManaColor::Colorless, 0)],
+    }]
+}
+
+fn clue_draw_a_card(
+    _state: &GameState,
+    ctx: &crate::registry::ActivationContext,
+    _registry: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DrawCards { player: ctx.controller, count: 1 }]
+}
+
+fn food_gain_three_life(
+    _state: &GameState,
+    ctx: &crate::registry::ActivationContext,
+    _registry: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::GainLife { player: ctx.controller, amount: 3 }]
+}
+
+fn powerstone_add_one_colorless(
+    _state: &GameState,
+    ctx: &crate::registry::ActivationContext,
+    _registry: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    // FIDELITY GAP: the "can't be spent on nonartifact spells" rider
+    // (CR 106.7) isn't modeled — this mana is fungible. The basic
+    // colorless production is what unblocks Powerstone-using cards.
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![crate::mana::ManaUnit::plain(
+            crate::types::ManaColor::Colorless, 0)],
+    }]
 }
 
 fn manifest_top_of_library(state: &mut GameState, p: PlayerId) {
@@ -3413,6 +3684,96 @@ mod tests {
             .filter(|o| o.zone.is_battlefield()).collect();
         assert_eq!(tokens.len(), 1);
         assert!(tokens[0].status.summoning_sick);
+    }
+
+    // --- commodity tokens (Treasure / Clue / Food / Powerstone / Incubator) -
+
+    fn commodity_minted_objects(s: &GameState) -> Vec<&GameObject> {
+        s.objects.iter().filter(|o| o.zone.is_battlefield()).collect()
+    }
+
+    #[test]
+    fn create_commodity_clue_mints_token_with_draw_activation() {
+        let mut s = GameState::new(2, 0);
+        Effect::CreateCommodityToken {
+            controller: 0, kind: CommodityToken::Clue, count: 1,
+        }.execute(&mut s);
+        let tokens = commodity_minted_objects(&s);
+        assert_eq!(tokens.len(), 1, "one Clue token minted");
+        let clue = tokens[0];
+        assert!(clue.is_token, "minted object is flagged as a token");
+        assert!(clue.characteristics.types.is_artifact(),
+            "Clue is an artifact");
+        assert_eq!(clue.intrinsic_activated_abilities.len(), 1,
+            "Clue carries one intrinsic activated ability");
+        let a = &clue.intrinsic_activated_abilities[0];
+        assert!(a.cost.sacrifice, "Clue's cost includes sacrifice-self");
+        assert!(a.cost.mana_cost.mana_value() == 2,
+            "Clue's mana cost is {{2}}");
+        assert!(!a.is_mana_ability, "drawing isn't a mana ability");
+    }
+
+    #[test]
+    fn create_commodity_food_mints_with_life_gain_activation() {
+        let mut s = GameState::new(2, 0);
+        Effect::CreateCommodityToken {
+            controller: 0, kind: CommodityToken::Food, count: 1,
+        }.execute(&mut s);
+        let food = commodity_minted_objects(&s)[0];
+        let a = &food.intrinsic_activated_abilities[0];
+        assert!(a.cost.tap && a.cost.sacrifice
+                && a.cost.mana_cost.mana_value() == 2,
+            "Food's cost is {{2}}, {{T}}, Sac");
+    }
+
+    #[test]
+    fn create_commodity_treasure_mints_as_mana_ability() {
+        let mut s = GameState::new(2, 0);
+        Effect::CreateCommodityToken {
+            controller: 0, kind: CommodityToken::Treasure, count: 1,
+        }.execute(&mut s);
+        let treasure = commodity_minted_objects(&s)[0];
+        let a = &treasure.intrinsic_activated_abilities[0];
+        assert!(a.is_mana_ability,
+            "Treasure's add-mana activation is a mana ability (skips stack)");
+        assert!(a.cost.tap && a.cost.sacrifice,
+            "Treasure's cost is {{T}}, Sac");
+    }
+
+    #[test]
+    fn create_commodity_powerstone_mints_as_mana_ability_no_sacrifice() {
+        let mut s = GameState::new(2, 0);
+        Effect::CreateCommodityToken {
+            controller: 0, kind: CommodityToken::Powerstone, count: 1,
+        }.execute(&mut s);
+        let ps = commodity_minted_objects(&s)[0];
+        let a = &ps.intrinsic_activated_abilities[0];
+        assert!(a.is_mana_ability, "Powerstone's tap-for-mana is a mana ability");
+        assert!(a.cost.tap && !a.cost.sacrifice,
+            "Powerstone's cost is just {{T}} — no sacrifice");
+    }
+
+    #[test]
+    fn create_commodity_incubator_mints_inert_token() {
+        // Incubator's {2}: Transform activation is engine debt;
+        // for now the mint just produces a bare token.
+        let mut s = GameState::new(2, 0);
+        Effect::CreateCommodityToken {
+            controller: 0, kind: CommodityToken::Incubator, count: 1,
+        }.execute(&mut s);
+        let inc = commodity_minted_objects(&s)[0];
+        assert!(inc.intrinsic_activated_abilities.is_empty(),
+            "Incubator activations are deferred until transform lands");
+    }
+
+    #[test]
+    fn create_commodity_count_mints_multiple() {
+        let mut s = GameState::new(2, 0);
+        Effect::CreateCommodityToken {
+            controller: 0, kind: CommodityToken::Treasure, count: 3,
+        }.execute(&mut s);
+        assert_eq!(commodity_minted_objects(&s).len(), 3,
+            "count: N produces N tokens");
     }
 
     // --- tap / untap / transform / control ---------------------------------

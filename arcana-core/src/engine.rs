@@ -957,10 +957,17 @@ fn apply_activate_ability(
     // source-object re-id'ing that happens when a cost like
     // sacrifice-self or discard-self moves the card before the
     // ability resolves (CR 400.7).
-    let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice, life) = {
+    let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice, life,
+         effect_fn) = {
         let Some(obj) = state.objects.get(source) else { return; };
-        let Some(def) = registry.get(obj.card_id) else { return; };
-        let Some(ability) = def.activated_abilities.get(ability_index) else { return; };
+        // Flat index covers registry-backed abilities first, then the
+        // object's intrinsic abilities (commodity tokens). Snapshot the
+        // effect fn here too so the resolver doesn't need to re-look-up
+        // an intrinsic ability after the source object has been
+        // sacrificed as part of the cost.
+        let Some(ability) = crate::legal_actions::lookup_activated_ability(
+            obj, registry, ability_index,
+        ) else { return; };
         (
             obj.card_id,
             ability.is_mana_ability,
@@ -968,6 +975,7 @@ fn apply_activate_ability(
             ability.cost.tap,
             ability.cost.sacrifice,
             ability.cost.life,
+            ability.effect,
         )
     };
     // CR 606.3 — loyalty activation: belt-and-suspenders validation in
@@ -1021,12 +1029,10 @@ fn apply_activate_ability(
             x_value: None,
             card_id,
         };
-        let effects: Vec<crate::effects::Effect> = match registry.get(card_id) {
-            Some(d) => d.activated_abilities.get(ability_index)
-                .map(|a| (a.effect)(state, &ctx, registry))
-                .unwrap_or_default(),
-            None => Vec::new(),
-        };
+        // Mana-ability resolution dispatches via the snapshotted effect
+        // fn pointer so commodity-token intrinsics (which aren't keyed
+        // off `card_id`) resolve correctly.
+        let effects = (effect_fn)(state, &ctx, registry);
         for effect in effects {
             effect.execute(state);
         }
@@ -1038,12 +1044,17 @@ fn apply_activate_ability(
         // graveyard as part of the activation cost — cycling,
         // sacrifice-self abilities).
         let entry_id = state.allocate_object_id();
-        let entry = crate::stack::StackEntry::new_activated_ability(
+        // Snapshot the effect fn so a token whose activation sacrifices
+        // itself can still resolve: by the time the stack entry fires,
+        // the source object may be gone, so a registry-keyed lookup
+        // wouldn't find an intrinsic ability either.
+        let entry = crate::stack::StackEntry::new_activated_ability_with_effect(
             entry_id,
             source,
             controller,
             card_id,
             ability_index as crate::types::AbilityId,
+            effect_fn,
             /*text=*/ String::new(),
             targets,
             Vec::new(),
@@ -3107,7 +3118,7 @@ fn resolution_effects(
             (sa.effect)(state, entry, registry)
         }
         crate::stack::StackEntryKind::ActivatedAbility {
-            card_id, ability_id, ..
+            card_id, ability_id, resolved_effect, ..
         } => {
             // Re-dispatch through the registry via the stack-entry-
             // snapshotted `card_id`. `ability_id` encodes the
@@ -3116,9 +3127,15 @@ fn resolution_effects(
             // the source (damage-from-source etc.) — even if the
             // object has moved zones, the id is the stable handle
             // the effect was authored against.
-            let Some(def) = registry.get(*card_id) else { return Vec::new(); };
+            //
+            // `resolved_effect` is the snapshot path used by commodity
+            // tokens (Treasure / Clue / Food / Powerstone / Incubator)
+            // whose intrinsic activations aren't keyed off a CardId.
+            // For registry-backed activations it's set as well, so the
+            // dispatch is uniform; on a deserialized stack entry the
+            // snapshot would be lost (`#[serde(skip)]`) and we fall
+            // through to the registry path.
             let idx = *ability_id as usize;
-            let Some(ability) = def.activated_abilities.get(idx) else { return Vec::new(); };
             let ctx = crate::registry::ActivationContext {
                 source: entry.source,
                 controller: entry.controller,
@@ -3127,6 +3144,11 @@ fn resolution_effects(
                 x_value: entry.x_value,
                 card_id: *card_id,
             };
+            if let Some(effect) = resolved_effect {
+                return (effect)(state, &ctx, registry);
+            }
+            let Some(def) = registry.get(*card_id) else { return Vec::new(); };
+            let Some(ability) = def.activated_abilities.get(idx) else { return Vec::new(); };
             (ability.effect)(state, &ctx, registry)
         }
         crate::stack::StackEntryKind::TriggeredAbility {

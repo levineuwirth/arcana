@@ -1875,9 +1875,24 @@ fn enumerate_activation_actions(
             obj.owner
         };
         if activating_player != player { continue; }
-        let Some(def) = registry.get(obj.card_id) else { continue; };
-
-        for (i, ability) in def.activated_abilities.iter().enumerate() {
+        // Registry-backed abilities first, then intrinsic abilities
+        // (used by commodity tokens whose canonical activations are
+        // stashed directly on the object). Index space is flat:
+        // 0..N are the registry's `activated_abilities`, N..N+M are
+        // `intrinsic_activated_abilities`. The resolver inverts the
+        // same way via `lookup_activated_ability_with_kind`.
+        let reg_count = registry.get(obj.card_id)
+            .map_or(0, |d| d.activated_abilities.len());
+        let abilities = registry.get(obj.card_id)
+            .map(|d| d.activated_abilities.as_slice())
+            .unwrap_or(&[])
+            .iter()
+            .chain(obj.intrinsic_activated_abilities.iter());
+        for (i, ability) in abilities.enumerate() {
+            // Mark which list the index falls into for the activator's
+            // benefit (debug); not surfaced in the Action — `i` alone
+            // is the source of truth.
+            let _is_intrinsic = i >= reg_count;
             if !ability_is_activatable(
                 state, obj, ability, player, sorcery_speed_ok,
             ) {
@@ -1913,6 +1928,25 @@ fn enumerate_activation_actions(
         }
     }
     out
+}
+
+/// Look up an activated ability by flat index — registry abilities
+/// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`].
+/// Returns the ability and a tag identifying which list it came from
+/// (debug / dispatch hint; the engine treats them uniformly).
+pub(crate) fn lookup_activated_ability<'a>(
+    obj: &'a crate::objects::GameObject,
+    registry: &'a crate::registry::CardRegistry,
+    index: usize,
+) -> Option<&'a crate::registry::ActivatedAbilityDef> {
+    let reg_count = registry.get(obj.card_id)
+        .map_or(0, |d| d.activated_abilities.len());
+    if index < reg_count {
+        registry.get(obj.card_id)
+            .and_then(|d| d.activated_abilities.get(index))
+    } else {
+        obj.intrinsic_activated_abilities.get(index - reg_count)
+    }
 }
 
 /// Is this ability timing-legal and cost-payable right now? Covers
@@ -2807,6 +2841,34 @@ mod tests {
                 | crate::actions::AdditionalCostPayment::AddCounters { .. })),
             "min_self_counters is a precondition, not a cost — \
              no counter payment should be emitted");
+    }
+
+    // --- intrinsic activations on tokens (commodity-token plumbing) -----
+
+    #[test]
+    fn intrinsic_activated_abilities_show_up_in_legal_actions() {
+        use crate::effects::{CommodityToken, Effect};
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        // Mint a Clue (an intrinsic-ability token: card_id=0).
+        Effect::CreateCommodityToken {
+            controller: 0, kind: CommodityToken::Clue, count: 1,
+        }.execute(&mut s);
+        // Give player 0 the {2} needed and clear summoning sickness.
+        let token_id = s.objects.iter()
+            .find(|o| o.zone.is_battlefield())
+            .map(|o| o.id).expect("clue minted");
+        s.objects.get_mut(token_id).unwrap().status.summoning_sick = false;
+        let pool = &mut s.player_mut(0).mana_pool;
+        // Two colorless mana, enough for {2}.
+        pool.add(crate::mana::ManaUnit::plain(ManaColor::Colorless, 0));
+        pool.add(crate::mana::ManaUnit::plain(ManaColor::Colorless, 0));
+
+        let actions = legal_actions(&s, &reg);
+        assert!(actions.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == token_id)),
+            "Clue's intrinsic {{2}}, Sac: Draw activation should be enumerated");
     }
 
     #[test]

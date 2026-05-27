@@ -195,6 +195,22 @@ pub struct GameObject {
     /// battlefield creature is an ordinary object with no adventure
     /// residue.
     pub adventure_exile_pending: bool,
+    /// Per-object activated abilities populated at object-creation time
+    /// when the card isn't a registry-resident definition. Used by the
+    /// token-mint path for commodity tokens (Treasure / Clue / Food /
+    /// Powerstone) whose canonical activations need to be enumerated
+    /// by [`crate::legal_actions`] alongside the registry-derived ones.
+    /// Empty for registry-backed cards; their abilities live on the
+    /// [`crate::registry::CardDefinition`] and are looked up by
+    /// `card_id`.
+    /// Skipped by serde — `ActivatedAbilityDef` carries fn-pointer
+    /// effects that aren't serializable, same as `StackEntry::
+    /// target_requirements`. A deserialized object comes back with
+    /// this empty; commodity-token mid-game serialization is out of
+    /// scope for Phase 2.
+    #[serde(skip)]
+    pub intrinsic_activated_abilities:
+        Vec<crate::registry::ActivatedAbilityDef>,
     /// CR 702.43a — set of colors of mana spent to cast the spell that
     /// became this permanent. Written by
     /// [`crate::state::GameState::finalize_resolved_spell`] from the
@@ -238,6 +254,7 @@ impl GameObject {
             default_face_characteristics: None,
             is_token: false,
             colors_paid: ColorSet::new(),
+            intrinsic_activated_abilities: Vec::new(),
         }
     }
 
