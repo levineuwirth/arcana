@@ -42,6 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_condition: TriggerCondition::CounterAdded {
                     on: TriggerSelf::Source,
                     kind: None,
+                    chapter: None,
                 },
                 intervening_if: None,
                 effect: on_counter,

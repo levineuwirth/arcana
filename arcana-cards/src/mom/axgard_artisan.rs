@@ -41,6 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_condition: TriggerCondition::CounterAdded {
                     on: TriggerSelf::Source,
                     kind: Some(CounterKind::PlusOnePlusOne),
+                    chapter: None,
                 },
                 intervening_if: None,
                 effect: on_counter_added_create_treasure,

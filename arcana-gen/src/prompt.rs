@@ -614,7 +614,7 @@ Other permanents / events:
 - `TriggerCondition::DamageDealt { source_filter: ObjectFilter, target_filter: TargetFilter, combat_only: bool }` — "Whenever ~ deals combat damage to a player" → `target_filter: TargetFilter::Player, combat_only: true`.
 - `TriggerCondition::LifeGained { player: ControllerConstraint }` · `TriggerCondition::CardDrawn { player: ControllerConstraint }` · `TriggerCondition::CardDiscarded { player: ControllerConstraint }`.
 - `TriggerCondition::Sacrificed { filter: ObjectFilter }` — "Whenever you sacrifice a permanent".
-- `TriggerCondition::CounterAdded { on: TriggerSelf, kind: Option<CounterKind> }` — "Whenever a +1/+1 counter is put on ~" → `on: TriggerSelf::Source, kind: Some(CounterKind::PlusOnePlusOne)`.
+- `TriggerCondition::CounterAdded { on: TriggerSelf, kind: Option<CounterKind>, chapter: Option<u32> }` — "Whenever a +1/+1 counter is put on ~" → `on: TriggerSelf::Source, kind: Some(CounterKind::PlusOnePlusOne), chapter: None`. For Saga chapter dispatch ("II — do X") use `kind: Some(CounterKind::Lore), chapter: Some(2)` — the trigger fires only when the lore-counter-add event's `count` equals 2.
 
 `TriggeredAbilityDef` always: `id` is a per-card `u32` from 1; `intervening_if: None` (unless the oracle has an "if" clause — then `// GAP:` it and use `None`); `trigger_zones: vec![Zone::Battlefield]`; `frequency: TriggerFrequency::EachTime` (or `OncePerTurn` for "once each turn"); `target_requirements: Vec::new()` unless the trigger targets. The effect fn does NOT need to inspect `trig.trigger_event` for the common cases — read `trig.controller` and `trig.source`. If the oracle's trigger truly matches no variant above, pick the closest, add `// GAP: trigger — <describe>`, and do NOT invent a variant or a `GameEvent` arm."#;
 
@@ -1024,15 +1024,62 @@ Generate the Rust source. Output only the file contents.",
 }
 
 /// Per-card prompt block for Saga (CR 716). Enchantment subtype Saga;
-/// gains lore counters on ETB + post-draw; chapter abilities trigger
-/// on counter placement; sacrificed when the final chapter resolves.
+/// gains lore counters on ETB + first main phase; chapter abilities
+/// trigger on lore-counter placement with the matching count.
 fn user_saga(card: &Card) -> String {
     format!(
-        "Generate a SAGA ENCHANTMENT (CR 716). A saga is an Enchantment — Saga that enters with one lore counter and adds a lore counter at the beginning of its controller's post-draw step. When a lore counter is added, the chapter ability with the matching roman numeral triggers (I, II, III, ...). When the last chapter resolves, the saga is sacrificed.
+        "Generate a SAGA ENCHANTMENT (CR 716). A saga is an Enchantment — Saga that enters with one lore counter and adds another lore counter at the beginning of its controller's first main phase. Chapter abilities I, II, III ... fire when the matching N-th lore counter is placed (CR 716.5). The saga is sacrificed after the final chapter resolves (CR 716.6).
 
-ENGINE STATUS — saga subsystem is partially implemented. Recognize the saga shape but the lore-counter-and-chapter dispatch is engine debt. For MVP:
-1. Build the Characteristics with `types: TypeLine::ENCHANTMENT.into()` and add the 'Saga' subtype (intern via `reg.interner_mut().intern(\"Saga\")` then insert into a `SubtypeSet`).
-2. Emit `// GAP: chapter triggers not modeled (Saga engine deferred)` in the doc comment and a single placeholder `TriggeredAbilityDef` with `trigger_condition: TriggerCondition::SelfEntersBattlefield` returning `Vec::new()` for the body (this passes L2 with min_triggered_abilities ≥ 1).
+ENGINE STATUS — saga dispatch primitives are in place:
+- `EntersWithSpec::Counters {{ kind: CounterKind::Lore, count: 1 }}` for the ETB lore counter (CR 716.2).
+- A 'first main phase, add a lore counter' triggered ability you author with `TriggerCondition::PhaseBegins {{ phase: Phase::PreCombatMain, whose: ControllerConstraint::You }}` whose effect is `Effect::AddCounters {{ target: trig.source, kind: CounterKind::Lore, count: 1 }}` (CR 716.3).
+- Chapter abilities: one `TriggeredAbilityDef` per chapter with `TriggerCondition::CounterAdded {{ on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(N) }}` where N is the chapter number (1 for I, 2 for II, etc.). The chapter fires when the N-th lore counter is placed.
+- Final-chapter sacrifice: a CounterAdded trigger on the final chapter number whose effect includes `Effect::DelayedAction {{ source: trig.source, controller: trig.controller, when: DelayedWhen::ThisDies, action: DelayedAction::Sacrifice }}` is NOT the right pattern — instead, the final chapter's `effect` fn should END WITH `Effect::ExilePermanent {{ target: trig.source }}` OR `Effect::DestroyPermanent {{ target: trig.source }}` after the chapter payload. For now, sacrifice-after-final-chapter is engine debt — emit `// GAP: final-chapter sacrifice handled imperfectly` and let the chapter resolve without sacrificing self.
+
+BUILD PATTERN (rough sketch — fill in details from the card spec):
+```rust
+let saga_sub = reg.interner_mut().intern(\"Saga\");
+let mut subtypes = SubtypeSet::default();
+subtypes.0.insert(saga_sub);
+let chars = Characteristics {{
+    name, mana_cost: ..., colors: ...,
+    types: TypeLine::ENCHANTMENT.into(),
+    subtypes,
+    ..Default::default()
+}};
+reg.register(
+    CardDefinition::new(name, chars)
+        .with_enters_with(EntersWithSpec::Counters {{
+            kind: CounterKind::Lore, count: 1,
+        }})
+        .with_triggered_ability(TriggeredAbilityDef {{
+            id: 1,
+            trigger_condition: TriggerCondition::PhaseBegins {{
+                phase: Phase::PreCombatMain,
+                whose: ControllerConstraint::You,
+            }},
+            intervening_if: None,
+            effect: add_lore_counter,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }})
+        .with_triggered_ability(TriggeredAbilityDef {{
+            id: 2,
+            trigger_condition: TriggerCondition::CounterAdded {{
+                on: TriggerSelf::Source,
+                kind: Some(CounterKind::Lore),
+                chapter: Some(1),
+            }},
+            intervening_if: None,
+            effect: chapter_i,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }})
+        // ... one .with_triggered_ability per chapter
+)
+```
 
 {cat}
 

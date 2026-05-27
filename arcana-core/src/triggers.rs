@@ -253,8 +253,17 @@ pub enum TriggerCondition {
     PhaseBegins { phase: crate::turn::Phase, whose: ControllerConstraint },
     /// "Whenever you gain life".
     LifeGained { player: ControllerConstraint },
-    /// "Whenever a counter is put on ~".
-    CounterAdded { on: TriggerSelf, kind: Option<CounterKind> },
+    /// "Whenever a counter is put on ~." When `chapter: Some(n)`,
+    /// only fires when the post-add count on the target object equals
+    /// `n` — used for Saga chapter dispatch (CR 716.5: chapter N
+    /// triggers when the N-th lore counter is placed). For the
+    /// non-saga case (Hardened Scales-style "whenever a +1/+1 is
+    /// placed on ~"), set `chapter: None`.
+    CounterAdded {
+        on: TriggerSelf,
+        kind: Option<CounterKind>,
+        chapter: Option<u32>,
+    },
     /// "Whenever you draw a card".
     CardDrawn { player: ControllerConstraint },
     /// "Whenever an opponent discards a card".
@@ -385,11 +394,14 @@ impl TriggerCondition {
                 player.matches(*p, source_controller)
             }
 
-            CounterAdded { on, kind } => {
-                let GameEvent::CounterAdded { object_id, kind: k, .. } = event
+            CounterAdded { on, kind, chapter } => {
+                let GameEvent::CounterAdded { object_id, kind: k, count: ev_count } = event
                     else { return false; };
                 if let Some(want) = kind {
                     if k != want { return false; }
+                }
+                if let Some(want_count) = chapter {
+                    if *ev_count != *want_count { return false; }
                 }
                 on.matches(*object_id, source, source_controller, state)
             }
@@ -1095,6 +1107,7 @@ mod tests {
         let cond = TriggerCondition::CounterAdded {
             on: TriggerSelf::Source,
             kind: Some(CounterKind::PlusOnePlusOne),
+            chapter: None,
         };
         assert!(cond.matches(&event, 42, 0, &s));
         assert!(!cond.matches(&event, 99, 0, &s));
@@ -1109,8 +1122,33 @@ mod tests {
         let cond = TriggerCondition::CounterAdded {
             on: TriggerSelf::Source,
             kind: Some(CounterKind::PlusOnePlusOne),
+            chapter: None,
         };
         assert!(!cond.matches(&event, 42, 0, &s));
+    }
+
+    #[test]
+    fn counter_added_chapter_dispatch_only_at_matching_count() {
+        // Saga chapter dispatch (CR 716.5): chapter N fires only when
+        // the lore-counter-add event's `count` equals N.
+        let s = GameState::new(2, 0);
+        let chapter_ii = TriggerCondition::CounterAdded {
+            on: TriggerSelf::Source,
+            kind: Some(CounterKind::Lore),
+            chapter: Some(2),
+        };
+        let count_one = GameEvent::CounterAdded {
+            object_id: 42, kind: CounterKind::Lore, count: 1,
+        };
+        let count_two = GameEvent::CounterAdded {
+            object_id: 42, kind: CounterKind::Lore, count: 2,
+        };
+        let count_three = GameEvent::CounterAdded {
+            object_id: 42, kind: CounterKind::Lore, count: 3,
+        };
+        assert!(!chapter_ii.matches(&count_one, 42, 0, &s));
+        assert!( chapter_ii.matches(&count_two, 42, 0, &s));
+        assert!(!chapter_ii.matches(&count_three, 42, 0, &s));
     }
 
     #[test]
