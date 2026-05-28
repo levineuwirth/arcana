@@ -233,6 +233,54 @@ impl Card {
         }
         self.effective_oracle_text().trim().is_empty()
     }
+
+    /// The front face, if this card has a `card_faces` array. The
+    /// front face is the registered base for the layouts we generate
+    /// (adventure creature face, MDFC front). `None` for single-face
+    /// cards.
+    fn front_face(&self) -> Option<&CardFace> {
+        self.card_faces.as_ref().and_then(|f| f.first())
+    }
+
+    /// Mana cost of the card's registered base, preferring the
+    /// top-level field and falling back to the front face. For MDFC
+    /// (and other faces-only layouts) Scryfall leaves the top-level
+    /// `mana_cost` empty and puts the cost on `card_faces[0]`, so a
+    /// bare `self.mana_cost` would wrongly read as "no cost". Adventure
+    /// rows carry a combined `"{a} // {b}"` top-level cost — left
+    /// as-is here; `cmc` (front-face value) is what the fingerprint
+    /// actually checks.
+    pub fn front_mana_cost(&self) -> Option<String> {
+        match &self.mana_cost {
+            Some(m) if !m.is_empty() => Some(m.clone()),
+            _ => self.front_face().and_then(|f| f.mana_cost.clone())
+                .filter(|m| !m.is_empty()),
+        }
+    }
+
+    /// Colors of the registered base, preferring top-level and
+    /// falling back to the front face (empty top-level on MDFC).
+    pub fn front_colors(&self) -> Vec<String> {
+        if !self.colors.is_empty() {
+            return self.colors.clone();
+        }
+        self.front_face()
+            .and_then(|f| f.colors.clone())
+            .unwrap_or_default()
+    }
+
+    /// Power of the registered base, preferring top-level and falling
+    /// back to the front face (empty top-level on MDFC).
+    pub fn front_power(&self) -> Option<String> {
+        self.power.clone().or_else(|| self.front_face().and_then(|f| f.power.clone()))
+    }
+
+    /// Toughness of the registered base, preferring top-level and
+    /// falling back to the front face (empty top-level on MDFC).
+    pub fn front_toughness(&self) -> Option<String> {
+        self.toughness.clone()
+            .or_else(|| self.front_face().and_then(|f| f.toughness.clone()))
+    }
 }
 
 /// Loaded Scryfall card pool. Query methods are linear scans — this

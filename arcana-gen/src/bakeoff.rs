@@ -960,12 +960,17 @@ pub fn dump_prompts(
             name: card.name.clone(),
             oracle_id: card.oracle_id.clone(),
             set: card.set.clone(),
-            mana_cost: card.mana_cost.clone(),
+            // Front-face fallbacks: MDFC (and other faces-only layouts)
+            // leave these empty at the top level — the real values live
+            // on card_faces[0]. Without the fallback the layer-2
+            // fingerprint would assert "no cost / no colors / no P/T"
+            // against a correct front-face permanent.
+            mana_cost: card.front_mana_cost(),
             cmc: card.cmc,
             type_line: card.type_line.clone(),
-            power: card.power.clone(),
-            toughness: card.toughness.clone(),
-            colors: card.colors.clone(),
+            power: card.front_power(),
+            toughness: card.front_toughness(),
+            colors: card.front_colors(),
             keywords: card.keywords.clone(),
             prompt_file: None,
         };

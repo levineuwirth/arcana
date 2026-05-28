@@ -434,15 +434,22 @@ const FS_SERVO_EXHIBITION: &str =
 fn card_spec(card: &Card) -> String {
     let mut lines: Vec<String> = Vec::new();
     lines.push(format!("Name: {}", card.name));
-    if let Some(cost) = &card.mana_cost {
+    // Front-face accessors: MDFC (and other faces-only layouts) leave
+    // these empty at the top level — the printed cost / P/T / colors
+    // live on `card_faces[0]`. Without the fallback the spec would
+    // omit the mana cost, P/T, and colors entirely and the model
+    // would have to guess them (the source of systematic MDFC
+    // mis-transcription).
+    if let Some(cost) = card.front_mana_cost() {
         lines.push(format!("Mana cost: {cost}"));
     }
     lines.push(format!("Type line: {}", card.type_line));
-    if let (Some(p), Some(t)) = (&card.power, &card.toughness) {
+    if let (Some(p), Some(t)) = (card.front_power(), card.front_toughness()) {
         lines.push(format!("Power/Toughness: {p}/{t}"));
     }
-    if !card.colors.is_empty() {
-        lines.push(format!("Colors: {}", card.colors.join(", ")));
+    let colors = card.front_colors();
+    if !colors.is_empty() {
+        lines.push(format!("Colors: {}", colors.join(", ")));
     }
     if !card.keywords.is_empty() {
         lines.push(format!(
