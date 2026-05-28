@@ -116,7 +116,7 @@ impl Expected {
         };
 
         Self {
-            name: row.name.clone(),
+            name: expected_base_name(row),
             mana_value,
             colors: [
                 color("W"),
@@ -154,6 +154,33 @@ impl DumpRow {
     fn is_creature_row(&self) -> bool {
         type_part(&self.type_line).contains("Creature")
     }
+}
+
+/// The base-characteristics name the engine registers for this card,
+/// which is what the layer-2 harness checks against `def.name`.
+///
+/// Most cards register their full printed name. Multi-face cards whose
+/// *front* face is the registered base (Adventure and MDFC — the card
+/// is the front-face permanent, the back/adventure half lives in an
+/// `AlternateFace`) register only the front-face name. Scryfall's
+/// `name` for those is the combined `"Front // Back"`, so the
+/// assertion must compare against the front-face portion or it
+/// false-fails on every such card.
+///
+/// Split cards (combined name registered via
+/// `combine_split_characteristics`) are Tier-4 / out of scope and
+/// never reach this harness, so they need no special case here.
+fn expected_base_name(row: &DumpRow) -> String {
+    let is_front_face_base = matches!(
+        row.shape.as_deref(),
+        Some("AdventureCreature") | Some("ModalDfcCreature"),
+    );
+    if is_front_face_base {
+        if let Some((front, _back)) = row.name.split_once(" // ") {
+            return front.to_string();
+        }
+    }
+    row.name.clone()
 }
 
 /// `Some(Some(n))` for an integer P/T on a creature, `Some(None)`
@@ -546,6 +573,47 @@ mod tests {
         assert_eq!(e.power, Some(Some(2)));
         assert_eq!(e.toughness, Some(Some(2)));
         assert!(e.keywords.is_empty());
+    }
+
+    #[test]
+    fn adventure_expects_front_face_name_not_combined() {
+        // Scryfall reports the combined "Front // Back" name, but the
+        // engine registers the front-face creature name as the base.
+        // The harness must expect the front-face portion or every
+        // Adventure card false-fails its name assertion.
+        let e = Expected::from_row(&row(|r| {
+            r.shape = Some("AdventureCreature".into());
+            r.name = "Garenbrig Carver // Shield's Might".into();
+            r.type_line = "Creature — Human Warrior // Instant — Adventure".into();
+            r.mana_cost = Some("{3}{G}".into());
+            r.cmc = 4.0;
+            r.power = Some("3".into());
+            r.toughness = Some("2".into());
+        }), "");
+        assert_eq!(e.name, "Garenbrig Carver",
+            "Adventure name assertion must target the front face");
+        assert!(e.is_creature, "Adventure base face is the creature");
+    }
+
+    #[test]
+    fn mdfc_expects_front_face_name_not_combined() {
+        let e = Expected::from_row(&row(|r| {
+            r.shape = Some("ModalDfcCreature".into());
+            r.name = "Jwari Disruption // Jwari Ruins".into();
+            r.type_line = "Instant // Land".into();
+        }), "");
+        assert_eq!(e.name, "Jwari Disruption",
+            "MDFC name assertion must target the front face");
+    }
+
+    #[test]
+    fn single_face_name_is_unchanged() {
+        // A normal card with no " // " keeps its full name even if it
+        // somehow carried a multi-face shape tag.
+        let e = Expected::from_row(&row(|r| {
+            r.name = "Grizzly Bears".into();
+        }), "");
+        assert_eq!(e.name, "Grizzly Bears");
     }
 
     #[test]

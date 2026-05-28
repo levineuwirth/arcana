@@ -1941,7 +1941,6 @@ fn commodity_token_spec(
 ) -> (TokenDefinition, Vec<crate::registry::ActivatedAbilityDef>) {
     use crate::registry::{ActivatedAbilityDef, ActivationCost, ActivationZone};
     use crate::mana::ManaCost;
-    use crate::targets::TargetRequirement;
     let blank: SmallString = SmallString::default();
     match kind {
         CommodityToken::Treasure => {

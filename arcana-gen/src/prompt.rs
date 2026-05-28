@@ -509,7 +509,7 @@ Single permanent / card target (`id` from the first target):
 - `Effect::ChangeControl { target: id, new_controller: {BINDING}.controller }`  (PERMANENT gain-control — Mind Control / Take Control class).
 - `Effect::ChangeControlEot { target: id, new_controller: {BINDING}.controller }`  (Threaten / Act of Treason — gain control until end of turn; the engine schedules an automatic revert at the next end step). Pair with `Effect::Untap { target: id }` and `Effect::GrantKeyword { target: id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn }` for the full Threaten suite.
 - `Effect::ExileFromGraveyard { target: id }`
-- `Effect::AddCounters { target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }`  ·  `Effect::RemoveCounters { .. }`
+- `Effect::AddCounters { target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }`  ·  `Effect::RemoveCounters { .. }`. Valid `CounterKind` variants: `PlusOnePlusOne`, `MinusOneMinusOne`, `Loyalty`, `Charge`, `Time`, `Fade`, `Quest`, `Study`, `Poison`, `Energy`, `Shield`, `Stun`, `Lore`, `Defense`, `Level`, and `Named(SmallString)` for any other named counter (intern the name). Use the matching variant — e.g. "stun counter" → `CounterKind::Stun`, "charge counter" → `CounterKind::Charge` — and only fall back to `Named` for a counter with no dedicated variant.
 - `Effect::Pump { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }`  ('+X/+X until end of turn'; granted evergreen `KeywordAbility` values go in `keywords`)
 - `Effect::SetBasePT { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }`
 - `Effect::GrantKeyword { target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }`
@@ -750,7 +750,7 @@ Single permanent / card target (`id` from the first target):
 - `Effect::ReturnFromExileToBattlefield {{ target: id }}`  (blink/flicker return — the matching primitive for cards exiled by an earlier `Effect::ExilePermanent`; no-op if the target isn't currently in exile)
 - `Effect::ChangeControl {{ target: id, new_controller: entry.controller }}`  (permanent gain-control — Mind Control / Take Control family; the controller change persists. There is NO 'until end of turn' variant yet, so Threaten/Act-of-Treason-style temporary control is still a partial — emit the expressible parts (Untap, GrantKeyword Haste) and `// GAP:` the gain-control duration, not a permanent control change.)
 - `Effect::ExileFromGraveyard {{ target: id }}`
-- `Effect::AddCounters {{ target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }}`  ·  `Effect::RemoveCounters {{ .. }}`
+- `Effect::AddCounters {{ target: id, kind: CounterKind::PlusOnePlusOne, count: u32 }}`  ·  `Effect::RemoveCounters {{ .. }}`. Valid `CounterKind` variants: `PlusOnePlusOne`, `MinusOneMinusOne`, `Loyalty`, `Charge`, `Time`, `Fade`, `Quest`, `Study`, `Poison`, `Energy`, `Shield`, `Stun`, `Lore`, `Defense`, `Level`, and `Named(SmallString)` for any other named counter. Use the matching variant — 'stun counter' → `CounterKind::Stun`, 'charge counter' → `CounterKind::Charge` — and only fall back to `Named` for a counter with no dedicated variant.
 - `Effect::Pump {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }}`  ('+X/+X until end of turn'; put granted evergreen `KeywordAbility` values in `keywords`)
 - `Effect::SetBasePT {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }}`  ('becomes a 1/1')
 - `Effect::GrantKeyword {{ target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }}`
@@ -948,7 +948,7 @@ OTHER FIELDS on `ActivatedAbilityDef`:
 - `target_requirements: Vec<TargetRequirement>` — empty for non-targeted; `vec![TargetRequirement::target_creature()]` for "target creature", `vec![TargetRequirement::any_target()]` for "any target" (creature OR player OR planeswalker — read via the THREE-arm match including the `TargetChoice::ObjectOrPlayer(ObjectOrPlayer::{Object,Player})` shape).
 - `is_mana_ability: true` ONLY when the cost has no target AND the effect's ONLY result is `Effect::AddMana` (CR 605). Mana abilities skip the stack. For everything else (pingers, sac creatures, pump activations), `is_mana_ability: false`.
 - `is_loyalty_ability: false` for creatures (loyalty is planeswalker-only).
-- `activation_zone: ActivationZone::Battlefield` — the default for creature activated abilities. Use `ActivationZone::Hand` only for cycling / channel / "you may activate from hand" specials.
+- `activation_zone: ActivationZone::Battlefield` — the default for creature activated abilities. Use `ActivationZone::Hand` for cycling / channel / "you may activate from hand" specials. Use `ActivationZone::Graveyard` for graveyard-activated abilities ("{cost}: … Activate only from your graveyard." — unearth, embalm-style, or "{cost}, Exile ~ from your graveyard: …" patterns). All three variants exist; pick the zone the oracle says the ability is activated from.
 - `is_instant_speed: false` for the default sorcery-speed activated abilities of permanents (but tap-for-mana mana abilities are implicitly instant-speed via `is_mana_ability`).
 - `face_gate: None` — single-face cards. (`Some(n)` is for MDFC back-face abilities.)
 - `effect: <your_resolver_fn>` — the `ActivatedEffectFn` you author below.
