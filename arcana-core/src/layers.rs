@@ -237,6 +237,22 @@ impl ContinuousEffect {
             kind: ContinuousEffectKind::CantAttack { target },
         }
     }
+
+    /// Build a "target can't be blocked" effect. Mirror of
+    /// [`Self::cant_attack`]; consumed by `combat::block_constraints`
+    /// (sets the attacker's max blockers to 0). Typically installed
+    /// with [`Duration::EndOfTurn`] for "~ can't be blocked this turn".
+    pub fn cant_be_blocked(source: ObjectId, target: ObjectId,
+                           duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::CantBeBlocked { target },
+        }
+    }
 }
 
 /// The concrete kind of continuous effect. Most cards fit one of the
@@ -260,6 +276,10 @@ pub enum ContinuousEffectKind {
     /// "Target creature can't attack" (Pacifism-style). Doesn't
     /// modify characteristics; consumed by [`crate::legal_actions`].
     CantAttack { target: ObjectId },
+    /// "Target creature can't be blocked [this turn]." Doesn't modify
+    /// characteristics; consumed by [`crate::combat`]'s
+    /// `block_constraints` (caps the attacker's blockers at 0).
+    CantBeBlocked { target: ObjectId },
     /// CR 702.6 — "Equipped creature gets +P/+T" (Bonesplitter,
     /// Sword of Fire and Ice, etc.). The buff applies to whatever
     /// creature the effect's source (the Equipment) is currently
@@ -291,7 +311,8 @@ impl ContinuousEffectKind {
             | Self::SetPt { target, .. }
             | Self::GrantKeywordTarget { target, .. }
             | Self::Goaded { target, .. }
-            | Self::CantAttack { target } => *target == object_id,
+            | Self::CantAttack { target }
+            | Self::CantBeBlocked { target } => *target == object_id,
             Self::AnthemForController { controller, .. } => {
                 state.objects.get(object_id).is_some_and(|o|
                     o.is_creature()
@@ -330,9 +351,12 @@ impl ContinuousEffectKind {
                     chars.keywords.push(keyword.clone());
                 }
             }
-            Self::Goaded { .. } | Self::CantAttack { .. } => {
+            Self::Goaded { .. }
+            | Self::CantAttack { .. }
+            | Self::CantBeBlocked { .. } => {
                 // No characteristic modification — these are
-                // attack-time modifiers consumed by `legal_actions`.
+                // combat-time modifiers consumed by `legal_actions`
+                // (attack) / `combat::block_constraints` (block).
             }
             Self::Custom(f) => f(object_id, chars, state),
         }
@@ -527,6 +551,13 @@ impl GameState {
     pub fn cant_attack(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| matches!(&e.kind,
             ContinuousEffectKind::CantAttack { target } if *target == object_id))
+    }
+
+    /// Does `object_id` have an active "can't be blocked" restriction?
+    /// Consumed by [`crate::combat`]'s `block_constraints`.
+    pub fn cant_be_blocked(&self, object_id: ObjectId) -> bool {
+        self.continuous_effects.iter().any(|e| matches!(&e.kind,
+            ContinuousEffectKind::CantBeBlocked { target } if *target == object_id))
     }
 
     /// Every active Protection quality on `object_id`. Reads from the

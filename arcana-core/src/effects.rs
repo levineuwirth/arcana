@@ -253,6 +253,16 @@ pub enum Effect {
         keyword: KeywordAbility,
         duration: Duration,
     },
+    /// "Target creature can't be blocked [this turn]." Installs a
+    /// [`crate::layers::ContinuousEffectKind::CantBeBlocked`] on the
+    /// target; `combat::block_constraints` caps its blockers at 0.
+    /// Use `Duration::EndOfTurn` for the common one-turn form. For the
+    /// rarer static "~ can't be blocked" printed on a creature, the
+    /// same effect with `Duration::WhileSourceOnBattlefield` works.
+    CantBeBlocked {
+        target: ObjectId,
+        duration: Duration,
+    },
     /// Install an arbitrary [`crate::layers::ContinuousEffect`] on
     /// the state. The escape hatch for permanent-based anthems and
     /// other static-ability effects whose source must be a specific
@@ -925,6 +935,11 @@ impl Effect {
                 state.add_continuous_effect(
                     crate::layers::ContinuousEffect::grant_keyword(
                         /*source=*/ *target, *target, keyword.clone(), *duration));
+            }
+            Effect::CantBeBlocked { target, duration } => {
+                state.add_continuous_effect(
+                    crate::layers::ContinuousEffect::cant_be_blocked(
+                        /*source=*/ *target, *target, *duration));
             }
             Effect::SetBasePT { target, power, toughness, duration } => {
                 state.add_continuous_effect(

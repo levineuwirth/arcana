@@ -655,10 +655,16 @@ impl GameState {
                 }
             }
         }
+        // "~ can't be blocked [this turn]" — installed as a
+        // `ContinuousEffectKind::CantBeBlocked` (Duration::EndOfTurn
+        // for the common one-turn form). Caps blockers at 0, the same
+        // shape landwalk uses.
+        if self.cant_be_blocked(attacker) {
+            c.max_blockers = Some(0);
+        }
         // Future constraint-keyword hooks slot here:
         //   - "Can't be blocked except by three or more" → raise min.
         //   - "Can't be blocked by more than one creature" → cap max.
-        //   - Unblockable (printed text, not a keyword today) → max=0.
         c
     }
 
@@ -3056,5 +3062,60 @@ mod tests {
         assert_eq!(s.damage_assignment_chooser(&[atk]), 1,
             "a banding blocker ⇒ the defending player assigns the \
              attacker's combat damage (CR 702.22)");
+    }
+
+    // --- can't-be-blocked (CantBeBlocked continuous effect) -------------
+
+    #[test]
+    fn cant_be_blocked_caps_max_blockers_at_zero() {
+        use crate::layers::{ContinuousEffect, Duration};
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 2, 2); ready(atk, &mut s);
+        // Baseline: an ordinary attacker has no blocker cap.
+        assert_eq!(s.block_constraints(atk).max_blockers, None);
+        // Install "can't be blocked this turn".
+        s.add_continuous_effect(
+            ContinuousEffect::cant_be_blocked(atk, atk, Duration::EndOfTurn));
+        assert_eq!(s.block_constraints(atk).max_blockers, Some(0),
+            "a can't-be-blocked attacker accepts zero blockers");
+        assert!(s.cant_be_blocked(atk));
+    }
+
+    #[test]
+    fn cant_be_blocked_effect_installs_the_continuous_effect() {
+        use crate::effects::Effect;
+        use crate::layers::Duration;
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 2, 2); ready(atk, &mut s);
+        Effect::CantBeBlocked { target: atk, duration: Duration::EndOfTurn }
+            .execute(&mut s);
+        assert!(s.cant_be_blocked(atk),
+            "Effect::CantBeBlocked installs the CantBeBlocked continuous effect");
+        assert_eq!(s.block_constraints(atk).max_blockers, Some(0));
+    }
+
+    #[test]
+    fn cant_be_blocked_rejects_a_declared_blocker() {
+        use crate::layers::{ContinuousEffect, Duration};
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 2, 2); ready(atk, &mut s);
+        let blk = put_creature(&mut s, 1, 2, 2);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.add_continuous_effect(
+            ContinuousEffect::cant_be_blocked(atk, atk, Duration::EndOfTurn));
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: blk, blocking: atk },
+        ]);
+        // The block must not stick — the attacker stays unblocked.
+        let combat = s.combat.as_ref().unwrap();
+        let atk_info = combat.attackers.iter().find(|a| a.object_id == atk).unwrap();
+        assert!(atk_info.blocked_by.is_empty(),
+            "a can't-be-blocked attacker takes no blockers");
     }
 }

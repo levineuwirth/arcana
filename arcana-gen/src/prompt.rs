@@ -521,6 +521,7 @@ Single permanent / card target (`id` from the first target):
 - `Effect::Pump { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }`  ('+X/+X until end of turn'; granted evergreen `KeywordAbility` values go in `keywords`)
 - `Effect::SetBasePT { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }`
 - `Effect::GrantKeyword { target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }`
+- `Effect::CantBeBlocked { target: id, duration: Duration::EndOfTurn }`  — "target creature can't be blocked this turn". For a creature's own static "~ can't be blocked", target its own id with `Duration::WhileSourceOnBattlefield`. Use this instead of GAP-ing "can't be blocked".
 - `Effect::Regenerate { target: id }`  ·  `Effect::Transform { target: id }`
 
 Two-object / combat:
@@ -763,6 +764,7 @@ Single permanent / card target (`id` from the first target):
 - `Effect::Pump {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn, keywords: vec![] }}`  ('+X/+X until end of turn'; put granted evergreen `KeywordAbility` values in `keywords`)
 - `Effect::SetBasePT {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }}`  ('becomes a 1/1')
 - `Effect::GrantKeyword {{ target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }}`
+- `Effect::CantBeBlocked {{ target: id, duration: Duration::EndOfTurn }}`  — 'target creature can't be blocked this turn'. For a creature's own static 'this can't be blocked', target its own id with `Duration::WhileSourceOnBattlefield`. Use this instead of GAP-ing 'can't be blocked'.
 - `Effect::Regenerate {{ target: id }}`  ·  `Effect::Transform {{ target: id }}`
 
 Two-object / combat:
