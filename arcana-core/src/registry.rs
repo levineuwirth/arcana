@@ -939,6 +939,36 @@ pub struct ActivationCost {
     /// counters). This field changes nothing on resolution — it only
     /// gates whether the ability is offered as legal at all.
     pub min_self_counters: Option<(CounterKind, u32)>,
+    /// "Sacrifice a [filtered permanent]: …" where the sacrificed
+    /// permanent is CHOSEN, not the ability's own source (CR 118.3 —
+    /// an additional cost the activator pays by sacrificing one
+    /// permanent they control matching this filter). Distinct from
+    /// [`Self::sacrifice`] (which always sacrifices the source).
+    /// Legal-action enumeration emits one activation per matching
+    /// permanent the activator controls, each carrying an
+    /// [`crate::actions::AdditionalCostPayment::Sacrifice`] for that
+    /// choice. The filter's [`crate::targets::ObjectFilter::controller`]
+    /// is forced to the activator at enumeration time, so a bare
+    /// type/subtype filter ("a creature", "an artifact", "another
+    /// Goblin") is all the caller supplies. For "sacrifice ANOTHER
+    /// creature" add an `exclude_self` via the filter's name/id is not
+    /// expressible — instead the enumerator always excludes the
+    /// source object id, matching the common "sacrifice another ~"
+    /// wording (a plain "sacrifice a creature" that could include the
+    /// source is rare on an activated ability and over-excluding the
+    /// source is the safe, almost-always-correct choice).
+    pub sacrifice_other: Option<crate::targets::ObjectFilter>,
+    /// "Discard a [filtered card]: …" — discard one chosen card from
+    /// the activator's hand as an additional cost (CR 118.3). Distinct
+    /// from [`Self::discard_self`] (cycling, which discards the source
+    /// card itself from hand). Legal-action enumeration emits one
+    /// activation per matching card in hand, each carrying an
+    /// [`crate::actions::AdditionalCostPayment::Discard`]. A
+    /// `Default` filter means "any card"; a typed filter expresses
+    /// "discard a creature card", etc. Multi-card discard costs
+    /// ("discard two cards") are not modeled by this single-choice
+    /// field.
+    pub discard_other: Option<crate::targets::ObjectFilter>,
 }
 
 impl ActivationCost {

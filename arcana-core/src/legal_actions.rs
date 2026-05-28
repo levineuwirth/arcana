@@ -1914,20 +1914,87 @@ fn enumerate_activation_actions(
 
             let additional = build_additional_costs(&ability.cost, id);
 
+            // Choice-bearing additional costs: "sacrifice a [filtered
+            // permanent]" / "discard a [filtered card]". Each enumerates
+            // one payment per matching object the activator owns,
+            // excluding the source itself (matches the common
+            // "sacrifice/discard ANOTHER ~" wording). If a required
+            // choice has zero candidates the ability isn't activatable.
+            let sac_choices = enumerate_cost_sacrifices(
+                state, ability, player, id);
+            if sac_choices.is_empty() { continue; }
+            let discard_choices = enumerate_cost_discards(
+                state, ability, player, id);
+            if discard_choices.is_empty() { continue; }
+
             for plan in &plans {
                 for targets in &target_selections {
-                    out.push(Action::ActivateAbility {
-                        source: id,
-                        ability_index: i,
-                        targets: targets.clone(),
-                        mana_payment: plan.clone(),
-                        additional_costs: additional.clone(),
-                    });
+                    for sac in &sac_choices {
+                        for disc in &discard_choices {
+                            let mut costs = additional.clone();
+                            if let Some(s) = sac {
+                                costs.push(
+                                    crate::actions::AdditionalCostPayment::Sacrifice(*s));
+                            }
+                            if let Some(d) = disc {
+                                costs.push(
+                                    crate::actions::AdditionalCostPayment::Discard(*d));
+                            }
+                            out.push(Action::ActivateAbility {
+                                source: id,
+                                ability_index: i,
+                                targets: targets.clone(),
+                                mana_payment: plan.clone(),
+                                additional_costs: costs,
+                            });
+                        }
+                    }
                 }
             }
         }
     }
     out
+}
+
+/// Candidate permanents the activator can sacrifice to pay a
+/// `sacrifice_other` cost. Returns `vec![None]` (one no-op choice)
+/// when the ability has no such cost, so the enumeration loop runs
+/// exactly once; an empty `Vec` means the cost exists but nothing
+/// satisfies it (ability not activatable). The source object is
+/// always excluded.
+fn enumerate_cost_sacrifices(
+    state: &GameState,
+    ability: &crate::registry::ActivatedAbilityDef,
+    player: crate::types::PlayerId,
+    source: ObjectId,
+) -> Vec<Option<ObjectId>> {
+    let Some(filter) = ability.cost.sacrifice_other.as_ref() else {
+        return vec![None];
+    };
+    state.objects.objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.controller == player && o.id != source)
+        .filter(|o| filter.matches(o, state, player))
+        .map(|o| Some(o.id))
+        .collect()
+}
+
+/// Candidate cards the activator can discard to pay a `discard_other`
+/// cost. Same `vec![None]` / empty-Vec convention as
+/// [`enumerate_cost_sacrifices`]; the source is excluded.
+fn enumerate_cost_discards(
+    state: &GameState,
+    ability: &crate::registry::ActivatedAbilityDef,
+    player: crate::types::PlayerId,
+    source: ObjectId,
+) -> Vec<Option<ObjectId>> {
+    let Some(filter) = ability.cost.discard_other.as_ref() else {
+        return vec![None];
+    };
+    state.objects.objects_in_zone(Zone::Hand(player))
+        .filter(|o| o.id != source)
+        .filter(|o| filter.matches(o, state, player))
+        .map(|o| Some(o.id))
+        .collect()
 }
 
 /// Look up an activated ability by flat index — registry abilities
@@ -2841,6 +2908,129 @@ mod tests {
                 | crate::actions::AdditionalCostPayment::AddCounters { .. })),
             "min_self_counters is a precondition, not a cost — \
              no counter payment should be emitted");
+    }
+
+    // --- choice-bearing additional costs (sacrifice-other / discard) ----
+
+    /// A creature with `{T}, Sacrifice another creature: …` — the
+    /// sacrifice cost is a chosen OTHER creature, not the source.
+    fn register_sac_another_creature_stub(reg: &mut CardRegistry) -> CardId {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::targets::ObjectFilter;
+        let name = reg.interner_mut().intern("Carrion Feeder Stub");
+        reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Sacrifice another creature: +1/+1.".into(),
+                    cost: ActivationCost {
+                        sacrifice_other: Some(ObjectFilter {
+                            types: Some(TypeLine::CREATURE.into()),
+                            ..ObjectFilter::default()
+                        }),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        )
+    }
+
+    #[test]
+    fn sacrifice_other_enumerates_one_action_per_candidate_excluding_source() {
+        let mut reg = CardRegistry::new();
+        let cid = register_sac_another_creature_stub(&mut reg);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        // Two other creatures controlled by the activator → two sac choices.
+        let other_a = put(&mut s, 0, Zone::Battlefield, creature_chars(2,2));
+        let other_b = put(&mut s, 0, Zone::Battlefield, creature_chars(3,3));
+        // An opponent creature must NOT be a sacrifice candidate.
+        let _opp = put(&mut s, 1, Zone::Battlefield, creature_chars(4,4));
+
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert_eq!(acts.len(), 2, "one activation per other creature controlled");
+        let mut sacrificed: Vec<ObjectId> = acts.iter().filter_map(|a| {
+            let Action::ActivateAbility { additional_costs, .. } = a else { return None; };
+            additional_costs.iter().find_map(|c| match c {
+                crate::actions::AdditionalCostPayment::Sacrifice(s) => Some(*s),
+                _ => None,
+            })
+        }).collect();
+        sacrificed.sort();
+        let mut want = vec![other_a, other_b]; want.sort();
+        assert_eq!(sacrificed, want, "the source is never a sac candidate; opp creatures excluded");
+    }
+
+    #[test]
+    fn sacrifice_other_is_illegal_with_no_other_candidates() {
+        let mut reg = CardRegistry::new();
+        let cid = register_sac_another_creature_stub(&mut reg);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        // Only the source is on the battlefield → nothing to sacrifice.
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert!(acts.is_empty(),
+            "sacrifice-another with no other creature is not activatable");
+    }
+
+    #[test]
+    fn discard_other_enumerates_one_action_per_hand_card() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::targets::ObjectFilter;
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Discard Engine Stub");
+        let cid = reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Discard a card: +1/+1.".into(),
+                    cost: ActivationCost {
+                        discard_other: Some(ObjectFilter::default()),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        );
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        // Two cards in hand → two discard choices.
+        let h1 = put(&mut s, 0, Zone::Hand(0), creature_chars(2,2));
+        let h2 = put(&mut s, 0, Zone::Hand(0), creature_chars(3,3));
+
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert_eq!(acts.len(), 2, "one activation per discardable hand card");
+        let mut discarded: Vec<ObjectId> = acts.iter().filter_map(|a| {
+            let Action::ActivateAbility { additional_costs, .. } = a else { return None; };
+            additional_costs.iter().find_map(|c| match c {
+                crate::actions::AdditionalCostPayment::Discard(d) => Some(*d),
+                _ => None,
+            })
+        }).collect();
+        discarded.sort();
+        let mut want = vec![h1, h2]; want.sort();
+        assert_eq!(discarded, want);
     }
 
     // --- intrinsic activations on tokens (commodity-token plumbing) -----
