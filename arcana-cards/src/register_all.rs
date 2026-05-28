@@ -502,6 +502,10 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::znr::sneaking_guide::register(reg); n += 1;
     crate::znr::seafloor_stalker::register(reg); n += 1;
     crate::znr::teeterpeak_ambusher::register(reg); n += 1;
+    crate::znr::glasspool_mimic_glasspool_shore::register(reg); n += 1;
+    crate::znr::blackbloom_rogue_blackbloom_bog::register(reg); n += 1;
+    crate::znr::kazandu_mammoth_kazandu_valley::register(reg); n += 1;
+    crate::znr::akoum_warrior_akoum_teeth::register(reg); n += 1;
     // --- apc ---
     crate::apc::fire_ice::register(reg); n += 1;
     crate::apc::gaea_s_skyfolk::register(reg); n += 1;
@@ -3320,6 +3324,13 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::stx::blood_age_general::register(reg); n += 1;
     crate::stx::wormhole_serpent::register(reg); n += 1;
     crate::stx::soothsayer_adept::register(reg); n += 1;
+    crate::stx::plargg_dean_of_chaos_augusta_dean_of_order::register(reg); n += 1;
+    crate::stx::valentin_dean_of_the_vein_lisette_dean_of_the_root::register(reg); n += 1;
+    crate::stx::uvilda_dean_of_perfection_nassari_dean_of_expression::register(reg); n += 1;
+    crate::stx::augmenter_pugilist_echoing_equation::register(reg); n += 1;
+    crate::stx::shaile_dean_of_radiance_embrose_dean_of_shadow::register(reg); n += 1;
+    crate::stx::jadzi_oracle_of_arcavios_journey_to_the_oracle::register(reg); n += 1;
+    crate::stx::selfless_glyphweaver_deadly_vanity::register(reg); n += 1;
     // --- ori ---
     crate::ori::cobblebrute::register(reg); n += 1;
     crate::ori::vastwood_gorger::register(reg); n += 1;
@@ -4314,6 +4325,9 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::khm::showdown_of_the_skalds::register(reg); n += 1;
     crate::khm::forging_the_tyrite_sword::register(reg); n += 1;
     crate::khm::the_bears_of_littjara::register(reg); n += 1;
+    crate::khm::kolvori_god_of_kinship_the_ringhart_crest::register(reg); n += 1;
+    crate::khm::esika_god_of_the_tree_the_prismatic_bridge::register(reg); n += 1;
+    crate::khm::reidane_god_of_the_worthy_valkmira_protector_s_shield::register(reg); n += 1;
     // --- dmc ---
     crate::dmc::fusion_elemental::register(reg); n += 1;
     crate::dmc::echoing_truth::register(reg); n += 1;

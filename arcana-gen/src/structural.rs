@@ -102,7 +102,16 @@ impl Expected {
     pub fn from_row(row: &DumpRow, oracle: &str) -> Self {
         let tp = type_part(&row.type_line);
         let has = |t: &str| tp.contains(t);
-        let trig_lines = trigger_lines(oracle);
+        // For multi-face shapes whose registered base is the front
+        // face (Adventure / MDFC), the generated card implements only
+        // the front face — the back/adventure half is an
+        // `AlternateFace` (or GAP'd engine debt). The joined oracle
+        // carries BOTH faces' text (separated by `\n---\n`), so
+        // deriving trigger expectations from the whole thing would
+        // demand triggers the front-face card legitimately doesn't
+        // carry. Scope the trigger derivation to the front face.
+        let trig_source = front_face_oracle(row.shape.as_deref(), oracle);
+        let trig_lines = trigger_lines(&trig_source);
 
         let color = |c: &str| row.colors.iter().any(|x| x == c);
 
@@ -154,6 +163,26 @@ impl DumpRow {
     fn is_creature_row(&self) -> bool {
         type_part(&self.type_line).contains("Creature")
     }
+}
+
+/// The portion of the oracle text the registered base face is
+/// responsible for. For Adventure / MDFC the joined oracle carries
+/// both faces separated by `\n---\n` (see
+/// `Card::effective_oracle_text`); the generated card implements only
+/// the front face, so trigger expectations must be derived from the
+/// front-face text alone. Single-face shapes return the oracle
+/// unchanged.
+fn front_face_oracle(shape: Option<&str>, oracle: &str) -> String {
+    let is_front_face_base = matches!(
+        shape,
+        Some("AdventureCreature") | Some("ModalDfcCreature"),
+    );
+    if is_front_face_base {
+        if let Some((front, _back)) = oracle.split_once("\n---\n") {
+            return front.to_string();
+        }
+    }
+    oracle.to_string()
 }
 
 /// The base-characteristics name the engine registers for this card,

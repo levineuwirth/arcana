@@ -41,3 +41,7 @@ pub mod sea_gate_banneret;
 pub mod sneaking_guide;
 pub mod seafloor_stalker;
 pub mod teeterpeak_ambusher;
+pub mod glasspool_mimic_glasspool_shore;
+pub mod blackbloom_rogue_blackbloom_bog;
+pub mod kazandu_mammoth_kazandu_valley;
+pub mod akoum_warrior_akoum_teeth;

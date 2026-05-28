@@ -80,3 +80,6 @@ pub mod a_harald_unites_the_elves;
 pub mod showdown_of_the_skalds;
 pub mod forging_the_tyrite_sword;
 pub mod the_bears_of_littjara;
+pub mod kolvori_god_of_kinship_the_ringhart_crest;
+pub mod esika_god_of_the_tree_the_prismatic_bridge;
+pub mod reidane_god_of_the_worthy_valkmira_protector_s_shield;
