@@ -1752,6 +1752,20 @@ fn apply_choice_follow_up(
                 let _ = state.discard_object(player, *id, MoveCause::Cost);
             }
         }
+        ChoiceFollowUp::DigTopFinish { player, looked_at, rest } => {
+            // The picked card (0 or 1) goes to hand; everything else
+            // the player looked at goes to `rest`. `chosen` is a
+            // subset of `looked_at`.
+            for id in chosen {
+                state.move_object_to_zone(
+                    *id, Zone::Hand(player), MoveCause::SpellResolution);
+            }
+            let rest_ids: Vec<ObjectId> = looked_at.iter()
+                .copied()
+                .filter(|id| !chosen.contains(id))
+                .collect();
+            crate::effects::apply_dig_rest(state, player, &rest_ids, rest);
+        }
         ChoiceFollowUp::ApplyTargetsToStackEntry { .. } => {
             // PickCards path can never produce this follow-up (it pairs
             // with ChooseTargets responses, dispatched separately).
@@ -8169,6 +8183,65 @@ mod tests {
             types: TypeLine::LAND.into(),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn dig_top_finish_moves_pick_to_hand_and_rest_to_bottom() {
+        use crate::actions::ChoiceFollowUp;
+        use crate::effects::DigRest;
+        use crate::zones::Zone;
+        let mut s = GameState::new(2, 0);
+        // Library: [a, b, c, d, e]. Dig looked at the top 3 [a,b,c],
+        // player picks b for hand; a and c go to the bottom.
+        let ids = seed_library(&mut s, 0, vec![
+            Characteristics::default(), Characteristics::default(),
+            Characteristics::default(), Characteristics::default(),
+            Characteristics::default(),
+        ]);
+        let (a, b, c) = (ids[0], ids[1], ids[2]);
+        apply_choice_follow_up(
+            &mut s,
+            ChoiceFollowUp::DigTopFinish {
+                player: 0,
+                looked_at: vec![a, b, c],
+                rest: DigRest::BottomRandom,
+            },
+            &[b],
+        );
+        // b is in hand.
+        let in_hand = s.objects.iter()
+            .filter(|o| matches!(o.zone, Zone::Hand(0))).count();
+        assert_eq!(in_hand, 1, "the picked card went to hand");
+        // Library still has 4 cards: d, e on top (untouched), then a, c
+        // swept to the bottom (b was removed to hand).
+        let lib = &s.player(0).library_top_to_bottom;
+        assert_eq!(lib.len(), 4);
+        assert_eq!(&lib[..2], &[ids[3], ids[4]], "untouched cards stay on top");
+        let bottom: std::collections::HashSet<_> = lib[2..].iter().copied().collect();
+        assert_eq!(bottom, [a, c].into_iter().collect(),
+            "unchosen looked-at cards swept to the bottom");
+    }
+
+    #[test]
+    fn dig_top_finish_with_empty_pick_sweeps_everything() {
+        use crate::actions::ChoiceFollowUp;
+        use crate::effects::DigRest;
+        let mut s = GameState::new(2, 0);
+        let ids = seed_library(&mut s, 0, vec![
+            Characteristics::default(), Characteristics::default(),
+        ]);
+        // Declined the optional take — both go to the bottom, none to hand.
+        apply_choice_follow_up(
+            &mut s,
+            ChoiceFollowUp::DigTopFinish {
+                player: 0, looked_at: ids.clone(), rest: DigRest::BottomRandom,
+            },
+            &[],
+        );
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 2);
+        let in_hand = s.objects.iter()
+            .filter(|o| matches!(o.zone, crate::zones::Zone::Hand(0))).count();
+        assert_eq!(in_hand, 0, "declining the take puts nothing in hand");
     }
 
     fn cmc1_instant_chars() -> Characteristics {

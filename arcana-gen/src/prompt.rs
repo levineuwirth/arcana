@@ -501,6 +501,7 @@ Card flow (no target — player is `{BINDING}.controller` or a target player):
 - `Effect::DrawCards { player: p, count: u32 }`
 - `Effect::Discard { player: p, count: u32, choice: DiscardChoice::ControllerChooses }`  (or `::OpponentChooses` / `::Random`)
 - `Effect::Mill { player: p, count: u32 }`  ·  `Effect::Surveil { player: p, count: u32 }`  ·  `Effect::Scry { player: p, count: u32 }`
+- `Effect::DigTopN { player: p, count: u32, filter: Option<ObjectFilter>, rest: DigRest }`  — "Look at the top N cards of your library. You may put one [card matching filter] into your hand. Put the rest [per rest]." The canonical impulse / dig. The chosen card always goes to hand; `filter: None` means any card is takeable, else build an `ObjectFilter` (e.g. `Some(ObjectFilter { types: Some(TypeLine::CREATURE.into()), ..ObjectFilter::default() })` for "a creature card"). `rest` is `DigRest::BottomRandom` ("put the rest on the bottom in a random order" — the common tail) or `DigRest::Graveyard` ("the rest into your graveyard"). Import `DigRest` from `arcana_core::effects`, `ObjectFilter` from `arcana_core::targets`. Single-take only — "put TWO into your hand" is not expressible. Use this for "look at the top N, ... into your hand" instead of GAP-ing.
 
 Life:
 - `Effect::GainLife { player: p, amount: u32 }`  ·  `Effect::LoseLife { player: p, amount: u32 }`
@@ -742,6 +743,7 @@ Card flow (no target — player is `entry.controller` or a target player):
 - `Effect::Discard {{ player: p, count: u32, choice: DiscardChoice::ControllerChooses }}`  (or `::OpponentChooses` / `::Random` — pick per oracle text; 'that player discards' → the target player)
 - `Effect::Mill {{ player: p, count: u32 }}`
 - `Effect::Surveil {{ player: p, count: u32 }}`  ·  `Effect::Scry {{ player: p, count: u32 }}`
+- `Effect::DigTopN {{ player: p, count: u32, filter: Option<ObjectFilter>, rest: DigRest }}`  — 'Look at the top N cards of your library. You may put one [matching filter] into your hand. Put the rest [per rest].' The chosen card always goes to hand; `filter: None` = any card, else an `ObjectFilter` (`Some(ObjectFilter {{ types: Some(TypeLine::CREATURE.into()), ..ObjectFilter::default() }})` for 'a creature card'). `rest` is `DigRest::BottomRandom` or `DigRest::Graveyard`. Import `DigRest` from `arcana_core::effects`. Single-take only. Use this for 'look at the top N ... into your hand' rather than GAP-ing.
 
 Life:
 - `Effect::GainLife {{ player: p, amount: u32 }}`  ·  `Effect::LoseLife {{ player: p, amount: u32 }}`

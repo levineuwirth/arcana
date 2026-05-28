@@ -139,6 +139,26 @@ pub enum Effect {
     /// rest on top. Phase 1 policy: mill everything looked at.
     /// Emits [`GameEvent::Surveil`].
     Surveil { player: PlayerId, count: u32 },
+    /// "Look at the top `count` cards of your library. You may put one
+    /// [matching `filter`] into your hand. Put the rest [per `rest`]."
+    /// The canonical impulse / dig effect (Esika's back, many
+    /// adventure / explore payoffs). The chosen card always goes to
+    /// the player's hand; the unchosen looked-at cards go where `rest`
+    /// says. `filter: None` means any card is takeable.
+    ///
+    /// Pushes a [`crate::actions::ChoiceKind::PickCards`] `{min:0,
+    /// max:1}` over the filter-matching subset and a
+    /// [`crate::actions::ChoiceFollowUp::DigTopFinish`] that moves the
+    /// pick to hand and sweeps the rest. If nothing matches the
+    /// filter, no choice is pushed and all looked-at cards go to
+    /// `rest` immediately. Multi-card takes ("put TWO into your
+    /// hand") are not modeled by this single-pick effect.
+    DigTopN {
+        player: PlayerId,
+        count: u32,
+        filter: Option<ObjectFilter>,
+        rest: DigRest,
+    },
 
     // --- tokens / copies ---------------------------------------------------
     CreateToken { controller: PlayerId, token: TokenDefinition },
@@ -785,6 +805,9 @@ impl Effect {
                     },
                 );
             }
+            Effect::DigTopN { player, count, filter, rest } => {
+                dig_top_n(state, *player, *count, filter.as_ref(), *rest);
+            }
 
             // --- tokens / copies -----------------------------------------
             Effect::CreateToken { controller, token } => {
@@ -1369,6 +1392,19 @@ pub struct TokenDefinition {
     pub toughness: Option<PtValue>,
     pub keywords: Vec<KeywordAbility>,
     pub abilities: Vec<crate::triggers::TriggeredAbilityDef>,
+}
+
+/// Where the unchosen looked-at cards of an [`Effect::DigTopN`] go
+/// once the player has (optionally) taken one to hand.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DigRest {
+    /// "…put the rest on the bottom of your library in a random
+    /// order." The dominant impulse-dig tail (Esika, most "look at
+    /// the top N" cards).
+    BottomRandom,
+    /// "…put the rest into your graveyard." (e.g. "reveal the top N,
+    /// put a land into your hand, the rest into your graveyard".)
+    Graveyard,
 }
 
 /// Canonical commodity-token kinds whose printed activated abilities
@@ -2412,6 +2448,87 @@ pub(crate) fn cascade_shuffle_to_bottom(
         // Library appends. Since we're iterating in shuffle order,
         // the final order respects the shuffle.
         let _ = new_id;
+    }
+}
+
+/// [`Effect::DigTopN`] — look at the top `count` cards, push a
+/// `{0,1}` pick over the filter-matching subset (chosen → hand), and
+/// stash a [`crate::actions::ChoiceFollowUp::DigTopFinish`] to sweep
+/// the rest. If nothing matches, sweep all looked-at cards
+/// immediately (no choice).
+fn dig_top_n(
+    state: &mut GameState,
+    player: PlayerId,
+    count: u32,
+    filter: Option<&ObjectFilter>,
+    rest: DigRest,
+) {
+    if !valid_player(state, player) || count == 0 { return; }
+    let lib_len = state.player(player).library_top_to_bottom.len();
+    let actual = (count as usize).min(lib_len);
+    if actual == 0 { return; }
+    let looked_at: Vec<ObjectId> = state.player(player)
+        .library_top_to_bottom.iter().take(actual).copied().collect();
+    let candidates: Vec<ObjectId> = match filter {
+        None => looked_at.clone(),
+        Some(f) => looked_at.iter().copied()
+            .filter(|id| state.objects.get(*id)
+                .is_some_and(|o| f.matches(o, state, player)))
+            .collect(),
+    };
+    if candidates.is_empty() {
+        // Nothing takeable — the whole look-at set goes to `rest`.
+        apply_dig_rest(state, player, &looked_at, rest);
+        return;
+    }
+    let stack_entry = state.currently_resolving
+        .expect("Effect::DigTopN must execute inside a stack resolution");
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::DigTopFinish {
+            player, looked_at, rest,
+        });
+    state.push_pending_choice(
+        player,
+        crate::actions::ChoiceContext::ResolvingStack(stack_entry),
+        crate::actions::ChoiceKind::PickCards {
+            candidates, min: 0, max: 1,
+        },
+    );
+}
+
+/// Sweep the unchosen looked-at cards of a dig to their `rest`
+/// destination. For [`DigRest::BottomRandom`] the cards never left
+/// the library zone, so this reorders `library_top_to_bottom`
+/// directly (seeded shuffle); for [`DigRest::Graveyard`] each is
+/// moved out via the standard zone-mover so graveyard triggers fire.
+pub(crate) fn apply_dig_rest(
+    state: &mut GameState,
+    player: PlayerId,
+    rest_ids: &[ObjectId],
+    rest: DigRest,
+) {
+    if rest_ids.is_empty() { return; }
+    match rest {
+        DigRest::BottomRandom => {
+            use rand::seq::SliceRandom;
+            use rand::SeedableRng;
+            let mut order: Vec<ObjectId> = rest_ids.to_vec();
+            let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(
+                state.rng_seed.wrapping_add(player as u64 + 0xD1));
+            state.rng_seed = state.rng_seed.wrapping_add(1);
+            order.shuffle(&mut rng);
+            let lib = &mut state.player_mut(player).library_top_to_bottom;
+            lib.retain(|id| !rest_ids.contains(id));
+            lib.extend(order);
+        }
+        DigRest::Graveyard => {
+            for id in rest_ids {
+                let owner = state.objects.get(*id).map(|o| o.owner).unwrap_or(player);
+                state.move_object_to_zone(
+                    *id, Zone::Graveyard(owner),
+                    crate::events::MoveCause::SpellResolution);
+            }
+        }
     }
 }
 
@@ -3539,6 +3656,96 @@ mod tests {
         assert!(s.pending_choice.is_none());
         assert!(s.event_log.iter().any(|e|
             matches!(e, GameEvent::Surveil { player: 0, count: 0 })));
+    }
+
+    // --- DigTopN (impulse / look-at-top) ------------------------------------
+
+    /// Seed a library where the top `n_creatures` cards are creatures
+    /// and the rest are plain (typeless) cards, for filter tests.
+    fn seed_library_typed(s: &mut GameState, p: PlayerId, n_creatures: u32, n_other: u32)
+        -> Vec<ObjectId>
+    {
+        let mut ids = Vec::new();
+        for i in 0..(n_creatures + n_other) {
+            let id = s.allocate_object_id();
+            let mut chars = Characteristics::default();
+            if i < n_creatures {
+                chars.types = TypeLine::CREATURE.into();
+            }
+            let obj = GameObject::new(id, p, Zone::Library(p), 0, chars);
+            s.objects.insert(obj);
+            s.player_mut(p).library_top_to_bottom.push(id);
+            ids.push(id);
+        }
+        ids
+    }
+
+    #[test]
+    fn dig_top_n_pushes_pick_over_filter_matching_subset() {
+        use crate::actions::{ChoiceKind, ChoiceFollowUp};
+        use crate::targets::ObjectFilter;
+        let mut s = GameState::new(2, 0);
+        // Top 4: 2 creatures, 2 other.
+        let ids = seed_library_typed(&mut s, 0, 2, 2);
+        s.currently_resolving = Some(999);
+        Effect::DigTopN {
+            player: 0,
+            count: 4,
+            filter: Some(ObjectFilter { types: Some(TypeLine::CREATURE.into()),
+                ..ObjectFilter::default() }),
+            rest: DigRest::BottomRandom,
+        }.execute(&mut s);
+
+        let pc = s.pending_choice.as_ref().expect("dig pushes a pick");
+        match &pc.kind {
+            ChoiceKind::PickCards { candidates, min, max } => {
+                assert_eq!(*min, 0, "the take is optional");
+                assert_eq!(*max, 1);
+                assert_eq!(candidates, &ids[..2],
+                    "only the creature cards in the top 4 are takeable");
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        }
+        assert!(matches!(s.pending_choice_follow_up,
+            Some(ChoiceFollowUp::DigTopFinish { player: 0, .. })));
+    }
+
+    #[test]
+    fn dig_top_n_with_no_match_sweeps_all_to_rest_without_a_choice() {
+        use crate::targets::ObjectFilter;
+        let mut s = GameState::new(2, 0);
+        // Top 3 are all non-creatures; filter wants a creature → no match.
+        let ids = seed_library_typed(&mut s, 0, 0, 3);
+        s.currently_resolving = Some(999);
+        Effect::DigTopN {
+            player: 0,
+            count: 3,
+            filter: Some(ObjectFilter { types: Some(TypeLine::CREATURE.into()),
+                ..ObjectFilter::default() }),
+            rest: DigRest::Graveyard,
+        }.execute(&mut s);
+        assert!(s.pending_choice.is_none(), "no takeable card → no choice");
+        // All three looked-at cards swept to the graveyard (the zone
+        // move re-ids them per CR 400.7, so count by zone, not old id).
+        let _ = &ids;
+        let in_gy = s.objects.iter()
+            .filter(|o| matches!(o.zone, Zone::Graveyard(0))).count();
+        assert_eq!(in_gy, 3, "all looked-at cards swept to the graveyard");
+        assert!(s.player(0).library_top_to_bottom.is_empty());
+    }
+
+    #[test]
+    fn apply_dig_rest_bottom_random_keeps_cards_in_library_at_the_bottom() {
+        let mut s = GameState::new(2, 0);
+        let ids = seed_library(&mut s, 0, 5);
+        // Sweep the top 2 to the bottom; cards 2..5 stay on top, 0..2 move down.
+        apply_dig_rest(&mut s, 0, &ids[..2], DigRest::BottomRandom);
+        let lib = &s.player(0).library_top_to_bottom;
+        assert_eq!(lib.len(), 5, "no cards left the library");
+        assert_eq!(&lib[..3], &ids[2..5], "the untouched cards stay on top");
+        // The two swept cards are now the bottom two (order is seeded-random).
+        let bottom: std::collections::HashSet<_> = lib[3..].iter().copied().collect();
+        assert_eq!(bottom, ids[..2].iter().copied().collect());
     }
 
     // --- counters -----------------------------------------------------------

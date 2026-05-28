@@ -670,6 +670,16 @@ pub enum ChoiceFollowUp {
     /// Discard each picked card from hand (move to graveyard, emit
     /// [`crate::events::GameEvent::Discarded`]).
     Discard { player: PlayerId },
+    /// Pair with the `{0,1}` [`ChoiceKind::PickCards`] pushed by
+    /// [`crate::effects::Effect::DigTopN`]: move the picked card (if
+    /// any) to `player`'s hand, then sweep the remaining `looked_at`
+    /// cards to their `rest` destination. `looked_at` is the full
+    /// top-N set the player saw; the dispatcher subtracts the pick.
+    DigTopFinish {
+        player: PlayerId,
+        looked_at: Vec<ObjectId>,
+        rest: crate::effects::DigRest,
+    },
     /// Pair with a [`ChoiceKind::ChooseTargets`] response: overwrite
     /// the named stack entry's `targets` with the answered selection.
     /// Used by storm copies and by `Effect::CopySpell` to attach
