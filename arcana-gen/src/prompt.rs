@@ -225,15 +225,11 @@ fn format_compile_error(err: &CompileError) -> String {
 }
 
 fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
-    // Tier 4/5 are explicitly out-of-scope for the classifier; refuse
-    // before any typed-card pre-dispatch so the out-of-scope contract
-    // is preserved (see `retry_prompt_respects_unsupported_shapes`).
-    if matches!(tier, Tier::Four | Tier::Five) {
-        return Err(Unsupported::TierOutOfScope(tier));
-    }
     // Typed-card layouts take precedence over tier-based routing —
     // these cards need their own prompt regardless of how the
-    // classifier scored their oracle text.
+    // classifier scored their oracle text (they often score as
+    // Tier::Four "multiple ability lines" because every chapter /
+    // level / level-up clause counts as an ability line).
     if card.is_adventure_layout() && card.is_creature() {
         return Ok(PromptShape::AdventureCreature);
     }
@@ -248,6 +244,13 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
     }
     if card.is_battle() {
         return Ok(PromptShape::Battle);
+    }
+    // Tier 4/5 are explicitly out-of-scope for the classifier; refuse
+    // AFTER the typed-card layout dispatch so Saga/Class/Battle
+    // (which would otherwise score as Tier::Four on multi-line text)
+    // still route to their proper prompts.
+    if matches!(tier, Tier::Four | Tier::Five) {
+        return Err(Unsupported::TierOutOfScope(tier));
     }
     match tier {
         Tier::One => {
@@ -1630,11 +1633,17 @@ mod tests {
 
     #[test]
     fn retry_prompt_respects_unsupported_shapes() {
-        // A retry for an out-of-scope card is still Unsupported.
+        // A retry for an out-of-scope card (Tier::Four/Five) is still
+        // Unsupported. Use a planeswalker rather than a typed-card
+        // layout: Battle / Saga / Class are now layout-dispatched
+        // BEFORE the tier guard, so they would route to their typed
+        // prompt regardless of tier.
         let c = mk_card(|c| {
-            c.name = "Some Battle".into();
-            c.type_line = "Battle — Siege".into();
-            c.oracle_text = Some("Nothing important".into());
+            c.name = "Some Planeswalker".into();
+            c.type_line = "Legendary Planeswalker — Test".into();
+            c.loyalty = Some("4".into());
+            c.oracle_text = Some(
+                "+1: Do a thing.\n-2: Do another thing.".into());
         });
         let prev = PreviousAttempt { code: "", errors: &[] };
         assert!(render_retry_prompt(&c, Tier::Four, &prev).is_err());

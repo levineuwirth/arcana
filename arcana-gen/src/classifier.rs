@@ -130,11 +130,14 @@ pub fn classify(card: &Card) -> Classification {
 /// land.
 fn unsupported_layout(c: &Card) -> Option<&str> {
     match c.layout.as_str() {
-        // Supported today: normal, split, adventure, modal_dfc.
-        "normal" | "split" | "adventure" | "modal_dfc" => None,
+        // Supported today: normal, split, adventure, modal_dfc, plus
+        // saga / class / battle now that the typed-card subsystems
+        // and the corresponding SBAs / counter kinds are in.
+        "normal" | "split" | "adventure" | "modal_dfc"
+        | "saga" | "class" | "battle" => None,
 
-        // Deferred per SBA 704.5s–u or never-implemented.
-        "meld" | "leveler" | "class" | "saga" | "battle" | "flip" | "planar"
+        // Still deferred / never-implemented.
+        "meld" | "leveler" | "flip" | "planar"
         | "scheme" | "vanguard" | "augment" | "host" | "transform" | "case"
         // Non-card placeholders (tokens on the card-face list, emblem rows,
         // art-only entries). We shouldn't classify these at all — they
