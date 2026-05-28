@@ -20,3 +20,4 @@ pub mod carnival_barker;
 pub mod t_a_p_p_e_r;
 pub mod sole_performer;
 pub mod greatest_show_in_the_multiverse;
+pub mod omniclown_colossus_pie_roclasm;

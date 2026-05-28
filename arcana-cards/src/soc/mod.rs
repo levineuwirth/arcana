@@ -47,3 +47,5 @@ pub mod kami_of_ancient_law;
 pub mod millikin;
 pub mod elvish_mystic;
 pub mod priest_of_forgotten_gods;
+pub mod elusive_otter_grove_s_bounty;
+pub mod brazen_borrower_petty_theft;

@@ -12,3 +12,4 @@ pub mod vault_21_house_gambit;
 pub mod vault_12_the_necropolis;
 pub mod vault_75_middle_school;
 pub mod vault_101_birthday_party;
+pub mod james_wandering_dad_follow_him;

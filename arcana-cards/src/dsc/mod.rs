@@ -21,3 +21,4 @@ pub mod gray_merchant_of_asphodel;
 pub mod citanul_hierophants;
 pub mod kaervek_the_merciless;
 pub mod the_eldest_reborn;
+pub mod beanstalk_giant_fertile_footsteps;

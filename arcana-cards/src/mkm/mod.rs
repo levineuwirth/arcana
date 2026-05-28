@@ -47,3 +47,4 @@ pub mod novice_inspector;
 pub mod cornered_crook;
 pub mod agency_coroner;
 pub mod repeat_offender;
+pub mod kellan_inquisitive_prodigy_tail_the_suspect;

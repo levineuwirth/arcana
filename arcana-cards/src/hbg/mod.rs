@@ -41,3 +41,7 @@ pub mod a_dragonborn_looter;
 pub mod wyll_of_the_fiend_pact;
 pub mod vladimir_and_godfrey;
 pub mod kobold_warcaller;
+pub mod a_young_blue_dragon_a_sand_augury;
+pub mod a_emerald_dragon_a_dissonant_wave;
+pub mod a_young_red_dragon_a_bathe_in_gold;
+pub mod a_blessed_hippogriff_a_tyr_s_blessing;

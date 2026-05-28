@@ -22,3 +22,7 @@ pub mod vulpine_harvester;
 pub mod phyrexian_ghoul;
 pub mod feldon_of_the_third_path;
 pub mod phyrexian_scriptures;
+pub mod foulmire_knight_profane_insight;
+pub mod smitten_swordmaster_curry_favor;
+pub mod order_of_midnight_alter_fate;
+pub mod murderous_rider_swift_end;
