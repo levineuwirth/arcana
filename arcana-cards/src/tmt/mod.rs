@@ -32,3 +32,7 @@ pub mod mikey_leo_chaos_order;
 pub mod raph_leo_sibling_rivals;
 pub mod courier_of_comestibles;
 pub mod zoo_escapees;
+pub mod tunnel_rats;
+pub mod purple_dragon_punks;
+pub mod the_last_ronin;
+pub mod the_cloning_of_shredder;

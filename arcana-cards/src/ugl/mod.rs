@@ -6,3 +6,6 @@ pub mod double_play;
 pub mod double_cross;
 pub mod lexivore;
 pub mod hungry_hungry_heifer;
+pub mod deadhead;
+pub mod goblin_bookie;
+pub mod jalum_grifter;

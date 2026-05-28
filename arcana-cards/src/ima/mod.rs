@@ -19,3 +19,8 @@ pub mod elusive_spellfist;
 pub mod student_of_ojutai;
 pub mod bala_ged_scorpion;
 pub mod sultai_flayer;
+pub mod cephalid_broker;
+pub mod blinding_mage;
+pub mod manakin;
+pub mod infantry_veteran;
+pub mod rosheen_meanderer;

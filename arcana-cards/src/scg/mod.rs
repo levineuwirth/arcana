@@ -8,3 +8,5 @@ pub mod aphetto_runecaster;
 pub mod vengeful_dead;
 pub mod kurgadon;
 pub mod daru_spiritualist;
+pub mod consumptive_goo;
+pub mod bonethorn_valesk;

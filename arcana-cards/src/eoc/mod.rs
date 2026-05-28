@@ -12,3 +12,5 @@ pub mod loamcrafter_faun;
 pub mod jhoira_weatherlight_captain;
 pub mod surge_conductor;
 pub mod mayhem_devil;
+pub mod steel_overseer;
+pub mod groundskeeper;

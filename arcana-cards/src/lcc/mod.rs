@@ -24,3 +24,8 @@ pub mod pitiless_plunderer;
 pub mod surgespanner;
 pub mod sunfrill_imitator;
 pub mod verdant_sun_s_avatar;
+pub mod raging_regisaur;
+pub mod kiora_s_follower;
+pub mod vorel_of_the_hull_clade;
+pub mod master_of_dark_rites;
+pub mod king_narfi_s_betrayal;

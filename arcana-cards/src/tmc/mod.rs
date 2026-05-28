@@ -11,3 +11,4 @@ pub mod april_o_neil_human_element;
 pub mod foe_liage;
 pub mod irma_part_time_mutant;
 pub mod mona_lisa_ever_adaptable;
+pub mod tempestra_dame_of_games;

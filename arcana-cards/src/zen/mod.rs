@@ -28,3 +28,6 @@ pub mod kor_outfitter;
 pub mod ondu_cleric;
 pub mod highland_berserker;
 pub mod ruinous_minotaur;
+pub mod greenweaver_druid;
+pub mod kalitas_bloodchief_of_ghet;
+pub mod sea_gate_loremaster;

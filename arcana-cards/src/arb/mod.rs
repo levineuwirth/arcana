@@ -19,3 +19,4 @@ pub mod vedalken_heretic;
 pub mod leonin_armorguard;
 pub mod godtracker_of_jund;
 pub mod mycoid_shepherd;
+pub mod vectis_dominator;

@@ -8,3 +8,6 @@ pub mod aether_adept;
 pub mod highway_robber;
 pub mod crosstown_courier;
 pub mod leyline_phantom;
+pub mod putrid_leech;
+pub mod stonefare_crocodile;
+pub mod chronomaton;

@@ -23,3 +23,6 @@ pub mod haazda_snare_squad;
 pub mod blaze_commando;
 pub mod scion_of_vitu_ghazi;
 pub mod boros_battleshaper;
+pub mod beetleform_mage;
+pub mod feral_animist;
+pub mod maw_of_the_obzedat;

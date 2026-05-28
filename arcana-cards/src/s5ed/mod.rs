@@ -8,3 +8,8 @@ pub mod truce;
 pub mod reef_pirates;
 pub mod murk_dwellers;
 pub mod tarpan;
+pub mod homarid_warrior;
+pub mod dwarven_warriors;
+pub mod sorceress_queen;
+pub mod frozen_shade;
+pub mod initiates_of_the_ebon_hand;

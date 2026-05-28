@@ -22,3 +22,6 @@ pub mod howl_of_the_night_pack;
 pub mod fleshpulper_giant;
 pub mod advocate_of_the_beast;
 pub mod master_of_diversion;
+pub mod stonehorn_chanter;
+pub mod brindle_boar;
+pub mod vampire_warlord;

@@ -13,3 +13,6 @@ pub mod oblivion_sower;
 pub mod murmuring_mystic;
 pub mod edric_spymaster_of_trest;
 pub mod hostage_taker;
+pub mod captivating_crew;
+pub mod humble_defector;
+pub mod the_mending_of_dominaria;

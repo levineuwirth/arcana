@@ -9,3 +9,4 @@ pub mod tattered_mummy;
 pub mod salvager_of_secrets;
 pub mod fiend_binder;
 pub mod gavony_unhallowed;
+pub mod accursed_horde;

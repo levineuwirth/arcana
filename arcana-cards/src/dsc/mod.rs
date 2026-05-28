@@ -18,3 +18,6 @@ pub mod fate_unraveler;
 pub mod blood_seeker;
 pub mod ondu_spiritdancer;
 pub mod gray_merchant_of_asphodel;
+pub mod citanul_hierophants;
+pub mod kaervek_the_merciless;
+pub mod the_eldest_reborn;

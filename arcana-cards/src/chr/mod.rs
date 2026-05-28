@@ -2,3 +2,7 @@
 pub mod keepers_of_the_faith;
 pub mod war_elephant;
 pub mod wall_of_heat;
+pub mod giant_slug;
+pub mod sentinel;
+pub mod shimian_night_stalker;
+pub mod goblin_artisans;

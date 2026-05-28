@@ -9,3 +9,4 @@ pub mod certain_death;
 pub mod raise_dead;
 pub mod wing_snare;
 pub mod stealer_of_secrets;
+pub mod rootwalla;

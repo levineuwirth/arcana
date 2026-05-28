@@ -26,3 +26,5 @@ pub mod beetleback_chief;
 pub mod eshki_temur_s_roar;
 pub mod goldnight_commander;
 pub mod guttersnipe;
+pub mod reassembling_skeleton;
+pub mod mindblade_render;

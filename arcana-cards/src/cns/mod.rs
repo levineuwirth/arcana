@@ -15,3 +15,8 @@ pub mod selvala_s_charge;
 pub mod rousing_of_souls;
 pub mod bite_of_the_black_rose;
 pub mod howling_wolf;
+pub mod flaring_flame_kin;
+pub mod magus_of_the_mirror;
+pub mod heckling_fiends;
+pub mod grixis_illusionist;
+pub mod dimir_doppelganger;

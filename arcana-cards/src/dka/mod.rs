@@ -12,3 +12,6 @@ pub mod skillful_lunge;
 pub mod sudden_disappearance;
 pub mod wrack_with_madness;
 pub mod death_s_caress;
+pub mod deranged_outcast;
+pub mod skirsdag_flayer;
+pub mod beguiler_of_wills;

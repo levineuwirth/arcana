@@ -8,3 +8,7 @@ pub mod wild_beastmaster;
 pub mod trostani_s_summoner;
 pub mod kessig_cagebreakers;
 pub mod victory_s_envoy;
+pub mod havengul_runebinder;
+pub mod cleaver_skaab;
+pub mod spark_reaper;
+pub mod avacyn_s_pilgrim;

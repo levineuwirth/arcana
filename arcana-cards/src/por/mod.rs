@@ -23,3 +23,7 @@ pub mod charging_bandits;
 pub mod noxious_toad;
 pub mod undying_beast;
 pub mod serpent_assassin;
+pub mod stern_marshal;
+pub mod king_s_assassin;
+pub mod mercenary_knight;
+pub mod plant_elemental;

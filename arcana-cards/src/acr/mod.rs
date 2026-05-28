@@ -8,3 +8,8 @@ pub mod settlement_blacksmith;
 pub mod arbaaz_mir;
 pub mod brotherhood_spy;
 pub mod brotherhood_patriarch;
+pub mod assassin_initiate;
+pub mod ballad_of_the_black_flag;
+pub mod the_revelations_of_ezio;
+pub mod fall_of_the_first_civilization;
+pub mod the_aesir_escape_valhalla;

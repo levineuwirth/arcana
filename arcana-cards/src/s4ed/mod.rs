@@ -8,3 +8,7 @@ pub mod energy_tap;
 pub mod nafs_asp;
 pub mod el_hajj_j;
 pub mod abomination;
+pub mod sisters_of_the_flame;
+pub mod hurr_jackal;
+pub mod ali_baba;
+pub mod psionic_entity;

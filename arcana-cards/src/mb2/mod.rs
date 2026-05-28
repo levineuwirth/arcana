@@ -6,3 +6,5 @@ pub mod wrath_of_leknif;
 pub mod you_compleat_me;
 pub mod goblin_gang_leader;
 pub mod tenacious_pup;
+pub mod dwarven_confluencer;
+pub mod the_many_deeds_of_belzenlok;

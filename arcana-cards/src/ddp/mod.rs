@@ -8,3 +8,6 @@ pub mod forked_bolt;
 pub mod emrakul_s_hatcher;
 pub mod tajuru_archer;
 pub mod joraga_bard;
+pub mod bloodthrone_vampire;
+pub mod frontier_guide;
+pub mod bloodrite_invoker;

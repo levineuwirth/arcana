@@ -1,3 +1,22 @@
 //! WHO — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod great_intelligence_s_plan;
 pub mod renegade_silent;
+pub mod the_face_of_boe;
+pub mod the_seventh_doctor;
+pub mod zygon_infiltrator;
+pub mod genesis_of_the_daleks;
+pub mod the_flux;
+pub mod trial_of_a_time_lord;
+pub mod death_in_heaven;
+pub mod the_parting_of_the_ways;
+pub mod the_caves_of_androzani;
+pub mod the_night_of_the_doctor;
+pub mod the_eleventh_hour;
+pub mod the_curse_of_fenric;
+pub mod the_war_games;
+pub mod day_of_the_moon;
+pub mod heaven_sent;
+pub mod an_unearthly_child;
+pub mod the_girl_in_the_fireplace;
+pub mod the_day_of_the_doctor;
+pub mod city_of_death;

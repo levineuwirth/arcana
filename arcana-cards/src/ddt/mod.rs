@@ -7,3 +7,6 @@ pub mod scroll_thief;
 pub mod wake_thrasher;
 pub mod tidebinder_mage;
 pub mod foundry_street_denizen;
+pub mod goblin_tunneler;
+pub mod goblin_diplomats;
+pub mod tidal_warrior;

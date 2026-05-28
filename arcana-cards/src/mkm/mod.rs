@@ -45,3 +45,5 @@ pub mod homicide_investigator;
 pub mod rubblebelt_braggart;
 pub mod novice_inspector;
 pub mod cornered_crook;
+pub mod agency_coroner;
+pub mod repeat_offender;

@@ -2,3 +2,4 @@
 pub mod permission_denied;
 pub mod don_t_move;
 pub mod compy_swarm;
+pub mod ellie_and_alan_paleontologists;

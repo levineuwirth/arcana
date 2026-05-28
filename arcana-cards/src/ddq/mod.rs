@@ -5,3 +5,4 @@ pub mod victim_of_night;
 pub mod cathedral_sanctifier;
 pub mod elder_cathar;
 pub mod champion_of_the_parish;
+pub mod thraben_heretic;

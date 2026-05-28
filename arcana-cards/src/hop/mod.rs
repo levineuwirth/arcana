@@ -12,3 +12,7 @@ pub mod battlegate_mimic;
 pub mod bogardan_firefiend;
 pub mod nefashu;
 pub mod noxious_ghoul;
+pub mod corpse_harvester;
+pub mod shepherd_of_rot;
+pub mod helldozer;
+pub mod withered_wretch;

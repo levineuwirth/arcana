@@ -2,3 +2,6 @@
 pub mod chain_of_vapor;
 pub mod kynaios_and_tiro_of_meletis;
 pub mod armory_automaton;
+pub mod quirion_explorer;
+pub mod sylvok_explorer;
+pub mod slobad_goblin_tinkerer;

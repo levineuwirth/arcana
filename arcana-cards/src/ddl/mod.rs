@@ -4,3 +4,4 @@ pub mod ghor_clan_savage;
 pub mod shower_of_sparks;
 pub mod stand_firm;
 pub mod somberwald_vigilante;
+pub mod stun_sniper;

@@ -14,3 +14,5 @@ pub mod nadir_kraken;
 pub mod kazuul_tyrant_of_the_cliffs;
 pub mod whispering_snitch;
 pub mod ravenous_chupacabra;
+pub mod sinister_starfish;
+pub mod selvala_explorer_returned;

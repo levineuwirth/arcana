@@ -8,3 +8,6 @@ pub mod trophy_mage;
 pub mod elvish_vanguard;
 pub mod viridian_shaman;
 pub mod kujar_seedsculptor;
+pub mod barrage_ogre;
+pub mod neurok_replica;
+pub mod elvish_branchbender;

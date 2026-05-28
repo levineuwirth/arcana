@@ -39,3 +39,7 @@ pub mod teyo_s_lightshield;
 pub mod vraska_s_finisher;
 pub mod bloom_hulk;
 pub mod martyr_for_the_cause;
+pub mod soul_diviner;
+pub mod vivien_s_grizzly;
+pub mod ashiok_s_skulker;
+pub mod spellkeeper_weird;

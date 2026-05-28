@@ -35,3 +35,8 @@ pub mod cunning_survivor;
 pub mod chaos_maw;
 pub mod god_pharaoh_s_faithful;
 pub mod gilded_cerodon;
+pub mod steward_of_solidarity;
+pub mod dune_diviner;
+pub mod devotee_of_strength;
+pub mod seer_of_the_last_tomorrow;
+pub mod avid_reclaimer;

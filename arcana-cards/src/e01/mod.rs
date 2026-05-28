@@ -3,3 +3,5 @@ pub mod gorehorn_minotaurs;
 pub mod searing_spear;
 pub mod cruel_ultimatum;
 pub mod excoriate;
+pub mod gideon_s_lawkeeper;
+pub mod anointer_of_champions;

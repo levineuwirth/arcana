@@ -21,3 +21,6 @@ pub mod village_cannibals;
 pub mod armored_skaab;
 pub mod rage_thrower;
 pub mod crossway_vampire;
+pub mod darkthicket_wolf;
+pub mod kessig_wolf;
+pub mod elder_of_laurels;

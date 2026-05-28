@@ -10,3 +10,5 @@ pub mod dreamborn_muse;
 pub mod thundercloud_shaman;
 pub mod magma_giant;
 pub mod riddlekeeper;
+pub mod goblin_welder;
+pub mod bottle_gnomes;

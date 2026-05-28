@@ -13,3 +13,7 @@ pub mod farhaven_elf;
 pub mod lys_alana_huntmaster;
 pub mod kor_cartographer;
 pub mod voice_of_many;
+pub mod timberwatch_elf;
+pub mod lys_alana_scarblade;
+pub mod wirewood_channeler;
+pub mod llanowar_tribe;

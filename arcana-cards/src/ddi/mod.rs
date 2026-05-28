@@ -2,3 +2,8 @@
 pub mod vulshok_berserker;
 pub mod spire_barrage;
 pub mod cache_raiders;
+pub mod minamo_sightbender;
+pub mod lithophage;
+pub mod bloodfire_colossus;
+pub mod stone_giant;
+pub mod bloodfire_kavu;

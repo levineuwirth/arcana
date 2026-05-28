@@ -6,3 +6,4 @@ pub mod wilt_leaf_cavaliers;
 pub mod reciprocate;
 pub mod knotvine_paladin;
 pub mod alaborn_cavalier;
+pub mod henge_guardian;

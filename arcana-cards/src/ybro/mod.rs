@@ -3,3 +3,4 @@ pub mod melt_through;
 pub mod tawnos_endures;
 pub mod sylvan_smite;
 pub mod foundry_groundbreaker;
+pub mod crucias_titan_of_the_waves;

@@ -19,3 +19,6 @@ pub mod juniper_order_ranger;
 pub mod scrap_trawler;
 pub mod vodalian_wave_knight;
 pub mod vulpine_harvester;
+pub mod phyrexian_ghoul;
+pub mod feldon_of_the_third_path;
+pub mod phyrexian_scriptures;

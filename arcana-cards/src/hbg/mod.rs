@@ -36,3 +36,8 @@ pub mod alora_cheerful_assassin;
 pub mod alora_cheerful_swashbuckler;
 pub mod alora_cheerful_scout;
 pub mod hag_of_syphoned_breath;
+pub mod a_steadfast_unicorn;
+pub mod a_dragonborn_looter;
+pub mod wyll_of_the_fiend_pact;
+pub mod vladimir_and_godfrey;
+pub mod kobold_warcaller;

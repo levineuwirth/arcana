@@ -4,3 +4,4 @@ pub mod vicious_hunger;
 pub mod ravenous_rats;
 pub mod wirewood_savage;
 pub mod deathgreeter;
+pub mod drudge_skeletons;

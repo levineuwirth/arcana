@@ -4,3 +4,7 @@ pub mod fractured_identity;
 pub mod merchant_of_secrets;
 pub mod izzet_chronarch;
 pub mod taj_nar_swordsmith;
+pub mod magus_of_the_mind;
+pub mod nin_the_pain_artist;
+pub mod serendib_sorcerer;
+pub mod havengul_lich;

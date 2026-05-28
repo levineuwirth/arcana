@@ -4,3 +4,4 @@ pub mod undermine;
 pub mod hellfire_mongrel;
 pub mod slavering_nulls;
 pub mod dimir_cutpurse;
+pub mod morgue_toad;

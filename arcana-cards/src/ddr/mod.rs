@@ -6,3 +6,6 @@ pub mod demon_s_grasp;
 pub mod seek_the_horizon;
 pub mod hideous_end;
 pub mod civic_wayfinder;
+pub mod oran_rief_invoker;
+pub mod jaddi_lifestrider;
+pub mod gilt_leaf_seer;

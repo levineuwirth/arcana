@@ -2,3 +2,6 @@
 pub mod dusk_imp;
 pub mod abyssal_gatekeeper;
 pub mod venerable_monk;
+pub mod overeager_apprentice;
+pub mod souldrinker;
+pub mod icatian_priest;

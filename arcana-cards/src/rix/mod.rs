@@ -29,3 +29,4 @@ pub mod legion_conquistador;
 pub mod jadecraft_artisan;
 pub mod jadelight_ranger;
 pub mod dinosaur_hunter;
+pub mod jungle_creeper;

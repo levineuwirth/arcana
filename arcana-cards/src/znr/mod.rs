@@ -37,3 +37,7 @@ pub mod kor_celebrant;
 pub mod pyroclastic_hellion;
 pub mod cascade_seer;
 pub mod a_rockslide_sorcerer;
+pub mod sea_gate_banneret;
+pub mod sneaking_guide;
+pub mod seafloor_stalker;
+pub mod teeterpeak_ambusher;

@@ -2,3 +2,6 @@
 pub mod hurl_through_hell;
 pub mod vanish_into_memory;
 pub mod riverwise_augur;
+pub mod merfolk_looter;
+pub mod ronom_unicorn;
+pub mod doomed_necromancer;

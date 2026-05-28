@@ -10,3 +10,5 @@ pub mod petals_of_insight;
 pub mod riftsweeper;
 pub mod vedalken_dismisser;
 pub mod warren_pilferers;
+pub mod facevaulter;
+pub mod hana_kami;

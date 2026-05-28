@@ -30,3 +30,8 @@ pub mod organ_hoarder;
 pub mod falkenrath_perforator;
 pub mod diregraf_horde;
 pub mod unruly_mob;
+pub mod unblinking_observer;
+pub mod pestilent_wolf;
+pub mod lambholt_harrier;
+pub mod falkenrath_pit_fighter;
+pub mod gavony_trapper;

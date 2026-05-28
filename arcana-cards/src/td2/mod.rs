@@ -4,3 +4,5 @@ pub mod steel_wall;
 pub mod morbid_plunder;
 pub mod purge;
 pub mod symbiotic_elf;
+pub mod plaguemaw_beast;
+pub mod vedalken_certarch;

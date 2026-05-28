@@ -43,3 +43,7 @@ pub mod overzealous_muscle;
 pub mod prickly_pair;
 pub mod magebane_lizard;
 pub mod marchesa_dealer_of_death;
+pub mod tomb_trawler;
+pub mod sterling_keykeeper;
+pub mod treasure_dredger;
+pub mod raucous_entertainer;

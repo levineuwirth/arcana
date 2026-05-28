@@ -17,3 +17,6 @@ pub mod fungal_sprouting;
 pub mod healer_of_the_pride;
 pub mod bond_beetle;
 pub mod mwonvuli_beast_tracker;
+pub mod intrepid_hero;
+pub mod arms_dealer;
+pub mod void_stalker;

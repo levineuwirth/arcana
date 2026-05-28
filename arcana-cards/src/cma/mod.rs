@@ -12,3 +12,7 @@ pub mod viridian_emissary;
 pub mod essence_warden;
 pub mod dread_cacodemon;
 pub mod diviner_spirit;
+pub mod elvish_skysweeper;
+pub mod wellwisher;
+pub mod blood_bairn;
+pub mod viridian_zealot;

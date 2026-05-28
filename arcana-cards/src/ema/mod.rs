@@ -10,3 +10,7 @@ pub mod flame_kin_zealot;
 pub mod war_priest_of_thune;
 pub mod screeching_skaab;
 pub mod deadbridge_shaman;
+pub mod benevolent_bodyguard;
+pub mod blightsoil_druid;
+pub mod emperor_crocodile;
+pub mod plague_witch;

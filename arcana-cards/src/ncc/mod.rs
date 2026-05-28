@@ -17,3 +17,5 @@ pub mod gahiji_honored_one;
 pub mod kresh_the_bloodbraided;
 pub mod indrik_stomphowler;
 pub mod bellowing_mauler;
+pub mod leafkin_druid;
+pub mod temur_sabertooth;

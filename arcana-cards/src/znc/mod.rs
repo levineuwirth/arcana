@@ -2,3 +2,4 @@
 pub mod sygg_river_cutthroat;
 pub mod master_thief;
 pub mod keeper_of_fables;
+pub mod waker_of_the_wilds;

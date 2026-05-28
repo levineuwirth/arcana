@@ -16,3 +16,7 @@ pub mod might_of_oaks;
 pub mod tempest_of_light;
 pub mod bramble_creeper;
 pub mod inferno_elemental;
+pub mod looming_shade;
+pub mod undead_slayer;
+pub mod acolyte_of_xathrid;
+pub mod goblin_artillery;

@@ -4,3 +4,4 @@ pub mod call_to_mind;
 pub mod midnight_haunting;
 pub mod deploy_to_the_front;
 pub mod breaching_leviathan;
+pub mod magus_of_the_coffers;

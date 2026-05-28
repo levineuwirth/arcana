@@ -22,3 +22,6 @@ pub mod brutal_nightstalker;
 pub mod norwood_warrior;
 pub mod abyssal_nightstalker;
 pub mod alaborn_zealot;
+pub mod alaborn_veteran;
+pub mod temple_elder;
+pub mod coastal_wizard;

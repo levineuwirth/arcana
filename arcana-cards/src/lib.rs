@@ -556,6 +556,28 @@ pub mod m3c;
 
 pub mod ymkm;
 
+pub mod fem;
+
+pub mod ywoe;
+
+pub mod ytdm;
+
+pub mod ph17;
+
+pub mod atq;
+
+pub mod gn3;
+
+pub mod sum;
+
+pub mod psdg;
+
+pub mod ph19;
+
+pub mod msh;
+
+pub mod blc;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

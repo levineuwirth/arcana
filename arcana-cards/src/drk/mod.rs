@@ -4,3 +4,8 @@ pub mod marsh_goblins;
 pub mod fire_and_brimstone;
 pub mod eternal_flame;
 pub mod cleansing;
+pub mod grave_robbers;
+pub mod miracle_worker;
+pub mod niall_silvain;
+pub mod savaen_elves;
+pub mod whippoorwill;

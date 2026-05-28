@@ -4,3 +4,5 @@ pub mod force_spike;
 pub mod vigor_mortis;
 pub mod ghoul_s_feast;
 pub mod ogre_savant;
+pub mod sadistic_hypnotist;
+pub mod elves_of_deep_shadow;

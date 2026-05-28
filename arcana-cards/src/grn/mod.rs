@@ -40,3 +40,8 @@ pub mod haazda_marshal;
 pub mod attendant_of_vraska;
 pub mod tenth_district_guard;
 pub mod smelt_ward_minotaur;
+pub mod veiled_shade;
+pub mod omnispell_adept;
+pub mod devkarin_dissident;
+pub mod erstwhile_trooper;
+pub mod undercity_necrolisk;

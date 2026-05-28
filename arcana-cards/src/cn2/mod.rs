@@ -17,3 +17,7 @@ pub mod garrulous_sycophant;
 pub mod stromkirk_patrol;
 pub mod copperhorn_scout;
 pub mod goblin_racketeer;
+pub mod caller_of_gales;
+pub mod goblin_balloon_brigade;
+pub mod voyaging_satyr;
+pub mod opaline_unicorn;
