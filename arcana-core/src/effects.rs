@@ -5255,6 +5255,45 @@ mod tests {
     }
 
     #[test]
+    fn tutor_by_exact_name_finds_only_matching_named_cards() {
+        use crate::actions::ChoiceKind;
+        use crate::targets::ObjectFilter;
+        // Library: two cards named symbol 42, one named symbol 7. A
+        // name-filtered tutor (ObjectFilter { name: Some(42) }) — the
+        // shape `reg.interner().lookup("X")` produces — must offer only
+        // the two name-42 cards. (SmallString is a u32 interner handle.)
+        let mut s = GameState::new(2, 0);
+        let mk = |s: &mut GameState, name: u32| -> ObjectId {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(2, 2);
+            chars.name = name;
+            s.objects.insert(GameObject::new(id, 0, Zone::Library(0), 0, chars));
+            s.player_mut(0).library_top_to_bottom.push(id);
+            id
+        };
+        let a = mk(&mut s, 42);
+        let b = mk(&mut s, 42);
+        let _other = mk(&mut s, 7);
+        s.currently_resolving = Some(999);
+
+        Effect::TutorToHand {
+            player: 0,
+            filter: ObjectFilter { name: Some(42), ..ObjectFilter::default() },
+            reveal: false,
+        }.execute(&mut s);
+
+        let pc = s.pending_choice.as_ref().expect("name tutor pushes a pick");
+        match &pc.kind {
+            ChoiceKind::PickCards { candidates, .. } => {
+                let mut got = candidates.clone(); got.sort();
+                let mut want = vec![a, b]; want.sort();
+                assert_eq!(got, want, "only the two name-42 cards are tutorable");
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn discard_controller_chooses_pushes_pick_cards_to_self() {
         use crate::actions::{ChoiceFollowUp, ChoiceKind};
         use crate::effects::DiscardChoice;
