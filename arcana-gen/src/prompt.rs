@@ -81,6 +81,11 @@ pub enum PromptShape {
     /// CR 712.4 — Modal double-faced card (MDFC). Both faces are
     /// first-class; either can be cast/played. Layout "modal_dfc".
     ModalDfcCreature,
+    /// CR 712 — transforming double-faced card. Creature front cast
+    /// normally; a transform ability flips it to the back face (a
+    /// permanent — creature, land, or planeswalker). Layout
+    /// "transform".
+    TransformCreature,
     /// CR 716 — Saga enchantment. Adds a lore counter on enter + on
     /// post-draw, with chapter abilities triggered by counter
     /// placements. Layout "saga".
@@ -203,6 +208,7 @@ fn user_for_shape(card: &Card, shape: PromptShape) -> String {
         PromptShape::ActivatedAbilityCreature => user_activated_ability_creature(card),
         PromptShape::AdventureCreature => user_adventure_creature(card),
         PromptShape::ModalDfcCreature => user_mdfc_creature(card),
+        PromptShape::TransformCreature => user_transform_creature(card),
         PromptShape::Saga => user_saga(card),
         PromptShape::ClassEnchantment => user_class_enchantment(card),
         PromptShape::Battle => user_battle(card),
@@ -235,6 +241,9 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
     }
     if card.is_mdfc_layout() && card.is_creature() {
         return Ok(PromptShape::ModalDfcCreature);
+    }
+    if card.is_transform_layout() && card.is_creature() {
+        return Ok(PromptShape::TransformCreature);
     }
     if card.is_saga() {
         return Ok(PromptShape::Saga);
@@ -1039,6 +1048,62 @@ Many MDFC mechanics are engine debt — back-face-as-permanent resolution is par
 Generate the Rust source. Output only the file contents.",
         spec = card_spec(card),
         cat = effect_catalog("entry"),
+    )
+}
+
+/// Per-card prompt block for TransformCreature (CR 712). A
+/// transforming DFC: cast the front face; a transform ability flips
+/// it to the back face (a permanent). Engine wires the swap via
+/// `with_transform_back(CardFace)` + `Effect::Transform`.
+fn user_transform_creature(card: &Card) -> String {
+    format!(
+        "Generate a TRANSFORMING DOUBLE-FACED CARD (CR 712, layout \"transform\"). Unlike an MDFC you NEVER cast the back face — the card is cast as its FRONT face, and a transform ability later flips it to the BACK face (a permanent: usually a bigger creature, sometimes a planeswalker or land). Werewolves, Innistrad flip-walkers, etc.
+
+ENGINE STATUS — transform primitives are in place:
+- Build the FRONT face fully on the CardDefinition (name, mana_cost, colors, types, subtypes, P/T, abilities) exactly as a normal creature. The front-face name is the registered base name (Scryfall's combined \"Front // Back\" is split — register the FRONT name only).
+- Declare the BACK face with `.with_transform_back(CardFace {{ name, characteristics, spell_ability: None }})`. The back `characteristics` is the full back-face sheet: name, type line (`TypeLine::CREATURE`/`PLANESWALKER`/etc.), colors, P/T (or, for a planeswalker back, `loyalty: Some(N)`), and any keywords. `spell_ability` is always `None` (the back is a permanent face, never cast).
+- TRANSFORM the permanent with `Effect::Transform {{ target }}`. This swaps the live characteristics to the back face (and, for a planeswalker back, seeds starting loyalty automatically). Calling it again swaps back to the front — so a werewolf's two triggers (front->back, back->front) both use `Effect::Transform`.
+- FACE-GATE the directional triggers/abilities: an ability that should only be active on a particular face takes `face_gate: Some(0)` (front) or `Some(1)` (back) on its ActivatedAbilityDef. Triggered abilities that only exist on one face: author them and note the face in a comment.
+
+DEFERRED engine debt (document as GAPs where they apply):
+- The back face's OWN triggered abilities are not auto-installed on transform (abilities live on the CardDefinition, not the face). Author front-face and shared abilities; for a back-only triggered ability emit `// GAP: back-face-only triggered ability not modeled`.
+- Day/night cycle, the precise \"no spells cast last turn\" werewolf trigger conditions, and meld are not modeled — wire the transform via the closest available trigger/activated ability and GAP the exact condition if needed.
+
+BUILD PATTERN:
+```rust
+let chars = Characteristics {{
+    name, // FRONT name only
+    mana_cost: ..., colors: ..., types: TypeLine::CREATURE.into(),
+    power: Some(PtValue::Fixed(..)), toughness: Some(PtValue::Fixed(..)),
+    ..Default::default()
+}};
+let back_name = reg.interner_mut().intern(\"Back Face Name\");
+let back = CardFace {{
+    name: back_name,
+    characteristics: Characteristics {{
+        name: back_name,
+        colors: ...,
+        types: TypeLine::CREATURE.into(), // or PLANESWALKER, with loyalty: Some(N)
+        power: Some(PtValue::Fixed(..)), toughness: Some(PtValue::Fixed(..)),
+        ..Default::default()
+    }},
+    spell_ability: None,
+}};
+reg.register(
+    CardDefinition::new(name, chars)
+        .with_transform_back(back)
+        // transform trigger / activated ability whose effect emits Effect::Transform {{ target: ctx.source }}
+)
+```
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        cat = effect_catalog("ctx"),
     )
 }
 

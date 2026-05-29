@@ -185,6 +185,12 @@ impl Card {
     pub fn is_mdfc_layout(&self) -> bool {
         self.layout == "modal_dfc"
     }
+    /// CR 712 — transforming double-faced card. The front face is cast
+    /// and registered as the base; the back face is declared via
+    /// `with_transform_back` and reached only by transforming.
+    pub fn is_transform_layout(&self) -> bool {
+        self.layout == "transform"
+    }
 
     /// Oracle text surface usable by downstream analysis.
     /// For single-face cards this is just `self.oracle_text`.

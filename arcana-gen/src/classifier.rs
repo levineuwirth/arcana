@@ -131,14 +131,15 @@ pub fn classify(card: &Card) -> Classification {
 fn unsupported_layout(c: &Card) -> Option<&str> {
     match c.layout.as_str() {
         // Supported today: normal, split, adventure, modal_dfc, plus
-        // saga / class / battle now that the typed-card subsystems
-        // and the corresponding SBAs / counter kinds are in.
+        // saga / class / battle / transform now that the typed-card
+        // subsystems, SBAs, counter kinds, and the Effect::Transform
+        // characteristic-swap are in.
         "normal" | "split" | "adventure" | "modal_dfc"
-        | "saga" | "class" | "battle" => None,
+        | "saga" | "class" | "battle" | "transform" => None,
 
         // Still deferred / never-implemented.
         "meld" | "leveler" | "flip" | "planar"
-        | "scheme" | "vanguard" | "augment" | "host" | "transform" | "case"
+        | "scheme" | "vanguard" | "augment" | "host" | "case"
         // Non-card placeholders (tokens on the card-face list, emblem rows,
         // art-only entries). We shouldn't classify these at all — they
         // shouldn't be in a card-gen corpus.

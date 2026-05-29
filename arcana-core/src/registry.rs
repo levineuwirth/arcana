@@ -392,6 +392,26 @@ impl CardDefinition {
     /// card may be cast for the combined cost of both halves — is
     /// deferred. When it returns, a `fuse_cost: Option<ManaCost>`
     /// field pairs with this helper.
+    /// CR 712 — transforming double-faced card (layout "transform").
+    /// Declares the card's back face (a permanent: creature, land, or
+    /// planeswalker, with its own name, type line, P/T, keywords, and
+    /// — for planeswalker backs — `loyalty`). The card is cast as its
+    /// front (`base_characteristics`); a transform ability later swaps
+    /// the live characteristics to this back face via
+    /// [`crate::effects::Effect::Transform`]. The engine seeds each
+    /// fresh object's `back_face_characteristics` from this face at
+    /// instantiation (see [`crate::engine::new_game`]).
+    ///
+    /// Scope: the swap covers the printed characteristics (name, type
+    /// line, P/T, colors, keywords) and planeswalker starting loyalty.
+    /// Face-specific *triggered/activated abilities* on the back are
+    /// not yet swapped in (they live on the `CardDefinition`, not the
+    /// face) — abilities are gated by `face_gate` instead.
+    pub fn with_transform_back(mut self, face: CardFace) -> Self {
+        self.alternate_face = Some(AlternateFace::Transform(face));
+        self
+    }
+
     pub fn with_split_right(mut self, face: CardFace) -> Self {
         self.alternate_face = Some(AlternateFace::Split(face));
         self
@@ -677,6 +697,19 @@ pub enum AlternateFace {
     /// chars on cast and the stack-leave paths restore the combined
     /// view on the graveyard / exile object.
     Split(CardFace),
+    /// CR 712 — transforming double-faced card (layout "transform").
+    /// Unlike MDFC, you never *cast* the back face — the card is cast
+    /// as its front (on [`CardDefinition::base_characteristics`]) and
+    /// later *transforms* into this back face via
+    /// [`crate::effects::Effect::Transform`] (werewolf day/night,
+    /// Innistrad flip-walkers, etc.). This payload's
+    /// `characteristics` is the back-face sheet (P/T, type line,
+    /// keywords, and — for planeswalker backs — `loyalty`); the engine
+    /// copies it onto fresh objects' `back_face_characteristics` at
+    /// instantiation so the swap needs no registry lookup at
+    /// resolution time. `spell_ability` is unused (the back is a
+    /// permanent face, not a spell).
+    Transform(CardFace),
 }
 
 impl AlternateFace {
@@ -705,6 +738,15 @@ impl AlternateFace {
     pub fn as_split(&self) -> Option<&CardFace> {
         match self {
             AlternateFace::Split(face) => Some(face),
+            _ => None,
+        }
+    }
+
+    /// Unwrap the Transform back face, if this relationship is
+    /// Transform. Returns `None` for the other variants.
+    pub fn as_transform(&self) -> Option<&CardFace> {
+        match self {
+            AlternateFace::Transform(face) => Some(face),
             _ => None,
         }
     }

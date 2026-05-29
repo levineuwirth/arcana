@@ -173,6 +173,17 @@ pub struct GameObject {
     /// the object remains on stack or battlefield; cleared by the
     /// revert when the object moves to any other zone.
     pub default_face_characteristics: Option<Characteristics>,
+    /// CR 712 — the back-face characteristics of a transforming
+    /// double-faced card (layout "transform"), copied from the card
+    /// definition's [`crate::registry::AlternateFace::Transform`] face
+    /// when the object is instantiated. `None` for single-face cards,
+    /// MDFC (whose back is cast, not transformed-into), tokens, and
+    /// copies. [`crate::effects::Effect::Transform`] reads this to swap
+    /// the live `characteristics` to the back face; the front-face
+    /// snapshot it saves into [`Self::default_face_characteristics`]
+    /// drives the swap back (and the CR 712.2b zone-leave revert).
+    /// Preserved across re-ids (the field is intrinsic to the card).
+    pub back_face_characteristics: Option<Characteristics>,
     /// CR 111 — is this object a token or the result of copying a
     /// permanent? Set by [`crate::effects::Effect::CreateToken`] and
     /// [`crate::effects::Effect::CopyPermanent`]; false for every
@@ -252,6 +263,7 @@ impl GameObject {
             adventure_exile_pending: false,
             visible_face: 0,
             default_face_characteristics: None,
+            back_face_characteristics: None,
             is_token: false,
             colors_paid: ColorSet::new(),
             intrinsic_activated_abilities: Vec::new(),

@@ -996,8 +996,55 @@ impl Effect {
                 ));
             }
             Effect::Transform { target } => {
-                let Some(obj) = state.objects.get_mut(*target) else { return; };
-                obj.status.transformed = !obj.status.transformed;
+                // CR 712 — swap the live characteristics to the other
+                // face. For a transforming DFC (back face seeded into
+                // `back_face_characteristics`), front->back installs the
+                // back sheet and snapshots the front into
+                // `default_face_characteristics`; back->front restores
+                // from that snapshot. The `visible_face` flag tracks
+                // direction so a werewolf can flip either way. For
+                // objects with no known back face (non-DFC callers,
+                // tests) we fall back to the legacy boolean toggle.
+                let mut becomes_pw_loyalty: Option<u32> = None;
+                {
+                    let Some(obj) = state.objects.get_mut(*target) else { return; };
+                    if obj.visible_face == 0 {
+                        match obj.back_face_characteristics.clone() {
+                            Some(back) => {
+                                let front = std::mem::replace(&mut obj.characteristics, back);
+                                obj.default_face_characteristics = Some(front);
+                                obj.visible_face = 1;
+                                obj.status.transformed = true;
+                                // CR 113.3c — a permanent transforming
+                                // into a planeswalker enters with loyalty
+                                // equal to its printed value. Only seed
+                                // it if not already present (avoids a
+                                // double-add on a re-transform).
+                                if obj.is_planeswalker()
+                                    && obj.count_counters(CounterKind::Loyalty) == 0
+                                {
+                                    becomes_pw_loyalty = obj.characteristics.loyalty
+                                        .filter(|&n| n > 0)
+                                        .map(|n| n as u32);
+                                }
+                            }
+                            None => {
+                                obj.status.transformed = !obj.status.transformed;
+                            }
+                        }
+                    } else {
+                        if let Some(front) = obj.default_face_characteristics.take() {
+                            obj.characteristics = front;
+                        }
+                        obj.visible_face = 0;
+                        obj.status.transformed = false;
+                    }
+                }
+                if let Some(n) = becomes_pw_loyalty {
+                    state.place_counters(
+                        crate::replacement::CounterTarget::Object(*target),
+                        CounterKind::Loyalty, n);
+                }
                 state.emit(GameEvent::Transformed { object_id: *target });
             }
             Effect::Tap { target } => {
@@ -4084,6 +4131,55 @@ mod tests {
         assert!(s.objects.get(c).unwrap().status.transformed);
         Effect::Transform { target: c }.execute(&mut s);
         assert!(!s.objects.get(c).unwrap().status.transformed);
+    }
+
+    #[test]
+    fn transform_swaps_to_back_face_and_restores() {
+        // CR 712 — a transforming DFC: 2/2 front, 5/5 back. The back
+        // sheet is seeded into back_face_characteristics (as new_game
+        // does from AlternateFace::Transform).
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let mut back = creature_chars(5, 5);
+        back.keywords.push(KeywordAbility::Trample);
+        s.objects.get_mut(c).unwrap().back_face_characteristics = Some(back);
+
+        // front -> back
+        Effect::Transform { target: c }.execute(&mut s);
+        let o = s.objects.get(c).unwrap();
+        assert_eq!(o.visible_face, 1);
+        assert!(o.status.transformed);
+        assert_eq!(o.characteristics.power, Some(PtValue::Fixed(5)));
+        assert!(o.characteristics.keywords.contains(&KeywordAbility::Trample));
+        assert!(o.default_face_characteristics.is_some()); // front snapshot saved
+
+        // back -> front restores the original sheet
+        Effect::Transform { target: c }.execute(&mut s);
+        let o = s.objects.get(c).unwrap();
+        assert_eq!(o.visible_face, 0);
+        assert!(!o.status.transformed);
+        assert_eq!(o.characteristics.power, Some(PtValue::Fixed(2)));
+        assert!(!o.characteristics.keywords.contains(&KeywordAbility::Trample));
+    }
+
+    #[test]
+    fn transform_into_planeswalker_seeds_loyalty() {
+        // CR 113.3c — transforming into a planeswalker enters with
+        // loyalty equal to the back face's printed value.
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let back = Characteristics {
+            types: TypeLine::PLANESWALKER.into(),
+            loyalty: Some(3),
+            ..Default::default()
+        };
+        s.objects.get_mut(c).unwrap().back_face_characteristics = Some(back);
+
+        assert_eq!(s.objects.get(c).unwrap().count_counters(CounterKind::Loyalty), 0);
+        Effect::Transform { target: c }.execute(&mut s);
+        let o = s.objects.get(c).unwrap();
+        assert!(o.is_planeswalker());
+        assert_eq!(o.count_counters(CounterKind::Loyalty), 3);
     }
 
     // --- mana / phases ------------------------------------------------------

@@ -175,7 +175,7 @@ impl DumpRow {
 fn front_face_oracle(shape: Option<&str>, oracle: &str) -> String {
     let is_front_face_base = matches!(
         shape,
-        Some("AdventureCreature") | Some("ModalDfcCreature"),
+        Some("AdventureCreature") | Some("ModalDfcCreature") | Some("TransformCreature"),
     );
     if is_front_face_base {
         if let Some((front, _back)) = oracle.split_once("\n---\n") {
@@ -202,7 +202,7 @@ fn front_face_oracle(shape: Option<&str>, oracle: &str) -> String {
 fn expected_base_name(row: &DumpRow) -> String {
     let is_front_face_base = matches!(
         row.shape.as_deref(),
-        Some("AdventureCreature") | Some("ModalDfcCreature"),
+        Some("AdventureCreature") | Some("ModalDfcCreature") | Some("TransformCreature"),
     );
     if is_front_face_base {
         if let Some((front, _back)) = row.name.split_once(" // ") {
@@ -633,6 +633,25 @@ mod tests {
         }), "");
         assert_eq!(e.name, "Jwari Disruption",
             "MDFC name assertion must target the front face");
+    }
+
+    #[test]
+    fn transform_expects_front_face_name_not_combined() {
+        // CR 712 transform DFC: front creature is the registered base;
+        // the back face is reached only by transforming. The name
+        // assertion (and trigger derivation) must scope to the front.
+        let e = Expected::from_row(&row(|r| {
+            r.shape = Some("TransformCreature".into());
+            r.name = "Mayor of Avabruck // Howlpack Alpha".into();
+            r.type_line = "Creature — Human Advisor Werewolf // Creature — Werewolf".into();
+            r.mana_cost = Some("{1}{G}".into());
+            r.cmc = 2.0;
+            r.power = Some("1".into());
+            r.toughness = Some("1".into());
+        }), "");
+        assert_eq!(e.name, "Mayor of Avabruck",
+            "Transform name assertion must target the front face");
+        assert!(e.is_creature, "Transform base face is the creature");
     }
 
     #[test]
