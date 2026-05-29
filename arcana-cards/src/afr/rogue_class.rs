@@ -6,10 +6,16 @@
 //! Level 3: "You may play cards exiled with this Class."
 //! GAP: Level 1 "exile top card of that player's library face down and
 //!      remember it" not expressible (Mill goes to GY, no face-down-exile).
-//! GAP: Level 2 "all creatures have menace" is a static ability not a trigger.
 //! GAP: Level 3 "play exiled cards" not expressible.
+//!
+//! Level 2's "Creatures you control have menace" is modeled as a
+//! controller-wide keyword anthem installed when the Level-2 activation
+//! resolves (Duration::WhileSourceOnBattlefield). Class levels never
+//! decrease, so install-on-level-up is equivalent to a level-gated
+//! static — no separate level-query is needed.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -21,7 +27,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -66,7 +72,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: level_up,
+                effect: level_up_to_2,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}{U}{B}: Level 3".into(),
@@ -106,4 +112,30 @@ fn level_up(
         kind: CounterKind::Level,
         count: 1,
     }]
+}
+
+/// Level 2: add the Level counter and install the "Creatures you
+/// control have menace" controller-wide keyword anthem. The anthem
+/// persists while this Class is on the battlefield; since Class levels
+/// never decrease, that's equivalent to a static gated on level >= 2.
+fn level_up_to_2(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![
+        Effect::AddCounters {
+            target: ctx.source,
+            kind: CounterKind::Level,
+            count: 1,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::keyword_anthem(
+                ctx.source,
+                ctx.controller,
+                KeywordAbility::Menace,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

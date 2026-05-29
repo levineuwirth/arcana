@@ -194,6 +194,26 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "creatures you control have [keyword]" controller-wide
+    /// keyword anthem, layer 6 — the keyword analogue of
+    /// [`Self::anthem`]. Used by Class level statics ("Creatures you
+    /// control have menace") and lord effects; pair with
+    /// [`Duration::WhileSourceOnBattlefield`] so it auto-expires when
+    /// the source leaves play (and, for Classes, only ever installed
+    /// once the level-up that grants it resolves).
+    pub fn keyword_anthem(source: ObjectId, controller: PlayerId,
+                          keyword: KeywordAbility,
+                          duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::GrantKeywordToController { controller, keyword },
+        }
+    }
+
     /// Build a "target is goaded by `goader`" effect (CR 701.38). Lives
     /// at Layer 6 alongside ability-granting effects.
     pub fn goad(source: ObjectId, target: ObjectId, goader: PlayerId,
@@ -269,6 +289,10 @@ pub enum ContinuousEffectKind {
     SetPt { target: ObjectId, power: i32, toughness: i32 },
     /// "Target gains [keyword] until end of turn" (Swiftfoot Boots).
     GrantKeywordTarget { target: ObjectId, keyword: KeywordAbility },
+    /// "Creatures you control have [keyword]" (lord effects, Class
+    /// level statics like "Creatures you control have menace"). The
+    /// keyword analogue of [`Self::AnthemForController`].
+    GrantKeywordToController { controller: PlayerId, keyword: KeywordAbility },
     /// CR 701.38 — Goad. "That creature attacks each combat if able
     /// and attacks a player other than `goader` if able." Doesn't
     /// modify characteristics; consumed by the legal-action enumerator.
@@ -313,7 +337,8 @@ impl ContinuousEffectKind {
             | Self::Goaded { target, .. }
             | Self::CantAttack { target }
             | Self::CantBeBlocked { target } => *target == object_id,
-            Self::AnthemForController { controller, .. } => {
+            Self::AnthemForController { controller, .. }
+            | Self::GrantKeywordToController { controller, .. } => {
                 state.objects.get(object_id).is_some_and(|o|
                     o.is_creature()
                     && o.zone.is_battlefield()
@@ -346,7 +371,8 @@ impl ContinuousEffectKind {
                 chars.power = Some(PtValue::Fixed(*power));
                 chars.toughness = Some(PtValue::Fixed(*toughness));
             }
-            Self::GrantKeywordTarget { keyword, .. } => {
+            Self::GrantKeywordTarget { keyword, .. }
+            | Self::GrantKeywordToController { keyword, .. } => {
                 if !chars.keywords.contains(keyword) {
                     chars.keywords.push(keyword.clone());
                 }
@@ -784,6 +810,22 @@ mod tests {
         assert_eq!(s.computed_power(mine1), Some(2));
         assert_eq!(s.computed_power(mine2), Some(3));
         assert_eq!(s.computed_power(theirs), Some(3)); // unchanged
+    }
+
+    #[test]
+    fn keyword_anthem_grants_to_all_controller_creatures_only() {
+        // "Creatures you control have menace" — the Class level-2 shape.
+        let mut s = GameState::new(2, 0);
+        let mine1 = put_creature(&mut s, 0, 1, 1);
+        let mine2 = put_creature(&mut s, 0, 2, 2);
+        let theirs = put_creature(&mut s, 1, 3, 3);
+
+        s.add_continuous_effect(ContinuousEffect::keyword_anthem(
+            999, /*ctrl=*/ 0, KeywordAbility::Menace, Duration::WhileSourceOnBattlefield));
+
+        assert!(s.has_keyword(mine1, &KeywordAbility::Menace));
+        assert!(s.has_keyword(mine2, &KeywordAbility::Menace));
+        assert!(!s.has_keyword(theirs, &KeywordAbility::Menace)); // opponent's, unchanged
     }
 
     // --- has_lethal_damage uses the pipeline -------------------------------

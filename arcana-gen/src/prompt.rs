@@ -1124,7 +1124,11 @@ ENGINE STATUS — Class dispatch primitives:
 - `EntersWithSpec::Counters {{ kind: CounterKind::Level, count: 1 }}` gives the starting level (CR 717.3).
 - Each level-up is a SORCERY-SPEED activated ability: `ActivatedAbilityDef`'s `is_instant_speed: false` (the default for non-mana activated abilities). The activation cost is the printed mana cost; the resolver's effect is `Effect::AddCounters {{ target: ctx.source, kind: CounterKind::Level, count: 1 }}`.
 - LEVEL-PRECONDITION GATE (CR 717.5b) is now wired: set `cost.min_self_counters = Some((CounterKind::Level, N - 1))` on the Level-N activation. The engine's `legal_actions` filter consults this and only offers the activation when the Class has at least N-1 level counters. The field is a pure precondition — it does NOT remove counters (your effect does the +1 via `Effect::AddCounters`); it only gates legality.
-- STILL DEFERRED engine debt: the per-level granted abilities (continuous effects like \"While at level 2 you have …\" / \"At level 3 …\" that are passively true whenever the Class is at that level or above) are NOT modeled. Document those as `// GAP: per-level granted abilities deferred (continuous-effect engine subsystem)` in the doc comment.
+- PER-LEVEL STATIC ABILITIES are now expressible via install-on-level-up. A Class level never decreases, so a static that is true \"while at level N or above\" is equivalent to installing a continuous effect WHEN the Level-N activation resolves, with `Duration::WhileSourceOnBattlefield`. Give the Level-N activation its own effect fn (e.g. `level_up_to_2`) that returns BOTH the `Effect::AddCounters` (Level +1) AND an `Effect::InstallContinuousEffect {{ effect: <builder> }}`. Builders available:
+  - \"Creatures you control get +P/+T\": `ContinuousEffect::anthem(ctx.source, ctx.controller, P, T, Duration::WhileSourceOnBattlefield)`.
+  - \"Creatures you control have [keyword]\" (menace, trample, …): `ContinuousEffect::keyword_anthem(ctx.source, ctx.controller, KeywordAbility::Menace, Duration::WhileSourceOnBattlefield)`.
+  A level-1 (base) static instead installs from an ETB trigger (the static is on as soon as the Class enters).
+- STILL DEFERRED engine debt: per-level abilities that are NOT a P/T or keyword anthem (e.g. \"you may play lands from your graveyard\", \"spells you cast cost less\", replacement effects). Document those as `// GAP: per-level granted ability deferred (continuous-effect engine subsystem)` in the doc comment.
 
 BUILD PATTERN:
 ```rust
@@ -1179,9 +1183,22 @@ reg.register(
         // Apply `min_self_counters: Some((CounterKind::Level, N - 1))`
         // for the Level-N activation.
 )
+
+// Level-2 effect fn: bump the counter AND install the level-2 static.
+// Example for \"Level 2 — Creatures you control have menace\":
+fn level_up_to_2(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {{
+    vec![
+        Effect::AddCounters {{ target: ctx.source, kind: CounterKind::Level, count: 1 }},
+        Effect::InstallContinuousEffect {{
+            effect: ContinuousEffect::keyword_anthem(
+                ctx.source, ctx.controller,
+                KeywordAbility::Menace, Duration::WhileSourceOnBattlefield),
+        }},
+    ]
+}}
 ```
 
-The per-level granted abilities (\"At level 2 you have …\" / \"While at level 3 …\") are continuous-effect engine debt; document them as GAP comments. The activation cost AND the level precondition are what the card-gen models faithfully.
+Per-level statics that are a P/T anthem or keyword anthem are modeled via install-on-level-up (above). Other per-level abilities remain continuous-effect engine debt; document those as GAP comments. The activation cost AND the level precondition are always modeled faithfully.
 
 {cat}
 
