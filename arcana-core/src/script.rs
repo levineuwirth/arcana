@@ -105,6 +105,33 @@ pub fn graveyard_matching(
         .count() as u32
 }
 
+/// CR 700.5 — Devotion to `colors`: the number of mana symbols of
+/// those colors among the mana costs of permanents `you` control. Each
+/// qualifying symbol counts once (a hybrid `{W/U}` symbol counts for
+/// devotion to white, to blue, and to white-or-blue alike; Phyrexian
+/// `{W/P}` counts as a white symbol; generic/`{C}`/`{X}` never count).
+/// Pass a single color (`ColorSet::white()`) or a union
+/// (`ColorSet::white() | ColorSet::blue()` for devotion to white and
+/// blue). The canonical "X = your devotion to ~" resolution amount.
+pub fn devotion(state: &GameState, you: PlayerId, colors: crate::types::ColorSet) -> u32 {
+    if colors.0 == 0 || !valid(state, you) {
+        return 0;
+    }
+    state
+        .objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.controller == you)
+        .map(|o| {
+            o.characteristics.mana_cost.as_ref().map_or(0, |mc| {
+                mc.components
+                    .iter()
+                    .filter(|c| (c.colors().0 & colors.0) != 0)
+                    .count() as u32
+            })
+        })
+        .sum()
+}
+
 /// `id`'s current power after the layer system, or `0` if `id` is
 /// gone / not a creature. Use for "deals damage equal to its power".
 pub fn power_of(state: &GameState, id: ObjectId) -> i32 {
@@ -319,6 +346,46 @@ mod tests {
             .controlled_by(crate::targets::ControllerConstraint::You);
         assert_eq!(count_matching(&s, &yours, 0), 2);
         assert_eq!(count_matching(&s, &yours, 1), 0);
+    }
+
+    #[test]
+    fn devotion_counts_colored_pips_among_your_permanents() {
+        use crate::mana::ManaCost;
+        let mut s = GameState::new(2, 0);
+        let with_cost = |cost: &str| Characteristics {
+            mana_cost: Some(ManaCost::parse(cost).unwrap()),
+            types: TypeLine::CREATURE.into(),
+            ..Default::default()
+        };
+        // You control: {G}{G} (2 green pips), {1}{G} (1 green pip),
+        // {W}{U} (0 green). Opponent controls {G}{G} (doesn't count).
+        put(&mut s, Zone::Battlefield, 0, with_cost("{G}{G}"));
+        put(&mut s, Zone::Battlefield, 0, with_cost("{1}{G}"));
+        put(&mut s, Zone::Battlefield, 0, with_cost("{W}{U}"));
+        put(&mut s, Zone::Battlefield, 1, with_cost("{G}{G}"));
+
+        assert_eq!(devotion(&s, 0, ColorSet::green()), 3,
+            "2 + 1 green pips among your permanents (opponent's excluded)");
+        assert_eq!(devotion(&s, 0, ColorSet::white()), 1);
+        // Devotion to white-or-blue counts each qualifying symbol once.
+        assert_eq!(devotion(&s, 0, ColorSet::white() | ColorSet::blue()), 2);
+        assert_eq!(devotion(&s, 0, ColorSet::red()), 0);
+        assert_eq!(devotion(&s, 99, ColorSet::green()), 0, "invalid player → 0");
+    }
+
+    #[test]
+    fn devotion_counts_hybrid_pips_for_each_named_color() {
+        use crate::mana::ManaCost;
+        let mut s = GameState::new(2, 0);
+        // A {G/W} hybrid pip counts for green devotion AND white devotion.
+        put(&mut s, Zone::Battlefield, 0, Characteristics {
+            mana_cost: Some(ManaCost::parse("{G/W}").unwrap()),
+            types: TypeLine::CREATURE.into(),
+            ..Default::default()
+        });
+        assert_eq!(devotion(&s, 0, ColorSet::green()), 1);
+        assert_eq!(devotion(&s, 0, ColorSet::white()), 1);
+        assert_eq!(devotion(&s, 0, ColorSet::black()), 0);
     }
 
     #[test]
