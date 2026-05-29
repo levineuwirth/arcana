@@ -1957,7 +1957,7 @@ fn enumerate_activation_actions(
                                 costs.push(
                                     crate::actions::AdditionalCostPayment::Sacrifice(*s));
                             }
-                            if let Some(d) = disc {
+                            for d in disc {
                                 costs.push(
                                     crate::actions::AdditionalCostPayment::Discard(*d));
                             }
@@ -1999,23 +1999,61 @@ fn enumerate_cost_sacrifices(
         .collect()
 }
 
-/// Candidate cards the activator can discard to pay a `discard_other`
-/// cost. Same `vec![None]` / empty-Vec convention as
-/// [`enumerate_cost_sacrifices`]; the source is excluded.
+/// Card-sets the activator can discard to pay the discard cost. Each
+/// inner `Vec` is one complete payment (the cards to discard for that
+/// activation). Returns `vec![vec![]]` (one no-op payment) when there
+/// is no discard cost, so the enumeration loop runs exactly once; an
+/// empty outer `Vec` means the cost exists but can't be satisfied
+/// (ability not activatable). The source is always excluded.
+///
+/// - `discard_hand`: one payment discarding the activator's whole hand
+///   (always satisfiable — an empty hand discards zero cards).
+/// - `discard_other` (count N, default 1): one payment per N-card
+///   combination of matching hand cards.
 fn enumerate_cost_discards(
     state: &GameState,
     ability: &crate::registry::ActivatedAbilityDef,
     player: crate::types::PlayerId,
     source: ObjectId,
-) -> Vec<Option<ObjectId>> {
+) -> Vec<Vec<ObjectId>> {
+    if ability.cost.discard_hand {
+        let hand: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Hand(player))
+            .filter(|o| o.id != source)
+            .map(|o| o.id)
+            .collect();
+        return vec![hand];
+    }
     let Some(filter) = ability.cost.discard_other.as_ref() else {
-        return vec![None];
+        return vec![vec![]];
     };
-    state.objects.objects_in_zone(Zone::Hand(player))
+    let candidates: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Hand(player))
         .filter(|o| o.id != source)
         .filter(|o| filter.matches(o, state, player))
-        .map(|o| Some(o.id))
-        .collect()
+        .map(|o| o.id)
+        .collect();
+    let n = ability.cost.discard_other_count.max(1) as usize;
+    if candidates.len() < n { return Vec::new(); }
+    combinations(&candidates, n)
+}
+
+/// All `k`-element combinations of `items` (order-independent), as
+/// owned `Vec`s. `k == 0` yields a single empty combination. Used for
+/// multi-card discard-cost enumeration; hands are small so this stays
+/// cheap.
+fn combinations(items: &[ObjectId], k: usize) -> Vec<Vec<ObjectId>> {
+    if k == 0 { return vec![vec![]]; }
+    if k > items.len() { return Vec::new(); }
+    let mut out = Vec::new();
+    // Index-based: pick item[i], then k-1 from the suffix after i.
+    for i in 0..=items.len() - k {
+        for mut tail in combinations(&items[i + 1..], k - 1) {
+            let mut combo = Vec::with_capacity(k);
+            combo.push(items[i]);
+            combo.append(&mut tail);
+            out.push(combo);
+        }
+    }
+    out
 }
 
 /// Look up an activated ability by flat index — registry abilities
@@ -3077,6 +3115,130 @@ mod tests {
         discarded.sort();
         let mut want = vec![h1, h2]; want.sort();
         assert_eq!(discarded, want);
+    }
+
+    #[test]
+    fn discard_two_enumerates_one_action_per_pair() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::targets::ObjectFilter;
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Discard Two Stub");
+        let cid = reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Discard two cards: draw a card.".into(),
+                    cost: ActivationCost {
+                        discard_other: Some(ObjectFilter::default()),
+                        discard_other_count: 2,
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        );
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        // Three cards in hand → C(3,2) = 3 two-card combinations.
+        put(&mut s, 0, Zone::Hand(0), creature_chars(2,2));
+        put(&mut s, 0, Zone::Hand(0), creature_chars(3,3));
+        put(&mut s, 0, Zone::Hand(0), creature_chars(4,4));
+
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert_eq!(acts.len(), 3, "one activation per 2-card combination of 3 hand cards");
+        for a in &acts {
+            let Action::ActivateAbility { additional_costs, .. } = a else { unreachable!() };
+            let n_discard = additional_costs.iter().filter(|c|
+                matches!(c, crate::actions::AdditionalCostPayment::Discard(_))).count();
+            assert_eq!(n_discard, 2, "each activation discards exactly two cards");
+        }
+    }
+
+    #[test]
+    fn discard_two_not_activatable_with_one_card() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::targets::ObjectFilter;
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Discard Two Stub2");
+        let cid = reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Discard two cards: draw a card.".into(),
+                    cost: ActivationCost {
+                        discard_other: Some(ObjectFilter::default()),
+                        discard_other_count: 2,
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        );
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        put(&mut s, 0, Zone::Hand(0), creature_chars(2,2)); // only one card
+
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert!(acts.is_empty(), "discard-two with one card in hand is not activatable");
+    }
+
+    #[test]
+    fn discard_hand_discards_every_card() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Discard Hand Stub");
+        let cid = reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Discard your hand: draw three cards.".into(),
+                    cost: ActivationCost {
+                        discard_hand: true,
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        );
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        let h1 = put(&mut s, 0, Zone::Hand(0), creature_chars(2,2));
+        let h2 = put(&mut s, 0, Zone::Hand(0), creature_chars(3,3));
+
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert_eq!(acts.len(), 1, "discard-your-hand is a single deterministic payment");
+        let Action::ActivateAbility { additional_costs, .. } = &acts[0] else { unreachable!() };
+        let mut discarded: Vec<ObjectId> = additional_costs.iter().filter_map(|c| match c {
+            crate::actions::AdditionalCostPayment::Discard(d) => Some(*d),
+            _ => None,
+        }).collect();
+        discarded.sort();
+        let mut want = vec![h1, h2]; want.sort();
+        assert_eq!(discarded, want, "the whole hand is discarded");
     }
 
     // --- intrinsic activations on tokens (commodity-token plumbing) -----

@@ -1007,10 +1007,23 @@ pub struct ActivationCost {
     /// activation per matching card in hand, each carrying an
     /// [`crate::actions::AdditionalCostPayment::Discard`]. A
     /// `Default` filter means "any card"; a typed filter expresses
-    /// "discard a creature card", etc. Multi-card discard costs
-    /// ("discard two cards") are not modeled by this single-choice
-    /// field.
+    /// "discard a creature card", etc. The number of cards to discard
+    /// is [`Self::discard_other_count`] (0 or 1 → a single card).
     pub discard_other: Option<crate::targets::ObjectFilter>,
+    /// Number of cards to discard for the [`Self::discard_other`] cost.
+    /// `0` or `1` means a single card (back-compat default); `N > 1`
+    /// expresses "discard N cards" — legal-action enumeration emits one
+    /// activation per N-card combination of matching hand cards
+    /// (excluding the source), each baking N
+    /// [`crate::actions::AdditionalCostPayment::Discard`] payments.
+    /// Ignored when `discard_other` is `None`.
+    pub discard_other_count: u32,
+    /// "Discard your hand: …" (CR 701.8h-style total discard). When
+    /// `true`, the activation cost discards every card in the
+    /// activator's hand (deterministic — no choice). Independent of
+    /// [`Self::discard_other`]; an empty hand still pays the cost
+    /// (discarding zero cards).
+    pub discard_hand: bool,
 }
 
 impl ActivationCost {
