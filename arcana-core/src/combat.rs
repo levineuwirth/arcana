@@ -344,6 +344,24 @@ impl GameState {
                 // the SBA regardless of how much damage is marked.
                 let source_has_dt = self.has_keyword(source, &KeywordAbility::Deathtouch);
                 let Some(obj) = self.objects.get_mut(id) else { return; };
+                // CR 310.8 — damage dealt to a battle causes that many
+                // defense counters to be removed (it is not marked as
+                // creature-style damage). The 0-defense SBA handles
+                // defeat. Wither/infect/deathtouch don't apply.
+                if obj.characteristics.types.is_battle() {
+                    let removed = obj.remove_counters(CounterKind::Defense, amount);
+                    self.emit(GameEvent::DamageDealt {
+                        source, target, amount, is_combat,
+                    });
+                    if removed > 0 {
+                        self.emit(GameEvent::CounterRemoved {
+                            object_id: id,
+                            kind: CounterKind::Defense,
+                            count: removed,
+                        });
+                    }
+                    return;
+                }
                 if deals_minus_counters {
                     // CR 702.90b/702.91b — dealt as −1/−1 counters
                     // instead of marked damage (still "damage dealt").
@@ -2182,6 +2200,64 @@ mod tests {
         assert_eq!(s.objects.get(pw_id).unwrap().damage_marked, 3);
         // Defending player took no life loss.
         assert_eq!(s.player(1).life, 20);
+    }
+
+    fn battle_chars(defense: u32) -> Characteristics {
+        let _ = defense; // counters placed by the caller
+        Characteristics {
+            types: TypeLine::BATTLE.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn unblocked_attacker_removes_battle_defense_counters() {
+        // CR 310.8 — combat damage to a battle removes that many
+        // defense counters (not marked as creature damage).
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let atk = put_creature(&mut s, 0, 3, 3);
+        ready(atk, &mut s);
+        let b_id = s.allocate_object_id();
+        let mut b = GameObject::new(b_id, 1, Zone::Battlefield, 2, battle_chars(5));
+        b.controller = 1;
+        b.add_counters(CounterKind::Defense, 5);
+        s.objects.insert(b);
+
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk,
+            defending: DefendingEntity::Battle(b_id),
+        }]);
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![]);
+        s.deal_combat_damage();
+
+        let b = s.objects.get(b_id).unwrap();
+        assert_eq!(b.count_counters(CounterKind::Defense), 2,
+            "3 damage removes 3 of 5 defense counters");
+        assert_eq!(b.damage_marked, 0, "battles don't take marked damage");
+        assert_eq!(s.player(1).life, 20, "battle's controller takes no life loss");
+    }
+
+    #[test]
+    fn battle_at_zero_defense_is_defeated_by_sba() {
+        let mut s = GameState::new(2, 0);
+        let b_id = s.allocate_object_id();
+        let mut b = GameObject::new(b_id, 1, Zone::Battlefield, 2, battle_chars(1));
+        b.controller = 1;
+        b.add_counters(CounterKind::Defense, 1);
+        s.objects.insert(b);
+
+        // One defense counter → still on the battlefield.
+        crate::sba::apply_state_based_actions(&mut s);
+        assert!(s.objects.get(b_id).is_some_and(|o| o.zone.is_battlefield()));
+
+        // Remove the last counter → SBA puts it into the graveyard.
+        s.objects.get_mut(b_id).unwrap().remove_counters(CounterKind::Defense, 1);
+        crate::sba::apply_state_based_actions(&mut s);
+        let count_on_bf = s.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.characteristics.types.is_battle()).count();
+        assert_eq!(count_on_bf, 0, "0-defense battle is defeated (CR 704.5t)");
     }
 
     #[test]

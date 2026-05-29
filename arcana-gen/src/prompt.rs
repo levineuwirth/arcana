@@ -1288,15 +1288,16 @@ fn user_battle(card: &Card) -> String {
     format!(
         "Generate a BATTLE PERMANENT (MOM mechanic, CR 309). A Battle is a non-creature permanent with the Battle type (and typically a subtype like Siege) that enters with defense counters; opponents may attack it as a planeswalker-style defender; when its defense counters reach zero it transforms into a creature face the controller controls.
 
-ENGINE STATUS — Battle primitives in core:
-- `TypeLine::BATTLE` exists as a permanent type.
-- `CounterKind::Defense` exists.
+ENGINE STATUS — Battle combat now works:
+- `TypeLine::BATTLE` is a permanent type; `CounterKind::Defense` exists.
 - `EntersWithSpec::Counters {{ kind: CounterKind::Defense, count: N }}` gives the starting defense counters.
+- A battle is ATTACKABLE: legal_actions offers it as a planeswalker-style defender (an opponent's battle can be attacked). Combat damage to a battle removes that many defense counters (CR 310.8) — not creature-style marked damage.
+- DEFEAT is a state-based action (CR 704.5t): when a battle reaches 0 defense counters it is put into the graveyard automatically. You do NOT author a self-sacrifice for this.
+- ETB / attack / 'when defeated' triggers are authored as usual with `TriggeredAbilityDef`.
 
 DEFERRED engine debt (document as GAPs):
-- 'Battle is attacked by opponents instead of its controller' — combat dispatch for battles is not modeled.
-- 'When last defense counter is removed, exile and transform' — battle defeat → back-face creature is not modeled. The back face (typically a creature) should still be authored faithfully on the front-face CardDefinition, but emit `// GAP: defeat-and-transform not modeled`.
-- 'On enters and attacks, deal damage to defending opponent' / similar siege ETB / attack triggers — author these as TriggeredAbilityDef with the appropriate condition, even though the attack-battle plumbing doesn't fully fire today.
+- 'When defeated, exile and cast the back face transformed' (CR 310.11) is NOT modeled — the battle just goes to the graveyard. If the card has a meaningful back face, author it via `.with_transform_back(CardFace {{ ... }})` (the transform machinery exists) and emit `// GAP: defeat→cast-back-face not auto-wired` for the on-defeat cast.
+- The Siege protector-designation rule (choose an opponent to protect it) is simplified: any opponent's battle is attackable.
 
 BUILD PATTERN:
 ```rust

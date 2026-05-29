@@ -528,6 +528,27 @@ fn enumerate_attacker_declarations(state: &GameState, active: PlayerId) -> Vec<A
                     }],
                 });
             }
+
+            // CR 508.4 — Battles can be attacked. The engine's
+            // simplified model treats a battle controlled by an
+            // opponent as attackable (the battle's controller becomes
+            // the defending player, mirroring planeswalkers). The
+            // Siege protector-designation rule (CR 310.6) is not
+            // modeled — attackers just target any opponent's battle.
+            let mut battle_defenders: Vec<ObjectId> = state.objects
+                .objects_in_zone(Zone::Battlefield)
+                .filter(|o| o.controller == opp && o.characteristics.types.is_battle())
+                .map(|o| o.id)
+                .collect();
+            battle_defenders.sort();
+            for battle in battle_defenders {
+                out.push(Action::DeclareAttackers {
+                    attackers: vec![AttackerDeclaration {
+                        attacker: atk,
+                        defending: DefendingEntity::Battle(battle),
+                    }],
+                });
+            }
         }
     }
     out
@@ -2664,6 +2685,31 @@ mod tests {
             matches!(a, Action::DeclareAttackers { attackers }
                 if attackers.len() == 1
                 && matches!(attackers[0].defending, DefendingEntity::Planeswalker(id) if id == pw))));
+    }
+
+    #[test]
+    fn declare_attackers_includes_battle_as_defender() {
+        let mut s = GameState::new(2, 0);
+        s.combat = Some(CombatState {
+            phase: CombatPhase::DeclareAttackers,
+            ..CombatState::new()
+        });
+        let atk = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        s.objects.get_mut(atk).unwrap().status.summoning_sick = false;
+
+        // Opponent's battle (CR 508.4 — attackable like a planeswalker).
+        let battle_chars = Characteristics {
+            types: TypeLine::BATTLE.into(),
+            ..Default::default()
+        };
+        let battle = put(&mut s, 1, Zone::Battlefield, battle_chars);
+
+        let actions = legal_actions(&s, &CardRegistry::new());
+        assert!(actions.iter().any(|a|
+            matches!(a, Action::DeclareAttackers { attackers }
+                if attackers.len() == 1
+                && matches!(attackers[0].defending, DefendingEntity::Battle(id) if id == battle))),
+            "an opponent's battle must be offered as an attack target");
     }
 
     #[test]

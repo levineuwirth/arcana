@@ -95,6 +95,7 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
         fired |= check_fortification_illegal(state);  // CR 704.5r
         fired |= check_aura_illegal(state);           // CR 704.5n
         fired |= check_saga_sacrifice(state);         // CR 704.5s
+        fired |= check_battle_defeat(state);          // CR 704.5t
         fired |= check_player_losses(state);          // CR 704.5a, 704.5b, 704.5c
         if !fired { break; }
         iterations += 1;
@@ -115,6 +116,7 @@ pub fn has_pending_state_based_actions(state: &GameState) -> bool {
         || pending_fortification_illegal(state)
         || pending_aura_illegal(state)
         || pending_saga_sacrifice(state)
+        || pending_battle_defeat(state)
 }
 
 // =============================================================================
@@ -600,6 +602,52 @@ fn pending_saga_sacrifice(state: &GameState) -> bool {
             return false;
         };
         obj.count_counters(CounterKind::Lore) >= final_chapter
+            && !state.stack.iter().any(|e| e.source == obj.id)
+            && !state.pending_trigger_queue.iter().any(|t| t.source == obj.id)
+    })
+}
+
+// =============================================================================
+// 704.5t — Battle with no defense counters is defeated
+// =============================================================================
+
+/// CR 704.5t — "If a battle has no defense counters on it and it
+/// isn't the source of an ability that has triggered but not yet left
+/// the stack, that battle's controller puts it into its owner's
+/// graveyard." Damage to a battle removes defense counters (CR 310.8,
+/// handled in `combat::deal_damage`), so this is how a battle leaves
+/// the battlefield once defeated.
+///
+/// Scope: the "after it's defeated, its protector/owner may cast the
+/// back face transformed" sequence (CR 310.11) is NOT modeled — the
+/// battle simply goes to the graveyard. The pending-trigger / stack
+/// guard mirrors [`check_saga_sacrifice`] so a battle's own ETB or
+/// attack-trigger isn't skipped by an early defeat.
+fn check_battle_defeat(state: &mut GameState) -> bool {
+    use crate::types::CounterKind;
+    let to_defeat: Vec<(ObjectId, PlayerId)> = state.objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter(|obj| obj.characteristics.types.is_battle()
+            && obj.count_counters(CounterKind::Defense) == 0)
+        .filter(|obj| {
+            !state.stack.iter().any(|e| e.source == obj.id)
+            && !state.pending_trigger_queue.iter().any(|t| t.source == obj.id)
+        })
+        .map(|obj| (obj.id, obj.owner))
+        .collect();
+    if to_defeat.is_empty() { return false; }
+    for (id, owner) in to_defeat {
+        state.move_object_to_zone(
+            id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+    }
+    true
+}
+
+fn pending_battle_defeat(state: &GameState) -> bool {
+    use crate::types::CounterKind;
+    state.objects.objects_in_zone(Zone::Battlefield).any(|obj| {
+        obj.characteristics.types.is_battle()
+            && obj.count_counters(CounterKind::Defense) == 0
             && !state.stack.iter().any(|e| e.source == obj.id)
             && !state.pending_trigger_queue.iter().any(|t| t.source == obj.id)
     })
