@@ -537,6 +537,19 @@ pub enum Effect {
     Conditional { condition: Condition, then: Box<Effect>,
                   otherwise: Option<Box<Effect>> },
     Sequence(Vec<Effect>),
+    /// CR 705 — "Flip a coin. If you win the flip, [win]. If you lose
+    /// the flip, [lose]." A fair coin via the deterministic
+    /// [`crate::state::GameState::rng_seed`] (replayable). Emits
+    /// [`crate::events::GameEvent::CoinFlipped`], then executes the
+    /// `win` branch on a win or the optional `lose` branch on a loss.
+    /// For "flip a coin, if you lose [bad thing]" pass an empty `win`
+    /// (e.g. `Box::new(Effect::Sequence(vec![]))`) and the `lose`
+    /// branch.
+    FlipCoin {
+        player: PlayerId,
+        win: Box<Effect>,
+        lose: Option<Box<Effect>>,
+    },
     /// CR 603.7 — schedule a one-shot delayed action on a *known*
     /// object id (a target the resolver already has). Covers the
     /// blink/flicker and dies-on-target rider family: "exile target
@@ -1301,6 +1314,16 @@ impl Effect {
                 for step in steps {
                     step.execute(state);
                     if state.is_game_over() { break; }
+                }
+            }
+            Effect::FlipCoin { player, win, lose } => {
+                if !valid_player(state, *player) { return; }
+                let won = flip_fair_coin(state, *player);
+                state.emit(GameEvent::CoinFlipped { player: *player, won });
+                if won {
+                    win.execute(state);
+                } else if let Some(l) = lose {
+                    l.execute(state);
                 }
             }
             Effect::DelayedAction { source, controller, when, action } => {
@@ -2621,6 +2644,17 @@ pub(crate) fn apply_dig_rest(
             }
         }
     }
+}
+
+/// Flip a fair coin for `player`, advancing the deterministic RNG so
+/// the result is replayable. Returns `true` on a win (heads).
+fn flip_fair_coin(state: &mut GameState, player: PlayerId) -> bool {
+    use rand::Rng;
+    use rand::SeedableRng;
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(
+        state.rng_seed.wrapping_add(player as u64).wrapping_add(0xC0));
+    state.rng_seed = state.rng_seed.wrapping_add(1);
+    rng.gen::<bool>()
 }
 
 /// [`Effect::RevealUntil`] — reveal from the top of `player`'s library
@@ -4321,6 +4355,50 @@ mod tests {
         }.execute(&mut s);
         assert_eq!(s.objects.get(c).unwrap().controller, 0);
         assert_eq!(s.delayed_triggers.len(), before);
+    }
+
+    #[test]
+    fn flip_coin_runs_the_branch_matching_the_emitted_result() {
+        // Win branch gains 5 life, lose branch loses 3. Whichever ran
+        // must agree with the CoinFlipped event — proves the branch
+        // dispatch keys off the actual flip.
+        let mut s = GameState::new(2, 0);
+        let before = s.player(0).life;
+        Effect::FlipCoin {
+            player: 0,
+            win: Box::new(Effect::GainLife { player: 0, amount: 5 }),
+            lose: Some(Box::new(Effect::LoseLife { player: 0, amount: 3 })),
+        }.execute(&mut s);
+
+        let won = s.event_log.iter().rev().find_map(|e| match e {
+            GameEvent::CoinFlipped { player: 0, won } => Some(*won),
+            _ => None,
+        }).expect("a CoinFlipped event is emitted");
+        if won {
+            assert_eq!(s.player(0).life, before + 5, "win branch ran");
+        } else {
+            assert_eq!(s.player(0).life, before - 3, "lose branch ran");
+        }
+    }
+
+    #[test]
+    fn flip_coin_advances_rng_so_repeated_flips_can_differ() {
+        // Over several flips with an advancing seed we must see both
+        // outcomes (not a stuck constant) — guards against a fixed seed.
+        let mut s = GameState::new(2, 0);
+        let mut results = Vec::new();
+        for _ in 0..12 {
+            Effect::FlipCoin {
+                player: 0,
+                win: Box::new(Effect::Sequence(vec![])),
+                lose: None,
+            }.execute(&mut s);
+            if let Some(GameEvent::CoinFlipped { won, .. }) = s.event_log.last() {
+                results.push(*won);
+            }
+        }
+        assert!(results.iter().any(|&w| w), "saw at least one win");
+        assert!(results.iter().any(|&w| !w), "saw at least one loss");
     }
 
     #[test]

@@ -151,6 +151,10 @@ pub enum GameEvent {
     Surveil { player: PlayerId, count: u32 },
     Explore { object_id: ObjectId },
     LibraryShuffled { player: PlayerId },
+    /// CR 705 — a player flipped a coin. `won` is true if they won the
+    /// flip. Lets "whenever you win/lose a coin flip" triggers observe
+    /// the result; also drives logging.
+    CoinFlipped { player: PlayerId, won: bool },
 }
 
 // =============================================================================
@@ -294,7 +298,8 @@ impl GameEvent {
             | Scry { .. }
             | Surveil { .. }
             | Explore { .. }
-            | LibraryShuffled { .. } => Player,
+            | LibraryShuffled { .. }
+            | CoinFlipped { .. } => Player,
         }
     }
 
@@ -359,6 +364,7 @@ impl GameEvent {
             | PlayerLoses { .. } | PlayerWins { .. }
             | ManaAdded { .. } | SearchedLibrary { .. }
             | Scry { .. } | Surveil { .. }
+            | CoinFlipped { .. }
             | LibraryShuffled { .. } => return None,
         })
     }
@@ -381,6 +387,7 @@ impl GameEvent {
             | Sacrifice { player, .. }
             | Scry { player, .. }
             | Surveil { player, .. }
+            | CoinFlipped { player, .. }
             | LibraryShuffled { player } => *player,
 
             SpellCast { controller, .. }
