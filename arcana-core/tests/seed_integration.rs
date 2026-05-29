@@ -4294,6 +4294,119 @@ fn mdfc_front_face_cast_unaffected_by_revert_logic() {
     assert_eq!(grave_obj.visible_face, 0);
 }
 
+/// Register a one-card registry: an MDFC whose front is a {G} 1/1
+/// creature and whose back is `back_chars` (a permanent). Returns the
+/// registry and the card id. The back face carries `spell_ability:
+/// None` — it's a permanent face, so resolution puts it onto the
+/// battlefield directly.
+fn register_mdfc_with_back(
+    back_chars: arcana_core::objects::Characteristics,
+) -> (CardRegistry, arcana_core::types::CardId) {
+    use arcana_core::registry::{CardDefinition, CardFace};
+    use arcana_core::objects::Characteristics;
+    use arcana_core::mana::ManaCost;
+    use arcana_core::types::{TypeLine, PtValue, ColorSet};
+    let mut reg = CardRegistry::new();
+    let name = reg.interner_mut().intern("Testface Front");
+    let back_name = reg.interner_mut().intern("Testface Back");
+    let front = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{G}").unwrap()),
+        colors: ColorSet::green(),
+        types: TypeLine::CREATURE.into(),
+        power: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(1)),
+        ..Default::default()
+    };
+    let mut back_chars = back_chars;
+    back_chars.name = back_name;
+    let id = reg.register(
+        CardDefinition::new(name, front).with_mdfc_back(CardFace {
+            name: back_name,
+            characteristics: back_chars,
+            spell_ability: None,
+        }),
+    );
+    (reg, id)
+}
+
+fn mdfc_back_cast(actions: &[Action], card: ObjectId) -> Option<Action> {
+    actions.iter().find(|a| matches!(a,
+        Action::CastSpell { object_id, cast_modifier, .. }
+        if *object_id == card
+            && matches!(cast_modifier, arcana_core::actions::CastModifier::MdfcBack)
+    )).cloned()
+}
+
+#[test]
+fn mdfc_creature_back_resolves_onto_battlefield() {
+    use arcana_core::objects::Characteristics;
+    use arcana_core::mana::ManaCost;
+    use arcana_core::types::{TypeLine, PtValue, ColorSet};
+    // Back is a {1}{G} 4/4 creature — casting the back face must put a
+    // 4/4 onto the battlefield (visible_face = 1), not a 1/1 front.
+    let (reg, card) = register_mdfc_with_back(Characteristics {
+        mana_cost: Some(ManaCost::parse("{1}{G}").unwrap()),
+        colors: ColorSet::green(),
+        types: TypeLine::CREATURE.into(),
+        power: Some(PtValue::Fixed(4)),
+        toughness: Some(PtValue::Fixed(4)),
+        ..Default::default()
+    });
+    let mut s = GameState::new(2, 0);
+    let card_obj = put_in_hand(&mut s, &reg, 0, card);
+    give_mana(&mut s, 0, ManaColor::Green, 2);
+    priority_to_main(&mut s, 0);
+
+    let cast = mdfc_back_cast(
+        &arcana_core::legal_actions::legal_actions(&s, &reg), card_obj)
+        .expect("MDFC back-face creature cast must be offered");
+    let (s, _) = step(s, cast, &reg);
+    let s = resolve_stack(s, &reg);
+
+    let on_bf = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield && o.card_id == card)
+        .expect("MDFC creature back resolves onto the battlefield");
+    assert!(on_bf.is_creature());
+    assert_eq!(on_bf.visible_face, 1, "back face stays live on the battlefield");
+    assert_eq!(on_bf.characteristics.power,
+        Some(arcana_core::types::PtValue::Fixed(4)),
+        "battlefield permanent carries the BACK face's 4/4, not the 1/1 front");
+}
+
+#[test]
+fn mdfc_planeswalker_back_resolves_with_loyalty() {
+    use arcana_core::objects::Characteristics;
+    use arcana_core::mana::ManaCost;
+    use arcana_core::types::{TypeLine, ColorSet, CounterKind};
+    // Back is a {1}{G} planeswalker with printed loyalty 3 — resolving
+    // it must place 3 loyalty counters (CR 113.3c via after_enter_battlefield).
+    let (reg, card) = register_mdfc_with_back(Characteristics {
+        mana_cost: Some(ManaCost::parse("{1}{G}").unwrap()),
+        colors: ColorSet::green(),
+        types: TypeLine::PLANESWALKER.into(),
+        loyalty: Some(3),
+        ..Default::default()
+    });
+    let mut s = GameState::new(2, 0);
+    let card_obj = put_in_hand(&mut s, &reg, 0, card);
+    give_mana(&mut s, 0, ManaColor::Green, 2);
+    priority_to_main(&mut s, 0);
+
+    let cast = mdfc_back_cast(
+        &arcana_core::legal_actions::legal_actions(&s, &reg), card_obj)
+        .expect("MDFC back-face planeswalker cast must be offered");
+    let (s, _) = step(s, cast, &reg);
+    let s = resolve_stack(s, &reg);
+
+    let on_bf = s.objects.iter()
+        .find(|o| o.zone == Zone::Battlefield && o.card_id == card)
+        .expect("MDFC planeswalker back resolves onto the battlefield");
+    assert!(on_bf.is_planeswalker());
+    assert_eq!(on_bf.count_counters(CounterKind::Loyalty), 3,
+        "planeswalker back enters with its printed loyalty");
+}
+
 #[test]
 fn bonecrusher_adventure_cast_fizzles_to_exile_when_target_leaves() {
     // An adventure spell cast with its only target disappearing

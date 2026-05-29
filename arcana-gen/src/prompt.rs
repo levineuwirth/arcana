@@ -1036,9 +1036,13 @@ fn user_mdfc_creature(card: &Card) -> String {
     format!(
         "Generate a MODAL DOUBLE-FACED CARD (CR 712.4 / 717): two first-class faces, either castable for its own printed mana cost. Engine wires via `.with_mdfc_back(CardFace {{ name, characteristics, spell_ability }})` on CardDefinition.
 
-For MVP: build the front (main) face fully — name, mana_cost, colors, types, subtypes, P/T, abilities — exactly as you'd build a normal creature/spell. Attach a back face via `with_mdfc_back`. If the back face is a land or a permanent type other than instant/sorcery, set `spell_ability: None` (the back face will resolve as a permanent into play on cast — engine routes via CastModifier::MdfcBack). If the back face is instant/sorcery, give it a SpellAbilityDef like a normal spell.
+For MVP: build the front (main) face fully — name, mana_cost, colors, types, subtypes, P/T, abilities — exactly as you'd build a normal creature/spell. Attach a back face via `with_mdfc_back`. If the back face is a land or a permanent type other than instant/sorcery, set `spell_ability: None`. If the back face is instant/sorcery, give it a SpellAbilityDef like a normal spell.
 
-Many MDFC mechanics are engine debt — back-face-as-permanent resolution is partial; the back-face's own activated abilities work via `face_gate: Some(1)` on each ActivatedAbilityDef. If unclear, build only the front face and emit `// GAP: MDFC back face not modeled (mechanic deferred)` in the doc comment.
+ENGINE STATUS — back-face resolution now works:
+- A back face that is a PERMANENT (creature / land / planeswalker) resolves onto the battlefield with the BACK face's full characteristics (P/T, type line, colors, keywords; planeswalker backs enter with their printed `loyalty: Some(N)` as loyalty counters). Author the back `characteristics` completely. Land backs are played via the land drop (`PlayLand {{ mdfc_back: true }}`), non-land permanent backs are cast via `CastModifier::MdfcBack`.
+- A back face that is an instant/sorcery resolves its `spell_ability` then goes to the graveyard, like a normal spell.
+- The back face's own ACTIVATED abilities work via `face_gate: Some(1)` on each ActivatedAbilityDef (front-face activated abilities take `face_gate: Some(0)` or `None`).
+- STILL DEBT: a back-face-only TRIGGERED ability is not auto-installed (triggered abilities live on the CardDefinition, not the face). Author front/shared triggers normally; for a back-only trigger emit `// GAP: back-face-only triggered ability not modeled`. Build both faces' static characteristics regardless.
 
 {cat}
 
