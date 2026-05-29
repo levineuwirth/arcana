@@ -159,6 +159,20 @@ pub enum Effect {
         filter: Option<ObjectFilter>,
         rest: DigRest,
     },
+    /// "Reveal cards from the top of your library until you reveal a
+    /// [filter] card. Put it into your hand / onto the battlefield, and
+    /// put the rest on the bottom (random) / into your graveyard."
+    /// Deterministic — the FIRST matching card is taken (no choice),
+    /// unlike [`Self::DigTopN`]'s fixed-count optional pick. `max_reveal`
+    /// caps how deep to dig (`None` = the whole library); on no match
+    /// everything revealed goes to `rest`.
+    RevealUntil {
+        player: PlayerId,
+        filter: ObjectFilter,
+        found_dest: RevealDest,
+        rest: DigRest,
+        max_reveal: Option<u32>,
+    },
 
     // --- tokens / copies ---------------------------------------------------
     CreateToken { controller: PlayerId, token: TokenDefinition },
@@ -818,6 +832,9 @@ impl Effect {
             Effect::DigTopN { player, count, filter, rest } => {
                 dig_top_n(state, *player, *count, filter.as_ref(), *rest);
             }
+            Effect::RevealUntil { player, filter, found_dest, rest, max_reveal } => {
+                reveal_until(state, *player, filter, *found_dest, *rest, *max_reveal);
+            }
 
             // --- tokens / copies -----------------------------------------
             Effect::CreateToken { controller, token } => {
@@ -1467,6 +1484,18 @@ pub enum DigRest {
     /// "…put the rest into your graveyard." (e.g. "reveal the top N,
     /// put a land into your hand, the rest into your graveyard".)
     Graveyard,
+}
+
+/// Where the matched card of an [`Effect::RevealUntil`] goes once it's
+/// found on top of the library.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum RevealDest {
+    /// "…put it into your hand." (the dominant case — impulse tutors
+    /// like Lead the Stampede, Vanguard of Brimaz).
+    Hand,
+    /// "…put it onto the battlefield." (e.g. land/creature ramp such as
+    /// Oath of Druids, Bloodbond March).
+    Battlefield,
 }
 
 /// Canonical commodity-token kinds whose printed activated abilities
@@ -2592,6 +2621,66 @@ pub(crate) fn apply_dig_rest(
             }
         }
     }
+}
+
+/// [`Effect::RevealUntil`] — reveal from the top of `player`'s library
+/// until a card matches `filter` (or `max_reveal` / the library is
+/// exhausted). The first match goes to `found_dest`; every other
+/// revealed card goes to `rest`. Deterministic (no choice): the first
+/// match is always taken.
+fn reveal_until(
+    state: &mut GameState,
+    player: PlayerId,
+    filter: &ObjectFilter,
+    found_dest: RevealDest,
+    rest: DigRest,
+    max_reveal: Option<u32>,
+) {
+    if !valid_player(state, player) { return; }
+    let lib_len = state.player(player).library_top_to_bottom.len();
+    let cap = max_reveal.map(|m| (m as usize).min(lib_len)).unwrap_or(lib_len);
+    if cap == 0 { return; }
+    let top: Vec<ObjectId> = state.player(player)
+        .library_top_to_bottom.iter().take(cap).copied().collect();
+
+    // Find the first match; everything revealed up to (but not
+    // including) it — plus the non-match remainder revealed — is `rest`.
+    let mut found: Option<ObjectId> = None;
+    let mut revealed_rest: Vec<ObjectId> = Vec::new();
+    for id in top {
+        let matches = state.objects.get(id)
+            .is_some_and(|o| filter.matches(o, state, player));
+        if matches {
+            found = Some(id);
+            break;
+        }
+        revealed_rest.push(id);
+    }
+
+    if let Some(hit) = found {
+        let owner = state.objects.get(hit).map(|o| o.owner).unwrap_or(player);
+        match found_dest {
+            RevealDest::Hand => {
+                state.move_object_to_zone(
+                    hit, Zone::Hand(owner), crate::events::MoveCause::SpellResolution);
+            }
+            RevealDest::Battlefield => {
+                if let Some(obj) = state.objects.get_mut(hit) {
+                    obj.controller = player;
+                }
+                let new_id = state.move_object_to_zone(
+                    hit, Zone::Battlefield, crate::events::MoveCause::SpellResolution);
+                if let Some(bf) = new_id {
+                    if let Some(obj) = state.objects.get_mut(bf) {
+                        obj.controller = player;
+                    }
+                }
+            }
+        }
+    }
+    // The revealed non-matches (and, on a miss, the entire revealed
+    // prefix) are swept to `rest`.
+    apply_dig_rest(state, player, &revealed_rest, rest);
 }
 
 /// CR 701.49 — Discover. Exile cards off the top of `controller`'s
@@ -3794,6 +3883,118 @@ mod tests {
             .filter(|o| matches!(o.zone, Zone::Graveyard(0))).count();
         assert_eq!(in_gy, 3, "all looked-at cards swept to the graveyard");
         assert!(s.player(0).library_top_to_bottom.is_empty());
+    }
+
+    /// Push a card with the given type line onto the TOP of `p`'s
+    /// library (so the last pushed is deepest). Returns its id.
+    fn push_lib_card(s: &mut GameState, p: PlayerId, type_mask: u16) -> ObjectId {
+        let id = s.allocate_object_id();
+        let chars = Characteristics { types: type_mask.into(), ..Default::default() };
+        s.objects.insert(GameObject::new(id, p, Zone::Library(p), 0, chars));
+        s.player_mut(p).library_top_to_bottom.push(id);
+        id
+    }
+
+    #[test]
+    fn reveal_until_takes_first_match_to_hand_and_sweeps_the_rest() {
+        use crate::targets::ObjectFilter;
+        let mut s = GameState::new(2, 0);
+        // Library top→bottom: land, land, CREATURE, land.
+        let l1 = push_lib_card(&mut s, 0, TypeLine::LAND);
+        let l2 = push_lib_card(&mut s, 0, TypeLine::LAND);
+        let crea = push_lib_card(&mut s, 0, TypeLine::CREATURE);
+        let _deep = push_lib_card(&mut s, 0, TypeLine::LAND);
+        s.currently_resolving = Some(999);
+
+        Effect::RevealUntil {
+            player: 0,
+            filter: ObjectFilter { types: Some(TypeLine::CREATURE.into()),
+                ..ObjectFilter::default() },
+            found_dest: RevealDest::Hand,
+            rest: DigRest::Graveyard,
+            max_reveal: None,
+        }.execute(&mut s);
+
+        // The creature is now in hand (count by zone — move re-ids).
+        assert_eq!(s.objects.iter().filter(|o| matches!(o.zone, Zone::Hand(0))).count(), 1);
+        assert!(s.objects.iter().any(|o| matches!(o.zone, Zone::Hand(0)) && o.is_creature()));
+        // The two lands revealed before it went to the graveyard.
+        assert_eq!(s.objects.iter().filter(|o| matches!(o.zone, Zone::Graveyard(0))).count(), 2);
+        // The land below the creature was never revealed — still in library.
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 1);
+        let _ = (l1, l2, crea);
+    }
+
+    #[test]
+    fn reveal_until_no_match_sweeps_everything() {
+        use crate::targets::ObjectFilter;
+        let mut s = GameState::new(2, 0);
+        push_lib_card(&mut s, 0, TypeLine::LAND);
+        push_lib_card(&mut s, 0, TypeLine::LAND);
+        s.currently_resolving = Some(999);
+
+        Effect::RevealUntil {
+            player: 0,
+            filter: ObjectFilter { types: Some(TypeLine::CREATURE.into()),
+                ..ObjectFilter::default() },
+            found_dest: RevealDest::Hand,
+            rest: DigRest::Graveyard,
+            max_reveal: None,
+        }.execute(&mut s);
+
+        assert_eq!(s.objects.iter().filter(|o| matches!(o.zone, Zone::Hand(0))).count(), 0,
+            "no match → nothing to hand");
+        assert_eq!(s.objects.iter().filter(|o| matches!(o.zone, Zone::Graveyard(0))).count(), 2,
+            "whole revealed library swept to the graveyard");
+    }
+
+    #[test]
+    fn reveal_until_puts_match_onto_battlefield() {
+        use crate::targets::ObjectFilter;
+        let mut s = GameState::new(2, 0);
+        push_lib_card(&mut s, 0, TypeLine::LAND);
+        push_lib_card(&mut s, 0, TypeLine::CREATURE);
+        s.currently_resolving = Some(999);
+
+        Effect::RevealUntil {
+            player: 0,
+            filter: ObjectFilter { types: Some(TypeLine::CREATURE.into()),
+                ..ObjectFilter::default() },
+            found_dest: RevealDest::Battlefield,
+            rest: DigRest::BottomRandom,
+            max_reveal: None,
+        }.execute(&mut s);
+
+        let bf: Vec<_> = s.objects.iter()
+            .filter(|o| o.zone.is_battlefield() && o.is_creature()).collect();
+        assert_eq!(bf.len(), 1, "the found creature enters the battlefield");
+        assert_eq!(bf[0].controller, 0);
+    }
+
+    #[test]
+    fn reveal_until_respects_max_reveal_cap() {
+        use crate::targets::ObjectFilter;
+        let mut s = GameState::new(2, 0);
+        // Creature is the 3rd card, but max_reveal = 2 stops short of it.
+        push_lib_card(&mut s, 0, TypeLine::LAND);
+        push_lib_card(&mut s, 0, TypeLine::LAND);
+        push_lib_card(&mut s, 0, TypeLine::CREATURE);
+        s.currently_resolving = Some(999);
+
+        Effect::RevealUntil {
+            player: 0,
+            filter: ObjectFilter { types: Some(TypeLine::CREATURE.into()),
+                ..ObjectFilter::default() },
+            found_dest: RevealDest::Hand,
+            rest: DigRest::Graveyard,
+            max_reveal: Some(2),
+        }.execute(&mut s);
+
+        assert_eq!(s.objects.iter().filter(|o| matches!(o.zone, Zone::Hand(0))).count(), 0,
+            "the creature is below the reveal cap → not found");
+        assert_eq!(s.objects.iter().filter(|o| matches!(o.zone, Zone::Graveyard(0))).count(), 2,
+            "the 2 revealed lands are swept; the creature stays in library");
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 1);
     }
 
     #[test]
