@@ -527,6 +527,20 @@ pub enum Effect {
     /// Pacifism-style restriction: `target` can't attack until
     /// `duration` expires.
     ForbidAttacking { target: ObjectId, duration: Duration },
+    /// "Target creature can't block" until `duration` expires
+    /// (counterpart to [`Self::ForbidAttacking`]).
+    ForbidBlocking { target: ObjectId, duration: Duration },
+    /// Layer 6 — "Target loses all abilities" until `duration` expires
+    /// (Ovinize / per-target Humility). Strips keyword abilities.
+    LoseAllAbilities { target: ObjectId, duration: Duration },
+    /// Layer 4 — "Target becomes a/an [types] in addition to its other
+    /// types" (additive type overlay; "becomes an artifact", "is also a
+    /// creature"). Pair with [`Self::SetPt`] for "becomes a 0/0
+    /// creature in addition".
+    AddType { target: ObjectId, types: crate::types::TypeLine, duration: Duration },
+    /// Layer 5 — "Target becomes [colors]" (replaces the color set;
+    /// pass the full intended set for multi-color "becomes").
+    SetColor { target: ObjectId, colors: crate::types::ColorSet, duration: Duration },
 
     // --- composites --------------------------------------------------------
     /// Apply `effect` once per id in `targets`, substituting the id as
@@ -1298,6 +1312,22 @@ impl Effect {
                 state.add_continuous_effect(
                     crate::layers::ContinuousEffect::cant_attack(
                         /*source=*/ *target, *target, *duration));
+            }
+            Effect::ForbidBlocking { target, duration } => {
+                state.add_continuous_effect(
+                    crate::layers::ContinuousEffect::cant_block(*target, *target, *duration));
+            }
+            Effect::LoseAllAbilities { target, duration } => {
+                state.add_continuous_effect(
+                    crate::layers::ContinuousEffect::lose_all_abilities(*target, *target, *duration));
+            }
+            Effect::AddType { target, types, duration } => {
+                state.add_continuous_effect(
+                    crate::layers::ContinuousEffect::add_type(*target, *target, *types, *duration));
+            }
+            Effect::SetColor { target, colors, duration } => {
+                state.add_continuous_effect(
+                    crate::layers::ContinuousEffect::set_color(*target, *target, *colors, *duration));
             }
 
             // --- composites ---------------------------------------------

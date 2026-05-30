@@ -546,6 +546,10 @@ impl GameState {
         use crate::effects::KeywordAbility as K;
         use crate::types::Color;
 
+        // "Can't block" continuous effect (Layer 6 marker). Self-
+        // restriction on the blocker, like Unleash below.
+        if self.cant_block(blocker) { return false; }
+
         // CR 702.96a — Unleash: a creature with a +1/+1 counter on it
         // can't block (Pass 4.1e). Self-restriction on the blocker.
         if self.has_keyword(blocker, &K::Unleash)

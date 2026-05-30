@@ -273,6 +273,47 @@ impl ContinuousEffect {
             kind: ContinuousEffectKind::CantBeBlocked { target },
         }
     }
+
+    /// "Target creature can't block [this turn]", Layer 6. Mirror of
+    /// [`Self::cant_attack`]; consumed by `combat::blocker_eligible`.
+    pub fn cant_block(source: ObjectId, target: ObjectId,
+                      duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L6Ability, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::CantBlock { target },
+        }
+    }
+
+    /// "Target loses all abilities", Layer 6.
+    pub fn lose_all_abilities(source: ObjectId, target: ObjectId,
+                              duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L6Ability, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::LoseAllAbilities { target },
+        }
+    }
+
+    /// "Target becomes a/an [types] in addition", Layer 4.
+    pub fn add_type(source: ObjectId, target: ObjectId,
+                    types: crate::types::TypeLine, duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L4Type, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AddType { target, types },
+        }
+    }
+
+    /// "Target becomes [colors]", Layer 5 (replaces the color set).
+    pub fn set_color(source: ObjectId, target: ObjectId,
+                     colors: crate::types::ColorSet, duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L5Color, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::SetColor { target, colors },
+        }
+    }
 }
 
 /// The concrete kind of continuous effect. Most cards fit one of the
@@ -304,6 +345,28 @@ pub enum ContinuousEffectKind {
     /// characteristics; consumed by [`crate::combat`]'s
     /// `block_constraints` (caps the attacker's blockers at 0).
     CantBeBlocked { target: ObjectId },
+    /// "Target creature can't block [this turn]" (Goblin Diplomats,
+    /// Dragon Hatchling-style). Mirror of [`Self::CantAttack`];
+    /// consumed by [`crate::combat::GameState::blocker_eligible`].
+    /// Doesn't modify characteristics.
+    CantBlock { target: ObjectId },
+    /// Layer 6 — "Target loses all abilities" (Ovinize / Humility-style,
+    /// the per-target form). Clears the in-flight `keywords`. NOTE:
+    /// registry-defined activated/triggered abilities are dispatched
+    /// off `card_id`, not these characteristics, so this clears
+    /// KEYWORD abilities (flying, etc.) but not registry abilities —
+    /// a documented partial until abilities migrate into characteristics.
+    LoseAllAbilities { target: ObjectId },
+    /// Layer 4 — "Target is a/an [types] in addition to its other
+    /// types" (Ardenvale Tactician's land animation, "becomes an
+    /// artifact", "is also a creature"). ORs `types` into the
+    /// in-flight type line (additive — does not remove existing types).
+    AddType { target: ObjectId, types: crate::types::TypeLine },
+    /// Layer 5 — "Target becomes [colors]" (becomes black, etc.).
+    /// REPLACES the in-flight color set (CR 613.3e: a "becomes" color
+    /// effect sets, it doesn't add — use the full intended set, e.g.
+    /// black+green for "becomes black and green").
+    SetColor { target: ObjectId, colors: crate::types::ColorSet },
     /// CR 702.6 — "Equipped creature gets +P/+T" (Bonesplitter,
     /// Sword of Fire and Ice, etc.). The buff applies to whatever
     /// creature the effect's source (the Equipment) is currently
@@ -336,7 +399,11 @@ impl ContinuousEffectKind {
             | Self::GrantKeywordTarget { target, .. }
             | Self::Goaded { target, .. }
             | Self::CantAttack { target }
-            | Self::CantBeBlocked { target } => *target == object_id,
+            | Self::CantBeBlocked { target }
+            | Self::CantBlock { target }
+            | Self::LoseAllAbilities { target }
+            | Self::AddType { target, .. }
+            | Self::SetColor { target, .. } => *target == object_id,
             Self::AnthemForController { controller, .. }
             | Self::GrantKeywordToController { controller, .. } => {
                 state.objects.get(object_id).is_some_and(|o|
@@ -379,10 +446,25 @@ impl ContinuousEffectKind {
             }
             Self::Goaded { .. }
             | Self::CantAttack { .. }
-            | Self::CantBeBlocked { .. } => {
+            | Self::CantBeBlocked { .. }
+            | Self::CantBlock { .. } => {
                 // No characteristic modification — these are
                 // combat-time modifiers consumed by `legal_actions`
-                // (attack) / `combat::block_constraints` (block).
+                // (attack) / `combat` (block).
+            }
+            Self::LoseAllAbilities { .. } => {
+                // Layer 6 — strip keyword abilities. Registry-defined
+                // activated/triggered abilities dispatch off card_id and
+                // aren't reachable here (documented partial).
+                chars.keywords.clear();
+            }
+            Self::AddType { types, .. } => {
+                // Layer 4 — additive: OR the new type bits in.
+                chars.types.0 |= types.0;
+            }
+            Self::SetColor { colors, .. } => {
+                // Layer 5 — "becomes [colors]" replaces the color set.
+                chars.colors = *colors;
             }
             Self::Custom(f) => f(object_id, chars, state),
         }
@@ -584,6 +666,13 @@ impl GameState {
     pub fn cant_be_blocked(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| matches!(&e.kind,
             ContinuousEffectKind::CantBeBlocked { target } if *target == object_id))
+    }
+
+    /// Does `object_id` have an active "can't block" restriction?
+    /// Consumed by [`crate::combat::GameState::blocker_eligible`].
+    pub fn cant_block(&self, object_id: ObjectId) -> bool {
+        self.continuous_effects.iter().any(|e| matches!(&e.kind,
+            ContinuousEffectKind::CantBlock { target } if *target == object_id))
     }
 
     /// Every active Protection quality on `object_id`. Reads from the
@@ -810,6 +899,45 @@ mod tests {
         assert_eq!(s.computed_power(mine1), Some(2));
         assert_eq!(s.computed_power(mine2), Some(3));
         assert_eq!(s.computed_power(theirs), Some(3)); // unchanged
+    }
+
+    #[test]
+    fn lose_all_abilities_clears_keywords() {
+        use crate::effects::KeywordAbility;
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.objects.get_mut(c).unwrap().characteristics.keywords =
+            vec![KeywordAbility::Flying, KeywordAbility::Trample];
+        s.add_continuous_effect(
+            ContinuousEffect::lose_all_abilities(999, c, Duration::EndOfTurn));
+        assert!(s.effective_keywords(c).is_empty(), "all keyword abilities stripped");
+    }
+
+    #[test]
+    fn add_type_and_set_color_alter_characteristics() {
+        use crate::types::{TypeLine, ColorSet};
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2); // green creature
+        // "becomes an artifact in addition" — additive type.
+        s.add_continuous_effect(
+            ContinuousEffect::add_type(999, c, TypeLine::ARTIFACT.into(), Duration::Permanent));
+        // "becomes black".
+        s.add_continuous_effect(
+            ContinuousEffect::set_color(999, c, ColorSet::black(), Duration::Permanent));
+        let cc = s.compute_characteristics(c).unwrap();
+        assert!(cc.types.is_creature() && cc.types.is_artifact(),
+            "artifact added without losing creature");
+        assert_eq!(cc.colors, ColorSet::black(), "color set replaced to black");
+    }
+
+    #[test]
+    fn cant_block_marker_blocks_blocker_eligibility() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 1, 2, 2);
+        assert!(!s.cant_block(c));
+        s.add_continuous_effect(
+            ContinuousEffect::cant_block(999, c, Duration::EndOfTurn));
+        assert!(s.cant_block(c), "can't-block marker is queryable by combat");
     }
 
     #[test]

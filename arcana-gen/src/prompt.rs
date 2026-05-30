@@ -545,6 +545,10 @@ Single permanent / card target (`id` from the first target):
 - `Effect::SetBasePT { target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }`
 - `Effect::GrantKeyword { target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }`
 - `Effect::CantBeBlocked { target: id, duration: Duration::EndOfTurn }`  — "target creature can't be blocked this turn". For a creature's own static "~ can't be blocked", target its own id with `Duration::WhileSourceOnBattlefield`. Use this instead of GAP-ing "can't be blocked".
+- `Effect::ForbidBlocking { target: id, duration: Duration::EndOfTurn }`  — "target creature can't block this turn".
+- `Effect::LoseAllAbilities { target: id, duration: Duration::EndOfTurn }`  — "target creature loses all abilities" (strips keyword abilities; pair with `Effect::SetPt` for "becomes a 1/1 with no abilities"). Use instead of GAP-ing "loses all abilities".
+- `Effect::AddType { target: id, types: TypeLine::ARTIFACT.into(), duration: Duration::EndOfTurn }`  — "target becomes an artifact / is also a creature [in addition to its other types]". Additive (keeps existing types). For permanent animation of a noncreature, combine with `Effect::SetPt`. Use instead of GAP-ing type changes.
+- `Effect::SetColor { target: id, colors: ColorSet::black(), duration: Duration::EndOfTurn }`  — "target becomes black" (replaces the color set; for two colors use `ColorSet::black() | ColorSet::green()`). Import `ColorSet` from `arcana_core::types`.
 - `Effect::Regenerate { target: id }`  ·  `Effect::Transform { target: id }`
 
 Two-object / combat:
@@ -792,6 +796,10 @@ Single permanent / card target (`id` from the first target):
 - `Effect::SetBasePT {{ target: id, power: i32, toughness: i32, duration: Duration::EndOfTurn }}`  ('becomes a 1/1')
 - `Effect::GrantKeyword {{ target: id, keyword: KeywordAbility::Trample, duration: Duration::EndOfTurn }}`
 - `Effect::CantBeBlocked {{ target: id, duration: Duration::EndOfTurn }}`  — 'target creature can't be blocked this turn'. For a creature's own static 'this can't be blocked', target its own id with `Duration::WhileSourceOnBattlefield`. Use this instead of GAP-ing 'can't be blocked'.
+- `Effect::ForbidBlocking {{ target: id, duration: Duration::EndOfTurn }}`  — 'target creature can't block this turn'.
+- `Effect::LoseAllAbilities {{ target: id, duration: Duration::EndOfTurn }}`  — 'target loses all abilities' (strips keyword abilities; pair with SetPt for 'becomes a 1/1 with no abilities').
+- `Effect::AddType {{ target: id, types: TypeLine::ARTIFACT.into(), duration: Duration::EndOfTurn }}`  — 'target becomes an artifact / is also a creature in addition'. Additive. Combine with `Effect::SetPt` to animate a noncreature.
+- `Effect::SetColor {{ target: id, colors: ColorSet::black(), duration: Duration::EndOfTurn }}`  — 'target becomes black' (replaces color set; two colors via `ColorSet::black() | ColorSet::green()`). Import `ColorSet` from `arcana_core::types`.
 - `Effect::Regenerate {{ target: id }}`  ·  `Effect::Transform {{ target: id }}`
 
 Two-object / combat:
