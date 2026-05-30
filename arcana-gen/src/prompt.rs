@@ -568,7 +568,9 @@ Mana:
 
 Damage / prevention:
 - `Effect::DealDamage { target: DamageTarget::Object(id), amount: u32, source: {BINDING}.source }`  (`DamageTarget::Player(p)` for a player; import `DamageTarget` from `arcana_core::events`)
-- `Effect::PreventDamage { target: DamageTarget::Object(id), amount: Some(3), duration: ReplacementDuration::EndOfTurn }`  (`amount: None` prevents ALL)
+- `Effect::PreventDamage { target: DamageTarget::Object(id), amount: Some(3), duration: ReplacementDuration::EndOfTurn }`  (`amount: None` prevents ALL damage to that one target, any source)
+- `Effect::RedirectDamage { from: DamageTarget::Object(id), to: DamageTarget::Player({BINDING}.controller), duration: ReplacementDuration::EndOfTurn }`  — CR 614.9 "the next time a source would deal damage to `from`, it's dealt to `to` instead" (Palisade Giant / "redirect damage to you"). Use instead of GAP-ing damage redirection.
+- `Effect::PreventDamageFrom { source_filter: ObjectFilter::creature(), target_filter: TargetFilter::Player, amount: None, duration: ReplacementDuration::EndOfTurn }`  — source/target-FILTERED prevention: "prevent all damage that would be dealt by [source_filter] to [target_filter]" (Fog Bank-style board-wide, "prevent all damage from flying creatures to you"). `amount: Some(n)` for "up to n". Filter both ends; for "prevent all damage to you (any source)" use a broad `source_filter` (`ObjectFilter::permanent()`) + `TargetFilter::Player`. Use instead of GAP-ing board-wide / source-filtered prevention.
 
 Sacrifice:
 - `Effect::Sacrifice { player: p, filter: ObjectFilter::creature(), count: u32 }`
@@ -815,6 +817,8 @@ Mana (ritual class):
 
 Damage prevention (Healing Salve class):
 - `Effect::PreventDamage {{ target: DamageTarget::Object(id), amount: Some(3), duration: ReplacementDuration::EndOfTurn }}`  ('Prevent the next 3 damage that would be dealt to any target this turn' — `amount: None` prevents ALL damage. `DamageTarget::Player(p)` for a player target. `ReplacementDuration` from `arcana_core::replacement`.)
+- `Effect::RedirectDamage {{ from: DamageTarget::Object(id), to: DamageTarget::Player(entry.controller), duration: ReplacementDuration::EndOfTurn }}`  — CR 614.9 redirect damage from one target to another ('redirect damage to you'). Use instead of GAP-ing redirection.
+- `Effect::PreventDamageFrom {{ source_filter: ObjectFilter::creature(), target_filter: TargetFilter::Player, amount: None, duration: ReplacementDuration::EndOfTurn }}`  — source/target-filtered prevention ('prevent all damage dealt by [source_filter] to [target_filter]', Fog Bank-style). `amount: Some(n)` for up-to-n. Broad `source_filter` (`ObjectFilter::permanent()`) + `TargetFilter::Player` = 'prevent all damage to you'. Use instead of GAP-ing board-wide/source-filtered prevention.
 
 Sacrifice:
 - `Effect::Sacrifice {{ player: p, filter: ObjectFilter::creature(), count: u32 }}`  ('that player sacrifices a creature' → player = the target player, filter selects what; chain the `ObjectFilter` refinements above for 'sacrifices an artifact', etc.)

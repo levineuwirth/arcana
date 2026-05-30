@@ -79,6 +79,20 @@ pub enum Effect {
         to: DamageTarget,
         duration: crate::replacement::ReplacementDuration,
     },
+    /// CR 614 — source/target-FILTERED damage prevention: "prevent all
+    /// [combat] damage that would be dealt by [source_filter] to
+    /// [target_filter]" (Fog Bank board-wide, "prevent all damage from
+    /// flying creatures", "prevent damage from red sources to you").
+    /// `amount: None` prevents all; `Some(n)` prevents up to n per
+    /// event. Unlike [`Self::PreventDamage`] (single specific target,
+    /// any source) this filters BOTH ends. For "prevent all damage to
+    /// you" pass a match-all `source_filter` + `TargetFilter::Player`.
+    PreventDamageFrom {
+        source_filter: ObjectFilter,
+        target_filter: crate::targets::TargetFilter,
+        amount: Option<u32>,
+        duration: crate::replacement::ReplacementDuration,
+    },
     /// CR 701.25 — Install a regenerate shield on `target`. The next
     /// time `target` would die this turn, it's saved instead: damage
     /// cleared, tapped, removed from combat. Shield is consumed on
@@ -683,6 +697,26 @@ impl Effect {
                         target: *from,
                     },
                     kind: ReplacementKind::RedirectDamageTo(*to),
+                    is_self_replacement: false,
+                    duration: *duration,
+                });
+            }
+            Effect::PreventDamageFrom { source_filter, target_filter, amount, duration } => {
+                use crate::replacement::{
+                    ReplacementCondition, ReplacementEffect, ReplacementKind,
+                };
+                let kind = match amount {
+                    None => ReplacementKind::PreventAllDamage,
+                    Some(n) => ReplacementKind::PreventDamageUpTo(*n),
+                };
+                state.add_replacement_effect(ReplacementEffect {
+                    source: crate::objects::NULL_OBJECT_ID,
+                    id: 0,
+                    condition: ReplacementCondition::WouldDealDamage {
+                        source_filter: source_filter.clone(),
+                        target_filter: target_filter.clone(),
+                    },
+                    kind,
                     is_self_replacement: false,
                     duration: *duration,
                 });
@@ -3512,6 +3546,31 @@ mod tests {
             source: 99, target: DamageTarget::Player(0), amount: 3,
         }.execute(&mut s);
         assert_eq!(s.player(0).life, 17);
+    }
+
+    #[test]
+    fn prevent_damage_from_filters_by_source() {
+        use crate::replacement::ReplacementDuration;
+        use crate::targets::{ObjectFilter, TargetFilter};
+        let mut s = GameState::new(2, 0);
+        let creature_src = put_creature(&mut s, 1, Zone::Battlefield, 3, 3);
+        // "Prevent all damage that would be dealt by creatures to you."
+        Effect::PreventDamageFrom {
+            source_filter: ObjectFilter::creature(),
+            target_filter: TargetFilter::Player,
+            amount: None,
+            duration: ReplacementDuration::EndOfTurn,
+        }.execute(&mut s);
+        // Creature source → prevented.
+        Effect::DealDamage {
+            source: creature_src, target: DamageTarget::Player(0), amount: 4,
+        }.execute(&mut s);
+        assert_eq!(s.player(0).life, 20, "creature damage to the player is prevented");
+        // Non-creature source (no matching object) → goes through.
+        Effect::DealDamage {
+            source: 99999, target: DamageTarget::Player(0), amount: 2,
+        }.execute(&mut s);
+        assert_eq!(s.player(0).life, 18, "source outside the filter is unaffected");
     }
 
     #[test]
