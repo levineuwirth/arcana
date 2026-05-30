@@ -77,7 +77,14 @@ pub type EffectFn = fn(&GameState, &PendingTrigger, &crate::registry::CardRegist
     -> Vec<crate::effects::Effect>;
 
 /// Function pointer for intervening-if clauses (CR 603.4).
-pub type InterveningIfFn = fn(&GameState) -> bool;
+/// CR 603.4 "intervening if" predicate. Receives the game state plus
+/// the ability's `source` object id and its `controller` — so a
+/// condition can resolve "you"/"this permanent" ("if you control three
+/// or more artifacts", "if you have 10 or less life", "if this creature
+/// has a +1/+1 counter on it"). Pair with the [`crate::conditions`]
+/// query helpers. Returns `true` to allow the trigger to fire / stay on
+/// the stack, `false` to fizzle it.
+pub type InterveningIfFn = fn(&GameState, ObjectId, PlayerId) -> bool;
 /// Computes a dynamic X-value at trigger-fire time from a fired-but-not-
 /// yet-on-stack [`PendingTrigger`]. The returned u32 is stamped into
 /// the triggered-ability stack entry's `x_value` and consumed by any
@@ -174,7 +181,7 @@ impl TriggeredAbilityDef {
 
         // Intervening-if.
         if let Some(cond) = self.intervening_if {
-            if !cond(state) { return None; }
+            if !cond(state, source, source_controller) { return None; }
         }
 
         // Frequency budget.
@@ -702,7 +709,7 @@ impl GameState {
                     // Intervening-if runs at both stack-add and resolve;
                     // check it here as the stack-add check.
                     if let Some(f) = t.intervening_if {
-                        if !f(self) { return None; }
+                        if !f(self, t.source, t.controller) { return None; }
                     }
                     Some(i)
                 } else { None }
@@ -1199,7 +1206,7 @@ mod tests {
     fn should_fire_respects_intervening_if() {
         let mut s = GameState::new(2, 0);
         let src = put_creature(&mut s, 0, Zone::Battlefield);
-        fn always_false(_: &GameState) -> bool { false }
+        fn always_false(_: &GameState, _: ObjectId, _: PlayerId) -> bool { false }
         let def = TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::SelfEntersBattlefield,

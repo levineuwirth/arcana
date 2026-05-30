@@ -336,9 +336,10 @@ use arcana_core::effects::{Effect, KeywordAbility};     // Effect variants + Key
 use arcana_core::events::{DamageTarget, GameEvent};     // DamageTarget for DealDamage; rarely GameEvent
 use arcana_core::layers::Duration;                      // Duration::EndOfTurn / WhileSourceOnBattlefield
 use arcana_core::mana::{ManaCost, ManaUnit};
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};   // ObjectId for intervening_if fn signatures
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
-use arcana_core::script;                                 // script::count_matching etc.
+use arcana_core::script;                                 // script::count_matching etc. (resolution-time amounts)
+use arcana_core::conditions;                             // conditions::you_control_at_least etc. (intervening-if predicates)
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -397,6 +398,18 @@ ENGINE CONVENTIONS (match the reference examples exactly)
 - Spell abilities: `.with_spell_ability(SpellAbilityDef { text, target_requirements, modal: None, effect: resolve })` where `resolve` is a free fn `fn(_: &GameState, entry: &StackEntry, _: &CardRegistry) -> Vec<Effect>`.
 - Modal spells (Charms, "Choose one — …"): use `modal: Some(ModalSpec { min_modes: 1, max_modes: 1, clauses: vec![ModeClause { text: "…".into(), target_requirements: vec![req_for_this_mode] }, …] })`. Each clause owns its own targets (the engine concatenates chosen clauses' targets in card order). Set `effect: arcana_core::registry::dispatch_modal_effect` (a STATIC function pointer — do not invent your own dispatcher). Then attach per-mode callbacks: `.with_mode_effects(vec![mode_0_resolve, mode_1_resolve, …])`. Each `mode_N_resolve` is a free fn with the same `(&GameState, &StackEntry, &CardRegistry) -> Vec<Effect>` signature; the dispatcher calls only the chosen ones. For "Choose one OR both" use `min_modes: 1, max_modes: 2`; for "Choose two" use `min_modes: 2, max_modes: 2`. Import `ModalSpec, ModeClause, dispatch_modal_effect` from `arcana_core::registry`.
 - Triggered abilities: `.with_triggered_ability(TriggeredAbilityDef { id, trigger_condition, intervening_if, effect, trigger_zones, frequency, target_requirements })`. `id` is a per-card `u32` starting at 1. `effect` is a free fn `fn(_: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect>`.
+- INTERVENING-IF (CR 603.4) — when a trigger has an "if" clause GATING whether it happens at all ("At the beginning of your upkeep, IF you control three or more artifacts, …"; "Whenever a creature dies, IF you have 13 or less life, …"; "At the beginning of your upkeep, IF ~ has no +1/+1 counters on it, …"), set `intervening_if: Some(my_condition)` — do NOT bake the check into the effect body, and do NOT GAP it / fire unconditionally. `my_condition` is a free fn `fn(_: &GameState, source: ObjectId, you: PlayerId) -> bool` (state, the ability's source object, its controller) that returns true to allow the trigger. Implement it with the `arcana_core::conditions` predicates (`use arcana_core::conditions;`), or `script::` for amounts. Available `conditions::` helpers: `you_control_at_least(s, you, &filter, n)` · `you_control_at_most(..)` · `you_control_a(s, you, &filter)` · `life_at_least(s, you, n)` · `life_at_most(s, you, n)` · `hand_at_least(s, you, n)` · `hand_empty(s, you)` · `graveyard_at_least(s, you, n)` · `source_has_counter(s, source, kind)` · `source_counters_at_least(s, source, kind, n)`. The engine checks `intervening_if` both as the trigger goes on the stack and (per CR 603.4) when it resolves. Import `ObjectId` from `arcana_core::objects`. Example:
+```rust
+fn if_control_three_artifacts(s: &GameState, _src: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_at_least(
+        s, you,
+        &ObjectFilter { types: Some(TypeLine::ARTIFACT.into()), ..Default::default() },
+        3,
+    )
+}
+// …then on the TriggeredAbilityDef: intervening_if: Some(if_control_three_artifacts),
+```
+(A trigger with no "if" clause keeps `intervening_if: None`. "if able" / "may" are NOT intervening-if — those are resolution-time choices, not a gate.)
 - Characteristics: build via struct literal with `..Default::default()` at the end. Do not omit `..Default::default()`.
 - CardDefinition chaining ends with `reg.register(CardDefinition::new(name, chars).with_...(...))`."#;
 
