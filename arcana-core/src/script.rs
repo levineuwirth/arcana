@@ -302,6 +302,40 @@ pub fn cards_discarded_this_turn(
         .count() as u32
 }
 
+/// Events of the turn that JUST ended — the slice between last turn's
+/// start marker and this turn's. Empty on turn one. Powers the
+/// werewolf transform condition and the CR 726.4 day/night flip.
+fn last_turn_events(state: &GameState) -> &[crate::events::GameEvent] {
+    let start = state.prev_turn_event_log_start.min(state.event_log.len());
+    let end = state.turn_event_log_start.min(state.event_log.len());
+    if start > end { return &[]; }
+    &state.event_log[start..end]
+}
+
+/// Total spells cast last turn by ALL players. `0` is the werewolf
+/// front→night transform trigger ("if no spells were cast last turn").
+pub fn spells_cast_last_turn_total(state: &GameState) -> u32 {
+    last_turn_events(state).iter()
+        .filter(|ev| matches!(ev, crate::events::GameEvent::SpellCast { .. }))
+        .count() as u32
+}
+
+/// The most spells cast by any single player last turn. `>= 2` is the
+/// werewolf back→day transform trigger ("if a player cast two or more
+/// spells last turn").
+pub fn max_spells_by_a_player_last_turn(state: &GameState) -> u32 {
+    let mut counts: crate::collections::HashMap<PlayerId, u32> = Default::default();
+    let mut max = 0u32;
+    for ev in last_turn_events(state) {
+        if let crate::events::GameEvent::SpellCast { controller, .. } = ev {
+            let c = counts.entry(*controller).or_insert(0);
+            *c += 1;
+            max = max.max(*c);
+        }
+    }
+    max
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

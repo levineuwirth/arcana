@@ -550,6 +550,11 @@ pub enum Effect {
         win: Box<Effect>,
         lose: Option<Box<Effect>>,
     },
+    /// CR 726.2 — "it becomes day" / "it becomes night". Introduces the
+    /// day/night designation (or switches it). Once set, the engine's
+    /// CR 726.4 turn-start transition keeps flipping it from last turn's
+    /// spell activity. Read by `conditions::it_is_day` / `it_is_night`.
+    SetDayNight { value: crate::turn::DayNight },
     /// CR 603.7 — schedule a one-shot delayed action on a *known*
     /// object id (a target the resolver already has). Covers the
     /// blink/flicker and dies-on-target rider family: "exile target
@@ -1315,6 +1320,9 @@ impl Effect {
                     step.execute(state);
                     if state.is_game_over() { break; }
                 }
+            }
+            Effect::SetDayNight { value } => {
+                state.day_night = *value;
             }
             Effect::FlipCoin { player, win, lose } => {
                 if !valid_player(state, *player) { return; }

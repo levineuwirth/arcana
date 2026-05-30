@@ -349,7 +349,7 @@ use arcana_core::targets::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::turn::{Phase, Step};
+use arcana_core::turn::{Phase, Step, DayNight};         // DayNight for Effect::SetDayNight (CR 726)
 use arcana_core::types::{
     CardId, ColorSet, CounterKind, ManaColor, PlayerId, PtValue, SubtypeSet,
     SupertypeSet, TypeLine,
@@ -1065,7 +1065,7 @@ ENGINE STATUS — back-face resolution now works:
 - A back face that is a PERMANENT (creature / land / planeswalker) resolves onto the battlefield with the BACK face's full characteristics (P/T, type line, colors, keywords; planeswalker backs enter with their printed `loyalty: Some(N)` as loyalty counters). Author the back `characteristics` completely. Land backs are played via the land drop (`PlayLand {{ mdfc_back: true }}`), non-land permanent backs are cast via `CastModifier::MdfcBack`.
 - A back face that is an instant/sorcery resolves its `spell_ability` then goes to the graveyard, like a normal spell.
 - The back face's own ACTIVATED abilities work via `face_gate: Some(1)` on each ActivatedAbilityDef (front-face activated abilities take `face_gate: Some(0)` or `None`).
-- STILL DEBT: a back-face-only TRIGGERED ability is not auto-installed (triggered abilities live on the CardDefinition, not the face). Author front/shared triggers normally; for a back-only trigger emit `// GAP: back-face-only triggered ability not modeled`. Build both faces' static characteristics regardless.
+- Back-face TRIGGERED abilities: put them on the one CardDefinition and gate each to the back face with `.with_trigger_face_gate(trigger_id, 1)` (an MDFC back resolves as a permanent showing face 1). Front-face triggers take `with_trigger_face_gate(id, 0)` or no gate if shared. Build both faces' static characteristics regardless.
 
 {cat}
 
@@ -1093,8 +1093,8 @@ ENGINE STATUS — transform primitives are in place:
 - FACE-GATE the directional triggers/abilities: an ability that should only be active on a particular face takes `face_gate: Some(0)` (front) or `Some(1)` (back) on its ActivatedAbilityDef. Triggered abilities that only exist on one face: author them and note the face in a comment.
 
 DEFERRED engine debt (document as GAPs where they apply):
-- The back face's OWN triggered abilities are not auto-installed on transform (abilities live on the CardDefinition, not the face). Author front-face and shared abilities; for a back-only triggered ability emit `// GAP: back-face-only triggered ability not modeled`.
-- Day/night cycle, the precise \"no spells cast last turn\" werewolf trigger conditions, and meld are not modeled — wire the transform via the closest available trigger/activated ability and GAP the exact condition if needed.
+- FACE-GATED TRIGGERS: a transforming DFC's triggered abilities live on the one CardDefinition (shared across faces). Put BOTH faces' triggers on the def, and gate each to the face it belongs to with `.with_trigger_face_gate(trigger_id, face)` (face 0 = front, 1 = back). A front-only trigger → `with_trigger_face_gate(id, 0)`; a back-only trigger → `with_trigger_face_gate(id, 1)`. The engine fires a gated trigger only while the object shows that face. (Shared/both-face triggers need no gate.) Activated abilities use the per-ability `face_gate: Some(0|1)` field the same way.
+- WEREWOLF / day-night transform conditions are now expressible via `intervening_if` (see the intervening-if section): \"if no spells were cast last turn, transform\" → on the front→back transform trigger set `intervening_if: Some(if_no_spells_last_turn)` where `fn if_no_spells_last_turn(s,_,_) -> bool {{ conditions::no_spells_cast_last_turn(s) }}`; \"if a player cast two or more spells last turn\" → `conditions::a_player_cast_two_or_more_last_turn(s)`. For day/night cards, `conditions::it_is_day` / `it_is_night`; introduce day/night with `Effect::SetDayNight {{ value: DayNight::Day }}`. Meld remains unmodeled (GAP it).
 
 BUILD PATTERN:
 ```rust

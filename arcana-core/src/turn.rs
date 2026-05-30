@@ -14,6 +14,24 @@ use serde::{Serialize, Deserialize};
 use crate::types::PlayerId;
 
 // =============================================================================
+// Day / Night (CR 726)
+// =============================================================================
+
+/// CR 726 — the day/night designation. The game starts `Neither`; a
+/// card with daybound/nightbound or an "it becomes day/night" effect
+/// introduces it. Once introduced, CR 726.4 flips it at the start of
+/// each turn: day→night if the player whose turn it is cast no spells
+/// during the previous turn; night→day if a player cast two or more
+/// spells during the previous turn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum DayNight {
+    #[default]
+    Neither,
+    Day,
+    Night,
+}
+
+// =============================================================================
 // TurnState
 // =============================================================================
 

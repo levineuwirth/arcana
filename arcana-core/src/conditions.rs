@@ -120,6 +120,28 @@ pub fn source_counters_at_least(
         .is_some_and(|o| o.count_counters(kind) >= n)
 }
 
+/// "if no spells were cast last turn" — the werewolf front→back
+/// transform trigger (Innistrad day/night precursor; CR 726.4 day→night).
+pub fn no_spells_cast_last_turn(state: &GameState) -> bool {
+    crate::script::spells_cast_last_turn_total(state) == 0
+}
+
+/// "if a player cast two or more spells last turn" — the werewolf
+/// back→front transform trigger (CR 726.4 night→day).
+pub fn a_player_cast_two_or_more_last_turn(state: &GameState) -> bool {
+    crate::script::max_spells_by_a_player_last_turn(state) >= 2
+}
+
+/// CR 726 — "if it's day".
+pub fn it_is_day(state: &GameState) -> bool {
+    state.day_night == crate::turn::DayNight::Day
+}
+
+/// CR 726 — "if it's night".
+pub fn it_is_night(state: &GameState) -> bool {
+    state.day_night == crate::turn::DayNight::Night
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,6 +193,44 @@ mod tests {
         // invalid player → neutral (false), no panic.
         assert!(!life_at_least(&s, 99, 1));
         let _ = put(&mut s, 0, creature(1, 1));
+    }
+
+    #[test]
+    fn last_turn_spell_predicates_and_day_night_transition() {
+        use crate::events::GameEvent;
+        use crate::targets::TargetSelection;
+        use crate::turn::DayNight;
+        let mut s = GameState::new(2, 0);
+        let cast = |c: PlayerId| GameEvent::SpellCast {
+            object_id: 1, card_id: 1, controller: c, targets: TargetSelection::new(),
+        };
+        // Last turn: player 0 cast two spells.
+        s.prev_turn_event_log_start = s.event_log.len();
+        s.event_log.push(cast(0));
+        s.event_log.push(cast(0));
+        s.turn_event_log_start = s.event_log.len();
+        assert!(!no_spells_cast_last_turn(&s));
+        assert!(a_player_cast_two_or_more_last_turn(&s));
+        // Night + a player cast 2+ last turn → becomes day (CR 726.4).
+        s.day_night = DayNight::Night;
+        s.apply_day_night_transition();
+        assert_eq!(s.day_night, DayNight::Day);
+        assert!(it_is_day(&s) && !it_is_night(&s));
+
+        // A turn with no spells (empty last-turn slice).
+        s.prev_turn_event_log_start = s.event_log.len();
+        s.turn_event_log_start = s.event_log.len();
+        assert!(no_spells_cast_last_turn(&s));
+        assert!(!a_player_cast_two_or_more_last_turn(&s));
+        // Day + no spells last turn → becomes night.
+        s.day_night = DayNight::Day;
+        s.apply_day_night_transition();
+        assert_eq!(s.day_night, DayNight::Night);
+
+        // Neither never transitions.
+        s.day_night = DayNight::Neither;
+        s.apply_day_night_transition();
+        assert_eq!(s.day_night, DayNight::Neither);
     }
 
     #[test]

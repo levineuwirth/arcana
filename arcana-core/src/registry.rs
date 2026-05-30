@@ -178,6 +178,15 @@ pub struct CardDefinition {
     /// concatenated card order (CR 700.2c). Sidecar to keep the
     /// SpellAbilityDef literal stable across 2,400+ card files.
     pub mode_effects: Option<Vec<SpellEffectFn>>,
+    /// Sidecar: per-triggered-ability face gate (CR 712). Maps a
+    /// trigger id to the `visible_face` (0 = front, 1 = back) on which
+    /// that trigger is active — the triggered-ability analogue of
+    /// [`ActivatedAbilityDef::face_gate`]. A back-face-only trigger on
+    /// a transforming DFC (werewolf night side, flipped Battle, etc.)
+    /// fires only while the object shows that face. Sidecar (not a
+    /// `TriggeredAbilityDef` field) so the 1,800+ existing trigger
+    /// literals stay stable. Empty = every trigger fires on any face.
+    pub trigger_face_gates: Vec<(crate::types::TriggerId, u8)>,
 }
 
 impl CardDefinition {
@@ -195,7 +204,28 @@ impl CardDefinition {
             combined_characteristics: None,
             dynamic_x: Vec::new(),
             mode_effects: None,
+            trigger_face_gates: Vec::new(),
         }
+    }
+
+    /// Gate a triggered ability to a specific face (CR 712). `face` is
+    /// 0 (front) or 1 (back); the trigger fires only while the object's
+    /// `visible_face` matches. Use for a transforming DFC's back-face-
+    /// only (or front-face-only) triggers.
+    pub fn with_trigger_face_gate(
+        mut self,
+        trigger_id: crate::types::TriggerId,
+        face: u8,
+    ) -> Self {
+        self.trigger_face_gates.push((trigger_id, face));
+        self
+    }
+
+    /// The face gate for `trigger_id`, if any. `None` = fires on any face.
+    pub fn trigger_face_gate(&self, trigger_id: crate::types::TriggerId) -> Option<u8> {
+        self.trigger_face_gates.iter()
+            .find(|(id, _)| *id == trigger_id)
+            .map(|(_, face)| *face)
     }
 
     /// Attach a dynamic-X resolver to a triggered-ability id on this

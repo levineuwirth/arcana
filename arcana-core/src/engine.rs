@@ -2273,19 +2273,27 @@ fn collect_pending_triggers(
     //    leaves-the-battlefield triggers fire for the OLD id the
     //    event carries, per CR 603.10 / 400.7. We snapshot first so
     //    we don't hold a borrow while iterating.
-    let mut trigger_sources: Vec<(ObjectId, crate::types::CardId, PlayerId)> =
+    let mut trigger_sources: Vec<(ObjectId, crate::types::CardId, PlayerId, u8)> =
         state.objects.iter()
-            .map(|o| (o.id, o.card_id, o.controller))
+            .map(|o| (o.id, o.card_id, o.controller, o.visible_face))
             .collect();
     // LKI entries are keyed by the pre-move id — which is the id the
     // leaving/dying events carry — so their triggers correctly match.
     trigger_sources.extend(
-        state.lki.iter().map(|(id, o)| (*id, o.card_id, o.controller)));
+        state.lki.iter().map(|(id, o)| (*id, o.card_id, o.controller, o.visible_face)));
 
     for event in events {
-        for &(source, card_id, controller) in &trigger_sources {
+        for &(source, card_id, controller, visible_face) in &trigger_sources {
             let Some(def) = registry.get(card_id) else { continue; };
             for ability in &def.triggered_abilities {
+                // CR 712 — face gate: a back-face-only (or front-only)
+                // trigger on a transforming DFC fires only while the
+                // object shows that face. Sidecar lookup; absent = any
+                // face. Checked before should_fire so a wrong-face
+                // trigger never even consults its condition.
+                if let Some(face) = def.trigger_face_gate(ability.id) {
+                    if visible_face != face { continue; }
+                }
                 if let Some(pt) = ability.should_fire(
                     event, source, controller, state)
                 {
@@ -2927,8 +2935,16 @@ fn next_turn(state: &mut GameState) {
     // next turn.
     state.loyalty_activated_this_turn.clear();
     // Phase A #6 — record where this turn's events start so per-turn
-    // helpers (`script::*_this_turn`) only scan the live slice.
+    // helpers (`script::*_this_turn`) only scan the live slice. Retain
+    // the prior marker as last-turn's start so `script::*_last_turn`
+    // (werewolf condition, day/night transition) can scan exactly the
+    // turn that just ended: `event_log[prev..turn_event_log_start]`.
+    state.prev_turn_event_log_start = state.turn_event_log_start;
     state.turn_event_log_start = state.event_log.len();
+    // CR 726.4 — day/night flips at the start of a turn based on last
+    // turn's spell activity (no-op while Neither). Done after the log
+    // markers are set so it reads the just-ended turn's slice.
+    state.apply_day_night_transition();
     state.emit(GameEvent::TurnBegins {
         player: next_ap, turn_number: state.turn.turn_number,
     });
@@ -6915,6 +6931,43 @@ mod tests {
             "no ChooseTargets prompt when the ability didn't trigger");
         assert!(state.pending_trigger_queue.is_empty(),
             "queue drained — the trigger was dropped per CR 603.3d");
+    }
+
+    #[test]
+    fn triggered_ability_face_gate_respects_visible_face() {
+        // CR 712 — a back-face-only trigger (face_gate = 1) fires only
+        // while the object shows the back face (visible_face == 1).
+        let mut state = GameState::new(2, 0);
+        let mut registry = CardRegistry::new();
+        let name = registry.interner_mut().intern("Face Gate Test");
+        fn no_effect(_: &GameState, _: &crate::triggers::PendingTrigger, _: &CardRegistry)
+            -> Vec<crate::effects::Effect> { Vec::new() }
+        let mut def = crate::registry::CardDefinition::new(name, creature_chars(2, 2));
+        def.triggered_abilities.push(crate::triggers::TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: crate::triggers::TriggerCondition::SelfBecomesTapped,
+            intervening_if: None,
+            effect: no_effect,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: crate::triggers::TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        });
+        let def = def.with_trigger_face_gate(1, 1); // back-face only
+        let card_id = registry.register(def);
+
+        let obj = state.allocate_object_id();
+        state.objects.insert(GameObject::new(
+            obj, 0, Zone::Battlefield, card_id,
+            registry.get(card_id).unwrap().base_characteristics.clone()));
+
+        let ev = GameEvent::Tapped { object_id: obj };
+        // Front face (visible_face == 0): gated trigger does NOT fire.
+        assert!(collect_pending_triggers(&mut state, &registry, std::slice::from_ref(&ev)).is_empty(),
+            "back-face-gated trigger must not fire on the front face");
+        // Flip to the back face: now it fires.
+        state.objects.get_mut(obj).unwrap().visible_face = 1;
+        assert_eq!(collect_pending_triggers(&mut state, &registry, &[ev]).len(), 1,
+            "the trigger fires once the back face is showing");
     }
 
     #[test]

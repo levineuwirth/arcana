@@ -197,6 +197,19 @@ pub struct GameState {
     /// slice instead of the full game log. Resilient to mid-game
     /// snapshot resets (defaults to 0 = scan-all).
     pub turn_event_log_start: usize,
+    /// The value [`Self::turn_event_log_start`] held during the
+    /// PREVIOUS turn — i.e. the event-log index where last turn began.
+    /// Lets `script::*_last_turn` helpers scan exactly last turn's
+    /// slice (`event_log[prev_turn_event_log_start..turn_event_log_start]`),
+    /// which the werewolf transform condition ("if no spells were cast
+    /// last turn", "if a player cast two or more spells last turn") and
+    /// the CR 726.4 day/night transition both need. `0` on turn one.
+    pub prev_turn_event_log_start: usize,
+    /// CR 726 — day/night. `Neither` until a card introduces it; flips
+    /// at the start of each turn per CR 726.4 (day→night if the active
+    /// player cast no spells last turn; night→day if any player cast
+    /// two or more). Queried by `conditions::it_is_day`/`it_is_night`.
+    pub day_night: crate::turn::DayNight,
     /// CR 701.49 — companion slot to a pending [`crate::actions::ChoiceKind::YesNo`]
     /// emitted by [`crate::effects::Effect::Discover`]. On `yes` the
     /// dispatcher casts `hit` for free; on `no` it moves `hit` to
@@ -282,6 +295,8 @@ impl GameState {
             lki: HashMap::default(),
             loyalty_activated_this_turn: crate::collections::HashSet::default(),
             turn_event_log_start: 0,
+            prev_turn_event_log_start: 0,
+            day_night: crate::turn::DayNight::Neither,
             pending_discover: None,
         }
     }
@@ -576,6 +591,41 @@ impl GameState {
         }
 
         Some(new_id)
+    }
+
+    /// CR 726.4 — flip day/night at the start of a turn based on last
+    /// turn's spell activity. No-op while `Neither` (day/night hasn't
+    /// been introduced). Day→Night when no spells were cast during the
+    /// previous turn; Night→Day when some player cast two or more.
+    /// Reads the just-ended turn's event slice
+    /// (`event_log[prev_turn_event_log_start..turn_event_log_start]`),
+    /// so call it at turn-begin right after the log markers advance.
+    pub fn apply_day_night_transition(&mut self) {
+        use crate::turn::DayNight;
+        if self.day_night == DayNight::Neither {
+            return;
+        }
+        let start = self.prev_turn_event_log_start.min(self.event_log.len());
+        let end = self.turn_event_log_start.min(self.event_log.len());
+        if start > end {
+            return;
+        }
+        let mut total = 0u32;
+        let mut counts: crate::collections::HashMap<PlayerId, u32> = Default::default();
+        let mut max_by_player = 0u32;
+        for ev in &self.event_log[start..end] {
+            if let crate::events::GameEvent::SpellCast { controller, .. } = ev {
+                total += 1;
+                let c = counts.entry(*controller).or_insert(0);
+                *c += 1;
+                max_by_player = max_by_player.max(*c);
+            }
+        }
+        self.day_night = match self.day_night {
+            DayNight::Day if total == 0 => DayNight::Night,
+            DayNight::Night if max_by_player >= 2 => DayNight::Day,
+            other => other,
+        };
     }
 
     /// Discard a single card from `player`'s hand. Routes through the
