@@ -16,3 +16,4 @@ pub mod rakeclaw_gargantuan;
 pub mod deepfire_elemental;
 pub mod mayael_the_anima;
 pub mod quagmire_druid;
+pub mod magus_of_the_arena;

@@ -75,3 +75,5 @@ pub mod love_song_of_night_and_day;
 pub mod the_binding_of_the_titans;
 pub mod battle_for_bretagard;
 pub mod battle_at_the_helvault;
+pub mod yisan_the_wanderer_bard;
+pub mod diffusion_sliver;

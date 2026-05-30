@@ -9,3 +9,5 @@ pub mod hungry_hungry_heifer;
 pub mod deadhead;
 pub mod goblin_bookie;
 pub mod jalum_grifter;
+pub mod clambassadors;
+pub mod chicken_egg;

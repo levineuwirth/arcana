@@ -52,3 +52,4 @@ pub mod the_mirari_conjecture;
 pub mod chainer_s_torment;
 pub mod time_of_ice;
 pub mod history_of_benalia;
+pub mod niambi_faithful_healer;

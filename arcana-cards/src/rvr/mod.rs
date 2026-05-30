@@ -40,3 +40,4 @@ pub mod cartel_aristocrat;
 pub mod gobhobbler_rats;
 pub mod plaguecrafter;
 pub mod selesnya_evangel;
+pub mod scorched_rusalka;

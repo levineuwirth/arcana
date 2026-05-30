@@ -36,3 +36,4 @@ pub mod akroan_jailer;
 pub mod nissa_vastwood_seer_nissa_sage_animist;
 pub mod kytheon_hero_of_akros_gideon_battle_forged;
 pub mod jace_vryn_s_prodigy_jace_telepath_unbound;
+pub mod willbreaker;

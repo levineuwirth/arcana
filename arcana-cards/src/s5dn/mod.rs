@@ -29,3 +29,4 @@ pub mod fleshgrafter;
 pub mod loxodon_anchorite;
 pub mod tyrranax;
 pub mod ouphe_vandals;
+pub mod viridian_scout;

@@ -13,3 +13,4 @@ pub mod dwarven_warriors;
 pub mod sorceress_queen;
 pub mod frozen_shade;
 pub mod initiates_of_the_ebon_hand;
+pub mod urza_s_avenger;

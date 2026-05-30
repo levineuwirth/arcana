@@ -22,3 +22,4 @@ pub mod bazaar_trader;
 pub mod agadeem_occultist;
 pub mod harabaz_druid;
 pub mod walking_atlas;
+pub mod tuktuk_scrapper;

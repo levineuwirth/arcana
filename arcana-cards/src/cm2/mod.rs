@@ -12,3 +12,4 @@ pub mod magma_giant;
 pub mod riddlekeeper;
 pub mod goblin_welder;
 pub mod bottle_gnomes;
+pub mod hammerfist_giant;

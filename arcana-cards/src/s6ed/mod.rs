@@ -24,3 +24,4 @@ pub mod pradesh_gypsies;
 pub mod soldevi_sage;
 pub mod abyssal_hunter;
 pub mod ethereal_champion;
+pub mod goblin_recruiter;

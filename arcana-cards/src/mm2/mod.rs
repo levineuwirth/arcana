@@ -23,3 +23,4 @@ pub mod inner_flame_igniter;
 pub mod drooling_groodion;
 pub mod goblin_fireslinger;
 pub mod blinding_souleater;
+pub mod spikeshot_elder;

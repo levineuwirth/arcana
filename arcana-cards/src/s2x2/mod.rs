@@ -42,3 +42,5 @@ pub mod dauntless_escort;
 pub mod dark_dweller_oracle;
 pub mod weathered_wayfarer;
 pub mod mistmeadow_witch;
+pub mod hero_of_the_games;
+pub mod dreamshaper_shaman;

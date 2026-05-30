@@ -36,3 +36,6 @@ pub mod vermin_gorger;
 pub mod floodhound;
 pub mod gorilla_shaman;
 pub mod urza_s_saga;
+pub mod lazotep_chancellor;
+pub mod esper_sentinel;
+pub mod goblin_traprunner;

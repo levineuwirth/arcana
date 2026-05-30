@@ -48,3 +48,4 @@ pub mod humble_naturalist;
 pub mod whisper_squad;
 pub mod durable_coilbug;
 pub mod facet_reader;
+pub mod phase_dolphin;

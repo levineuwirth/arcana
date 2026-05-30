@@ -58,3 +58,6 @@ pub mod elspeth_s_nightmare;
 pub mod the_triumph_of_anax;
 pub mod the_first_iroan_games;
 pub mod tymaret_calls_the_dead;
+pub mod blight_breath_catoblepas;
+pub mod setessan_petitioner;
+pub mod reverent_hoplite;

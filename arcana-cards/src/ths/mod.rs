@@ -46,3 +46,5 @@ pub mod ephara_s_warden;
 pub mod scholar_of_athreos;
 pub mod agent_of_horizons;
 pub mod satyr_piper;
+pub mod mogis_s_marauder;
+pub mod reverent_hunter;

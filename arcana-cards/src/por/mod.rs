@@ -27,3 +27,4 @@ pub mod stern_marshal;
 pub mod king_s_assassin;
 pub mod mercenary_knight;
 pub mod plant_elemental;
+pub mod thundering_wurm;

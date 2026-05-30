@@ -37,3 +37,4 @@ pub mod camera_launcher;
 pub mod wretched_doll;
 pub mod sita_varma_masked_racer;
 pub mod pacesetter_paragon;
+pub mod stampeding_scurryfoot;

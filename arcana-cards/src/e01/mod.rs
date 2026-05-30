@@ -5,3 +5,4 @@ pub mod cruel_ultimatum;
 pub mod excoriate;
 pub mod gideon_s_lawkeeper;
 pub mod anointer_of_champions;
+pub mod obsidian_fireheart;

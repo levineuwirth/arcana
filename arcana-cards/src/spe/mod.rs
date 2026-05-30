@@ -8,3 +8,4 @@ pub mod lyla_holographic_assistant;
 pub mod amateur_hero;
 pub mod twisted_spider_clone;
 pub mod doc_ock_evil_inventor;
+pub mod sensational_spider_man;

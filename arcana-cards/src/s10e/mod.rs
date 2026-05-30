@@ -55,3 +55,5 @@ pub mod kjeldoran_royal_guard;
 pub mod femeref_archers;
 pub mod ghost_warden;
 pub mod sky_weaver;
+pub mod orcish_artillery;
+pub mod scoria_wurm;

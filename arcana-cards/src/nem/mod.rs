@@ -33,3 +33,4 @@ pub mod bola_warrior;
 pub mod netter_en_dal;
 pub mod lightbringer;
 pub mod stronghold_machinist;
+pub mod arc_mage;

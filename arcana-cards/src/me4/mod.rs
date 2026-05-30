@@ -59,3 +59,4 @@ pub mod talas_researcher;
 pub mod argivian_blacksmith;
 pub mod drowned;
 pub mod orcish_mechanics;
+pub mod mijae_djinn;

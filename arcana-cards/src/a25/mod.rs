@@ -32,3 +32,4 @@ pub mod elvish_piper;
 pub mod cursecatcher;
 pub mod jalira_master_polymorphist;
 pub mod arbor_elf;
+pub mod balduvian_horde;

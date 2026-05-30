@@ -45,3 +45,5 @@ pub mod a_young_blue_dragon_a_sand_augury;
 pub mod a_emerald_dragon_a_dissonant_wave;
 pub mod a_young_red_dragon_a_bathe_in_gold;
 pub mod a_blessed_hippogriff_a_tyr_s_blessing;
+pub mod wyll_of_the_fey_pact;
+pub mod wyll_of_the_celestial_pact;

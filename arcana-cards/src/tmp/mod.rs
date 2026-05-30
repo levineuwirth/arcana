@@ -28,3 +28,5 @@ pub mod crazed_armodon;
 pub mod sacred_guide;
 pub mod energizer;
 pub mod opportunist;
+pub mod rootwater_diver;
+pub mod wild_wurm;

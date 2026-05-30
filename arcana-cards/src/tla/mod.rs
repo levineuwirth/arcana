@@ -51,3 +51,4 @@ pub mod avatar_aang_aang_master_of_elements;
 pub mod the_cave_of_two_lovers;
 pub mod aang_at_the_crossroads_aang_destined_savior;
 pub mod aang_swift_savior_aang_and_la_ocean_s_fury;
+pub mod hama_the_bloodbender;

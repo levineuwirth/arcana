@@ -27,3 +27,4 @@ pub mod skeletal_wurm;
 pub mod venerated_teacher;
 pub mod gigantomancer;
 pub mod death_cultist;
+pub mod valakut_fireboar;

@@ -15,3 +15,5 @@ pub mod organ_grinder;
 pub mod stern_judge;
 pub mod barbarian_outcast;
 pub mod cephalid_snitch;
+pub mod crazed_firecat;
+pub mod cephalid_vandal;

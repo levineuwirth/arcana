@@ -47,3 +47,4 @@ pub mod tomb_trawler;
 pub mod sterling_keykeeper;
 pub mod treasure_dredger;
 pub mod raucous_entertainer;
+pub mod kaervek_the_punisher;

@@ -94,3 +94,5 @@ pub mod egon_god_of_death_throne_of_death;
 pub mod birgi_god_of_storytelling_harnfel_horn_of_bounty;
 pub mod jorn_god_of_winter_kaldring_the_rimestaff;
 pub mod alrund_god_of_the_cosmos_hakka_whispering_raven;
+pub mod usher_of_the_fallen;
+pub mod priest_of_the_haunted_edge;

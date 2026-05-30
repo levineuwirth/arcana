@@ -38,3 +38,4 @@ pub mod the_five_stages_of_grief;
 pub mod occupation_of_kulrath;
 pub mod garruk_s_lost_wolf_hey_has_anyone_seen_garruk;
 pub mod occupation_of_llanowar;
+pub mod magic_designer;

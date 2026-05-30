@@ -51,3 +51,4 @@ pub mod elusive_otter_grove_s_bounty;
 pub mod brazen_borrower_petty_theft;
 pub mod advanced_reconstruction;
 pub mod intermediate_chirography;
+pub mod rootha_mastering_the_moment;

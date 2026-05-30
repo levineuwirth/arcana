@@ -67,3 +67,5 @@ pub mod penregon_strongbull;
 pub mod citanul_stalwart;
 pub mod third_path_savant;
 pub mod recruitment_officer;
+pub mod hurkyl_master_wizard;
+pub mod sarinth_steelseeker;

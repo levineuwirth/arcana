@@ -69,3 +69,4 @@ pub mod shrill_howler_howling_chorus;
 pub mod invasion_of_innistrad_deluge_of_the_dead;
 pub mod archangel_avacyn_avacyn_the_purifier;
 pub mod grizzled_angler_grisly_anglerfish;
+pub mod dauntless_cathar;

@@ -14,3 +14,4 @@ pub mod bane_of_progress;
 pub mod soul_snuffers;
 pub mod smokebraider;
 pub mod binding_the_old_gods;
+pub mod risen_reef;

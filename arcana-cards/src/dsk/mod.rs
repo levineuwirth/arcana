@@ -43,3 +43,4 @@ pub mod fear_of_lost_teeth;
 pub mod resurrected_cultist;
 pub mod valgavoth_s_faithful;
 pub mod the_tale_of_tamiyo;
+pub mod clammy_prowler;

@@ -57,3 +57,5 @@ pub mod rummaging_goblin;
 pub mod obeka_brute_chronologist;
 pub mod araumi_of_the_dead_tide;
 pub mod fyndhorn_elves;
+pub mod laboratory_drudge;
+pub mod hans_eriksson;

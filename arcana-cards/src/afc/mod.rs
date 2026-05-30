@@ -6,3 +6,4 @@ pub mod merfolk_looter;
 pub mod ronom_unicorn;
 pub mod doomed_necromancer;
 pub mod realm_cloaked_giant_cast_off;
+pub mod druid_of_purification;

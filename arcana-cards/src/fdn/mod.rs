@@ -118,3 +118,4 @@ pub mod ingenious_leonin;
 pub mod burnished_hart;
 pub mod suspicious_shambler;
 pub mod thrashing_brontodon;
+pub mod affectionate_indrik;

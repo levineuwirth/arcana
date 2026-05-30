@@ -72,3 +72,4 @@ pub mod huatli_poet_of_unity_roar_of_the_fifth_people;
 pub mod aclazotz_deepest_betrayal_temple_of_the_dead;
 pub mod ojer_taq_deepest_foundation_temple_of_civilization;
 pub mod kellan_daring_traveler_journey_on;
+pub mod anim_pakal_thousandth_moon;

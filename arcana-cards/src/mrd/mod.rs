@@ -49,3 +49,4 @@ pub mod tel_jilad_exile;
 pub mod myr_mindservant;
 pub mod brown_ouphe;
 pub mod pewter_golem;
+pub mod arc_slogger;

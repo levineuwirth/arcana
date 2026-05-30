@@ -24,3 +24,4 @@ pub mod urborg_elf;
 pub mod angelfire_crusader;
 pub mod reef_shaman;
 pub mod tundra_kavu;
+pub mod razorfin_hunter;

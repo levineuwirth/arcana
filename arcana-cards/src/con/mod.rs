@@ -24,3 +24,4 @@ pub mod cylian_sunsinger;
 pub mod fleshformer;
 pub mod sacellum_archers;
 pub mod vagrant_plowbeasts;
+pub mod scattershot_archer;

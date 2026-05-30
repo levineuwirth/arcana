@@ -64,3 +64,7 @@ pub mod grub_storied_matriarch_grub_notorious_auntie;
 pub mod brigid_clachan_s_heart_brigid_doun_s_mind;
 pub mod trystan_callous_cultivator_trystan_penitent_culler;
 pub mod ashling_rekindled_ashling_rimebound;
+pub mod retched_wretch;
+pub mod eclipsed_elf;
+pub mod eclipsed_flamekin;
+pub mod eclipsed_kithkin;

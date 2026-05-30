@@ -79,3 +79,4 @@ pub mod alluring_suitor_deadly_dancer;
 pub mod a_binding_geist_a_spectral_binding;
 pub mod hookhand_mariner_riphook_raider;
 pub mod weary_prisoner_wrathful_jailbreaker;
+pub mod flourishing_hunter;

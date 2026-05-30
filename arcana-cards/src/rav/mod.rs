@@ -40,3 +40,4 @@ pub mod ivy_dancer;
 pub mod viashino_slasher;
 pub mod war_torch_goblin;
 pub mod thoughtpicker_witch;
+pub mod viashino_fangtail;

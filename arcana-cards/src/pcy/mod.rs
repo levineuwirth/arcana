@@ -35,3 +35,4 @@ pub mod shrouded_serpent;
 pub mod fault_riders;
 pub mod greel_mind_raker;
 pub mod nakaya_shade;
+pub mod fickle_efreet;

@@ -39,3 +39,4 @@ pub mod escaped_experiment;
 pub mod fleshless_gladiator;
 pub mod slobad_iron_goblin;
 pub mod cutthroat_centurion;
+pub mod kethek_crucible_goliath;

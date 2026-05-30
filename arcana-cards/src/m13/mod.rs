@@ -20,3 +20,4 @@ pub mod mwonvuli_beast_tracker;
 pub mod intrepid_hero;
 pub mod arms_dealer;
 pub mod void_stalker;
+pub mod goblin_battle_jester;

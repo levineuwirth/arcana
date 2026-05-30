@@ -72,3 +72,4 @@ pub mod kefka_court_mage_kefka_ruler_of_ruin;
 pub mod venat_heart_of_hydaelyn_hydaelyn_the_mothercrystal;
 pub mod sephiroth_fabled_soldier_sephiroth_one_winged_angel;
 pub mod clive_ifrit_s_dominant_ifrit_warden_of_inferno;
+pub mod mysidian_elder;

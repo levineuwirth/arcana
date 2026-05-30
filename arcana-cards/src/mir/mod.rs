@@ -53,3 +53,4 @@ pub mod dwarven_miner;
 pub mod goblin_soothsayer;
 pub mod fetid_horror;
 pub mod rashida_scalebane;
+pub mod pyric_salamander;

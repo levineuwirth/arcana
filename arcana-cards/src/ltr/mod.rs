@@ -72,3 +72,6 @@ pub mod one_ring_to_rule_them_all;
 pub mod book_of_mazarbul;
 pub mod tale_of_tin_viel;
 pub mod oath_of_the_grey_host;
+pub mod shagrat_loot_bearer;
+pub mod radagast_the_brown;
+pub mod the_mouth_of_sauron;
