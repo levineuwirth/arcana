@@ -75,3 +75,5 @@ pub mod sea_hag_aquatic_ingress;
 pub mod emerald_dragon_dissonant_wave;
 pub mod young_blue_dragon_sand_augury;
 pub mod colossal_badger_dig_deep;
+pub mod amethyst_dragon_explosive_crystal;
+pub mod artificer_class;

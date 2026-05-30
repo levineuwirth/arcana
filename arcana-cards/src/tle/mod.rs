@@ -44,3 +44,4 @@ pub mod animal_attendant;
 pub mod dai_li_censor;
 pub mod ruthless_waterbender;
 pub mod nightmares_and_daydreams;
+pub mod founding_of_omashu;

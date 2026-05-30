@@ -21,3 +21,5 @@ pub mod the_girl_in_the_fireplace;
 pub mod the_day_of_the_doctor;
 pub mod city_of_death;
 pub mod karvanista_loyal_lupari_lupari_shield;
+pub mod fugitive_of_the_judoon;
+pub mod the_sea_devils;

@@ -37,3 +37,4 @@ pub mod founding_the_third_path;
 pub mod the_phasing_of_zhalfir;
 pub mod the_elder_dragon_war;
 pub mod the_cruelty_of_gix;
+pub mod the_weatherseed_treaty;

@@ -67,3 +67,8 @@ pub mod tendril_of_the_mycotyrant;
 pub mod seeker_of_sunlight;
 pub mod envoy_of_okinec_ahau;
 pub mod soulcoil_viper;
+pub mod ojer_pakpatiq_deepest_epoch_temple_of_cyclical_time;
+pub mod huatli_poet_of_unity_roar_of_the_fifth_people;
+pub mod aclazotz_deepest_betrayal_temple_of_the_dead;
+pub mod ojer_taq_deepest_foundation_temple_of_civilization;
+pub mod kellan_daring_traveler_journey_on;

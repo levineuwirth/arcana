@@ -71,3 +71,4 @@ pub mod the_bath_song;
 pub mod one_ring_to_rule_them_all;
 pub mod book_of_mazarbul;
 pub mod tale_of_tin_viel;
+pub mod oath_of_the_grey_host;

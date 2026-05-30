@@ -45,3 +45,5 @@ pub mod glasspool_mimic_glasspool_shore;
 pub mod blackbloom_rogue_blackbloom_bog;
 pub mod kazandu_mammoth_kazandu_valley;
 pub mod akoum_warrior_akoum_teeth;
+pub mod skyclave_cleric_skyclave_basilica;
+pub mod umara_wizard_umara_skyfalls;

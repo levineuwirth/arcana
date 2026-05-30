@@ -47,3 +47,7 @@ pub mod turtle_duck;
 pub mod rebellious_captives;
 pub mod great_divide_guide;
 pub mod leaves_from_the_vine;
+pub mod avatar_aang_aang_master_of_elements;
+pub mod the_cave_of_two_lovers;
+pub mod aang_at_the_crossroads_aang_destined_savior;
+pub mod aang_swift_savior_aang_and_la_ocean_s_fury;

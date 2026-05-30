@@ -1,0 +1,13 @@
+//! BOT — set module. Auto-created by land_cards.py; add a proper set summary when curating.
+pub mod flamewar_brash_veteran_flamewar_streetwise_operative;
+pub mod jetfire_ingenious_scientist_jetfire_air_guardian;
+pub mod goldbug_humanity_s_ally_goldbug_scrappy_scout;
+pub mod slicer_hired_muscle_slicer_high_speed_antagonist;
+pub mod cyclonus_the_saboteur_cyclonus_cybertronian_fighter;
+pub mod starscream_power_hungry_starscream_seeker_leader;
+pub mod blitzwing_cruel_tormentor_blitzwing_adaptive_assailant;
+pub mod blaster_combat_dj_blaster_morale_booster;
+pub mod arcee_sharpshooter_arcee_acrobatic_coupe;
+pub mod ratchet_field_medic_ratchet_rescue_racer;
+pub mod soundwave_sonic_spy_soundwave_superior_captain;
+pub mod prowl_stoic_strategist_prowl_pursuit_vehicle;

@@ -13,3 +13,4 @@ pub mod ballad_of_the_black_flag;
 pub mod the_revelations_of_ezio;
 pub mod fall_of_the_first_civilization;
 pub mod the_aesir_escape_valhalla;
+pub mod origin_of_the_hidden_ones;

@@ -9,3 +9,4 @@ pub mod tenacious_pup;
 pub mod dwarven_confluencer;
 pub mod the_many_deeds_of_belzenlok;
 pub mod keeper_of_the_crown_coronation_of_the_wilds;
+pub mod night_of_the_flying_merfolk;

@@ -51,3 +51,4 @@ pub mod the_flame_of_keld;
 pub mod the_mirari_conjecture;
 pub mod chainer_s_torment;
 pub mod time_of_ice;
+pub mod history_of_benalia;

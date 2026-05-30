@@ -68,3 +68,5 @@ pub mod animating_faerie_bring_to_life;
 pub mod tuinvale_treefolk_oaken_boon;
 pub mod oakhame_ranger_bring_back;
 pub mod queen_of_ice_rage_of_winter;
+pub mod flaxen_intruder_welcome_home;
+pub mod lonesome_unicorn_rider_in_need;

@@ -56,3 +56,5 @@ pub mod elspeth_conquers_death;
 pub mod kiora_bests_the_sea_god;
 pub mod elspeth_s_nightmare;
 pub mod the_triumph_of_anax;
+pub mod the_first_iroan_games;
+pub mod tymaret_calls_the_dead;

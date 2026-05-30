@@ -49,3 +49,5 @@ pub mod elvish_mystic;
 pub mod priest_of_forgotten_gods;
 pub mod elusive_otter_grove_s_bounty;
 pub mod brazen_borrower_petty_theft;
+pub mod advanced_reconstruction;
+pub mod intermediate_chirography;

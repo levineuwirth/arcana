@@ -13,3 +13,4 @@ pub mod summon_esper_valigarmanda;
 pub mod summon_ixion;
 pub mod summon_yojimbo;
 pub mod summon_good_king_mog_xii;
+pub mod hildibrand_manderville_gentleman_s_rise;

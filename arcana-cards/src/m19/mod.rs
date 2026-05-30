@@ -48,3 +48,4 @@ pub mod mistcaller;
 pub mod graveyard_marshal;
 pub mod dryad_greenseeker;
 pub mod ursine_champion;
+pub mod nicol_bolas_the_ravager_nicol_bolas_the_arisen;

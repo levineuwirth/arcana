@@ -30,3 +30,4 @@ pub mod jadecraft_artisan;
 pub mod jadelight_ranger;
 pub mod dinosaur_hunter;
 pub mod jungle_creeper;
+pub mod golden_guardian_gold_forge_garrison;

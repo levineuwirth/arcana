@@ -9,3 +9,4 @@ pub mod conductive_current;
 pub mod begin_anew;
 pub mod ravenous_pursuit;
 pub mod puppet_raiser;
+pub mod rahilda_wanted_cutthroat_rahilda_feral_outlaw;

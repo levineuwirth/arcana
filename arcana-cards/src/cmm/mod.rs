@@ -73,3 +73,5 @@ pub mod sanctum_weaver;
 pub mod whisper_blood_liturgist;
 pub mod love_song_of_night_and_day;
 pub mod the_binding_of_the_titans;
+pub mod battle_for_bretagard;
+pub mod battle_at_the_helvault;

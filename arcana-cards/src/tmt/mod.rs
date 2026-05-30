@@ -36,3 +36,8 @@ pub mod tunnel_rats;
 pub mod purple_dragon_punks;
 pub mod the_last_ronin;
 pub mod the_cloning_of_shredder;
+pub mod party_dude;
+pub mod leader_s_talent;
+pub mod cool_but_rude;
+pub mod ninja_teen;
+pub mod does_machines;

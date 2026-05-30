@@ -578,6 +578,18 @@ pub mod msh;
 
 pub mod blc;
 
+pub mod bot;
+
+pub mod hho;
+
+pub mod h17;
+
+pub mod ph18;
+
+pub mod slx;
+
+pub mod ptg;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

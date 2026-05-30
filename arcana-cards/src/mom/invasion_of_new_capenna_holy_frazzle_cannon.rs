@@ -1,0 +1,124 @@
+//! Invasion of New Capenna // Holy Frazzle-Cannon — `{W}{B}` Battle — Siege
+//! with 3 defense counters.
+//!
+//! Front face: When this Siege enters, you may sacrifice an artifact or
+//! creature. When you do, exile target artifact or creature an opponent controls.
+//!
+//! Back face (Holy Frazzle-Cannon): Legendary Artifact — Equipment.
+//! Whenever equipped creature attacks, put a +1/+1 counter on that creature
+//! and each other creature you control that shares a creature type with it.
+//! Equip {1}.
+//!
+//! # GAPs
+//! - Siege ETB: "you may sacrifice an artifact or creature. When you do,
+//!   exile target artifact or creature an opponent controls." — the
+//!   OptionalPaymentKind API only supports Mana and Life costs; a
+//!   sacrifice-conditional exile is not expressible. Emitting a simplified
+//!   ETB that exiles a target artifact or creature an opponent controls
+//!   (without the sacrifice cost gate). GAP: sacrifice cost gate not modeled.
+//! - Back face "whenever equipped creature attacks, put +1/+1 counter on it
+//!   and each other creature you control that shares a creature type with it"
+//!   — back-face-only triggered ability not modeled (GAP).
+//! - Equip keyword not in keyword list (GAP).
+//! - Defeat → cast back face is not auto-wired (GAP: defeat→cast-back-face
+//!   not auto-wired).
+
+use arcana_core::effects::Effect;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
+use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
+};
+use arcana_core::zones::Zone;
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Invasion of New Capenna");
+    let siege_sub = reg.interner_mut().intern("Siege");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(siege_sub);
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{W}{B}").expect("valid cost")),
+        colors: ColorSet::white() | ColorSet::black(),
+        types: TypeLine::BATTLE.into(),
+        subtypes,
+        ..Default::default()
+    };
+
+    // Back face: Holy Frazzle-Cannon — Legendary Artifact — Equipment
+    let back_name = reg.interner_mut().intern("Holy Frazzle-Cannon");
+    let equipment_sub = reg.interner_mut().intern("Equipment");
+    let mut back_subtypes = SubtypeSet::default();
+    back_subtypes.0.insert(equipment_sub);
+    let back_chars = Characteristics {
+        name: back_name,
+        colors: ColorSet::white() | ColorSet::black(),
+        types: TypeLine::ARTIFACT.into(),
+        subtypes: back_subtypes,
+        supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
+        ..Default::default()
+    };
+    let back = CardFace {
+        name: back_name,
+        characteristics: back_chars,
+        spell_ability: None,
+    };
+
+    // ETB trigger: exile target artifact or creature an opponent controls.
+    // GAP: full oracle requires "you may sacrifice an artifact or creature.
+    // When you do, exile ..." — sacrifice cost gate not modelable with
+    // OptionalPaymentKind. Simplified to unconditional exile on ETB.
+    let opponent_perm_filter = ObjectFilter::new()
+        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE))
+        .controlled_by(ControllerConstraint::Opponent);
+    let etb_req = TargetRequirement {
+        filter: TargetFilter::Permanent(opponent_perm_filter),
+        count: TargetCount::Exactly(1),
+        controller: None,
+    };
+
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_enters_with(EntersWithSpec::Counters {
+                kind: CounterKind::Defense,
+                count: 3,
+            })
+            .with_transform_back(back)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_exile,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![etb_req],
+            }),
+        // GAP: defeat→cast-back-face not auto-wired
+        // GAP: back-face-only triggered ability (equipped creature attacks)
+        //      not modeled
+        // GAP: Equip keyword not in keyword list
+    )
+}
+
+fn etb_exile(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    vec![Effect::ExilePermanent { target: *id }]
+}
