@@ -528,6 +528,7 @@ Card flow (no target — player is `{BINDING}.controller` or a target player):
 
 Life:
 - `Effect::GainLife { player: p, amount: u32 }`  ·  `Effect::LoseLife { player: p, amount: u32 }`
+- `Effect::GainEnergy { player: p, amount: u32 }`  — "you get N {E}" (energy counters). Use instead of GAP-ing energy gain. (Spending energy as a cost is not yet a cost field — GAP the spend side if a card pays {E}.)
 - `Effect::SetLifeTotal { player: p, amount: u32 }`
 
 Single permanent / card target (`id` from the first target):
@@ -557,7 +558,7 @@ Two-object / combat:
 Tokens:
 - `Effect::CreateToken { controller: p, token: TokenDefinition { .. } }`  (repeat the `Effect::CreateToken` for 'create N')
 - `Effect::CreateTokenSacEot { controller: p, token: TokenDefinition { .. } }`  — `CreateToken` plus a one-shot delayed destroy at the next end step (token-faithful 'create, then sacrifice at end of turn').
-- `Effect::CreateCommodityToken { controller: p, kind: CommodityToken::Treasure, count: N }`  — mints N artifact tokens of a canonical commodity (Treasure / Clue / Food / Powerstone / Incubator). The engine wires their printed activated ability automatically: Clue and Food resolve faithfully; Treasure and Powerstone work with a FIDELITY GAP (current placeholder adds colorless mana — the color choice and Powerstone's "can't be spent on nonartifact spells" rider are future work); Incubator mints the bare token only (its {{2}}: Transform is still engine debt). PREFER this over hand-rolling a `TokenDefinition` for these five commodities — that's how the activations get wired. Import `CommodityToken` from `arcana_core::effects`.
+- `Effect::CreateCommodityToken { controller: p, kind: CommodityToken::Treasure, count: N }`  — mints N artifact tokens of a canonical commodity (Treasure / Clue / Food / Powerstone / Incubator). The engine wires their printed activated ability automatically: Clue and Food resolve faithfully; Treasure and Powerstone work with a FIDELITY GAP (current placeholder adds colorless mana — the color choice and Powerstone's "can't be spent on nonartifact spells" rider are future work); Incubator mints the bare token only (its {{2}}: Transform is still engine debt). Blood (`{{1}}, {{T}}, Sacrifice, Discard a card: Draw a card`) and Map (`{{1}}, {{T}}, Sacrifice: target creature you control explores`, sorcery-speed) are also wired. PREFER this over hand-rolling a `TokenDefinition` for these commodities — that's how the activations get wired. Import `CommodityToken` from `arcana_core::effects`. Variants: `Treasure`, `Clue`, `Food`, `Powerstone`, `Incubator`, `Blood`, `Map`.
 
 Common token recipes — build via plain `Effect::CreateToken`. Pre-intern the subtype string at REGISTRATION time via `reg.interner_mut().intern("Treasure")`; at resolve time read it via `reg.interner().lookup("Treasure")`. The token's `name` field is its primary subtype's interner id.
 - Treasure / Clue / Food / Powerstone / Incubator → use `Effect::CreateCommodityToken` (see above). Do NOT hand-roll TokenDefinitions for these; the bespoke variant is the only path that gets the activations wired.
@@ -781,6 +782,7 @@ Card flow (no target — player is `entry.controller` or a target player):
 
 Life:
 - `Effect::GainLife {{ player: p, amount: u32 }}`  ·  `Effect::LoseLife {{ player: p, amount: u32 }}`
+- `Effect::GainEnergy {{ player: p, amount: u32 }}`  — 'you get N energy ({{E}})'. (Spending energy as a cost is not yet expressible — GAP the spend side.)
 - `Effect::SetLifeTotal {{ player: p, amount: u32 }}`
 
 Single permanent / card target (`id` from the first target):
@@ -810,7 +812,7 @@ Two-object / combat:
 Tokens:
 - `Effect::CreateToken {{ controller: p, token: TokenDefinition {{ .. }} }}`  (see Servo Exhibition for the full `TokenDefinition` shape; repeat the `Effect::CreateToken` for 'create N')
 - `Effect::CreateTokenSacEot {{ controller: p, token: TokenDefinition {{ .. }} }}`  — same as `CreateToken` PLUS schedules a one-shot delayed destroy at the beginning of the next end step (token-faithful sacrifice). Use this for 'create N tokens, sacrifice them at the beginning of the next end step' (Thatcher Revolt / Lithobraking / Goblin Sleigh-Ride class) — the resolver cannot reference the new token id so plain `CreateToken` + `DelayedAction` will NOT compose. Repeat for 'create N'.
-- `Effect::CreateCommodityToken {{ controller: p, kind: CommodityToken::Treasure, count: N }}`  — mints N artifact tokens of a canonical commodity (Treasure / Clue / Food / Powerstone / Incubator). The engine wires the printed activated ability automatically: Clue and Food resolve faithfully; Treasure and Powerstone work with a FIDELITY GAP (current placeholder adds colorless mana); Incubator mints the bare token only ({{2}}: Transform still engine debt). PREFER this over hand-rolling a `TokenDefinition` for these five commodities. Import `CommodityToken` from `arcana_core::effects`.
+- `Effect::CreateCommodityToken {{ controller: p, kind: CommodityToken::Treasure, count: N }}`  — mints N artifact tokens of a canonical commodity (Treasure / Clue / Food / Powerstone / Incubator). The engine wires the printed activated ability automatically: Clue and Food resolve faithfully; Treasure and Powerstone work with a FIDELITY GAP (current placeholder adds colorless mana); Incubator mints the bare token only ({{2}}: Transform still engine debt). Blood (rummage: discard a card, draw a card) and Map (target creature you control explores, sorcery-speed) are also wired. PREFER this over hand-rolling a `TokenDefinition`. Variants: `Treasure`/`Clue`/`Food`/`Powerstone`/`Incubator`/`Blood`/`Map`. Import `CommodityToken` from `arcana_core::effects`.
 
 Mana (ritual class):
 - `Effect::AddMana {{ player: p, mana: vec![ManaUnit::plain(ManaColor::Red, entry.source); 3] }}`  (Pyretic Ritual: 'Add {{R}}{{R}}{{R}}' — one `ManaUnit::plain(color, source)` per pip; for mixed colors build the `Vec<ManaUnit>` explicitly. `ManaColor::White|Blue|Black|Red|Green|Colorless`. The `source` is the spell's own object id — `entry.source`.)

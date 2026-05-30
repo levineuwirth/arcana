@@ -60,6 +60,11 @@ pub enum Effect {
     // --- damage / life -----------------------------------------------------
     DealDamage { source: ObjectId, target: DamageTarget, amount: u32 },
     GainLife { player: PlayerId, amount: u32 },
+    /// CR 122 — `player` gets `amount` {E} (energy counters). The
+    /// per-player energy pool already exists on PlayerState; this is
+    /// the "you get N energy" gain side. Spending energy is an
+    /// activation/cost concern handled elsewhere.
+    GainEnergy { player: PlayerId, amount: u32 },
     LoseLife { player: PlayerId, amount: u32 },
     SetLifeTotal { player: PlayerId, amount: u32 },
     /// CR 615 — Install a prevention shield on `target`. `amount` of
@@ -650,6 +655,10 @@ impl Effect {
             // --- damage / life -------------------------------------------
             Effect::DealDamage { source, target, amount } => {
                 state.deal_damage(*source, *target, *amount, /*combat=*/ false);
+            }
+            Effect::GainEnergy { player, amount } => {
+                if !valid_player(state, *player) || *amount == 0 { return; }
+                state.player_mut(*player).energy += *amount;
             }
             Effect::GainLife { player, amount } => {
                 if !valid_player(state, *player) || *amount == 0 { return; }
@@ -1634,6 +1643,13 @@ pub enum CommodityToken {
     /// outstanding. Listed here so it can light up once transform is
     /// online.
     Incubator,
+    /// CR 701.x — Blood. `{1}, {T}, Sacrifice this artifact, Discard a
+    /// card: Draw a card.` Fully wired (rummaging filter-loot).
+    Blood,
+    /// Map. `{1}, {T}, Sacrifice this artifact: Target creature you
+    /// control explores. Activate only as a sorcery.` Fully wired via
+    /// [`Effect::Explore`].
+    Map,
 }
 
 /// Definition for [`Effect::CreateEmblem`]. Emblems are objects in
@@ -2291,6 +2307,85 @@ fn commodity_token_spec(
             };
             (token, Vec::new())
         }
+        CommodityToken::Blood => {
+            let token = TokenDefinition {
+                name: blank,
+                colors: ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                subtypes: SubtypeSet::default(),
+                power: None,
+                toughness: None,
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            let activation = ActivatedAbilityDef {
+                text: "{1}, {T}, Sacrifice this artifact, Discard a card: Draw a card.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{1}").unwrap(),
+                    tap: true,
+                    sacrifice: true,
+                    discard_other: Some(crate::targets::ObjectFilter::default()),
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: clue_draw_a_card, // discard is the cost; effect draws one
+            };
+            (token, vec![activation])
+        }
+        CommodityToken::Map => {
+            let token = TokenDefinition {
+                name: blank,
+                colors: ColorSet::new(),
+                types: TypeLine::ARTIFACT.into(),
+                subtypes: SubtypeSet::default(),
+                power: None,
+                toughness: None,
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            let activation = ActivatedAbilityDef {
+                text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores."
+                    .into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{1}").unwrap(),
+                    tap: true,
+                    sacrifice: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![crate::targets::TargetRequirement {
+                    filter: crate::targets::TargetFilter::Permanent(
+                        crate::targets::ObjectFilter::creature()
+                            .controlled_by(crate::targets::ControllerConstraint::You)),
+                    count: crate::targets::TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false, // sorcery speed
+                face_gate: None,
+                effect: map_explore_target,
+            };
+            (token, vec![activation])
+        }
+    }
+}
+
+/// Map's activation: the chosen creature explores (CR 701.x explore).
+fn map_explore_target(
+    _state: &GameState,
+    ctx: &crate::registry::ActivationContext,
+    _reg: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    match ctx.targets.targets.first() {
+        Some(crate::targets::TargetChoice::Object(id)) =>
+            vec![Effect::Explore { player: ctx.controller, target: *id }],
+        _ => Vec::new(),
     }
 }
 
@@ -4311,6 +4406,37 @@ mod tests {
         assert!(a.cost.mana_cost.mana_value() == 2,
             "Clue's mana cost is {{2}}");
         assert!(!a.is_mana_ability, "drawing isn't a mana ability");
+    }
+
+    #[test]
+    fn create_commodity_blood_and_map_mint_with_activations() {
+        let mut s = GameState::new(2, 0);
+        Effect::CreateCommodityToken { controller: 0, kind: CommodityToken::Blood, count: 1 }
+            .execute(&mut s);
+        let blood = commodity_minted_objects(&s)[0];
+        assert!(blood.is_token && blood.characteristics.types.is_artifact());
+        let a = &blood.intrinsic_activated_abilities[0];
+        assert!(a.cost.sacrifice && a.cost.tap, "Blood: tap + sac");
+        assert!(a.cost.discard_other.is_some(), "Blood: discard a card cost");
+
+        let mut s2 = GameState::new(2, 0);
+        Effect::CreateCommodityToken { controller: 0, kind: CommodityToken::Map, count: 1 }
+            .execute(&mut s2);
+        let map = commodity_minted_objects(&s2)[0];
+        let a = &map.intrinsic_activated_abilities[0];
+        assert!(a.cost.sacrifice && a.cost.tap);
+        assert_eq!(a.target_requirements.len(), 1, "Map targets a creature you control");
+        assert!(!a.is_instant_speed, "Map is sorcery-speed");
+    }
+
+    #[test]
+    fn gain_energy_adds_to_pool() {
+        let mut s = GameState::new(2, 0);
+        Effect::GainEnergy { player: 0, amount: 3 }.execute(&mut s);
+        assert_eq!(s.player(0).energy, 3);
+        Effect::GainEnergy { player: 0, amount: 2 }.execute(&mut s);
+        assert_eq!(s.player(0).energy, 5);
+        Effect::GainEnergy { player: 99, amount: 1 }.execute(&mut s); // invalid → no panic
     }
 
     #[test]
