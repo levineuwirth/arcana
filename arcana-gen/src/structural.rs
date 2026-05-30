@@ -113,6 +113,23 @@ impl Expected {
         let trig_source = front_face_oracle(row.shape.as_deref(), oracle);
         let trig_lines = trigger_lines(&trig_source);
 
+        // Faces-only front-base shapes (Adventure / MDFC / Transform /
+        // Battle): Scryfall's top-level `keywords` is the COMBINED set
+        // across both faces, but the generated card implements only the
+        // front face. When the front face isn't the keyword-bearer
+        // (e.g. a Battle front whose keywords all live on the back-face
+        // creature), asserting the combined keywords false-quarantines a
+        // correct card. The manifest can't attribute a keyword to a
+        // face, so — consistent with the front-scoped trigger
+        // derivation above — drop the keyword/landwalk assertion for
+        // these shapes (degrade to "no keyword assertion", never a false
+        // fail).
+        let faces_only = matches!(
+            row.shape.as_deref(),
+            Some("AdventureCreature") | Some("ModalDfcCreature")
+            | Some("TransformCreature") | Some("Battle"),
+        );
+
         let color = |c: &str| row.colors.iter().any(|x| x == c);
 
         // Mana value: Scryfall `cmc` is an integer for everything
@@ -143,16 +160,16 @@ impl Expected {
             is_planeswalker: has("Planeswalker"),
             power: pt_expectation(row.is_creature_row(), &row.power),
             toughness: pt_expectation(row.is_creature_row(), &row.toughness),
-            keywords: row
-                .keywords
-                .iter()
-                .filter_map(|k| evergreen_variant(k))
-                .collect(),
-            landwalk: row
-                .keywords
-                .iter()
-                .filter_map(|k| landwalk_subtype(k))
-                .collect(),
+            keywords: if faces_only {
+                Vec::new()
+            } else {
+                row.keywords.iter().filter_map(|k| evergreen_variant(k)).collect()
+            },
+            landwalk: if faces_only {
+                Vec::new()
+            } else {
+                row.keywords.iter().filter_map(|k| landwalk_subtype(k)).collect()
+            },
             trigger_kinds: confident_trigger_kinds(&trig_lines, &row.name),
             min_triggered_abilities: trig_lines.len(),
         }
@@ -175,7 +192,8 @@ impl DumpRow {
 fn front_face_oracle(shape: Option<&str>, oracle: &str) -> String {
     let is_front_face_base = matches!(
         shape,
-        Some("AdventureCreature") | Some("ModalDfcCreature") | Some("TransformCreature"),
+        Some("AdventureCreature") | Some("ModalDfcCreature")
+        | Some("TransformCreature") | Some("Battle"),
     );
     if is_front_face_base {
         if let Some((front, _back)) = oracle.split_once("\n---\n") {
@@ -202,7 +220,8 @@ fn front_face_oracle(shape: Option<&str>, oracle: &str) -> String {
 fn expected_base_name(row: &DumpRow) -> String {
     let is_front_face_base = matches!(
         row.shape.as_deref(),
-        Some("AdventureCreature") | Some("ModalDfcCreature") | Some("TransformCreature"),
+        Some("AdventureCreature") | Some("ModalDfcCreature")
+        | Some("TransformCreature") | Some("Battle"),
     );
     if is_front_face_base {
         if let Some((front, _back)) = row.name.split_once(" // ") {
@@ -652,6 +671,32 @@ mod tests {
         assert_eq!(e.name, "Mayor of Avabruck",
             "Transform name assertion must target the front face");
         assert!(e.is_creature, "Transform base face is the creature");
+    }
+
+    #[test]
+    fn battle_expects_front_face_name_and_drops_combined_keywords() {
+        // MOM Sieges are faces-only DFCs: front is a Battle, back is a
+        // creature/planeswalker. Scryfall's combined name + combined
+        // keyword list both describe the pair. The front-base card
+        // registers only the front Battle (front name, no keywords —
+        // its keywords live on the back creature). Verify must scope
+        // the name to the front and NOT assert the back's keywords.
+        let e = Expected::from_row(&row(|r| {
+            r.shape = Some("Battle".into());
+            r.name = "Invasion of Dominaria // Serra Faithkeeper".into();
+            r.type_line = "Battle — Siege // Creature — Angel".into();
+            r.mana_cost = Some("{2}{W}".into());
+            r.cmc = 3.0;
+            r.colors = vec!["W".into()];
+            r.keywords = vec!["Flying".into(), "Vigilance".into()];
+            r.power = None;
+            r.toughness = None;
+        }), "");
+        assert_eq!(e.name, "Invasion of Dominaria",
+            "Battle name assertion targets the front face");
+        assert!(!e.is_creature, "the front Battle is not a creature");
+        assert!(e.keywords.is_empty(),
+            "combined back-face keywords are NOT asserted on the front Battle");
     }
 
     #[test]
