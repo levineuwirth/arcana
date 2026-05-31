@@ -95,6 +95,23 @@ pub type DynamicXFn = fn(&PendingTrigger) -> u32;
 // TODO(serialize): `TriggeredAbilityDef` carries bare `fn` pointers
 // (`intervening_if`, `effect`). Migrate to `ConditionFnId` /
 // `EffectFnId` (addendum Section 12) in Phase 3.
+/// A triggered ability GRANTED to an object at runtime (rather than
+/// printed in its registry definition) — "until end of turn, whenever
+/// ~ deals combat damage, …" (Warrior's Lesson) or a permanent static
+/// grant. Lives on [`crate::objects::GameObject::granted_triggered_abilities`];
+/// scanned by the engine's trigger collection alongside the registry
+/// abilities. `duration` drives end-of-turn cleanup.
+#[derive(Clone, Debug)]
+pub struct GrantedTrigger {
+    pub def: TriggeredAbilityDef,
+    pub duration: crate::layers::Duration,
+}
+
+/// Trigger ids for granted abilities start here, keeping them clear of
+/// the small per-card ids registry definitions use (so dispatch can
+/// route a pending trigger to the object's granted list unambiguously).
+pub const GRANTED_TRIGGER_ID_BASE: TriggerId = 0xF000_0000;
+
 #[derive(Clone, Debug)]
 pub struct TriggeredAbilityDef {
     pub id: TriggerId,

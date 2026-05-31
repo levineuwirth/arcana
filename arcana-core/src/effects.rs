@@ -532,6 +532,22 @@ pub enum Effect {
     /// library shuffled.
     NameCardAndExile { chooser: PlayerId, target: PlayerId },
 
+    /// Grant `target` an arbitrary triggered ability for `duration`
+    /// ("until end of turn, whenever ~ deals combat damage to a player,
+    /// draw a card" — Warrior's Lesson; or a static grant). The card's
+    /// resolver builds the [`crate::triggers::TriggeredAbilityDef`]
+    /// (with its own `effect` fn) and hands it here; the engine stores
+    /// it on the object and scans it alongside the printed triggers.
+    /// The `ability.id` MUST be in the
+    /// [`crate::triggers::GRANTED_TRIGGER_ID_BASE`] range so dispatch
+    /// routes correctly. `EndOfTurn`-duration grants are removed at
+    /// cleanup; the grant is also shed if the object changes zones.
+    GrantTriggeredAbility {
+        target: ObjectId,
+        ability: Box<crate::triggers::TriggeredAbilityDef>,
+        duration: crate::layers::Duration,
+    },
+
     /// CR 702.176 — "Suspect" `target`. Sets the suspected flag on
     /// the creature; while suspected it has menace (`block_constraints`
     /// grants min_blockers=2) and can't block
@@ -1391,6 +1407,15 @@ impl Effect {
             }
             Effect::NameCardAndExile { chooser, target } => {
                 name_card_and_exile(state, *chooser, *target);
+            }
+            Effect::GrantTriggeredAbility { target, ability, duration } => {
+                if let Some(obj) = state.objects.get_mut(*target) {
+                    obj.granted_triggered_abilities.push(
+                        crate::triggers::GrantedTrigger {
+                            def: (**ability).clone(),
+                            duration: *duration,
+                        });
+                }
             }
             Effect::Suspect { target } => {
                 if let Some(obj) = state.objects.get_mut(*target) {
@@ -3878,6 +3903,37 @@ mod tests {
             .filter(|o| o.zone == Zone::Graveyard(1) && o.characteristics.name == 200)
             .count();
         assert_eq!(yard_200, 1, "the un-named card (200) is untouched");
+    }
+
+    #[test]
+    fn grant_triggered_ability_stores_it_on_the_target() {
+        use crate::triggers::{TriggeredAbilityDef, TriggerCondition, TriggerFrequency,
+            GRANTED_TRIGGER_ID_BASE};
+        use crate::turn::Step;
+        use crate::targets::ControllerConstraint;
+        fn noop_effect(_s: &GameState, _t: &crate::triggers::PendingTrigger,
+            _r: &crate::registry::CardRegistry) -> Vec<Effect> { Vec::new() }
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let ability = TriggeredAbilityDef {
+            id: GRANTED_TRIGGER_ID_BASE + 1,
+            trigger_condition: TriggerCondition::StepBegins {
+                step: Step::Upkeep, whose: ControllerConstraint::Any },
+            intervening_if: None,
+            effect: noop_effect,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        };
+        Effect::GrantTriggeredAbility {
+            target: creature,
+            ability: Box::new(ability),
+            duration: crate::layers::Duration::EndOfTurn,
+        }.execute(&mut s);
+        let granted = &s.objects.get(creature).unwrap().granted_triggered_abilities;
+        assert_eq!(granted.len(), 1, "ability stored on the target");
+        assert_eq!(granted[0].def.id, GRANTED_TRIGGER_ID_BASE + 1);
+        assert_eq!(granted[0].duration, crate::layers::Duration::EndOfTurn);
     }
 
     #[test]

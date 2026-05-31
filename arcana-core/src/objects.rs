@@ -232,6 +232,17 @@ pub struct GameObject {
     #[serde(skip)]
     pub intrinsic_activated_abilities:
         Vec<crate::registry::ActivatedAbilityDef>,
+    /// Triggered abilities GRANTED to this object at runtime
+    /// (`Effect::GrantTriggeredAbility`) — "until end of turn, whenever
+    /// ~ …". Scanned by the engine's trigger collection alongside the
+    /// registry abilities; `EndOfTurn`-duration grants are dropped by
+    /// `cleanup_step`. Zone-local: cleared on re-id like other granted
+    /// state (a creature that leaves the battlefield sheds them).
+    /// Skipped by serde — `TriggeredAbilityDef` carries fn-pointer
+    /// effects (same rationale as `intrinsic_activated_abilities`).
+    #[serde(skip)]
+    pub granted_triggered_abilities:
+        Vec<crate::triggers::GrantedTrigger>,
     /// CR 702.43a — set of colors of mana spent to cast the spell that
     /// became this permanent. Written by
     /// [`crate::state::GameState::finalize_resolved_spell`] from the
@@ -278,6 +289,7 @@ impl GameObject {
             is_token: false,
             colors_paid: ColorSet::new(),
             intrinsic_activated_abilities: Vec::new(),
+            granted_triggered_abilities: Vec::new(),
         }
     }
 
@@ -457,6 +469,9 @@ impl GameObject {
         // Impulse-play permission is likewise zone-local: dropping it on
         // re-id keeps a played card from carrying the marker onward.
         self.impulse_play_pending = false;
+        // Granted triggered abilities are zone-local — a creature that
+        // changes zones sheds runtime grants (CR 603.2e / 611.2g).
+        self.granted_triggered_abilities.clear();
         // CR 702.43a — "mana spent" is per-cast. A permanent that
         // changes zones and comes back was not cast across that move,
         // so the spent-colors record must not survive the re-id. The

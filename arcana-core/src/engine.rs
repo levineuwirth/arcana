@@ -2312,6 +2312,18 @@ fn collect_pending_triggers(
                     pending.push(pt);
                 }
             }
+            // Granted triggered abilities (Effect::GrantTriggeredAbility)
+            // live on the object, not the registry def. Scan them for
+            // this source alongside the printed ones.
+            if let Some(obj) = state.objects.get(source) {
+                for granted in &obj.granted_triggered_abilities {
+                    if let Some(pt) = granted.def.should_fire(
+                        event, source, controller, state)
+                    {
+                        pending.push(pt);
+                    }
+                }
+            }
         }
 
         // 2. Delayed triggers matching this event. `take_matching_delayed_triggers`
@@ -2931,6 +2943,20 @@ fn cleanup_step(state: &mut GameState) {
         }
     }
 
+    // Drop "until end of turn" granted triggered abilities (longer
+    // durations — e.g. WhileSourceOnBattlefield — persist).
+    let granted_ids: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.granted_triggered_abilities.iter()
+            .any(|g| g.duration == crate::layers::Duration::EndOfTurn))
+        .map(|o| o.id)
+        .collect();
+    for id in granted_ids {
+        if let Some(o) = state.objects.get_mut(id) {
+            o.granted_triggered_abilities.retain(
+                |g| g.duration != crate::layers::Duration::EndOfTurn);
+        }
+    }
+
     // CR 603.3 — clear once-per-turn trigger ledger.
     state.clear_per_turn_trigger_ledger();
 
@@ -3243,10 +3269,6 @@ fn resolution_effects(
             let Some(obj) = state.objects.get(source)
                 .or_else(|| state.lki.get(&source))
                 else { return Vec::new(); };
-            let Some(def) = registry.get(obj.card_id) else { return Vec::new(); };
-            let Some(ability) = def.triggered_abilities.iter()
-                .find(|a| a.id == *trigger_id)
-                else { return Vec::new(); };
             let pt = crate::triggers::PendingTrigger {
                 source,
                 trigger_id: *trigger_id,
@@ -3254,6 +3276,18 @@ fn resolution_effects(
                 trigger_event: trigger_event.clone(),
                 targets: entry.targets.clone(),
             };
+            // Granted abilities (id in the granted range) dispatch from
+            // the object's runtime list; otherwise the registry def.
+            if *trigger_id >= crate::triggers::GRANTED_TRIGGER_ID_BASE {
+                let Some(granted) = obj.granted_triggered_abilities.iter()
+                    .find(|g| g.def.id == *trigger_id)
+                    else { return Vec::new(); };
+                return (granted.def.effect)(state, &pt, registry);
+            }
+            let Some(def) = registry.get(obj.card_id) else { return Vec::new(); };
+            let Some(ability) = def.triggered_abilities.iter()
+                .find(|a| a.id == *trigger_id)
+                else { return Vec::new(); };
             (ability.effect)(state, &pt, registry)
         }
     }
