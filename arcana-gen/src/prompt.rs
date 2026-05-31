@@ -650,6 +650,7 @@ Self — the creature itself:
 - `TriggerCondition::SelfBlocks` (unit) — "Whenever ~ blocks" / "Whenever ~ blocks a creature".
 - `TriggerCondition::SelfBlocksOrBecomesBlocked` (unit) — "Whenever ~ blocks or becomes blocked [by a creature]" (Aisling Leprechaun, Tangle Asp, Rock Basilisk, Sawtooth Ogre, Corrosive Ooze class). Picks BOTH sides of a block in a single trigger. Use `trig.other_combatant()` to read the OTHER creature ("that creature").
 - `TriggerCondition::SelfBecomesTapped` (unit) — "Whenever ~ becomes tapped".
+- `TriggerCondition::SelfSpecializes` (unit) — "When this creature specializes" (CR 711, Bloomburrow). Use this for the trigger; the specialize action itself (the colored-back transform) emits `Effect::Specialize {{ target }}` and is a documented partial (the event fires the trigger; the face swap is unmodeled).
 - `TriggerCondition::SelfAttacksUnblocked` (unit) — "Whenever ~ attacks and isn't blocked".
 - `TriggerCondition::SelfIsDealtDamage { combat_only: bool }` — "Whenever ~ is dealt damage" → `combat_only: false`; "Whenever ~ is dealt combat damage" → `combat_only: true`.
 - `TriggerCondition::SelfBecomesTarget { caster: ControllerConstraint }` — CR 702.21a "Whenever ~ becomes the target of a spell or ability [an opponent controls]". `caster` ∈ `You`/`Opponent`/`Any`. (Matches spells + activated abilities only; triggered-ability targets are chosen mid-resolution and don't emit the event.)

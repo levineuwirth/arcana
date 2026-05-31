@@ -120,6 +120,10 @@ pub enum GameEvent {
     Tapped { object_id: ObjectId },
     Untapped { object_id: ObjectId },
     Transformed { object_id: ObjectId },
+    /// CR 711 — a permanent specialized (turned into one of its
+    /// color-specialized faces). Emitted by
+    /// [`crate::effects::Effect::Specialize`].
+    Specialized { object_id: ObjectId },
     CounterAdded { object_id: ObjectId, kind: CounterKind, count: u32 },
     CounterRemoved { object_id: ObjectId, kind: CounterKind, count: u32 },
     AttachedTo { equipment_or_aura: ObjectId, target: ObjectId },
@@ -276,6 +280,7 @@ impl GameEvent {
             Tapped { .. }
             | Untapped { .. }
             | Transformed { .. }
+            | Specialized { .. }
             | CounterAdded { .. }
             | CounterRemoved { .. }
             | AttachedTo { .. }
@@ -330,6 +335,7 @@ impl GameEvent {
             | Tapped { object_id }
             | Untapped { object_id }
             | Transformed { object_id }
+            | Specialized { object_id }
             | CounterAdded { object_id, .. }
             | CounterRemoved { object_id, .. }
             | ControlChanged { object_id, .. }

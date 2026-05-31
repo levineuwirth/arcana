@@ -525,6 +525,18 @@ pub enum Effect {
     /// [`crate::dungeon`].
     Venture { player: PlayerId },
 
+    /// CR 711 — "Specialize": a creature becomes one of its five
+    /// color-specialized faces. Emits [`GameEvent::Specialized`] so
+    /// `TriggerCondition::SelfSpecializes` ("when this creature
+    /// specializes") fires.
+    ///
+    /// **FIDELITY GAP**: the actual swap to a chosen colored back face
+    /// (5-face card data + a color choice) isn't modeled — the event is
+    /// emitted so the on-specialize triggers resolve, but the creature's
+    /// characteristics are unchanged. Same posture as other
+    /// data-heavy DFC approximations.
+    Specialize { target: ObjectId },
+
     /// CR 201.4 — "name a card, then [target] reveals their hand and you
     /// exile all cards with that name from their hand, graveyard, and
     /// library; that player shuffles" (Lost Legacy, Necromentia,
@@ -1416,6 +1428,11 @@ impl Effect {
             }
             Effect::Venture { player } => {
                 venture(state, *player);
+            }
+            Effect::Specialize { target } => {
+                if state.objects.get(*target).is_some() {
+                    state.emit(GameEvent::Specialized { object_id: *target });
+                }
             }
             Effect::NameCardAndExile { chooser, target } => {
                 name_card_and_exile(state, *chooser, *target);
@@ -3984,6 +4001,21 @@ mod tests {
         assert_eq!(granted.len(), 1, "ability stored on the target");
         assert_eq!(granted[0].def.id, GRANTED_TRIGGER_ID_BASE + 1);
         assert_eq!(granted[0].duration, crate::layers::Duration::EndOfTurn);
+    }
+
+    #[test]
+    fn specialize_emits_event_that_fires_the_self_specializes_trigger() {
+        use crate::triggers::TriggerCondition;
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        Effect::Specialize { target: creature }.execute(&mut s);
+        let ev = s.event_log.iter().rev()
+            .find(|e| matches!(e, GameEvent::Specialized { object_id } if *object_id == creature))
+            .expect("Specialized event emitted");
+        // "When this creature specializes" matches the event on its source.
+        assert!(TriggerCondition::SelfSpecializes.matches(ev, creature, 0, &s));
+        assert!(!TriggerCondition::SelfSpecializes.matches(ev, creature + 99, 0, &s),
+            "only the specializing creature's trigger fires");
     }
 
     #[test]

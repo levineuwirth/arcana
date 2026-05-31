@@ -253,6 +253,10 @@ pub enum TriggerCondition {
     /// "Whenever ~ becomes tapped". Matches [`GameEvent::Tapped`]
     /// on this source.
     SelfBecomesTapped,
+    /// CR 711 / 716 — "When this creature specializes". Matches
+    /// [`GameEvent::Specialized`] on this source (emitted by
+    /// [`crate::effects::Effect::Specialize`]).
+    SelfSpecializes,
     /// "Whenever ~ is dealt damage". `combat_only: true` restricts
     /// to CR 510.1c combat damage; `false` accepts any damage source.
     SelfIsDealtDamage { combat_only: bool },
@@ -346,6 +350,9 @@ impl TriggerCondition {
 
             SelfBecomesTapped => matches!(event,
                 GameEvent::Tapped { object_id } if *object_id == source),
+
+            SelfSpecializes => matches!(event,
+                GameEvent::Specialized { object_id } if *object_id == source),
 
             SelfIsDealtDamage { combat_only } => {
                 let GameEvent::DamageDealt { target, is_combat, .. } = event
