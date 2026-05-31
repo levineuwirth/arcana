@@ -59,6 +59,19 @@ pub use crate::actions::OptionalPaymentKind;
 pub enum Effect {
     // --- damage / life -----------------------------------------------------
     DealDamage { source: ObjectId, target: DamageTarget, amount: u32 },
+    /// CR 601.2d / 118.4 — "deals N damage divided as you choose among
+    /// the chosen targets." The resolver supplies the already-chosen
+    /// targets (read from `entry.targets.targets`); `total` is the damage
+    /// to spread across them.
+    ///
+    /// **FIDELITY GAP**: the player's chosen *division* isn't captured
+    /// (no per-target amount prompt is wired yet — same posture as
+    /// Treasure's color choice). Phase 1 distributes `total` as evenly as
+    /// possible, giving the earliest targets the +1 remainder. The total
+    /// damage and the set of recipients are faithful; only the player's
+    /// freedom to weight the split is approximated. An empty `targets`
+    /// (a legal "divide among zero" when the count was `UpTo`) is a no-op.
+    DealDamageDivided { source: ObjectId, targets: Vec<DamageTarget>, total: u32 },
     GainLife { player: PlayerId, amount: u32 },
     /// CR 122 — `player` gets `amount` {E} (energy counters). The
     /// per-player energy pool already exists on PlayerState; this is
@@ -456,6 +469,26 @@ pub enum Effect {
         n: u32,
     },
 
+    /// CR 701.46 — "Amass N" (or "Amass <Race> N"). If you control an
+    /// Army, put `count` +1/+1 counters on it; otherwise create a 0/0
+    /// black Army creature token (with the given `race_subtype`, e.g.
+    /// Zombie/Goblin) and put `count` counters on it. The create-then-
+    /// counter must be atomic — the new token's id isn't knowable from a
+    /// separate effect — so this is a fused effect like [`Self::Incubate`].
+    ///
+    /// `army_subtype` / `race_subtype` are interned subtype handles the
+    /// resolver supplies via `reg.interner().lookup(..)` (Effect::execute
+    /// has no interner access; cf. the typed-token resolver pattern).
+    /// If you already control several Armies the lowest object id is
+    /// grown (Phase-1 deterministic pick; the player's free choice among
+    /// multiple Armies is the only approximation).
+    Amass {
+        controller: PlayerId,
+        count: u32,
+        army_subtype: crate::types::SmallString,
+        race_subtype: crate::types::SmallString,
+    },
+
     /// CR 702.176 — "Suspect" `target`. Sets the suspected flag on
     /// the creature; while suspected it has menace (`block_constraints`
     /// grants min_blockers=2) and can't block
@@ -655,6 +688,19 @@ impl Effect {
             // --- damage / life -------------------------------------------
             Effect::DealDamage { source, target, amount } => {
                 state.deal_damage(*source, *target, *amount, /*combat=*/ false);
+            }
+            Effect::DealDamageDivided { source, targets, total } => {
+                let n = targets.len() as u32;
+                if n == 0 || *total == 0 { return; }
+                let base = *total / n;
+                let rem = *total % n;
+                for (i, t) in targets.iter().enumerate() {
+                    // Earliest targets absorb the remainder (a legal,
+                    // deterministic division — see the variant's docs).
+                    let amount = base + if (i as u32) < rem { 1 } else { 0 };
+                    if amount == 0 { continue; }
+                    state.deal_damage(*source, *t, amount, /*combat=*/ false);
+                }
             }
             Effect::GainEnergy { player, amount } => {
                 if !valid_player(state, *player) || *amount == 0 { return; }
@@ -1256,6 +1302,9 @@ impl Effect {
             }
             Effect::Incubate { controller, n } => {
                 incubate_resolve(state, *controller, *n);
+            }
+            Effect::Amass { controller, count, army_subtype, race_subtype } => {
+                amass_resolve(state, *controller, *count, *army_subtype, *race_subtype);
             }
             Effect::Suspect { target } => {
                 if let Some(obj) = state.objects.get_mut(*target) {
@@ -2976,6 +3025,53 @@ fn incubate_resolve(state: &mut GameState, controller: PlayerId, n: u32) {
     }
 }
 
+/// CR 701.46 — Amass. Grow the controller's existing Army (lowest id, a
+/// deterministic Phase-1 pick) or, lacking one, mint a 0/0 black Army
+/// creature token of `race_subtype`; then put `count` +1/+1 counters on
+/// it. See [`Effect::Amass`] for the interner-handle rationale.
+fn amass_resolve(
+    state: &mut GameState,
+    controller: PlayerId,
+    count: u32,
+    army_subtype: crate::types::SmallString,
+    race_subtype: crate::types::SmallString,
+) {
+    if !valid_player(state, controller) { return; }
+    // Find an Army the controller already controls on the battlefield.
+    let mut existing: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.controller == controller
+            && o.zone == Zone::Battlefield
+            && o.characteristics.subtypes.contains(army_subtype))
+        .map(|o| o.id)
+        .collect();
+    existing.sort();
+    let army = match existing.first() {
+        Some(id) => *id,
+        None => {
+            let mut subtypes = SubtypeSet::default();
+            subtypes.0.insert(army_subtype);
+            subtypes.0.insert(race_subtype);
+            let token = TokenDefinition {
+                name: race_subtype,
+                colors: ColorSet::black(),
+                types: TypeLine::CREATURE.into(),
+                subtypes,
+                power: Some(PtValue::Fixed(0)),
+                toughness: Some(PtValue::Fixed(0)),
+                keywords: Vec::new(),
+                abilities: Vec::new(),
+            };
+            let Some(id) = create_token(state, controller, &token) else { return; };
+            id
+        }
+    };
+    if count > 0 {
+        state.place_counters(
+            crate::replacement::CounterTarget::Object(army),
+            CounterKind::PlusOnePlusOne, count);
+    }
+}
+
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
     let Some(src) = state.objects.get(target).cloned() else { return; };
     let id = state.allocate_object_id();
@@ -3459,6 +3555,70 @@ mod tests {
             GameEvent::LifeLost { player: 1, amount: 4 })));
         assert!(s.event_log.iter().any(|e| matches!(e,
             GameEvent::DamageDealt { target: DamageTarget::Player(1), .. })));
+    }
+
+    #[test]
+    fn divided_damage_spreads_total_evenly_with_remainder_first() {
+        // "4 damage divided among 3 targets" → 2/1/1 (earliest absorbs
+        // the remainder); total dealt equals `total`, every target hit.
+        let mut s = GameState::new(2, 0);
+        let a = put_creature(&mut s, 0, Zone::Battlefield, 5, 5);
+        let b = put_creature(&mut s, 0, Zone::Battlefield, 5, 5);
+        let c = put_creature(&mut s, 0, Zone::Battlefield, 5, 5);
+        Effect::DealDamageDivided {
+            source: 999,
+            targets: vec![
+                DamageTarget::Object(a),
+                DamageTarget::Object(b),
+                DamageTarget::Object(c),
+            ],
+            total: 4,
+        }.execute(&mut s);
+        assert_eq!(s.objects.get(a).unwrap().damage_marked, 2);
+        assert_eq!(s.objects.get(b).unwrap().damage_marked, 1);
+        assert_eq!(s.objects.get(c).unwrap().damage_marked, 1);
+    }
+
+    #[test]
+    fn amass_creates_a_zero_zero_army_when_none_exists() {
+        // No Army on the battlefield → mint a 0/0 black Army token and
+        // load it with `count` +1/+1 counters. (SmallString is u32 in
+        // tests; the ids only need to be internally consistent.)
+        const ARMY: SmallString = 100;
+        const ZOMBIE: SmallString = 101;
+        let mut s = GameState::new(2, 0);
+        Effect::Amass { controller: 0, count: 3, army_subtype: ARMY, race_subtype: ZOMBIE }
+            .execute(&mut s);
+        let army = s.objects.iter()
+            .find(|o| o.is_token && o.characteristics.subtypes.contains(ARMY))
+            .expect("an Army token was minted");
+        assert!(army.characteristics.subtypes.contains(ZOMBIE), "carries the race subtype");
+        assert_eq!(army.count_counters(CounterKind::PlusOnePlusOne), 3);
+    }
+
+    #[test]
+    fn amass_grows_the_existing_army_instead_of_making_a_new_one() {
+        const ARMY: SmallString = 100;
+        const ZOMBIE: SmallString = 101;
+        let mut s = GameState::new(2, 0);
+        let existing = put_creature(&mut s, 0, Zone::Battlefield, 0, 0);
+        s.objects.get_mut(existing).unwrap().characteristics.subtypes.0.insert(ARMY);
+        Effect::Amass { controller: 0, count: 2, army_subtype: ARMY, race_subtype: ZOMBIE }
+            .execute(&mut s);
+        // Grew the existing Army; no second Army token minted.
+        let armies = s.objects.iter()
+            .filter(|o| o.characteristics.subtypes.contains(ARMY)).count();
+        assert_eq!(armies, 1, "no new Army token created");
+        assert_eq!(s.objects.get(existing).unwrap().count_counters(CounterKind::PlusOnePlusOne), 2);
+    }
+
+    #[test]
+    fn divided_damage_empty_targets_is_noop() {
+        let mut s = GameState::new(2, 0);
+        Effect::DealDamageDivided { source: 1, targets: vec![], total: 3 }
+            .execute(&mut s);
+        // No panic, no life change, no events beyond baseline.
+        assert_eq!(s.player(0).life, 20);
     }
 
     #[test]
