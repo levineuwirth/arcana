@@ -516,6 +516,15 @@ pub enum Effect {
     /// currently enumerated.
     ImpulseExile { player: PlayerId, count: u32 },
 
+    /// CR 309 — "Venture into the dungeon." If `player` isn't in a
+    /// dungeon, they enter the default dungeon's first room; otherwise
+    /// they advance to a room connected to their current one. The
+    /// entered room's effect fires; entering a terminal room completes
+    /// the dungeon (position cleared). Branch choices are taken
+    /// deterministically (first edge) — a documented Phase-1 gap. See
+    /// [`crate::dungeon`].
+    Venture { player: PlayerId },
+
     /// CR 201.4 — "name a card, then [target] reveals their hand and you
     /// exile all cards with that name from their hand, graveyard, and
     /// library; that player shuffles" (Lost Legacy, Necromentia,
@@ -1404,6 +1413,9 @@ impl Effect {
             }
             Effect::ImpulseExile { player, count } => {
                 impulse_exile(state, *player, *count);
+            }
+            Effect::Venture { player } => {
+                venture(state, *player);
             }
             Effect::NameCardAndExile { chooser, target } => {
                 name_card_and_exile(state, *chooser, *target);
@@ -3292,6 +3304,44 @@ fn name_card_and_exile(state: &mut GameState, _chooser: PlayerId, target: Player
     state.shuffle_library(target);
 }
 
+/// Body of [`Effect::Venture`]. Advances `player` one room through a
+/// dungeon (entering the default dungeon's first room if they aren't in
+/// one), fires the entered room's effect, and clears the position if the
+/// room is terminal (dungeon completed). Branch choice = first edge
+/// (documented Phase-1 gap). See [`crate::dungeon`].
+fn venture(state: &mut GameState, player: PlayerId) {
+    if !valid_player(state, player) { return; }
+    use crate::dungeon::{self, DungeonPosition};
+    let pos = state.player(player).dungeon;
+    let (dungeon, room_idx) = match pos {
+        None => (dungeon::default_dungeon(), 0usize),
+        Some(p) => {
+            let rooms = dungeon::rooms(p.dungeon);
+            match rooms.get(p.room).and_then(|r| r.next.first()) {
+                // Advance to the first connected room.
+                Some(&next) => (p.dungeon, next),
+                // Terminal room → complete the dungeon and stop.
+                None => { state.player_mut(player).dungeon = None; return; }
+            }
+        }
+    };
+    let rooms = dungeon::rooms(dungeon);
+    let Some(room) = rooms.get(room_idx) else {
+        state.player_mut(player).dungeon = None;
+        return;
+    };
+    // Enter the room: record position, then fire its on-entry effect.
+    state.player_mut(player).dungeon = Some(DungeonPosition { dungeon, room: room_idx });
+    for eff in (room.on_enter)(player) {
+        eff.execute(state);
+    }
+    // Completing the dungeon: a terminal room clears the position so the
+    // next venture starts a fresh dungeon (CR 309.6).
+    if room.next.is_empty() {
+        state.player_mut(player).dungeon = None;
+    }
+}
+
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
     let Some(src) = state.objects.get(target).cloned() else { return; };
     let id = state.allocate_object_id();
@@ -3934,6 +3984,23 @@ mod tests {
         assert_eq!(granted.len(), 1, "ability stored on the target");
         assert_eq!(granted[0].def.id, GRANTED_TRIGGER_ID_BASE + 1);
         assert_eq!(granted[0].duration, crate::layers::Duration::EndOfTurn);
+    }
+
+    #[test]
+    fn venture_enters_then_advances_then_completes() {
+        use crate::dungeon::DungeonId;
+        let mut s = GameState::new(2, 0);
+        // First venture → Cave Entrance (room 0) of the default dungeon.
+        Effect::Venture { player: 0 }.execute(&mut s);
+        let pos = s.player(0).dungeon.expect("entered a dungeon");
+        assert_eq!(pos.dungeon, DungeonId::LostMine);
+        assert_eq!(pos.room, 0, "first venture enters the first room");
+        // Subsequent ventures advance (deterministic first edge):
+        // 0 -> 1 -> 3 -> 4 -> 5 (terminal). Four more ventures reach room
+        // 5, whose entry completes (clears) the dungeon.
+        for _ in 0..4 { Effect::Venture { player: 0 }.execute(&mut s); }
+        assert!(s.player(0).dungeon.is_none(),
+            "reaching the terminal room completes the dungeon");
     }
 
     #[test]

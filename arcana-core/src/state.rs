@@ -898,6 +898,11 @@ pub struct PlayerState {
     pub energy: u32,
     /// Experience counters (Commander mechanic).
     pub experience: u32,
+    /// CR 309 — the player's current spot in a dungeon, if they're
+    /// venturing (`None` = not in a dungeon). Advanced by
+    /// [`crate::effects::Effect::Venture`]; the room data lives in
+    /// [`crate::dungeon`].
+    pub dungeon: Option<crate::dungeon::DungeonPosition>,
     /// Library ordering. `library_top_to_bottom[0]` is the top of the
     /// library (next card drawn); the last element is the bottom.
     /// Maintained by [`GameState::move_object_to_zone`] and the dedicated
@@ -930,6 +935,7 @@ impl PlayerState {
             known_cards: HashSet::default(),
             energy: 0,
             experience: 0,
+            dungeon: None,
             library_top_to_bottom: Vec::new(),
             mulligans_taken: 0,
             mulligan_decided: false,
