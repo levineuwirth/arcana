@@ -100,7 +100,21 @@ impl Expected {
     /// degrades cleanly to "no trigger assertions" — never a false
     /// quarantine — matching the dynamic-literal gate's policy.
     pub fn from_row(row: &DumpRow, oracle: &str) -> Self {
-        let tp = type_part(&row.type_line);
+        // A multi-face card (DFC / transform / adventure / split-name)
+        // registers ONLY its front face as the base; the back lives in an
+        // `AlternateFace` (or is GAP'd debt). Scryfall reports the COMBINED
+        // name (`"Front // Back"`), the combined type line
+        // (`"Front types // Back types"`), and the combined keyword set —
+        // so every front-scoped expectation must look at the front half
+        // alone. The `" // "` separator is the authoritative, shape-agnostic
+        // signal (Scryfall never puts it in a single-face name/type line),
+        // which is why this is driven off the separator rather than an
+        // enumerated shape list: it catches transforming Sagas and
+        // non-creature-front transforms (Land/Artifact/Enchantment//Creature)
+        // that no fixed shape list anticipated.
+        let multiface =
+            row.name.contains(" // ") || row.type_line.contains(" // ");
+        let tp = type_part(front_face(&row.type_line));
         let has = |t: &str| tp.contains(t);
         // For multi-face shapes whose registered base is the front
         // face (Adventure / MDFC), the generated card implements only
@@ -110,25 +124,20 @@ impl Expected {
         // deriving trigger expectations from the whole thing would
         // demand triggers the front-face card legitimately doesn't
         // carry. Scope the trigger derivation to the front face.
-        let trig_source = front_face_oracle(row.shape.as_deref(), oracle);
+        let trig_source = front_face_oracle(multiface, oracle);
         let trig_lines = trigger_lines(&trig_source);
 
-        // Faces-only front-base shapes (Adventure / MDFC / Transform /
-        // Battle): Scryfall's top-level `keywords` is the COMBINED set
-        // across both faces, but the generated card implements only the
-        // front face. When the front face isn't the keyword-bearer
-        // (e.g. a Battle front whose keywords all live on the back-face
-        // creature), asserting the combined keywords false-quarantines a
-        // correct card. The manifest can't attribute a keyword to a
-        // face, so — consistent with the front-scoped trigger
-        // derivation above — drop the keyword/landwalk assertion for
-        // these shapes (degrade to "no keyword assertion", never a false
-        // fail).
-        let faces_only = matches!(
-            row.shape.as_deref(),
-            Some("AdventureCreature") | Some("ModalDfcCreature")
-            | Some("TransformCreature") | Some("Battle"),
-        );
+        // Multi-face cards: Scryfall's top-level `keywords` is the COMBINED
+        // set across both faces, but the generated card implements only the
+        // front face. When the front face isn't the keyword-bearer (e.g. a
+        // Battle front whose keywords all live on the back-face creature, or
+        // a transforming Saga whose evergreen keywords sit on the creature
+        // back), asserting the combined keywords false-quarantines a correct
+        // card. The manifest can't attribute a keyword to a face, so —
+        // consistent with the front-scoped trigger derivation above — drop
+        // the keyword/landwalk assertion for any multi-face card (degrade to
+        // "no keyword assertion", never a false fail).
+        let faces_only = multiface;
 
         let color = |c: &str| row.colors.iter().any(|x| x == c);
 
@@ -178,8 +187,18 @@ impl Expected {
 
 impl DumpRow {
     fn is_creature_row(&self) -> bool {
-        type_part(&self.type_line).contains("Creature")
+        // Front-face scoped: a `Land // Creature` transform registers a
+        // non-creature front, so its P/T expectation must be skipped.
+        type_part(front_face(&self.type_line)).contains("Creature")
     }
+}
+
+/// The front face of a multi-face string (name or type line). Scryfall
+/// joins the two faces with `" // "`; single-face strings are returned
+/// unchanged. This is the one shape-agnostic signal used throughout the
+/// front-scoped expectations above.
+fn front_face(s: &str) -> &str {
+    s.split_once(" // ").map(|(front, _back)| front).unwrap_or(s)
 }
 
 /// The portion of the oracle text the registered base face is
@@ -189,13 +208,8 @@ impl DumpRow {
 /// the front face, so trigger expectations must be derived from the
 /// front-face text alone. Single-face shapes return the oracle
 /// unchanged.
-fn front_face_oracle(shape: Option<&str>, oracle: &str) -> String {
-    let is_front_face_base = matches!(
-        shape,
-        Some("AdventureCreature") | Some("ModalDfcCreature")
-        | Some("TransformCreature") | Some("Battle"),
-    );
-    if is_front_face_base {
+fn front_face_oracle(multiface: bool, oracle: &str) -> String {
+    if multiface {
         if let Some((front, _back)) = oracle.split_once("\n---\n") {
             return front.to_string();
         }
@@ -218,17 +232,11 @@ fn front_face_oracle(shape: Option<&str>, oracle: &str) -> String {
 /// `combine_split_characteristics`) are Tier-4 / out of scope and
 /// never reach this harness, so they need no special case here.
 fn expected_base_name(row: &DumpRow) -> String {
-    let is_front_face_base = matches!(
-        row.shape.as_deref(),
-        Some("AdventureCreature") | Some("ModalDfcCreature")
-        | Some("TransformCreature") | Some("Battle"),
-    );
-    if is_front_face_base {
-        if let Some((front, _back)) = row.name.split_once(" // ") {
-            return front.to_string();
-        }
-    }
-    row.name.clone()
+    // Any `"Front // Back"` name registers only the front face as the base
+    // (Adventure / MDFC / Transform / Battle / transforming Saga). Split
+    // cards — which register the COMBINED name — are Tier-4 / out of scope
+    // and never reach this harness, so the `" // "` split is unambiguous here.
+    front_face(&row.name).to_string()
 }
 
 /// `Some(Some(n))` for an integer P/T on a creature, `Some(None)`
@@ -697,6 +705,57 @@ mod tests {
         assert!(!e.is_creature, "the front Battle is not a creature");
         assert!(e.keywords.is_empty(),
             "combined back-face keywords are NOT asserted on the front Battle");
+    }
+
+    #[test]
+    fn transforming_saga_scopes_to_front_face() {
+        // Kamigawa-style transforming Saga: front is an Enchantment — Saga,
+        // back is a creature. Shape is "Saga" (NOT in the old front-face
+        // shape list), so the combined name + combined keywords used to
+        // false-quarantine the whole batch. The front-scoped logic must
+        // register the front name, treat it as non-creature, and drop the
+        // back creature's keywords.
+        let e = Expected::from_row(&row(|r| {
+            r.shape = Some("Saga".into());
+            r.name = "The Legend of Kuruk // Avatar Kuruk".into();
+            r.type_line =
+                "Enchantment — Saga // Legendary Creature — Avatar".into();
+            r.mana_cost = Some("{2}{U}{U}".into());
+            r.cmc = 4.0;
+            r.colors = vec!["U".into()];
+            r.keywords = vec!["Transform".into(), "Flying".into()];
+            r.power = None;
+            r.toughness = None;
+        }), "");
+        assert_eq!(e.name, "The Legend of Kuruk",
+            "transforming Saga name assertion targets the front face");
+        assert!(!e.is_creature, "the front Saga is not a creature");
+        assert!(e.is_enchantment, "the front Saga is an enchantment");
+        assert!(e.keywords.is_empty(),
+            "back-face creature keywords (Flying) are NOT asserted on the front Saga");
+    }
+
+    #[test]
+    fn transform_with_noncreature_front_is_not_a_creature() {
+        // Land/Artifact/Enchantment//Creature transforms register a
+        // non-creature front. `type_part` only splits on the first " — ",
+        // so without the front-face split "Artifact // Artifact Creature —
+        // Golem" leaked the back creature's type into the front expectation
+        // and false-failed `is_creature`. The front-scoped split fixes it.
+        let e = Expected::from_row(&row(|r| {
+            r.shape = Some("TransformCreature".into());
+            r.name = "Hostile Hostel // Creeping Inn".into();
+            r.type_line = "Land // Artifact Creature — Construct".into();
+            r.mana_cost = None;
+            r.cmc = 0.0;
+            r.colors = vec![];
+            r.power = None;
+            r.toughness = None;
+        }), "");
+        assert_eq!(e.name, "Hostile Hostel");
+        assert!(!e.is_creature, "the front Land is not a creature");
+        assert!(e.is_land, "the front face is a land");
+        assert_eq!(e.power, None, "non-creature front skips the P/T assertion");
     }
 
     #[test]
