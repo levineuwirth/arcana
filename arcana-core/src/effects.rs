@@ -489,6 +489,22 @@ pub enum Effect {
         race_subtype: crate::types::SmallString,
     },
 
+    /// "[Chooser] may choose any number of [filter] in [zone], then
+    /// <action> them." The variable-count player choice that backs
+    /// "return any number of Swamps you control to your hand" (Sweep),
+    /// "discard any number of cards", "sacrifice any number of …",
+    /// "exile any number of …". Posts a `ChoiceKind::PickCards { min: 0,
+    /// max: <all matching> }` over the candidates and resolves it with
+    /// the matching [`crate::actions::ChoiceFollowUp`]. Must execute
+    /// inside a stack resolution (needs `currently_resolving`). Zero
+    /// candidates is a clean no-op.
+    ChooseAnyNumberFromZone {
+        chooser: PlayerId,
+        zone: Zone,
+        filter: crate::targets::ObjectFilter,
+        action: PickAction,
+    },
+
     /// CR 702.176 — "Suspect" `target`. Sets the suspected flag on
     /// the creature; while suspected it has menace (`block_constraints`
     /// grants min_blockers=2) and can't block
@@ -1340,6 +1356,9 @@ impl Effect {
             Effect::Amass { controller, count, army_subtype, race_subtype } => {
                 amass_resolve(state, *controller, *count, *army_subtype, *race_subtype);
             }
+            Effect::ChooseAnyNumberFromZone { chooser, zone, filter, action } => {
+                choose_any_number_from_zone(state, *chooser, *zone, filter, *action);
+            }
             Effect::Suspect { target } => {
                 if let Some(obj) = state.objects.get_mut(*target) {
                     obj.status.suspected = true;
@@ -1660,6 +1679,21 @@ pub struct TokenDefinition {
     pub toughness: Option<PtValue>,
     pub keywords: Vec<KeywordAbility>,
     pub abilities: Vec<crate::triggers::TriggeredAbilityDef>,
+}
+
+/// What [`Effect::ChooseAnyNumberFromZone`] does with the cards the
+/// player picks. Each maps to the matching
+/// [`crate::actions::ChoiceFollowUp`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PickAction {
+    /// Move the picked cards to the chooser's hand ("return … to hand").
+    ReturnToHand,
+    /// Discard the picked cards from hand.
+    Discard,
+    /// Sacrifice the picked permanents.
+    Sacrifice,
+    /// Exile the picked cards.
+    Exile,
 }
 
 /// Where the unchosen looked-at cards of an [`Effect::DigTopN`] go
@@ -3108,6 +3142,44 @@ fn amass_resolve(
     }
 }
 
+/// Body of [`Effect::ChooseAnyNumberFromZone`]: gather the matching
+/// candidates in `zone`, post a `PickCards { min: 0, max: all }`, and
+/// stash the [`crate::actions::ChoiceFollowUp`] the chosen `action`
+/// maps to. No candidates → clean no-op (the choice would be empty).
+fn choose_any_number_from_zone(
+    state: &mut GameState,
+    chooser: PlayerId,
+    zone: Zone,
+    filter: &crate::targets::ObjectFilter,
+    action: PickAction,
+) {
+    if !valid_player(state, chooser) { return; }
+    let mut candidates: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.zone == zone && filter.matches(o, state, chooser))
+        .map(|o| o.id)
+        .collect();
+    candidates.sort();
+    if candidates.is_empty() { return; }
+    let Some(stack_entry) = state.currently_resolving else { return; };
+    let max = candidates.len() as u32;
+    let follow_up = match action {
+        PickAction::ReturnToHand => crate::actions::ChoiceFollowUp::MoveToZone {
+            destination: Zone::Hand(chooser), reveal: false, shuffle_library_owner: None,
+        },
+        PickAction::Exile => crate::actions::ChoiceFollowUp::MoveToZone {
+            destination: Zone::Exile, reveal: false, shuffle_library_owner: None,
+        },
+        PickAction::Discard => crate::actions::ChoiceFollowUp::Discard { player: chooser },
+        PickAction::Sacrifice => crate::actions::ChoiceFollowUp::Sacrifice { player: chooser },
+    };
+    state.pending_choice_follow_up = Some(follow_up);
+    state.push_pending_choice(
+        chooser,
+        crate::actions::ChoiceContext::ResolvingStack(stack_entry),
+        crate::actions::ChoiceKind::PickCards { candidates, min: 0, max },
+    );
+}
+
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
     let Some(src) = state.objects.get(target).cloned() else { return; };
     let id = state.allocate_object_id();
@@ -3646,6 +3718,51 @@ mod tests {
             .filter(|o| o.characteristics.subtypes.contains(ARMY)).count();
         assert_eq!(armies, 1, "no new Army token created");
         assert_eq!(s.objects.get(existing).unwrap().count_counters(CounterKind::PlusOnePlusOne), 2);
+    }
+
+    #[test]
+    fn choose_any_number_posts_pickcards_zero_to_all_with_followup() {
+        use crate::actions::{ChoiceKind, ChoiceFollowUp};
+        use crate::targets::{ObjectFilter, ControllerConstraint};
+        let mut s = GameState::new(2, 0);
+        put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        // Needs a stack-resolution context to post the choice.
+        let card = put_instant(&mut s, 0, Zone::Hand(0));
+        let entry = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
+        s.currently_resolving = Some(entry);
+
+        Effect::ChooseAnyNumberFromZone {
+            chooser: 0,
+            zone: Zone::Battlefield,
+            filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            action: PickAction::ReturnToHand,
+        }.execute(&mut s);
+
+        let pc = s.pending_choice.as_ref().expect("PickCards pushed");
+        assert!(matches!(&pc.kind,
+            ChoiceKind::PickCards { min: 0, max: 2, .. }),
+            "any-number = min 0, max all matching");
+        assert!(matches!(s.pending_choice_follow_up,
+            Some(ChoiceFollowUp::MoveToZone { destination: Zone::Hand(0), .. })));
+    }
+
+    #[test]
+    fn choose_any_number_empty_zone_is_noop() {
+        use crate::targets::{ObjectFilter, ControllerConstraint};
+        let mut s = GameState::new(2, 0);
+        let card = put_instant(&mut s, 0, Zone::Hand(0));
+        let entry = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
+        s.currently_resolving = Some(entry);
+        Effect::ChooseAnyNumberFromZone {
+            chooser: 0,
+            zone: Zone::Battlefield,
+            filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            action: PickAction::Sacrifice,
+        }.execute(&mut s);
+        assert!(s.pending_choice.is_none(), "no candidates → no choice posted");
     }
 
     #[test]
