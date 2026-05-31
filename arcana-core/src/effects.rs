@@ -674,6 +674,40 @@ pub enum DelayedAction {
 // =============================================================================
 
 impl Effect {
+    /// Return a clone of this effect with its single object target
+    /// replaced by `id` — the per-iteration specialization used by
+    /// [`Effect::ForEach`]. The canonical ForEach idiom nests an inner
+    /// effect whose target is the [`crate::objects::NULL_OBJECT_ID`]
+    /// placeholder (e.g. `AddCounters { target: NULL, .. }`); ForEach
+    /// stamps the current id into it so "put a +1/+1 counter on EACH
+    /// creature you control" actually touches each creature.
+    ///
+    /// Effects with no object target (GainLife / DrawCards / CreateToken
+    /// / filter-based Sacrifice / …) are returned unchanged — for those,
+    /// ForEach's run-once-per-id IS the intended semantics ("draw a card
+    /// for each …" → N draws; "create a token for each …" → N tokens).
+    fn retargeted(&self, id: ObjectId) -> Effect {
+        let mut e = self.clone();
+        match &mut e {
+            Effect::DestroyPermanent { target }
+            | Effect::ExilePermanent { target }
+            | Effect::ReturnToHand { target }
+            | Effect::ReturnFromGraveyardToHand { target }
+            | Effect::ReturnFromGraveyardToBattlefield { target }
+            | Effect::Tap { target }
+            | Effect::Untap { target }
+            | Effect::BecomeRenowned { target }
+            | Effect::AddCounters { target, .. }
+            | Effect::Pump { target, .. }
+            | Effect::GrantKeyword { target, .. }
+            | Effect::CantBeBlocked { target, .. }
+            | Effect::Goad { target, .. } => *target = id,
+            Effect::DealDamage { target, .. } => *target = DamageTarget::Object(id),
+            _ => {}
+        }
+        e
+    }
+
     /// Apply this effect to `state`.
     ///
     /// Defensive against missing objects: if a named target has left
@@ -1424,10 +1458,12 @@ impl Effect {
 
             // --- composites ---------------------------------------------
             Effect::ForEach { targets, effect } => {
-                for _id in targets {
-                    // The inner effect is already specialized for each id
-                    // by the card's effect builder — we just iterate.
-                    effect.execute(state);
+                // Specialize the inner effect to each id (replacing its
+                // NULL_OBJECT_ID target placeholder). Effects with no
+                // object target are run unchanged once per id — see
+                // `Effect::retargeted`.
+                for id in targets {
+                    effect.retargeted(*id).execute(state);
                 }
             }
             Effect::Conditional { condition, then, otherwise } => {
@@ -4941,6 +4977,27 @@ mod tests {
         };
         effect.execute(&mut s);
         assert_eq!(s.player(0).life, 23);
+    }
+
+    #[test]
+    fn for_each_substitutes_id_into_per_target_inner_effect() {
+        // The canonical idiom: inner effect carries the NULL_OBJECT_ID
+        // placeholder; ForEach must stamp each id in so EVERY listed
+        // object is affected (regression guard for the "counters on
+        // nothing N times" bug — Ridgescale Tusker & ~294 others).
+        let mut s = GameState::new(2, 0);
+        let a = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let b = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        Effect::ForEach {
+            targets: vec![a, b],
+            effect: Box::new(Effect::AddCounters {
+                target: crate::objects::NULL_OBJECT_ID,
+                kind: CounterKind::PlusOnePlusOne,
+                count: 1,
+            }),
+        }.execute(&mut s);
+        assert_eq!(s.objects.get(a).unwrap().count_counters(CounterKind::PlusOnePlusOne), 1);
+        assert_eq!(s.objects.get(b).unwrap().count_counters(CounterKind::PlusOnePlusOne), 1);
     }
 
     // --- Condition evaluation ----------------------------------------------
