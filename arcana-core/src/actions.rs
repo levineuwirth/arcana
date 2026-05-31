@@ -80,6 +80,15 @@ pub enum CastModifier {
     /// battlefield; the re-id on the zone change drops the flag so
     /// the battlefield object is a clean creature.
     AdventureCreature,
+    /// CR 601.3e — play a card from impulse-exile ("you may play it
+    /// until end of turn"). Source must be in exile with
+    /// `impulse_play_pending=true` and belong to the caster. Mana cost
+    /// and spell shape are the card's normal characteristics — a pure
+    /// zone override exactly like [`Self::AdventureCreature`]: the spell
+    /// leaves the stack to its normal destination, and the re-id on the
+    /// zone change drops the flag. (Playing impulse-exiled *lands* is a
+    /// documented partial — only nonland spells are enumerated.)
+    ImpulsePlay,
     /// CR 712.4 — cast the back face of a modal double-faced card
     /// (MDFC) from hand. Both faces are first-class; this modifier
     /// is how the caster elects the back face. Dispatches on the

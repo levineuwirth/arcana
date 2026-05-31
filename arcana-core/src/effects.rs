@@ -505,6 +505,17 @@ pub enum Effect {
         action: PickAction,
     },
 
+    /// CR 601.3e — impulse draw: "exile the top `count` cards of
+    /// `player`'s library. Until end of turn, you may play them." Moves
+    /// the top `count` cards to exile and flags each
+    /// `impulse_play_pending`, which opens the
+    /// [`crate::actions::CastModifier::ImpulsePlay`] enumeration in
+    /// `legal_actions` for nonland spells; `cleanup_step` clears the
+    /// flags at end of turn (the cards stay in exile). Playing exiled
+    /// *lands* is a documented partial — only nonland spells are
+    /// currently enumerated.
+    ImpulseExile { player: PlayerId, count: u32 },
+
     /// CR 702.176 — "Suspect" `target`. Sets the suspected flag on
     /// the creature; while suspected it has menace (`block_constraints`
     /// grants min_blockers=2) and can't block
@@ -1358,6 +1369,9 @@ impl Effect {
             }
             Effect::ChooseAnyNumberFromZone { chooser, zone, filter, action } => {
                 choose_any_number_from_zone(state, *chooser, *zone, filter, *action);
+            }
+            Effect::ImpulseExile { player, count } => {
+                impulse_exile(state, *player, *count);
             }
             Effect::Suspect { target } => {
                 if let Some(obj) = state.objects.get_mut(*target) {
@@ -3180,6 +3194,23 @@ fn choose_any_number_from_zone(
     );
 }
 
+/// Body of [`Effect::ImpulseExile`]: move the top `count` library cards
+/// to exile and flag each for impulse-play.
+fn impulse_exile(state: &mut GameState, player: PlayerId, count: u32) {
+    if !valid_player(state, player) || count == 0 { return; }
+    let ids: Vec<ObjectId> = state.player(player)
+        .library_top_to_bottom.iter().take(count as usize).copied().collect();
+    for id in ids {
+        if let Some(new_id) = state.move_object_to_zone(
+            id, Zone::Exile, crate::events::MoveCause::SpellResolution)
+        {
+            if let Some(o) = state.objects.get_mut(new_id) {
+                o.impulse_play_pending = true;
+            }
+        }
+    }
+}
+
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
     let Some(src) = state.objects.get(target).cloned() else { return; };
     let id = state.allocate_object_id();
@@ -3746,6 +3777,25 @@ mod tests {
             "any-number = min 0, max all matching");
         assert!(matches!(s.pending_choice_follow_up,
             Some(ChoiceFollowUp::MoveToZone { destination: Zone::Hand(0), .. })));
+    }
+
+    #[test]
+    fn impulse_exile_moves_top_n_and_flags_them() {
+        let mut s = GameState::new(2, 0);
+        // Seed three cards on top of player 0's library.
+        let a = put_instant(&mut s, 0, Zone::Library(0));
+        let b = put_instant(&mut s, 0, Zone::Library(0));
+        let c = put_instant(&mut s, 0, Zone::Library(0));
+        s.player_mut(0).library_top_to_bottom = vec![a, b, c];
+
+        Effect::ImpulseExile { player: 0, count: 2 }.execute(&mut s);
+
+        // Top two are in exile and impulse-flagged; the third stays.
+        let flagged: Vec<_> = s.objects.iter()
+            .filter(|o| o.zone == Zone::Exile && o.impulse_play_pending)
+            .map(|o| o.id).collect();
+        assert_eq!(flagged.len(), 2, "top two exiled + flagged");
+        assert_eq!(s.player(0).library_top_to_bottom.len(), 1, "one card left");
     }
 
     #[test]

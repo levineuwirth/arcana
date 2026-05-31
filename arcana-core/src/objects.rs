@@ -206,6 +206,16 @@ pub struct GameObject {
     /// battlefield creature is an ordinary object with no adventure
     /// residue.
     pub adventure_exile_pending: bool,
+    /// CR 601.3e — impulse-play marker. Set on a card that
+    /// [`crate::effects::Effect::ImpulseExile`] sent to [`Zone::Exile`]
+    /// ("exile the top N cards of your library; you may play them until
+    /// end of turn"). While flagged, [`crate::legal_actions`] emits a
+    /// [`crate::actions::CastModifier::ImpulsePlay`] cast path for the
+    /// object at its printed cost (a pure zone override, like
+    /// [`Self::adventure_exile_pending`]). Cleared at end of turn by
+    /// `cleanup_step` (the permission lapses; the card stays in exile)
+    /// and dropped on re-id so a card that IS played leaves clean.
+    pub impulse_play_pending: bool,
     /// Per-object activated abilities populated at object-creation time
     /// when the card isn't a registry-resident definition. Used by the
     /// token-mint path for commodity tokens (Treasure / Clue / Food /
@@ -261,6 +271,7 @@ impl GameObject {
             status: PermanentStatus::default(),
             madness_pending: false,
             adventure_exile_pending: false,
+            impulse_play_pending: false,
             visible_face: 0,
             default_face_characteristics: None,
             back_face_characteristics: None,
@@ -443,6 +454,9 @@ impl GameObject {
         // keeps the post-exile object from carrying stale adventure
         // residue into the battlefield.
         self.adventure_exile_pending = false;
+        // Impulse-play permission is likewise zone-local: dropping it on
+        // re-id keeps a played card from carrying the marker onward.
+        self.impulse_play_pending = false;
         // CR 702.43a — "mana spent" is per-cast. A permanent that
         // changes zones and comes back was not cast across that move,
         // so the spent-colors record must not survive the re-id. The

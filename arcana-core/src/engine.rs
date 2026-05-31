@@ -303,6 +303,16 @@ fn apply_cast_spell(
                     && o.owner == controller);
             if !flagged_in_exile { return; }
         }
+        crate::actions::CastModifier::ImpulsePlay => {
+            // CR 601.3e — play from impulse-exile. Source must be in
+            // Exile with `impulse_play_pending=true` and belong to the
+            // caster. Normal cost/shape; pure zone override.
+            let flagged_in_exile = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Exile
+                    && o.impulse_play_pending
+                    && o.owner == controller);
+            if !flagged_in_exile { return; }
+        }
         crate::actions::CastModifier::MdfcBack => {
             // CR 712.4 — cast the back face from hand. Source must
             // be in the caster's hand and the card must declare an
@@ -387,7 +397,8 @@ fn apply_cast_spell(
         // it's against the printed cost.
         let cost_opt = match cast_modifier {
             crate::actions::CastModifier::None
-            | crate::actions::CastModifier::AdventureCreature =>
+            | crate::actions::CastModifier::AdventureCreature
+            | crate::actions::CastModifier::ImpulsePlay =>
                 state.objects.get(object_id)
                     .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>
@@ -498,7 +509,8 @@ fn apply_cast_spell(
         // spell's generic component. Flashback adjusts the base cost.
         let cost_opt = match cast_modifier {
             crate::actions::CastModifier::None
-            | crate::actions::CastModifier::AdventureCreature =>
+            | crate::actions::CastModifier::AdventureCreature
+            | crate::actions::CastModifier::ImpulsePlay =>
                 state.objects.get(object_id)
                     .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>
@@ -2905,6 +2917,19 @@ fn cleanup_step(state: &mut GameState) {
     // CR 514.2 — end "until end of turn" effects and replacements.
     state.expire_end_of_turn_effects();
     state.expire_end_of_turn_replacements();
+
+    // CR 601.3e — impulse-play permission lapses at end of turn. The
+    // cards stay in exile; they just stop being playable.
+    let impulse_ids: Vec<ObjectId> = state.objects
+        .objects_in_zone(Zone::Exile)
+        .filter(|o| o.impulse_play_pending)
+        .map(|o| o.id)
+        .collect();
+    for id in impulse_ids {
+        if let Some(o) = state.objects.get_mut(id) {
+            o.impulse_play_pending = false;
+        }
+    }
 
     // CR 603.3 — clear once-per-turn trigger ledger.
     state.clear_per_turn_trigger_ledger();
