@@ -590,6 +590,14 @@ pub mod slx;
 
 pub mod ptg;
 
+pub mod tfth;
+
+pub mod tdag;
+
+pub mod woc;
+
+pub mod cc2;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

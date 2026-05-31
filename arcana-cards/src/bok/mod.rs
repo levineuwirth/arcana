@@ -46,3 +46,5 @@ pub mod split_tail_miko;
 pub mod lifespinner;
 pub mod child_of_thorns;
 pub mod kyoki_sanity_s_eclipse;
+pub mod ire_of_kaminari;
+pub mod ogre_marauder;

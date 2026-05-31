@@ -57,3 +57,4 @@ pub mod paladin_class;
 pub mod druid_class;
 pub mod warlock_class;
 pub mod feywild_trickster;
+pub mod ranger_class;

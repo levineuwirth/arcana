@@ -24,3 +24,4 @@ pub mod steamflogger_temp;
 pub mod amateur_auteur;
 pub mod s_n_e_a_k_dispatcher;
 pub mod teacher_s_pet;
+pub mod hammer_helper;

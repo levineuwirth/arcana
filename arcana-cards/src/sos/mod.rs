@@ -45,3 +45,7 @@ pub mod mage_tower_referee;
 pub mod stirring_honormancer;
 pub mod stone_docent;
 pub mod eternal_student;
+pub mod snarl_song;
+pub mod fractal_anomaly;
+pub mod suspend_aggression;
+pub mod chelonian_tackle;

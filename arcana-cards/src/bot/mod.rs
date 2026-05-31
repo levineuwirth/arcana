@@ -11,3 +11,6 @@ pub mod arcee_sharpshooter_arcee_acrobatic_coupe;
 pub mod ratchet_field_medic_ratchet_rescue_racer;
 pub mod soundwave_sonic_spy_soundwave_superior_captain;
 pub mod prowl_stoic_strategist_prowl_pursuit_vehicle;
+pub mod optimus_prime_hero_optimus_prime_autobot_leader;
+pub mod ultra_magnus_tactician_ultra_magnus_armored_carrier;
+pub mod megatron_tyrant_megatron_destructive_force;

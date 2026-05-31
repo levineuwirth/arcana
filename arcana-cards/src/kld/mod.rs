@@ -55,3 +55,8 @@ pub mod prakhata_pillar_bug;
 pub mod syndicate_trafficker;
 pub mod narnam_cobra;
 pub mod ruinous_gremlin;
+pub mod harnessed_lightning;
+pub mod die_young;
+pub mod paradoxical_outcome;
+pub mod madcap_experiment;
+pub mod sage_of_shaila_s_claim;

@@ -17,3 +17,4 @@ pub mod mundungu;
 pub mod quirion_druid;
 pub mod army_ants;
 pub mod matopi_golem;
+pub mod song_of_blood;

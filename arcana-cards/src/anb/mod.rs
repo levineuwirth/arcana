@@ -3,3 +3,4 @@ pub mod nimble_pilferer;
 pub mod cruel_cut;
 pub mod hallowed_priest;
 pub mod tin_street_cadet;
+pub mod compound_fracture;

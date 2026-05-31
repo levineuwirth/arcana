@@ -14,3 +14,4 @@ pub mod surge_conductor;
 pub mod mayhem_devil;
 pub mod steel_overseer;
 pub mod groundskeeper;
+pub mod experimental_augury;

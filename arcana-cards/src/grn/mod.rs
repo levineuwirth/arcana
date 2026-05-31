@@ -45,3 +45,4 @@ pub mod omnispell_adept;
 pub mod devkarin_dissident;
 pub mod erstwhile_trooper;
 pub mod undercity_necrolisk;
+pub mod mausoleum_secrets;

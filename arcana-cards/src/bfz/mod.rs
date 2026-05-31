@@ -31,3 +31,5 @@ pub mod kozilek_s_channeler;
 pub mod lifespring_druid;
 pub mod stone_haven_medic;
 pub mod cliffside_lookout;
+pub mod brilliant_spectrum;
+pub mod ugin_s_insight;

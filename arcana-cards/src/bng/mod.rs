@@ -22,3 +22,7 @@ pub mod fated_infatuation;
 pub mod setessan_starbreaker;
 pub mod forsaken_drifters;
 pub mod satyr_firedancer;
+pub mod thassa_s_rebuff;
+pub mod sanguimancy;
+pub mod aspect_of_hydra;
+pub mod acolyte_s_reward;

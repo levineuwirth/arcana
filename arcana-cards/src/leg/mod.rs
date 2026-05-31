@@ -19,3 +19,5 @@ pub mod shelkin_brownie;
 pub mod mold_demon;
 pub mod walking_dead;
 pub mod quarum_trench_gnomes;
+pub mod glyph_of_delusion;
+pub mod aisling_leprechaun;

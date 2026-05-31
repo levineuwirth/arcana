@@ -71,3 +71,4 @@ pub mod selfless_savior;
 pub mod igneous_cur;
 pub mod celestial_enforcer;
 pub mod keen_glidemaster;
+pub mod frantic_inventory;

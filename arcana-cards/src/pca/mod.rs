@@ -15,3 +15,4 @@ pub mod auratouched_mage;
 pub mod nest_invader;
 pub mod dowsing_shaman;
 pub mod nullmage_advocate;
+pub mod last_stand;

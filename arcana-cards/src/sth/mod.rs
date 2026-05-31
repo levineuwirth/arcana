@@ -5,3 +5,4 @@ pub mod rabid_rats;
 pub mod morgue_thrull;
 pub mod dauthi_trapper;
 pub mod skyshroud_archer;
+pub mod mogg_bombers;

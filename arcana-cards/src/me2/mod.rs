@@ -47,3 +47,4 @@ pub mod gangrenous_zombies;
 pub mod thelonite_druid;
 pub mod balduvian_conjurer;
 pub mod goblin_ski_patrol;
+pub mod sacred_boon;

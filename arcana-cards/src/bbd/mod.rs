@@ -56,3 +56,4 @@ pub mod reckless_reveler;
 pub mod magus_of_the_candelabra;
 pub mod evil_twin;
 pub mod silverchase_fox;
+pub mod blood_feud;

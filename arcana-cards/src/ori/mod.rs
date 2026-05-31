@@ -37,3 +37,5 @@ pub mod nissa_vastwood_seer_nissa_sage_animist;
 pub mod kytheon_hero_of_akros_gideon_battle_forged;
 pub mod jace_vryn_s_prodigy_jace_telepath_unbound;
 pub mod willbreaker;
+pub mod wild_instincts;
+pub mod chandra_fire_of_kaladesh_chandra_roaring_flame;

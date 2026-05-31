@@ -96,3 +96,7 @@ pub mod jorn_god_of_winter_kaldring_the_rimestaff;
 pub mod alrund_god_of_the_cosmos_hakka_whispering_raven;
 pub mod usher_of_the_fallen;
 pub mod priest_of_the_haunted_edge;
+pub mod graven_lore;
+pub mod blizzard_brawl;
+pub mod tundra_fumarole;
+pub mod the_bloodsky_massacre;

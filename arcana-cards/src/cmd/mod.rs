@@ -14,3 +14,4 @@ pub mod sigil_captain;
 pub mod squallmonger;
 pub mod vedalken_plotter;
 pub mod spurnmage_advocate;
+pub mod death_mutation;

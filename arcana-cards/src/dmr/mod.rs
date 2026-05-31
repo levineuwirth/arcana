@@ -42,3 +42,5 @@ pub mod vigilant_sentry;
 pub mod grim_lavamancer;
 pub mod nantuko_shade;
 pub mod skirk_prospector;
+pub mod gerrard_s_verdict;
+pub mod subterranean_scout;

@@ -63,3 +63,5 @@ pub mod floating_dream_zubera;
 pub mod hisoka_minamo_sensei;
 pub mod ember_fist_zubera;
 pub mod orochi_leafcaller;
+pub mod soilshaper;
+pub mod kami_of_fire_s_roar;

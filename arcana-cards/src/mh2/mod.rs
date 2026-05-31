@@ -39,3 +39,6 @@ pub mod urza_s_saga;
 pub mod lazotep_chancellor;
 pub mod esper_sentinel;
 pub mod goblin_traprunner;
+pub mod flay_essence;
+pub mod scour_the_desert;
+pub mod underworld_hermit;

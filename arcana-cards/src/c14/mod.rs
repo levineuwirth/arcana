@@ -5,3 +5,4 @@ pub mod midnight_haunting;
 pub mod deploy_to_the_front;
 pub mod breaching_leviathan;
 pub mod magus_of_the_coffers;
+pub mod gift_of_estates;

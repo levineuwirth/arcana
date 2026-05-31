@@ -109,3 +109,5 @@ pub mod torch_fiend;
 pub mod pyroclastic_elemental;
 pub mod bogbrew_witch;
 pub mod vedalken_entrancer;
+pub mod time_to_feed;
+pub mod take_heart;

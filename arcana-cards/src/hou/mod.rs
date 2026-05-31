@@ -40,3 +40,4 @@ pub mod dune_diviner;
 pub mod devotee_of_strength;
 pub mod seer_of_the_last_tomorrow;
 pub mod avid_reclaimer;
+pub mod nissa_s_encouragement;

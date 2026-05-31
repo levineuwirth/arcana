@@ -43,3 +43,4 @@ pub mod bloodline_shaman;
 pub mod riptide_chronologist;
 pub mod rummaging_wizard;
 pub mod krosan_groundshaker;
+pub mod leery_fogbeast;

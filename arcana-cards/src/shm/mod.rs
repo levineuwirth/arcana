@@ -52,3 +52,4 @@ pub mod scrapbasket;
 pub mod loch_korrigan;
 pub mod manaforge_cinder;
 pub mod safehold_sentry;
+pub mod spell_syphon;

@@ -16,3 +16,4 @@ pub mod hostage_taker;
 pub mod captivating_crew;
 pub mod humble_defector;
 pub mod the_mending_of_dominaria;
+pub mod plasm_capture;

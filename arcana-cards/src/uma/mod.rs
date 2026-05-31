@@ -33,3 +33,4 @@ pub mod icatian_crier;
 pub mod apprentice_necromancer;
 pub mod martyr_of_sands;
 pub mod wild_mongrel;
+pub mod prey_upon;

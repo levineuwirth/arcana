@@ -45,3 +45,5 @@ pub mod dai_li_censor;
 pub mod ruthless_waterbender;
 pub mod nightmares_and_daydreams;
 pub mod founding_of_omashu;
+pub mod match_the_odds;
+pub mod bumi_s_feast_lecture;

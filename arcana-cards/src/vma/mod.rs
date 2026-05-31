@@ -28,3 +28,4 @@ pub mod devout_witness;
 pub mod norwood_priestess;
 pub mod benalish_trapper;
 pub mod muzzio_visionary_architect;
+pub mod aether_mutation;

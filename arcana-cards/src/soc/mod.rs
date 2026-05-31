@@ -52,3 +52,6 @@ pub mod brazen_borrower_petty_theft;
 pub mod advanced_reconstruction;
 pub mod intermediate_chirography;
 pub mod rootha_mastering_the_moment;
+pub mod inkshield;
+pub mod zimone_s_hypothesis;
+pub mod expressive_iteration;

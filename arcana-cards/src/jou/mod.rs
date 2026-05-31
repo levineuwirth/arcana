@@ -29,3 +29,4 @@ pub mod golden_hind;
 pub mod brain_maggot;
 pub mod akroan_mastiff;
 pub mod dakra_mystic;
+pub mod nessian_game_warden;

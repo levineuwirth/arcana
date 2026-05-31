@@ -43,3 +43,4 @@ pub mod curious_homunculus_voracious_reader;
 pub mod lone_rider_it_that_rides_as_one;
 pub mod kessig_prowler_sinuous_predator;
 pub mod ulvenwald_captive_ulvenwald_abomination;
+pub mod tangleclaw_werewolf_fibrous_entangler;

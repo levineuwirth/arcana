@@ -59,3 +59,5 @@ pub mod araumi_of_the_dead_tide;
 pub mod fyndhorn_elves;
 pub mod laboratory_drudge;
 pub mod hans_eriksson;
+pub mod ancient_animus;
+pub mod perilous_myr;

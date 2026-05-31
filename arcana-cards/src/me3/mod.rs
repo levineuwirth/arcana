@@ -77,3 +77,4 @@ pub mod benthic_explorers;
 pub mod lady_caleria;
 pub mod nebuchadnezzar;
 pub mod riven_turnbull;
+pub mod labyrinth_minotaur;

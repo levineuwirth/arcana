@@ -25,3 +25,4 @@ pub mod fleshformer;
 pub mod sacellum_archers;
 pub mod vagrant_plowbeasts;
 pub mod scattershot_archer;
+pub mod exploding_borders;

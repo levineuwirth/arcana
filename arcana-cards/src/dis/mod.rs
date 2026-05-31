@@ -17,3 +17,4 @@ pub mod simic_ragworm;
 pub mod vesper_ghoul;
 pub mod rakdos_ickspitter;
 pub mod haazda_exonerator;
+pub mod brace_for_impact;

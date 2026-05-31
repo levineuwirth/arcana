@@ -47,3 +47,8 @@ pub mod kazandu_mammoth_kazandu_valley;
 pub mod akoum_warrior_akoum_teeth;
 pub mod skyclave_cleric_skyclave_basilica;
 pub mod umara_wizard_umara_skyfalls;
+pub mod concerted_defense;
+pub mod synchronized_spellcraft;
+pub mod a_goma_fada_vanguard;
+pub mod goma_fada_vanguard;
+pub mod cleric_of_chill_depths;

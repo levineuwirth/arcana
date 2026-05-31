@@ -46,3 +46,4 @@ pub mod cephalid_retainer;
 pub mod painbringer;
 pub mod limestone_golem;
 pub mod twigwalker;
+pub mod muscle_burst;

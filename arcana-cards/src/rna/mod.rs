@@ -41,3 +41,4 @@ pub mod elite_arrester;
 pub mod plague_wight;
 pub mod prime_speaker_vannifar;
 pub mod gyre_engineer;
+pub mod savage_smash;

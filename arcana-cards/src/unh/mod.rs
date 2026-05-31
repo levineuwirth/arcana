@@ -17,3 +17,4 @@ pub mod magical_hacker;
 pub mod fascist_art_director;
 pub mod mother_of_goons;
 pub mod dumb_ass;
+pub mod goblin_mime;

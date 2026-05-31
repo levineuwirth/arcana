@@ -18,3 +18,4 @@ pub mod dwarven_sea_clan;
 pub mod dwarven_pony;
 pub mod joven;
 pub mod sea_troll;
+pub mod winter_sky;

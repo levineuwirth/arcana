@@ -44,3 +44,4 @@ pub mod harpoon_sniper;
 pub mod wellgabber_apothecary;
 pub mod boggart_forager;
 pub mod lowland_oaf;
+pub mod weed_strangle;

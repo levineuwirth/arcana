@@ -71,3 +71,4 @@ pub mod queen_of_ice_rage_of_winter;
 pub mod flaxen_intruder_welcome_home;
 pub mod lonesome_unicorn_rider_in_need;
 pub mod mistford_river_turtle;
+pub mod joust;

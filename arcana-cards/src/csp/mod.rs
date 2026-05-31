@@ -20,3 +20,7 @@ pub mod heidar_rimewind_master;
 pub mod gutless_ghoul;
 pub mod martyr_of_bones;
 pub mod simian_brawler;
+pub mod rite_of_flame;
+pub mod sound_the_call;
+pub mod skred;
+pub mod feast_of_flesh;

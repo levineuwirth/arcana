@@ -21,3 +21,4 @@ pub mod sigil_tracer;
 pub mod weirding_shaman;
 pub mod sunflare_shaman;
 pub mod everbark_shaman;
+pub mod recross_the_paths;

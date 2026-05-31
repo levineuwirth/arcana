@@ -38,3 +38,8 @@ pub mod the_hunger_tide_rises;
 pub mod hydroelectric_specimen_hydroelectric_laboratory;
 pub mod witch_enchanter_witch_blessed_meadow;
 pub mod ral_monsoon_mage_ral_leyline_prodigy;
+pub mod aether_spike;
+pub mod a_galvanic_discharge;
+pub mod galvanic_discharge;
+pub mod breathe_your_last;
+pub mod pinnacle_monk_mystic_peak;

@@ -17,3 +17,4 @@ pub mod timberwatch_elf;
 pub mod lys_alana_scarblade;
 pub mod wirewood_channeler;
 pub mod llanowar_tribe;
+pub mod evangel_of_heliod;

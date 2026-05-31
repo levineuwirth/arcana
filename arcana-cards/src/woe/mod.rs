@@ -93,3 +93,7 @@ pub mod scalding_viper_steam_clean;
 pub mod welcome_to_sweettooth;
 pub mod picnic_ruiner_stolen_goodies;
 pub mod twisted_sewer_witch;
+pub mod become_brutes;
+pub mod spell_stutter;
+pub mod three_blind_mice;
+pub mod frolicking_familiar_blow_off_steam;

@@ -62,3 +62,4 @@ pub mod riveteers_initiate;
 pub mod cutthroat_contender;
 pub mod hypnotic_grifter;
 pub mod gathering_throng;
+pub mod exotic_pets;

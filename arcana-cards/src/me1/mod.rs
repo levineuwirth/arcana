@@ -38,3 +38,4 @@ pub mod centaur_archer;
 pub mod shambling_strider;
 pub mod argivian_archaeologist;
 pub mod eater_of_the_dead;
+pub mod ydwen_efreet;

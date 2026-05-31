@@ -68,3 +68,8 @@ pub mod torrent_sculptor_flamethrower_sonata;
 pub mod blex_vexing_pest_search_for_blex;
 pub mod kianne_dean_of_substance_imbraham_dean_of_theory;
 pub mod mila_crafty_companion_lukka_wayward_bonder;
+pub mod leyline_invocation;
+pub mod fortifying_draught;
+pub mod test_of_talents;
+pub mod emergent_sequence;
+pub mod extus_oriq_overlord_awaken_the_blood_avatar;

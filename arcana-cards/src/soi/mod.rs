@@ -50,3 +50,8 @@ pub mod elusive_tormentor_insidious_mist;
 pub mod hanweir_militia_captain_westvale_cult_leader;
 pub mod breakneck_rider_neck_breaker;
 pub mod uninvited_geist_unimpeded_trespasser;
+pub mod pious_evangel_wayward_disciple;
+pub mod thraben_gargoyle_stonewing_antagonizer;
+pub mod lambholt_pacifist_lambholt_butcher;
+pub mod autumnal_gloom_ancient_of_the_equinox;
+pub mod startled_awake_persistent_nightmare;

@@ -33,3 +33,5 @@ pub mod cursecatcher;
 pub mod jalira_master_polymorphist;
 pub mod arbor_elf;
 pub mod balduvian_horde;
+pub mod accumulated_knowledge;
+pub mod kindle;

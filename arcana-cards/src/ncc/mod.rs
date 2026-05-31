@@ -19,3 +19,6 @@ pub mod indrik_stomphowler;
 pub mod bellowing_mauler;
 pub mod leafkin_druid;
 pub mod temur_sabertooth;
+pub mod declaration_in_stone;
+pub mod artifact_mutation;
+pub mod aura_mutation;

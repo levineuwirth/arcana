@@ -39,3 +39,6 @@ pub mod occupation_of_kulrath;
 pub mod garruk_s_lost_wolf_hey_has_anyone_seen_garruk;
 pub mod occupation_of_llanowar;
 pub mod magic_designer;
+pub mod impressive_rat;
+pub mod the_bear_force_pilot;
+pub mod devoted_sultai;

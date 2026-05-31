@@ -64,3 +64,5 @@ pub mod revival_of_the_ancestors;
 pub mod marang_river_regent_coil_and_catch;
 pub mod purging_stormbrood_absorb_essence;
 pub mod traveling_botanist;
+pub mod riling_dawnbreaker_signaling_roar;
+pub mod twinmaw_stormbrood_charring_bite;

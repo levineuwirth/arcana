@@ -26,3 +26,4 @@ pub mod boros_battleshaper;
 pub mod beetleform_mage;
 pub mod feral_animist;
 pub mod maw_of_the_obzedat;
+pub mod mutant_s_prey;

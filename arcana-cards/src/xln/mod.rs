@@ -63,3 +63,4 @@ pub mod ixalli_s_keeper;
 pub mod shore_keeper;
 pub mod skittering_heartstopper;
 pub mod burning_sun_s_avatar;
+pub mod pounce;

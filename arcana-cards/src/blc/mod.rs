@@ -4,3 +4,5 @@ pub mod fisher_s_talent;
 pub mod fortune_teller_s_talent;
 pub mod brightcap_badger_fungus_frolic;
 pub mod alchemist_s_talent;
+pub mod tempt_with_bunnies;
+pub mod swarmyard_massacre;

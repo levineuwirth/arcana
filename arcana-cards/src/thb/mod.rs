@@ -61,3 +61,4 @@ pub mod tymaret_calls_the_dead;
 pub mod blight_breath_catoblepas;
 pub mod setessan_petitioner;
 pub mod reverent_hoplite;
+pub mod nylea_s_huntmaster;

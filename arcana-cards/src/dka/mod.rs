@@ -22,3 +22,5 @@ pub mod mondronen_shaman_tovolar_s_magehunter;
 pub mod chosen_of_markov_markov_s_servant;
 pub mod hinterland_hermit_hinterland_scourge;
 pub mod ravenous_demon_archdemon_of_greed;
+pub mod afflicted_deserter_werewolf_ransacker;
+pub mod loyal_cathar_unhallowed_cathar;

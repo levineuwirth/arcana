@@ -12,3 +12,4 @@ pub mod vedalken_dismisser;
 pub mod warren_pilferers;
 pub mod facevaulter;
 pub mod hana_kami;
+pub mod test_of_faith;

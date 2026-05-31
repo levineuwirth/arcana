@@ -62,3 +62,5 @@ pub mod law_rune_enforcer;
 pub mod twilight_panther;
 pub mod tribune_of_rot;
 pub mod undercover_butler;
+pub mod pit_fight;
+pub mod covetous_elegy;

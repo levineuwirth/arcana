@@ -38,3 +38,6 @@ pub mod the_phasing_of_zhalfir;
 pub mod the_elder_dragon_war;
 pub mod the_cruelty_of_gix;
 pub mod the_weatherseed_treaty;
+pub mod gaea_s_might;
+pub mod tail_swipe;
+pub mod chaotic_transformation;

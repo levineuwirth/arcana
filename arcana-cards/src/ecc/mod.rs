@@ -15,3 +15,4 @@ pub mod soul_snuffers;
 pub mod smokebraider;
 pub mod binding_the_old_gods;
 pub mod risen_reef;
+pub mod vernal_sovereign;

@@ -10,3 +10,4 @@ pub mod llanowar_augur;
 pub mod skirk_ridge_exhumer;
 pub mod goldmeadow_lookout;
 pub mod samite_censer_bearer;
+pub mod putrid_cyclops;

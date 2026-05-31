@@ -64,3 +64,4 @@ pub mod bandit_s_talent;
 pub mod blacksmith_s_talent;
 pub mod gossip_s_talent;
 pub mod wick_s_patrol;
+pub mod jolly_gerbils;

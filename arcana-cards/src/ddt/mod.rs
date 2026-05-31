@@ -10,3 +10,4 @@ pub mod foundry_street_denizen;
 pub mod goblin_tunneler;
 pub mod goblin_diplomats;
 pub mod tidal_warrior;
+pub mod aquitect_s_will;

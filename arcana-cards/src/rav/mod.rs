@@ -41,3 +41,5 @@ pub mod viashino_slasher;
 pub mod war_torch_goblin;
 pub mod thoughtpicker_witch;
 pub mod viashino_fangtail;
+pub mod twisted_justice;
+pub mod induce_paranoia;

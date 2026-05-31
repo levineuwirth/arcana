@@ -16,3 +16,4 @@ pub mod elvish_skysweeper;
 pub mod wellwisher;
 pub mod blood_bairn;
 pub mod viridian_zealot;
+pub mod pathbreaker_ibex;

@@ -18,3 +18,4 @@ pub mod the_first_tyrannic_war;
 pub mod the_horus_heresy;
 pub mod birth_of_the_imperium;
 pub mod the_war_in_heaven;
+pub mod chaos_mutation;

@@ -30,3 +30,4 @@ pub mod vorel_of_the_hull_clade;
 pub mod master_of_dark_rites;
 pub mod king_narfi_s_betrayal;
 pub mod tetzin_gnome_champion_the_golden_gear_colossus;
+pub mod ruinous_intrusion;

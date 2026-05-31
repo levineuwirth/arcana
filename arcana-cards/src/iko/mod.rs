@@ -49,3 +49,5 @@ pub mod whisper_squad;
 pub mod durable_coilbug;
 pub mod facet_reader;
 pub mod phase_dolphin;
+pub mod clash_of_titans;
+pub mod back_for_more;

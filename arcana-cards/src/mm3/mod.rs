@@ -27,3 +27,5 @@ pub mod sin_collector;
 pub mod thundersong_trumpeter;
 pub mod gnawing_zombie;
 pub mod azure_mage;
+pub mod mystic_genesis;
+pub mod mudbutton_torchrunner;
