@@ -516,6 +516,22 @@ pub enum Effect {
     /// currently enumerated.
     ImpulseExile { player: PlayerId, count: u32 },
 
+    /// CR 201.4 — "name a card, then [target] reveals their hand and you
+    /// exile all cards with that name from their hand, graveyard, and
+    /// library; that player shuffles" (Lost Legacy, Necromentia,
+    /// Memoricide, Cranial Extraction, Slaughter Games). `chooser` is
+    /// the namer; `target` owns the searched zones (often an opponent;
+    /// may equal `chooser`).
+    ///
+    /// **FIDELITY GAP**: the named card is chosen DETERMINISTICALLY by
+    /// the engine (the most-copied name in `target`'s hand+graveyard+
+    /// library, tie-broken by highest mana value then lowest name id) —
+    /// CR has the player name it, but no card-name choice prompt is
+    /// wired (same posture as Treasure's color choice). The disruption
+    /// is faithful: every copy of the chosen card is removed and the
+    /// library shuffled.
+    NameCardAndExile { chooser: PlayerId, target: PlayerId },
+
     /// CR 702.176 — "Suspect" `target`. Sets the suspected flag on
     /// the creature; while suspected it has menace (`block_constraints`
     /// grants min_blockers=2) and can't block
@@ -1372,6 +1388,9 @@ impl Effect {
             }
             Effect::ImpulseExile { player, count } => {
                 impulse_exile(state, *player, *count);
+            }
+            Effect::NameCardAndExile { chooser, target } => {
+                name_card_and_exile(state, *chooser, *target);
             }
             Effect::Suspect { target } => {
                 if let Some(obj) = state.objects.get_mut(*target) {
@@ -3211,6 +3230,43 @@ fn impulse_exile(state: &mut GameState, player: PlayerId, count: u32) {
     }
 }
 
+/// Body of [`Effect::NameCardAndExile`]. Picks the named card
+/// deterministically (most copies across `target`'s hand+graveyard+
+/// library; tie-break highest mana value, then lowest name id), exiles
+/// every copy from those zones, and shuffles the library.
+fn name_card_and_exile(state: &mut GameState, _chooser: PlayerId, target: PlayerId) {
+    if !valid_player(state, target) { return; }
+    let zones = [Zone::Hand(target), Zone::Graveyard(target), Zone::Library(target)];
+    // Tally (count, max mana value) per card name.
+    let mut tally: std::collections::HashMap<crate::types::SmallString, (u32, u32)> =
+        std::collections::HashMap::new();
+    for z in zones {
+        for o in state.objects.objects_in_zone(z) {
+            let mv = o.characteristics.mana_cost.as_ref()
+                .map(|c| c.mana_value()).unwrap_or(0);
+            let e = tally.entry(o.characteristics.name).or_insert((0, 0));
+            e.0 += 1;
+            e.1 = e.1.max(mv);
+        }
+    }
+    // Deterministic pick: most copies, then highest mana value, then
+    // lowest name id (the documented fidelity gap for the player's name).
+    let Some((&named, _)) = tally.iter()
+        .max_by_key(|(&name, &(count, mv))| (count, mv, std::cmp::Reverse(name)))
+        else { return; };
+    let to_exile: Vec<ObjectId> = zones.iter()
+        .flat_map(|&z| state.objects.objects_in_zone(z)
+            .filter(|o| o.characteristics.name == named)
+            .map(|o| o.id)
+            .collect::<Vec<_>>())
+        .collect();
+    for id in to_exile {
+        state.move_object_to_zone(
+            id, Zone::Exile, crate::events::MoveCause::SpellResolution);
+    }
+    state.shuffle_library(target);
+}
+
 fn copy_permanent(state: &mut GameState, target: ObjectId) {
     let Some(src) = state.objects.get(target).cloned() else { return; };
     let id = state.allocate_object_id();
@@ -3796,6 +3852,32 @@ mod tests {
             .map(|o| o.id).collect();
         assert_eq!(flagged.len(), 2, "top two exiled + flagged");
         assert_eq!(s.player(0).library_top_to_bottom.len(), 1, "one card left");
+    }
+
+    #[test]
+    fn name_card_and_exile_removes_every_copy_of_the_most_copied_name() {
+        let mut s = GameState::new(2, 0);
+        // Player 1 holds two copies of name 100 (hand + library) and one
+        // of name 200 (graveyard). Name 100 is the most-copied → exiled.
+        let a = put_instant(&mut s, 1, Zone::Hand(1));
+        let b = put_instant(&mut s, 1, Zone::Library(1));
+        let c = put_instant(&mut s, 1, Zone::Graveyard(1));
+        s.objects.get_mut(a).unwrap().characteristics.name = 100;
+        s.objects.get_mut(b).unwrap().characteristics.name = 100;
+        s.objects.get_mut(c).unwrap().characteristics.name = 200;
+        s.player_mut(1).library_top_to_bottom = vec![b];
+
+        Effect::NameCardAndExile { chooser: 0, target: 1 }.execute(&mut s);
+
+        // Objects re-id on the zone change, so assert by zone scan.
+        let exiled_100 = s.objects.iter()
+            .filter(|o| o.zone == Zone::Exile && o.characteristics.name == 100)
+            .count();
+        assert_eq!(exiled_100, 2, "both copies of the named card exiled");
+        let yard_200 = s.objects.iter()
+            .filter(|o| o.zone == Zone::Graveyard(1) && o.characteristics.name == 200)
+            .count();
+        assert_eq!(yard_200, 1, "the un-named card (200) is untouched");
     }
 
     #[test]
