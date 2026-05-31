@@ -97,3 +97,5 @@ pub mod become_brutes;
 pub mod spell_stutter;
 pub mod three_blind_mice;
 pub mod frolicking_familiar_blow_off_steam;
+pub mod feral_encounter;
+pub mod lich_knights_conquest;

@@ -12,3 +12,4 @@ pub mod havengul_runebinder;
 pub mod cleaver_skaab;
 pub mod spark_reaper;
 pub mod avacyn_s_pilgrim;
+pub mod moorland_rescuer;

@@ -48,3 +48,4 @@ pub mod agent_of_horizons;
 pub mod satyr_piper;
 pub mod mogis_s_marauder;
 pub mod reverent_hunter;
+pub mod boulderfall;

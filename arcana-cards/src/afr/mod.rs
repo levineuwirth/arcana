@@ -58,3 +58,8 @@ pub mod druid_class;
 pub mod warlock_class;
 pub mod feywild_trickster;
 pub mod ranger_class;
+pub mod zombie_ogre;
+pub mod shortcut_seeker;
+pub mod wandering_troubadour;
+pub mod clattering_skeletons;
+pub mod veteran_dungeoneer;

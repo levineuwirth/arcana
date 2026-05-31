@@ -33,3 +33,4 @@ pub mod sakashima_the_impostor;
 pub mod descendant_of_soramaro;
 pub mod kitsune_loreweaver;
 pub mod sakura_tribe_scout;
+pub mod charge_across_the_araba;

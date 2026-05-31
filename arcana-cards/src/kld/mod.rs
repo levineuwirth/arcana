@@ -60,3 +60,4 @@ pub mod die_young;
 pub mod paradoxical_outcome;
 pub mod madcap_experiment;
 pub mod sage_of_shaila_s_claim;
+pub mod lost_legacy;

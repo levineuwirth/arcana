@@ -76,3 +76,4 @@ pub mod westvale_abbey_ormendahl_profane_prince;
 pub mod soulcipher_board_cipherbound_spirit;
 pub mod delver_of_secrets_insectile_aberration;
 pub mod cryptolith_fragment_aurora_of_emrakul;
+pub mod second_harvest;

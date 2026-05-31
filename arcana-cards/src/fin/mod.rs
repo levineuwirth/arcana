@@ -79,3 +79,4 @@ pub mod sidequest_hunt_the_mark_yiazmat_ultimate_mark;
 pub mod sidequest_raise_a_chocobo_black_chocobo;
 pub mod esper_origins_summon_esper_maduin;
 pub mod crystal_fragments_summon_alexander;
+pub mod relm_s_sketching;

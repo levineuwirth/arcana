@@ -43,3 +43,7 @@ pub mod soul_diviner;
 pub mod vivien_s_grizzly;
 pub mod ashiok_s_skulker;
 pub mod spellkeeper_weird;
+pub mod relentless_advance;
+pub mod invading_manticore;
+pub mod herald_of_the_dreadhorde;
+pub mod lazotep_reaver;

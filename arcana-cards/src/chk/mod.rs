@@ -65,3 +65,4 @@ pub mod ember_fist_zubera;
 pub mod orochi_leafcaller;
 pub mod soilshaper;
 pub mod kami_of_fire_s_roar;
+pub mod cranial_extraction;

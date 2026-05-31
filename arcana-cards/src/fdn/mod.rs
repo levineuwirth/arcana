@@ -119,3 +119,4 @@ pub mod burnished_hart;
 pub mod suspicious_shambler;
 pub mod thrashing_brontodon;
 pub mod affectionate_indrik;
+pub mod undying_malice;

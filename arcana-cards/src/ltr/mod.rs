@@ -75,3 +75,7 @@ pub mod oath_of_the_grey_host;
 pub mod shagrat_loot_bearer;
 pub mod radagast_the_brown;
 pub mod the_mouth_of_sauron;
+pub mod foray_of_orcs;
+pub mod grishn_kh_brash_instigator;
+pub mod easterling_vanguard;
+pub mod warbeast_of_gorgoroth;

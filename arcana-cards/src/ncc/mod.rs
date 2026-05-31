@@ -22,3 +22,4 @@ pub mod temur_sabertooth;
 pub mod declaration_in_stone;
 pub mod artifact_mutation;
 pub mod aura_mutation;
+pub mod clone_legion;

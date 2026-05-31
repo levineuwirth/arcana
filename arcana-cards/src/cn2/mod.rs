@@ -21,3 +21,4 @@ pub mod caller_of_gales;
 pub mod goblin_balloon_brigade;
 pub mod voyaging_satyr;
 pub mod opaline_unicorn;
+pub mod gang_of_devils;

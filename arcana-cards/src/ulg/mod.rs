@@ -13,3 +13,4 @@ pub mod jhoira_s_toolbox;
 pub mod viashino_heretic;
 pub mod walking_sponge;
 pub mod devout_harpist;
+pub mod last_ditch_effort;

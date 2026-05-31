@@ -48,3 +48,4 @@ pub mod a_blessed_hippogriff_a_tyr_s_blessing;
 pub mod wyll_of_the_fey_pact;
 pub mod wyll_of_the_celestial_pact;
 pub mod mephit_s_enthusiasm;
+pub mod wyll_of_the_blade_pact;

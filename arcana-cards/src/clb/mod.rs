@@ -79,3 +79,5 @@ pub mod amethyst_dragon_explosive_crystal;
 pub mod artificer_class;
 pub mod duke_ulder_ravengard;
 pub mod astarion_s_thirst;
+pub mod elminster_s_simulacrum;
+pub mod irenicus_s_vile_duplication;

@@ -99,3 +99,4 @@ pub mod nezumi_freewheeler_hideous_fleshwheeler;
 pub mod invasion_of_karsus_refraction_elemental;
 pub mod herbology_instructor_malady_invoker;
 pub mod invasion_of_ravnica_guildpact_paragon;
+pub mod wrenn_s_resolve;

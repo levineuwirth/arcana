@@ -65,3 +65,4 @@ pub mod blacksmith_s_talent;
 pub mod gossip_s_talent;
 pub mod wick_s_patrol;
 pub mod jolly_gerbils;
+pub mod harnesser_of_storms;
