@@ -777,4 +777,41 @@ mod tests {
             "every register() must yield a distinct CardId —              reg.len()={} != calls={n}", reg.len());
     }
 
+    /// Behavioral audit: resolve every spell card in a populated state
+    /// and flag any whose resolver returns effects that change NOTHING
+    /// observable — the silent-no-op class that bones/stub verify can't
+    /// see (it hid the ForEach bug across ~294 cards). Ignored by
+    /// default (it's a full-catalog sweep); run explicitly with
+    /// `cargo test -p arcana-cards behavioral_audit -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn behavioral_audit_no_silent_noops() {
+        let mut reg = arcana_core::registry::CardRegistry::new();
+        let n = crate::register_all::register_all(&mut reg);
+        let mut suspects = Vec::new();
+        let mut panicked = Vec::new();
+        let mut probed = 0;
+        for cid in 0..n as u32 {
+            let name = || reg.get(cid)
+                .and_then(|d| reg.interner().resolve(d.name))
+                .unwrap_or("?").to_string();
+            // Per-card panic isolation — one bad resolver must not abort
+            // the sweep; a panic is itself a finding.
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                arcana_core::behavioral::probe_spell(&reg, cid)));
+            match res {
+                Ok(Some(r)) => {
+                    probed += 1;
+                    if r.is_silent_noop() { suspects.push(name()); }
+                }
+                Ok(None) => {}
+                Err(_) => panicked.push(name()),
+            }
+        }
+        eprintln!("behavioral audit: {probed} spells probed, {} silent-no-op suspects, {} panicked",
+            suspects.len(), panicked.len());
+        for s in &suspects { eprintln!("  SUSPECT: {s}"); }
+        for s in &panicked { eprintln!("  PANIC:   {s}"); }
+    }
+
 }

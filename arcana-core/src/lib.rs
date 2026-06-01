@@ -19,6 +19,7 @@ pub mod targets;
 pub mod script;
 pub mod conditions;
 pub mod dungeon;
+pub mod behavioral;
 pub mod actions;
 pub mod format;
 pub mod legal_actions;
