@@ -40,6 +40,10 @@ pub struct Snapshot {
     mana: Vec<usize>,
     /// (battlefield, hand, graveyard, library) object counts per player.
     zones: Vec<(usize, usize, usize, usize)>,
+    /// Top-of-library card id per player — so "search and put on TOP"
+    /// (Harbingers, Recruiters, tutor-to-top) shows a delta even though
+    /// the library COUNT is unchanged.
+    library_tops: Vec<Option<ObjectId>>,
     exile: usize,
     total_objects: usize,
     total_counters: u32,
@@ -70,6 +74,7 @@ impl Snapshot {
         let mut poison = Vec::with_capacity(n as usize);
         let mut mana = Vec::with_capacity(n as usize);
         let mut zones = Vec::with_capacity(n as usize);
+        let mut library_tops = Vec::with_capacity(n as usize);
         let mut dungeons = Vec::with_capacity(n as usize);
         for p in 0..n {
             life.push(state.player(p).life);
@@ -77,6 +82,7 @@ impl Snapshot {
             poison.push(state.player(p).poison_counters);
             mana.push(state.player(p).mana_pool.total());
             dungeons.push(state.player(p).dungeon.is_some());
+            library_tops.push(state.top_of_library(p));
             zones.push((
                 state.objects.objects_in_zone(Zone::Battlefield)
                     .filter(|o| o.controller == p).count(),
@@ -94,7 +100,7 @@ impl Snapshot {
         let total_damage: u32 = state.objects.iter().map(|o| o.damage_marked).sum();
         let tapped = state.objects.iter().filter(|o| o.is_tapped()).count();
         Self {
-            life, energy, poison, mana, zones,
+            life, energy, poison, mana, zones, library_tops,
             exile: state.objects.count_in_zone(Zone::Exile),
             total_objects: state.objects.iter().count(),
             total_counters,
@@ -172,6 +178,68 @@ pub fn probe_spell(reg: &CardRegistry, card_id: CardId) -> Option<ProbeResult> {
     Some(ProbeResult { had_effects, observable_delta: before != after })
 }
 
+/// Probe each of a card's TRIGGERED abilities: fire it in a populated
+/// state (source on the battlefield, a generic ETB event) and report
+/// whether its resolver moved anything. Returns one [`ProbeResult`] per
+/// triggered ability (empty if the card has none). Event-reading
+/// triggers that need a different event than the synthesized ETB read
+/// nothing and may show as no-ops — harness-limited, allowlisted, same
+/// posture as spell target shapes.
+pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> {
+    let Some(def) = reg.get(card_id) else { return Vec::new(); };
+    if def.triggered_abilities.is_empty() { return Vec::new(); }
+    let mut out = Vec::with_capacity(def.triggered_abilities.len());
+    for ability in &def.triggered_abilities {
+        let mut state = populated_state(reg);
+        // The triggering permanent itself, on the battlefield.
+        let src = state.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        state.objects.insert(GameObject::new(src, 0, Zone::Battlefield, card_id, chars));
+        state.currently_resolving = Some(src);
+        let stack_spell = add_dummy_stack_spell(&mut state);
+        let dummy = first_battlefield_creature(&state, 0);
+        let targets = selection_for(&state, &ability.target_requirements, dummy, stack_spell);
+        let pt = crate::triggers::PendingTrigger {
+            source: src,
+            trigger_id: ability.id,
+            controller: 0,
+            // Generic "this entered" event — covers the dominant ETB
+            // triggers; event-specific readers (damage/combat) get None.
+            trigger_event: crate::events::GameEvent::EntersBattlefield {
+                object_id: src, from_zone: Zone::Stack, was_cast: true,
+            },
+            targets,
+        };
+        let before = Snapshot::capture(&state);
+        let effects = (ability.effect)(&state, &pt, reg);
+        let had_effects = !effects.is_empty();
+        // Always EXECUTE — this is what surfaces panics (e.g. Yukora's
+        // ForEach-of-Sacrifice), regardless of trigger condition.
+        for eff in flatten_sequences(effects) {
+            eff.execute(&mut state);
+            if state.pending_choice.is_some() { break; }
+        }
+        let after = Snapshot::capture(&state);
+        // Only render a SILENT-NO-OP verdict for ETB triggers — the one
+        // condition our synthesized EntersBattlefield event fires
+        // faithfully. Saga chapters (lore counters), transform/werewolf
+        // (day/night), combat/death triggers need other events; probing
+        // their delta with an ETB event is a false-positive, so we skip
+        // the no-op verdict (the execution above still catches panics).
+        if matches!(ability.trigger_condition,
+            crate::triggers::TriggerCondition::SelfEntersBattlefield)
+        {
+            out.push(ProbeResult { had_effects, observable_delta: before != after });
+        }
+    }
+    out
+}
+
 /// A 2-player state stocked so most effects have something to act on:
 /// libraries with cards (draw/mill), creatures on each battlefield
 /// (targets + board-wide), cards in hand and graveyard.
@@ -190,6 +258,12 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         for (cs, cost) in colors {
             make_creature(&mut state, p, cs, cost);
         }
+        // An EXTRA already-tapped creature so untap-all effects show a
+        // delta — but NOT the target creature (selection_for targets the
+        // first creature, and a tap-spell on an already-tapped target
+        // would falsely read as a no-op; tap-target is the common case).
+        let tapped = make_creature(&mut state, p, ColorSet::colorless(), "{C}");
+        state.objects.get_mut(tapped).map(|o| o.tap());
         // One of each other permanent type — satisfies "if you control
         // an artifact / enchantment / land" conditions and type-filtered
         // targets — plus the five basic land types (interned via the
@@ -286,6 +360,11 @@ fn flatten_sequences(effects: Vec<Effect>) -> Vec<Effect> {
     for e in effects {
         match e {
             Effect::Sequence(steps) => out.extend(flatten_sequences(steps)),
+            Effect::ForEach { targets, effect } => {
+                for id in targets {
+                    out.extend(flatten_sequences(vec![effect.retargeted(id)]));
+                }
+            }
             other => out.push(other),
         }
     }
@@ -381,6 +460,39 @@ mod tests {
         assert!(r.had_effects, "returned an effect");
         assert!(!r.observable_delta, "but destroying NULL changes nothing");
         assert!(r.is_silent_noop(), "flagged as a silent no-op");
+    }
+
+    #[test]
+    fn triggered_ability_probe_flags_silent_noop_but_not_a_live_one() {
+        use crate::triggers::{TriggeredAbilityDef, TriggerCondition, TriggerFrequency};
+        use crate::objects::NULL_OBJECT_ID;
+        fn draw(_s: &GameState, t: &crate::triggers::PendingTrigger,
+            _r: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::DrawCards { player: t.controller, count: 1 }]
+        }
+        fn noop(_s: &GameState, _t: &crate::triggers::PendingTrigger,
+            _r: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::DestroyPermanent { target: NULL_OBJECT_ID }]
+        }
+        let mk = |id, effect| TriggeredAbilityDef {
+            id, trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None, effect,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        };
+        let mut reg = CardRegistry::new();
+        let n = reg.interner_mut().intern("TrigTest");
+        let chars = Characteristics { name: n, types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)), toughness: Some(PtValue::Fixed(1)),
+            ..Default::default() };
+        let id = reg.register(CardDefinition::new(n, chars)
+            .with_triggered_ability(mk(1, draw))
+            .with_triggered_ability(mk(2, noop)));
+        let results = probe_triggered(&reg, id);
+        assert_eq!(results.len(), 2, "one result per triggered ability");
+        assert!(!results[0].is_silent_noop(), "draw-on-ETB is observable");
+        assert!(results[1].is_silent_noop(), "destroy-NULL trigger is a silent no-op");
     }
 
     #[test]

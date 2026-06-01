@@ -73,3 +73,65 @@ Trapmaker's Snare
 Unified Lunge
 Wirewood Pride
 Zombie Apocalypse
+# --- triggered-ability harness limits (ETB subtype-tutors w/o a matching
+#     library card; untap-target w/o a tapped target) ---
+Ambitious Farmhand
+Armory Automaton
+Bishop of the Bloodstained
+Bloom Hulk
+Boggart Harbinger
+Casal, Lurkwood Pathfinder
+Champion of Dusk
+Contagious Vorrac
+Corridor Monitor
+Courageous Outrider
+Dwarven Recruiter
+Fierce Empath
+Flamekin Harbinger
+Gathering Throng
+Ghoulraiser
+Giant Harbinger
+Gloom Ripper
+Goblin Matron
+Goblin Recruiter
+Great Whale
+Gulping Scraptrap
+Gumdrop Poisoner
+Huatli, Poet of Unity
+Hyrax Tower Scout
+Imperial Recruiter
+Invasion of Theros
+Kavu Howler
+Kessig Malcontents
+Kiora's Dambreaker
+Kithkin Harbinger
+Kor Outfitter
+Malakir Blood-Priest
+Master Thief
+Medicine Runner
+Micromancer
+Mind Maggots
+Myr Kinsmith
+Nantuko Cultivator
+Niambi, Faithful Healer
+Nissa, Vastwood Seer
+Self-Assembler
+Shaman of the Pack
+Shield Broker
+Silverglade Elemental
+Skalla Wolf
+Sparring Mummy
+Spellseeker
+Sumala Woodshaper
+Ticking Mime Bomb
+Totem-Guide Hartebeest
+Treasure Mage
+Treefolk Harbinger
+Tribute Mage
+Vedalken Plotter
+Volley Veteran
+Vorinclex
+Warren Pilferers
+Wild Wurm
+Wood Elves
+Woodland Bellower

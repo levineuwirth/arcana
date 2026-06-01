@@ -55,19 +55,30 @@ fn etb_flip_coins(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![flip_once(trig.source, trig.controller)]
+    vec![flip_chain(trig.source, trig.controller, MAX_FLIPS)]
 }
 
-fn flip_once(source: ObjectId, controller: PlayerId) -> Effect {
+/// "Flip a coin until you lose; each win, put a +1/+1 counter." Modeled
+/// as a FINITE nested FlipCoin tree of bounded depth — recursing to
+/// "infinity" overflows the stack at CONSTRUCTION (the effect tree is
+/// built eagerly). GAP: the flip count is capped at MAX_FLIPS rather
+/// than truly unbounded; P(more than that many consecutive wins) is
+/// ~2^-MAX_FLIPS, negligible.
+const MAX_FLIPS: u32 = 24;
+
+fn flip_chain(source: ObjectId, controller: PlayerId, depth: u32) -> Effect {
+    let counter = Effect::AddCounters {
+        target: source, kind: CounterKind::PlusOnePlusOne, count: 1,
+    };
+    if depth == 0 {
+        // Bottom of the bounded chain: a final flip, no further recursion.
+        return Effect::FlipCoin { player: controller, win: Box::new(counter), lose: None };
+    }
     Effect::FlipCoin {
         player: controller,
         win: Box::new(Effect::Sequence(vec![
-            Effect::AddCounters {
-                target: source,
-                kind: CounterKind::PlusOnePlusOne,
-                count: 1,
-            },
-            flip_once(source, controller),
+            counter,
+            flip_chain(source, controller, depth - 1),
         ])),
         lose: None,
     }

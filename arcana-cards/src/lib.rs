@@ -806,12 +806,18 @@ mod tests {
                 .and_then(|d| reg.interner().resolve(d.name))
                 .unwrap_or("?").to_string();
             // Per-card panic isolation — one bad resolver must not abort
-            // the sweep; a panic is itself a finding.
-            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
-                arcana_core::behavioral::probe_spell(&reg, cid)));
+            // the sweep; a panic is itself a finding. Probe BOTH the
+            // spell resolver and every triggered ability.
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let spell = arcana_core::behavioral::probe_spell(&reg, cid)
+                    .map(|r| r.is_silent_noop()).unwrap_or(false);
+                let trig = arcana_core::behavioral::probe_triggered(&reg, cid)
+                    .iter().any(|r| r.is_silent_noop());
+                spell || trig
+            }));
             match res {
-                Ok(Some(r)) if r.is_silent_noop() => suspects.push(name()),
-                Ok(_) => {}
+                Ok(true) => suspects.push(name()),
+                Ok(false) => {}
                 Err(_) => panicked.push(name()),
             }
         }

@@ -766,7 +766,7 @@ impl Effect {
     /// / filter-based Sacrifice / …) are returned unchanged — for those,
     /// ForEach's run-once-per-id IS the intended semantics ("draw a card
     /// for each …" → N draws; "create a token for each …" → N tokens).
-    fn retargeted(&self, id: ObjectId) -> Effect {
+    pub(crate) fn retargeted(&self, id: ObjectId) -> Effect {
         let mut e = self.clone();
         match &mut e {
             Effect::DestroyPermanent { target }
