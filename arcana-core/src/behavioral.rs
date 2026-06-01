@@ -35,6 +35,9 @@ pub struct Snapshot {
     life: Vec<i32>,
     energy: Vec<u32>,
     poison: Vec<u32>,
+    /// Mana pool size per player — without this, every ritual ("add
+    /// {C}{C}{R}") looks like a no-op.
+    mana: Vec<usize>,
     /// (battlefield, hand, graveyard, library) object counts per player.
     zones: Vec<(usize, usize, usize, usize)>,
     exile: usize,
@@ -49,6 +52,13 @@ pub struct Snapshot {
     /// like a no-op because P/T and granted abilities live in layers,
     /// not on the object's printed characteristics.
     continuous_effects: usize,
+    /// "Install something for later" effects: replacement effects,
+    /// delayed triggers, and granted triggered abilities (Feign Death,
+    /// Undying Malice, Showstopper) — none touch the board now, so
+    /// without these they read as no-ops.
+    replacements: usize,
+    delayed_triggers: usize,
+    granted_triggers: usize,
     dungeons: Vec<bool>,
 }
 
@@ -58,12 +68,14 @@ impl Snapshot {
         let mut life = Vec::with_capacity(n as usize);
         let mut energy = Vec::with_capacity(n as usize);
         let mut poison = Vec::with_capacity(n as usize);
+        let mut mana = Vec::with_capacity(n as usize);
         let mut zones = Vec::with_capacity(n as usize);
         let mut dungeons = Vec::with_capacity(n as usize);
         for p in 0..n {
             life.push(state.player(p).life);
             energy.push(state.player(p).energy);
             poison.push(state.player(p).poison_counters);
+            mana.push(state.player(p).mana_pool.total());
             dungeons.push(state.player(p).dungeon.is_some());
             zones.push((
                 state.objects.objects_in_zone(Zone::Battlefield)
@@ -82,7 +94,7 @@ impl Snapshot {
         let total_damage: u32 = state.objects.iter().map(|o| o.damage_marked).sum();
         let tapped = state.objects.iter().filter(|o| o.is_tapped()).count();
         Self {
-            life, energy, poison, zones,
+            life, energy, poison, mana, zones,
             exile: state.objects.count_in_zone(Zone::Exile),
             total_objects: state.objects.iter().count(),
             total_counters,
@@ -91,6 +103,10 @@ impl Snapshot {
             pending_choice: state.pending_choice.is_some(),
             stack_len: state.stack_size(),
             continuous_effects: state.continuous_effects.len(),
+            replacements: state.replacement_effects.len(),
+            delayed_triggers: state.delayed_triggers.len(),
+            granted_triggers: state.objects.iter()
+                .map(|o| o.granted_triggered_abilities.len()).sum(),
             dungeons,
         }
     }
@@ -118,30 +134,38 @@ pub fn probe_spell(reg: &CardRegistry, card_id: CardId) -> Option<ProbeResult> {
     let def = reg.get(card_id)?;
     let spell = def.spell_ability.as_ref()?;
 
-    let mut state = populated_state();
+    let mut state = populated_state(reg);
     // The spell's source object, sitting on the stack.
     let src = state.allocate_object_id();
     state.objects.insert(GameObject::new(
         src, 0, Zone::Stack, card_id, Characteristics::default()));
     state.currently_resolving = Some(src);
 
+    // A second spell on the stack so "counter target spell" has a
+    // referent (otherwise every counterspell reads as a no-op).
+    let stack_spell = add_dummy_stack_spell(&mut state);
+
     // Build a target selection that satisfies each requirement with a
     // legal-shaped referent from the populated board.
     let dummy = first_battlefield_creature(&state, 0);
-    let targets = selection_for(&spell.target_requirements, dummy);
+    let targets = selection_for(&state, &spell.target_requirements, dummy, stack_spell);
     let entry = StackEntry::new_spell(
         src, 0, card_id, Characteristics::default(),
-        targets, Vec::new(), None);
+        // x_value Some(3): X-cost spells compute 0 and no-op without it.
+        targets, Vec::new(), Some(3));
 
     let before = Snapshot::capture(&state);
     let effects: Vec<Effect> = (spell.effect)(&state, &entry, reg);
     let had_effects = !effects.is_empty();
-    for eff in &effects {
+    // Flatten top-level Sequences exactly as the engine's resolution loop
+    // does, so a multi-choice Sequence (e.g. Pox) parks step-by-step here
+    // instead of tripping the single-pending-choice invariant.
+    for eff in flatten_sequences(effects) {
         eff.execute(&mut state);
         // Real resolution PARKS when an effect posts a choice and
         // resumes after the answer; executing further effects
-        // straight-line would trip the single-pending-choice invariant.
-        // A posted choice is itself an observable delta, so stop here.
+        // straight-line would trip the invariant. A posted choice is
+        // itself an observable delta, so stop here.
         if state.pending_choice.is_some() { break; }
     }
     let after = Snapshot::capture(&state);
@@ -151,29 +175,92 @@ pub fn probe_spell(reg: &CardRegistry, card_id: CardId) -> Option<ProbeResult> {
 /// A 2-player state stocked so most effects have something to act on:
 /// libraries with cards (draw/mill), creatures on each battlefield
 /// (targets + board-wide), cards in hand and graveyard.
-fn populated_state() -> GameState {
+fn populated_state(reg: &CardRegistry) -> GameState {
+    use crate::types::ColorSet;
     let mut state = GameState::new(2, 0);
+    // Distinct colours (with a colored pip each) so colour-matters
+    // destroys (Cleanse/Perish) and devotion (Aspect of Hydra) find
+    // referents.
+    let colors = [
+        (ColorSet::white(), "{W}"), (ColorSet::blue(), "{U}"),
+        (ColorSet::black(), "{B}"), (ColorSet::red(), "{R}"),
+        (ColorSet::green(), "{G}"),
+    ];
     for p in 0..2 {
-        for _ in 0..3 { let c = make_creature(&mut state, p, Zone::Battlefield); let _ = c; }
-        // Stock the library (top-to-bottom order matters for draw/dig).
+        for (cs, cost) in colors {
+            make_creature(&mut state, p, cs, cost);
+        }
+        // One of each other permanent type — satisfies "if you control
+        // an artifact / enchantment / land" conditions and type-filtered
+        // targets — plus the five basic land types (interned via the
+        // registry) so "destroy all Mountains" / "X = Forests you
+        // control" / land-subtype counts find referents.
+        make_permanent(&mut state, p, TypeLine::ARTIFACT.into());
+        make_permanent(&mut state, p, TypeLine::ENCHANTMENT.into());
+        for basic in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+            make_basic_land(&mut state, reg, p, basic);
+        }
+        // Stock library + graveyard with EVERY card type so type-tutors
+        // ("search for an enchantment/artifact/planeswalker card") and
+        // reanimation find matches — type-less dummies no-op them.
+        let kinds = [TypeLine::CREATURE, TypeLine::LAND, TypeLine::INSTANT,
+            TypeLine::SORCERY, TypeLine::ENCHANTMENT, TypeLine::ARTIFACT,
+            TypeLine::PLANESWALKER];
         let mut lib = Vec::new();
-        for _ in 0..6 { lib.push(make_card(&mut state, p, Zone::Library(p))); }
+        for k in kinds { lib.push(make_typed_card(&mut state, p, Zone::Library(p), k.into())); }
         state.player_mut(p).library_top_to_bottom = lib;
         for _ in 0..2 { make_card(&mut state, p, Zone::Hand(p)); }
-        for _ in 0..2 { make_card(&mut state, p, Zone::Graveyard(p)); }
+        make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::CREATURE.into());
+        make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::LAND.into());
     }
     state
 }
 
-fn make_creature(state: &mut GameState, controller: PlayerId, zone: Zone) -> ObjectId {
+fn make_creature(state: &mut GameState, controller: PlayerId,
+    colors: crate::types::ColorSet, cost: &str) -> ObjectId {
     let id = state.allocate_object_id();
     let chars = Characteristics {
         types: TypeLine::CREATURE.into(),
+        colors,
+        mana_cost: crate::mana::ManaCost::parse(cost).ok(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
         ..Default::default()
     };
-    state.objects.insert(GameObject::new(id, controller, zone, 0, chars));
+    state.objects.insert(GameObject::new(id, controller, Zone::Battlefield, 0, chars));
+    id
+}
+
+/// A basic land with its interned subtype (Plains/Island/…) so
+/// land-subtype counts and "destroy all <type>" find referents. If the
+/// subtype was never interned this game, falls back to a typeless land.
+fn make_basic_land(state: &mut GameState, reg: &CardRegistry, controller: PlayerId, basic: &str) -> ObjectId {
+    let id = state.allocate_object_id();
+    let mut subtypes = crate::types::SubtypeSet::default();
+    if let Some(s) = reg.interner().lookup(basic) { subtypes.0.insert(s); }
+    let chars = Characteristics {
+        types: TypeLine::LAND.into(), subtypes, ..Default::default()
+    };
+    state.objects.insert(GameObject::new(id, controller, Zone::Battlefield, 0, chars));
+    id
+}
+
+fn make_permanent(state: &mut GameState, controller: PlayerId, types: TypeLine) -> ObjectId {
+    let id = state.allocate_object_id();
+    let chars = Characteristics { types, ..Default::default() };
+    state.objects.insert(GameObject::new(id, controller, Zone::Battlefield, 0, chars));
+    id
+}
+
+/// Push a dummy spell onto the stack (under the opponent) so
+/// "counter target spell" effects have a legal referent.
+fn add_dummy_stack_spell(state: &mut GameState) -> ObjectId {
+    let id = state.allocate_object_id();
+    let chars = Characteristics { types: TypeLine::INSTANT.into(), ..Default::default() };
+    state.objects.insert(GameObject::new(id, 1, Zone::Stack, 0, chars.clone()));
+    let entry = StackEntry::new_spell(
+        id, 1, 0, chars, TargetSelection::new(), Vec::new(), None);
+    state.stack.push(entry);
     id
 }
 
@@ -181,6 +268,28 @@ fn make_card(state: &mut GameState, owner: PlayerId, zone: Zone) -> ObjectId {
     let id = state.allocate_object_id();
     state.objects.insert(GameObject::new(id, owner, zone, 0, Characteristics::default()));
     id
+}
+
+fn make_typed_card(state: &mut GameState, owner: PlayerId, zone: Zone, types: TypeLine) -> ObjectId {
+    let id = state.allocate_object_id();
+    let chars = Characteristics { types, ..Default::default() };
+    state.objects.insert(GameObject::new(id, owner, zone, 0, chars));
+    id
+}
+
+/// Mirror of the engine's resolution-time flattening (see
+/// `engine::flatten_sequences`): unwrap top-level `Sequence`s so a
+/// multi-choice sequence parks step-by-step rather than running
+/// straight-line into the single-pending-choice invariant.
+fn flatten_sequences(effects: Vec<Effect>) -> Vec<Effect> {
+    let mut out = Vec::with_capacity(effects.len());
+    for e in effects {
+        match e {
+            Effect::Sequence(steps) => out.extend(flatten_sequences(steps)),
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 fn first_battlefield_creature(state: &GameState, controller: PlayerId) -> Option<ObjectId> {
@@ -194,13 +303,25 @@ fn first_battlefield_creature(state: &GameState, controller: PlayerId) -> Option
 /// (player 1) is used for player targets so "target opponent" clauses
 /// see a legal referent.
 fn selection_for(
+    state: &GameState,
     reqs: &[crate::targets::TargetRequirement],
     dummy: Option<ObjectId>,
+    stack_spell: ObjectId,
 ) -> TargetSelection {
     let mut sel = TargetSelection::new();
     for req in reqs {
+        // "Target card in [zone]" (reanimation, graveyard recursion):
+        // the target must live in that zone, not on the battlefield.
+        if let TargetFilter::Card { zone, .. } = &req.filter {
+            if let Some(id) = state.objects.objects_in_zone(*zone).map(|o| o.id).min() {
+                sel.targets.push(TargetChoice::Object(id));
+                continue;
+            }
+        }
         let choice = match (&req.filter, dummy) {
             (TargetFilter::Player, _) => TargetChoice::Player(1),
+            // "Counter target spell" — point at the dummy stack spell.
+            (TargetFilter::Spell(_), _) => TargetChoice::Object(stack_spell),
             (TargetFilter::CreatureOrPlayer, Some(id))
             | (TargetFilter::AnyTarget, Some(id)) =>
                 TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)),

@@ -1,0 +1,75 @@
+# Behavioral-audit allowlist — spells the silent-no-op probe currently flags
+# that are NOT bugs to fix now: overwhelmingly HARNESS limitations (counts of
+# tribal/Gate subtypes or basic-land types the generic probe state doesn't seed,
+# tapped-land counts, niche tutor targets). One name per line; '#' comments ignored.
+# The gate (behavioral_audit_no_silent_noops) asserts suspects ⊆ this list, so a
+# NEW silent no-op (e.g. a future ForEach/subtype_filter-class bug) fails CI.
+# SHRINK this list by hardening the probe harness or fixing real bugs — do not grow
+# it without confirming the card is a genuine harness false-positive, not a bug.
+Airborne Aid
+Armed Response
+Blitz of the Thunder-Raptor
+Boon of Boseiju
+Borrowing 100,000 Arrows
+Brightstone Ritual
+Burst of Energy
+Calamitous Cave-In
+Cateran Summons
+Chain Stasis
+Charge Across the Araba
+Clone Legion
+Conflux
+Cosmic Epiphany
+Deathbellow War Cry
+Don't Move
+Eerie Procession
+Emergent Sequence
+Evaporate
+Exploding Borders
+Farseek
+Feeding Frenzy
+Fell the Mighty
+Firemind's Foresight
+Gaea's Bounty
+Gandalf's Sanction
+Gates Ablaze
+Gift of Estates
+Goblin War Strike
+Immolating Gyre
+Into the Night
+Ire of Kaminari
+Mana Geyser
+Mandate of Abaddon
+Mass Appeal
+Mausoleum Secrets
+Merchant Scroll
+Nature's Lore
+Nissa's Encouragement
+Olivia's Wrath
+Open the Vaults
+Plant a Sapling
+Practiced Tactics
+Praetor's Counsel
+Profane Prayers
+Ranger's Path
+Ribbons of the Reikai
+Righteous Fury
+Sarkhan's Triumph
+Scrapyard Salvo
+Serene Heart
+Shard Convergence
+Skred
+Skyshroud Claim
+Steelshaper's Gift
+Superior Numbers
+The Battle of Bywater
+Theft of Dreams
+Three Dreams
+Three Visits
+Thunder of Hooves
+Tithe
+Tivadar's Crusade
+Trapmaker's Snare
+Unified Lunge
+Wirewood Pride
+Zombie Apocalypse

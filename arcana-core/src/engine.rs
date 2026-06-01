@@ -3057,6 +3057,26 @@ fn resolve_top_of_stack(state: &mut GameState, registry: &CardRegistry) {
 /// Sets [`GameState::currently_resolving`] for the duration so
 /// stack-resolution effects can reach the entry id for their
 /// [`crate::actions::ChoiceContext::ResolvingStack`] token.
+/// Flatten top-level [`crate::effects::Effect::Sequence`]s into their
+/// steps so the park loop can pause between any two choice-posting
+/// effects. A `Sequence`'s own `execute` runs steps straight-line and
+/// would trip the single-pending-choice invariant if two steps each
+/// post a choice (e.g. Pox: each player discards then sacrifices); the
+/// engine only parks between TOP-LEVEL effects, so a multi-choice
+/// `Sequence` must be unwrapped to one level here. Recursive so nested
+/// `Sequence`s also flatten; ordering is preserved.
+fn flatten_sequences(effects: Vec<crate::effects::Effect>) -> Vec<crate::effects::Effect> {
+    let mut out = Vec::with_capacity(effects.len());
+    for e in effects {
+        match e {
+            crate::effects::Effect::Sequence(steps) =>
+                out.extend(flatten_sequences(steps)),
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 fn execute_effects_or_park(
     state: &mut GameState,
     entry: crate::stack::StackEntry,
@@ -3064,7 +3084,7 @@ fn execute_effects_or_park(
     is_spell: bool,
 ) {
     state.currently_resolving = Some(entry.id);
-    let mut iter = effects.into_iter();
+    let mut iter = flatten_sequences(effects).into_iter();
     while let Some(effect) = iter.next() {
         effect.execute(state);
         if state.pending_choice.is_some() {
@@ -4151,6 +4171,34 @@ fn emit_phase_and_step_begins(state: &mut GameState) {
 // =============================================================================
 // Tests
 // =============================================================================
+
+#[cfg(test)]
+mod flatten_sequence_tests {
+    use super::*;
+    use crate::effects::Effect;
+
+    #[test]
+    fn flatten_unwraps_nested_sequences_preserving_order() {
+        // Pox-class: a Sequence wrapping choice-posting steps must
+        // flatten to one level so the park loop can pause between them.
+        let effects = vec![
+            Effect::DrawCards { player: 0, count: 1 },
+            Effect::Sequence(vec![
+                Effect::LoseLife { player: 0, amount: 1 },
+                Effect::Sequence(vec![
+                    Effect::LoseLife { player: 1, amount: 2 },
+                ]),
+                Effect::DrawCards { player: 1, count: 1 },
+            ]),
+        ];
+        let flat = flatten_sequences(effects);
+        assert_eq!(flat.len(), 4, "all steps hoisted to the top level");
+        assert!(matches!(flat[0], Effect::DrawCards { player: 0, .. }));
+        assert!(matches!(flat[1], Effect::LoseLife { player: 0, amount: 1 }));
+        assert!(matches!(flat[2], Effect::LoseLife { player: 1, amount: 2 }));
+        assert!(matches!(flat[3], Effect::DrawCards { player: 1, .. }));
+    }
+}
 
 #[cfg(test)]
 mod resolution_choice_framework_tests {

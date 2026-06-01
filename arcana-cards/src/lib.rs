@@ -777,20 +777,30 @@ mod tests {
             "every register() must yield a distinct CardId —              reg.len()={} != calls={n}", reg.len());
     }
 
-    /// Behavioral audit: resolve every spell card in a populated state
-    /// and flag any whose resolver returns effects that change NOTHING
-    /// observable — the silent-no-op class that bones/stub verify can't
-    /// see (it hid the ForEach bug across ~294 cards). Ignored by
-    /// default (it's a full-catalog sweep); run explicitly with
-    /// `cargo test -p arcana-cards behavioral_audit -- --ignored --nocapture`.
+    /// CI GATE — behavioral audit. Resolves every spell card in a
+    /// populated state and flags any whose resolver returns effects that
+    /// change NOTHING observable: the silent-no-op class that bones/stub
+    /// verify can't see (it hid the ForEach bug across ~294 cards and the
+    /// subtype_filter land-scope bug). FAILS if:
+    ///   * any resolver PANICS (always a real bug — caught Pox), or
+    ///   * a spell silently no-ops and is NOT in the checked-in
+    ///     allowlist baseline (a NEW such bug — e.g. a regression).
+    /// The allowlist (behavioral_allowlist.txt) holds the current
+    /// harness-limited false-positives; shrink it as the harness
+    /// improves, never grow it without confirming the card isn't a bug.
     #[test]
-    #[ignore]
     fn behavioral_audit_no_silent_noops() {
+        use std::collections::HashSet;
+        let allow: HashSet<&str> = include_str!("behavioral_allowlist.txt")
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .collect();
+
         let mut reg = arcana_core::registry::CardRegistry::new();
         let n = crate::register_all::register_all(&mut reg);
         let mut suspects = Vec::new();
         let mut panicked = Vec::new();
-        let mut probed = 0;
         for cid in 0..n as u32 {
             let name = || reg.get(cid)
                 .and_then(|d| reg.interner().resolve(d.name))
@@ -800,18 +810,29 @@ mod tests {
             let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                 arcana_core::behavioral::probe_spell(&reg, cid)));
             match res {
-                Ok(Some(r)) => {
-                    probed += 1;
-                    if r.is_silent_noop() { suspects.push(name()); }
-                }
-                Ok(None) => {}
+                Ok(Some(r)) if r.is_silent_noop() => suspects.push(name()),
+                Ok(_) => {}
                 Err(_) => panicked.push(name()),
             }
         }
-        eprintln!("behavioral audit: {probed} spells probed, {} silent-no-op suspects, {} panicked",
-            suspects.len(), panicked.len());
-        for s in &suspects { eprintln!("  SUSPECT: {s}"); }
-        for s in &panicked { eprintln!("  PANIC:   {s}"); }
+
+        // New silent no-ops = flagged but not in the allowlist baseline.
+        let new_noops: Vec<&String> = suspects.iter()
+            .filter(|s| !allow.contains(s.as_str())).collect();
+        // Stale allowlist entries no longer fire — prune them (warn only).
+        let live: HashSet<&str> = suspects.iter().map(String::as_str).collect();
+        let stale: Vec<&&str> = allow.iter().filter(|a| !live.contains(*a)).collect();
+        if !stale.is_empty() {
+            eprintln!("note: {} allowlist entries no longer fire (prune them): {:?}",
+                stale.len(), stale);
+        }
+
+        assert!(panicked.is_empty(),
+            "resolver(s) PANICKED during behavioral probe (real bugs): {panicked:?}");
+        assert!(new_noops.is_empty(),
+            "NEW silent-no-op spell(s) — resolver returns effects but nothing changes \
+             (cf. the ForEach / subtype_filter bugs). Fix the card, or if it's a genuine \
+             harness false-positive add it to behavioral_allowlist.txt: {new_noops:?}");
     }
 
 }

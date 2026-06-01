@@ -29,17 +29,26 @@ use crate::targets::ObjectFilter;
 use crate::types::PlayerId;
 use crate::zones::Zone;
 
-/// An [`ObjectFilter`] for creatures of a given subtype name
-/// (`"Goblin"`, `"Zombie"`, …), resolving the interned symbol via
-/// `reg` so a generated resolver never touches the interner. If the
-/// subtype was never interned (no card of that type exists in the
-/// catalog) the returned filter **matches nothing** — total and
-/// safe. Chain the ordinary [`ObjectFilter`] builders for further
-/// refinement, e.g.
+/// An [`ObjectFilter`] for PERMANENTS of a given subtype name
+/// (`"Goblin"`, `"Zombie"`, `"Mountain"`, `"Equipment"`, …), resolving
+/// the interned symbol via `reg` so a generated resolver never touches
+/// the interner. If the subtype was never interned (no card of that
+/// type exists in the catalog) the returned filter **matches nothing**
+/// — total and safe. Chain the ordinary [`ObjectFilter`] builders for
+/// further refinement, e.g.
 /// `script::subtype_filter(reg, "Goblin").controlled_by(You)`.
+///
+/// Permanent-scoped, NOT creature-scoped: a subtype belongs to whatever
+/// permanent bears it. Creature subtypes (Goblin/Elf) are overwhelmingly
+/// on creatures so this is equivalent there, but LAND subtypes
+/// (Mountain/Forest/…) live on lands — a creature-scoped filter counted
+/// zero of them, silently breaking every "Mountains you control" /
+/// "destroy all Swamps" card (caught by the behavioral probe). Add
+/// `.creature()`-style refinements if a card truly means "creatures of
+/// this subtype".
 pub fn subtype_filter(reg: &CardRegistry, subtype: &str) -> ObjectFilter {
     match reg.interner().lookup(subtype) {
-        Some(sym) => ObjectFilter::creature().with_subtype_sym(sym),
+        Some(sym) => ObjectFilter::permanent().with_subtype_sym(sym),
         // Never interned ⇒ a filter that matches no object.
         None => ObjectFilter {
             custom: Some(|_, _| false),
