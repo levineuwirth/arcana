@@ -16,12 +16,10 @@ Access Denied
 Aclazotz, Deepest Betrayal
 Aetherblade Agent
 Afflicted Deserter
-Airborne Aid
 Aladdin
 All Suns' Dawn
 Altar of the Wretched
 Ambitious Farmhand
-Amrou Scout
 Archangel Avacyn
 Armed Response
 Armory Automaton
@@ -38,34 +36,21 @@ Befriending the Moths
 Beguiler of Wills
 Behold the Unspeakable
 Bereaved Survivor
-Binding the Old Gods
 Biolume Egg
-Bishop of the Bloodstained
 Blacksmith's Talent
 Blaster, Combat DJ
 Blightreaper Thallid
-Blood Age General
-Blood-Chin Rager
 Bloodline Keeper
-Boggart Birth Rite
-Boggart Harbinger
 Bonded Herdbeast
 Bonesplitter
 Boon of Boseiju
 Breakneck Rider
-Brightstone Ritual
 Burst of Energy
 Calamitous Cave-In
 Cancel
-Captain Sisay
-Casal, Lurkwood Pathfinder
 Catapult Fodder
-Cateran Kidnappers
-Cateran Persuader
-Cateran Summons
 Ceremonious Rejection
 Chain Stasis
-Champion of Dusk
 Chandra, Fire of Kaladesh
 Charge Across the Araba
 Chosen of Markov
@@ -81,19 +66,16 @@ Concerted Defense
 Conduit of Storms
 Convicted Killer
 Convolute
-Corpse Harvester
 Corridor Monitor
 Corrupted Resolve
 Counterbore
 Counterlash
 Counterpoint
 Counterspell
-Courageous Outrider
 Cryptolith Fragment
 Crystal Fragments
 Curious Homunculus
 Cyclonus, the Saboteur
-Dawntreader Elk
 Daybreak Ranger
 Dazzling Denial
 Delay
@@ -110,24 +92,16 @@ Don't Make a Sound
 Donal, Herald of Wings
 Double Negative
 Dowsing Shaman
-Draconic Muralists
-Drana's Silencer
 Dread Slaver
-Dreamscape Artist
 Drooling Ogre
 Dross Scorpion
 Dumb Ass
 Durable Coilbug
 Duskwatch Recruiter
-Dwarven Recruiter
-Eerie Procession
 Elder Druid
-Elderfang Ritualist
 Electrosiphon
 Elusive Tormentor
 Elvish Scout
-Embodiment of Spring
-Emergent Sequence
 Empress Galina
 Era of Enlightenment
 Ertai's Trickery
@@ -135,64 +109,41 @@ Etali, Primal Conqueror
 Evaporate
 Evasive Action
 Exdeath, Void Warlock
-Exploding Borders
 Extricator of Sin
 Fable of the Mirror-Breaker
 Faerie Trickery
-Farseek
-Feeding Frenzy
 Fickle Efreet
-Fierce Empath
 Filigree Sages
 Flaccify
-Flamekin Harbinger
 Fold into Aether
 Force Spike
 Foreboding Statue
 Frazzle
-Frontier Guide
 Fuel for the Cause
-Fugitive of the Judoon
 Fyndhorn Brownie
 Gates Ablaze
-Gathering Throng
 Gatstaf Arsonists
 Gatstaf Shepherd
 Ghen, Arcanum Weaver
-Ghoulraiser
 Ghoulsteed
-Giant Harbinger
-Gloom Ripper
 Gnottvold Hermit
 Goblin Assassin
-Goblin General
-Goblin Lookout
-Goblin Matron
 Goblin Psychopath
-Goblin Recruiter
-Goblin War Strike
-Greenseeker
 Greenside Watcher
 Grimlock, Dinobot Leader
 Grizzled Outcasts
 Groundskeeper
-Grub, Storied Matriarch
 Gruesome Menagerie
 Gulf Squid
 Gumdrop Poisoner
 Gustcloak Runner
 Gustcloak Sentinel
 Gwen Stacy
-Hagra Diabolist
 Hajar, Loyal Bodyguard
-Halimar Excavator
 Halvar, God of Battle
-Hamlet Captain
 Hana Kami
 Hanweir Militia Captain
 Hanweir Watchkeep
-Harabaz Druid
-Harald Unites the Elves
 Harried Artisan
 Heir of Falkenrath
 Heliod, the Radiant Dawn
@@ -204,19 +155,16 @@ Hinder
 Hinterland Hermit
 Hinterland Logger
 Hisoka's Defiance
-Horizon Seeker
 Horseshoe Crab
 Huatli, Poet of Unity
 Huntmaster of the Fells
 Hyrax Tower Scout
-Imperial Recruiter
 Induce Paranoia
 Initiate's Companion
 Innocent Traveler
 Instigator Gang
 Intervene
 Into the Night
-Invasion of Theros
 Inventive Iteration
 Invert Polarity
 Inverted Iceberg
@@ -227,86 +175,60 @@ Jaded Response
 Jecht, Reluctant Guardian
 Jill, Shiva's Dominant
 Jin-Gitaxias
-Joraga Bard
 Jugan Defends the Temple
 Jungle Creeper
-Karvanista, Loyal Lupari
-Kavu Howler
-Kazuul Warlord
 Kazuul's Toll Collector
 Kessig Forgemaster
-Kessig Malcontents
 Kessig Prowler
 Kindly Stranger
 Kindred Denial
 Kiora's Follower
-Kithkin Harbinger
 Kor Outfitter
 Kruin Outlaw
 Kumano Faces Kakkazan
 Kytheon, Hero of Akros
 Lambholt Pacifist
 Lapse of Certainty
-Lavakin Brawler
 Lay Bare
 Life of Toshiro Umezawa
-Lifespinner
 Lingering Phantom
 Liquify
 Lofty Denial
 Lone Rider
 Loyal Retainers
-Lys Alana Scarblade
 Magebane Lizard
-Magus of the Order
-Malakir Blood-Priest
 Mana Drain
 Mana Leak
 Mana Sculpt
 Mana Tithe
 Mandate of Abaddon
-Mass Appeal
 Master Thief
-Mausoleum Secrets
-Mayael the Anima
 Mayor of Avabruck
 Medicine Runner
 Memory Lapse
-Merchant Scroll
 Merchant of Many Hats
 Michiko's Reign of Truth
-Micromancer
 Midnight Guard
 Mijae Djinn
 Minamo's Meddling
 Mind Maggots
 Mindstatic
 Minor Misstep
-Moggcatcher
 Mondronen Shaman
 Monk Idealist
-Murasa Pyromancer
-Myr Kinsmith
 Mystic Genesis
 Mystic Skull
 Nanoform Sentinel
 Nantuko Cultivator
-Nature's Lore
 Negate
 Nether Spirit
 Neutralizing Blast
-Neverwinter Dryad
 Nezumi Freewheeler
-Niambi, Faithful Healer
 Nicol Bolas, the Ravager
 Nimbleclaw Adept
-Nissa, Vastwood Seer
 Nix
 No More Lies
-Oashra Cultivator
 Ojer Axonil, Deepest Might
-Olivia's Wrath
-Ondu Cleric
 Open the Vaults
 Oppressive Will
 Orc General
@@ -317,32 +239,25 @@ Override
 Pack Mastiff
 Panicked Bystander
 Pendelhaven Elder
-Perimeter Sergeant
 Permission Denied
 Peter Parker
 Phyrexian Infiltrator
 Pious Evangel
-Plant a Sapling
 Plasm Capture
 Polukranos Reborn
 Poppet Stitcher
-Practiced Tactics
 Praetor's Counsel
 Priest of the Haunted Edge
 Prince of Thralls
-Profane Prayers
 Punish Ignorance
 Put Away
 Quench
 Radagast the Brown
 Rakshasa's Disdain
 Ral, Monsoon Mage
-Ramosian Lieutenant
-Ramosian Sergeant
 Raph & Leo, Sibling Rivals
 Ratchet, Field Medic
 Ravenous Demon
-Ravenous Rotbelly
 Rebuff the Wicked
 Reinterpret
 Reject Imperfection
@@ -351,48 +266,32 @@ Repeat Offender
 Resurrected Cultist
 Revive
 Revolutionary Rebuff
-Ribbons of the Reikai
 Rime Tender
-Riot Ringleader
 Rogues' Gallery
 Rona, Herald of Invasion
 Rootwater Matriarch
 Rubblebelt Braggart
 Rune Snag
 Sage of Ancient Lore
-Sage's Dousing
-Sakura-Tribe Elder
 Salvager of Secrets
 Sanitarium Skeleton
-Sarkhan's Triumph
 Scattering Stroke
 Scoria Wurm
 Scroll of Isildur
 Scuttling Sliver
-Sea Gate Loremaster
-Seahunter
-Seascape Aerialist
 Second Guess
 Seeker of Skybreak
-Self-Assembler
 Serah Farron
 Serene Heart
 Shagrat, Loot Bearer
-Shaman of the Pack
-Shepherd of Rot
 Shrill Howler
 Sidequest: Raise a Chocobo
 Silkenfist Fighter
 Silkenfist Order
 Silt Crawler
-Silvergill Douser
-Silverglade Elemental
-Silverglade Pathfinder
 Simic Ragworm
-Skalla Wolf
 Skred
 Skyclave Aerialist
-Skyshroud Poacher
 Smoldering Werewolf
 Soliton
 Soulcipher Board
@@ -405,20 +304,13 @@ Spell Suck
 Spell Swindle
 Spell Syphon
 Spelljack
-Spellseeker
-Squad Rallier
 Starscream, Power Hungry
 Steel Overseer
-Steelshaper Apprentice
-Steelshaper's Gift
 Stensia Innkeeper
 Stoneshaker Shaman
-Sumala Woodshaper
-Summon: Fenrir
 Superior Numbers
 Suspicious Stowaway
 Sygg, Wanderwine Wisdom
-Tajuru Archer
 Tale's End
 Tales of Master Seshiro
 Tangleclaw Werewolf
@@ -427,14 +319,9 @@ Teferi's Contingency
 Terra, Magical Adept
 Thassa's Rebuff
 The Akroan War
-The Birth of Meletis
-The Cave of Two Lovers
-The Caves of Androzani
 The Dragon-Kami Reborn
-The Eleventh Hour
 The Fall of Lord Konda
 The First Iroan Games
-The Joiner of Cats
 The Kami War
 The Legend of Kuruk
 The Legend of Kyoshi
@@ -445,36 +332,22 @@ The Many Deeds of Belzenlok
 The Modern Age
 The Restoration of Eiganjo
 The Rise of Sozin
-The War Games
-The Weatherseed Treaty
 Thing in the Ice
 Thistledown Players
 Thoughtbind
 Thraben Gargoyle
 Thraben Sentry
-Three Dreams
-Three Visits
-Thunder of Hooves
 Tibalt's Trickery
 Ticking Mime Bomb
-Timberwatch Elf
-Tithe
-Tivadar's Crusade
 Tolarian Entrancer
 Tormented Pariah
-Totem-Guide Hartebeest
 Tovolar's Huntmaster
 Tovolar, Dire Overlord
 Tragic Poet
-Trapmaker's Snare
-Treasure Mage
-Treefolk Harbinger
-Tribute Mage
 Trickster Mage
 Tunnel Rats
 Turn Aside
 Two-Headed Giant
-Tymaret Calls the Dead
 Ulvenwald Captive
 Ulvenwald Mystics
 Ulvenwald Oddity
@@ -484,32 +357,18 @@ Uninvited Geist
 Unravel
 Vedalken Plotter
 Vildin-Pack Outcast
-Vile Deacon
 Village Ironsmith
 Village Messenger
 Villagers of Estwald
 Vincent Valentine
-Vodalian Wave-Knight
 Voidslime
-Volley Veteran
 Voltaic Construct
 Voltaic Servant
-Vorinclex
-War of the Last Alliance
 Warren Pilferers
 Weary Prisoner
-Welcome to . . .
 Wild Wurm
-Winota, Joiner of Forces
-Wirewood Channeler
-Wirewood Herald
-Wirewood Pride
 Wolfbitten Captive
 Wolfkin Outcast
-Wood Elves
-Woodland Bellower
 Wyll of the Blade Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
-Zirilan of the Claw
-Zombie Apocalypse

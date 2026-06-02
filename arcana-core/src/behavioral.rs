@@ -392,10 +392,17 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         (ColorSet::black(), "{B}"), (ColorSet::red(), "{R}"),
         (ColorSet::green(), "{G}"),
     ];
+    let tribes = tribal_subtypes(reg);
     for p in 0..2 {
         for (cs, cost) in colors {
             make_creature(&mut state, p, cs, cost);
         }
+        // An "omni-tribal" creature carrying every common creature
+        // subtype, so subtype COUNTS ("X = Goblins you control") and
+        // tribal lords find a referent. One on the battlefield, plus a
+        // copy in the library (subtype TUTORS: "search for an Elf card")
+        // and graveyard (subtype recursion: "return a Zombie card").
+        make_tribal_creature(&mut state, p, Zone::Battlefield, &tribes);
         // An EXTRA already-tapped creature so untap-all effects show a
         // delta — but NOT the target creature (selection_for targets the
         // first creature, and a tap-spell on an already-tapped target
@@ -425,6 +432,7 @@ fn populated_state(reg: &CardRegistry) -> GameState {
             TypeLine::PLANESWALKER];
         let mut lib = Vec::new();
         for k in kinds { lib.push(make_typed_card(&mut state, p, Zone::Library(p), k.into())); }
+        lib.push(make_tribal_creature(&mut state, p, Zone::Library(p), &tribes));
         state.player_mut(p).library_top_to_bottom = lib;
         for _ in 0..2 { make_card(&mut state, p, Zone::Hand(p)); }
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::CREATURE.into());
@@ -432,8 +440,45 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::ARTIFACT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::INSTANT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::SORCERY.into());
+        make_tribal_creature(&mut state, p, Zone::Graveyard(p), &tribes);
     }
     state
+}
+
+/// The interned ids of the common creature subtypes that show up in
+/// tribal counts/tutors/lords. Looked up read-only from the registry;
+/// subtypes no card ever interned are skipped (they match nothing
+/// anyway). Piling them all onto one creature lets a single seed satisfy
+/// any "X you control" / "search for an X" filter.
+fn tribal_subtypes(reg: &CardRegistry) -> crate::types::SubtypeSet {
+    const NAMES: &[&str] = &[
+        "Goblin", "Elf", "Zombie", "Human", "Soldier", "Warrior", "Wizard",
+        "Cleric", "Rogue", "Beast", "Spirit", "Elemental", "Vampire",
+        "Merfolk", "Dragon", "Angel", "Sliver", "Ally", "Rebel", "Knight",
+        "Dwarf", "Faerie", "Kithkin", "Giant", "Saproling", "Zubera",
+        "Ninja", "Snake", "Wolf", "Cat", "Bird", "Demon", "Druid", "Shaman",
+        "Myr", "Construct", "Golem", "Spider", "Treefolk", "Wall", "Insect",
+        "Samurai", "Minotaur", "Skeleton", "Fungus", "Horror", "Pirate",
+    ];
+    let mut s = crate::types::SubtypeSet::default();
+    for n in NAMES {
+        if let Some(sym) = reg.interner().lookup(n) { s.0.insert(sym); }
+    }
+    s
+}
+
+fn make_tribal_creature(state: &mut GameState, owner: PlayerId, zone: Zone,
+    tribes: &crate::types::SubtypeSet) -> ObjectId {
+    let id = state.allocate_object_id();
+    let chars = Characteristics {
+        types: TypeLine::CREATURE.into(),
+        subtypes: tribes.clone(),
+        power: Some(PtValue::Fixed(2)),
+        toughness: Some(PtValue::Fixed(2)),
+        ..Default::default()
+    };
+    state.objects.insert(GameObject::new(id, owner, zone, 0, chars));
+    id
 }
 
 fn make_creature(state: &mut GameState, controller: PlayerId,
