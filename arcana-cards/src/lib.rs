@@ -813,7 +813,9 @@ mod tests {
                     .map(|r| r.is_silent_noop()).unwrap_or(false);
                 let trig = arcana_core::behavioral::probe_triggered(&reg, cid)
                     .iter().any(|r| r.is_silent_noop());
-                spell || trig
+                let act = arcana_core::behavioral::probe_activated(&reg, cid)
+                    .iter().any(|r| r.is_silent_noop());
+                spell || trig || act
             }));
             match res {
                 Ok(true) => suspects.push(name()),

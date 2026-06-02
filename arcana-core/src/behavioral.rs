@@ -240,6 +240,52 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
     out
 }
 
+/// Probe each of a card's ACTIVATED abilities: invoke its effect in a
+/// populated state (the cost is treated as already paid — the
+/// silent-no-op concern is the EFFECT) and report whether it moved
+/// anything. One [`ProbeResult`] per ability. Cost/mode-dependent
+/// effects (e.g. "sacrifice a creature: deal damage equal to its power")
+/// may read as no-ops since no cost was actually paid — harness-limited,
+/// allowlisted, same posture as the spell/trigger probes.
+pub fn probe_activated(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> {
+    let Some(def) = reg.get(card_id) else { return Vec::new(); };
+    if def.activated_abilities.is_empty() { return Vec::new(); }
+    let mut out = Vec::with_capacity(def.activated_abilities.len());
+    for (i, ability) in def.activated_abilities.iter().enumerate() {
+        let mut state = populated_state(reg);
+        let src = state.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        state.objects.insert(GameObject::new(src, 0, Zone::Battlefield, card_id, chars));
+        state.currently_resolving = Some(src);
+        let stack_spell = add_dummy_stack_spell(&mut state);
+        let dummy = first_battlefield_creature(&state, 0);
+        let targets = selection_for(&state, &ability.target_requirements, dummy, stack_spell);
+        let ctx = crate::registry::ActivationContext {
+            source: src,
+            controller: 0,
+            ability_index: i,
+            targets,
+            x_value: Some(3),
+            card_id,
+        };
+        let before = Snapshot::capture(&state);
+        let effects = (ability.effect)(&state, &ctx, reg);
+        let had_effects = !effects.is_empty();
+        for eff in flatten_sequences(effects) {
+            eff.execute(&mut state);
+            if state.pending_choice.is_some() { break; }
+        }
+        let after = Snapshot::capture(&state);
+        out.push(ProbeResult { had_effects, observable_delta: before != after });
+    }
+    out
+}
+
 /// A 2-player state stocked so most effects have something to act on:
 /// libraries with cards (draw/mill), creatures on each battlefield
 /// (targets + board-wide), cards in hand and graveyard.
@@ -315,7 +361,11 @@ fn make_basic_land(state: &mut GameState, reg: &CardRegistry, controller: Player
     let chars = Characteristics {
         types: TypeLine::LAND.into(), subtypes, ..Default::default()
     };
-    state.objects.insert(GameObject::new(id, controller, Zone::Battlefield, 0, chars));
+    let mut obj = GameObject::new(id, controller, Zone::Battlefield, 0, chars);
+    // Enter tapped so "untap target land / Forest" (mana dorks) shows a
+    // delta; creatures stay untapped for tap-target effects.
+    obj.tap();
+    state.objects.insert(obj);
     id
 }
 
@@ -389,30 +439,63 @@ fn selection_for(
 ) -> TargetSelection {
     let mut sel = TargetSelection::new();
     for req in reqs {
-        // "Target card in [zone]" (reanimation, graveyard recursion):
-        // the target must live in that zone, not on the battlefield.
-        if let TargetFilter::Card { zone, .. } = &req.filter {
-            if let Some(id) = state.objects.objects_in_zone(*zone).map(|o| o.id).min() {
-                sel.targets.push(TargetChoice::Object(id));
-                continue;
-            }
+        // FILTER-AWARE: prefer a candidate the requirement actually
+        // accepts (type/controller). Without this, "untap target Forest"
+        // / "destroy target artifact" got a creature and no-op'd.
+        if let Some(choice) = legal_target(state, req, stack_spell) {
+            sel.targets.push(choice);
+            continue;
         }
+        // Fallback heuristic when nothing in the harness matches.
         let choice = match (&req.filter, dummy) {
             (TargetFilter::Player, _) => TargetChoice::Player(1),
-            // "Counter target spell" — point at the dummy stack spell.
             (TargetFilter::Spell(_), _) => TargetChoice::Object(stack_spell),
             (TargetFilter::CreatureOrPlayer, Some(id))
             | (TargetFilter::AnyTarget, Some(id)) =>
                 TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)),
-            (TargetFilter::CreatureOrPlayer, None)
-            | (TargetFilter::AnyTarget, None) =>
-                TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(1)),
             (_, Some(id)) => TargetChoice::Object(id),
             (_, None) => TargetChoice::Player(1),
         };
         sel.targets.push(choice);
     }
     sel
+}
+
+/// First candidate (object in any non-library zone, or a player, or the
+/// stack spell) that `req` legally accepts. Tapped permanents are tried
+/// FIRST so "untap target …" effects show a delta; players last.
+fn legal_target(
+    state: &GameState,
+    req: &crate::targets::TargetRequirement,
+    stack_spell: ObjectId,
+) -> Option<TargetChoice> {
+    let mut ids: Vec<ObjectId> = state.objects.iter()
+        .filter(|o| o.zone != Zone::Library(o.owner))
+        .map(|o| o.id).collect();
+    ids.push(stack_spell);
+    // Tapped permanents first (so untap-target shows a delta), then the
+    // rest; deterministic by id within each group.
+    ids.sort_by_key(|id| (
+        !state.objects.get(*id).map(|o| o.is_tapped()).unwrap_or(false),
+        *id,
+    ));
+    for id in ids {
+        for choice in [
+            TargetChoice::Object(id),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)),
+        ] {
+            if req.matches_choice(&choice, state, 0) { return Some(choice); }
+        }
+    }
+    for p in 0..state.num_players() {
+        for choice in [
+            TargetChoice::Player(p),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)),
+        ] {
+            if req.matches_choice(&choice, state, 0) { return Some(choice); }
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -493,6 +576,36 @@ mod tests {
         assert_eq!(results.len(), 2, "one result per triggered ability");
         assert!(!results[0].is_silent_noop(), "draw-on-ETB is observable");
         assert!(results[1].is_silent_noop(), "destroy-NULL trigger is a silent no-op");
+    }
+
+    #[test]
+    fn activated_ability_probe_flags_silent_noop_but_not_a_live_one() {
+        use crate::registry::{ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone};
+        use crate::objects::NULL_OBJECT_ID;
+        fn draw(_s: &GameState, c: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::DrawCards { player: c.controller, count: 1 }]
+        }
+        fn noop(_s: &GameState, _c: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::DestroyPermanent { target: NULL_OBJECT_ID }]
+        }
+        let mk = |effect| ActivatedAbilityDef {
+            text: String::new(), cost: ActivationCost::default(),
+            target_requirements: Vec::new(), is_mana_ability: false,
+            is_loyalty_ability: false, activation_zone: ActivationZone::Battlefield,
+            is_instant_speed: true, face_gate: None, effect,
+        };
+        let mut reg = CardRegistry::new();
+        let n = reg.interner_mut().intern("ActTest");
+        let chars = Characteristics { name: n, types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(1)), toughness: Some(PtValue::Fixed(1)),
+            ..Default::default() };
+        let id = reg.register(CardDefinition::new(n, chars)
+            .with_activated_ability(mk(draw))
+            .with_activated_ability(mk(noop)));
+        let results = probe_activated(&reg, id);
+        assert_eq!(results.len(), 2);
+        assert!(!results[0].is_silent_noop(), "draw is observable");
+        assert!(results[1].is_silent_noop(), "destroy-NULL is a silent no-op");
     }
 
     #[test]

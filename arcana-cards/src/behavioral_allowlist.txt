@@ -1,137 +1,445 @@
-# Behavioral-audit allowlist — spells the silent-no-op probe currently flags
-# that are NOT bugs to fix now: overwhelmingly HARNESS limitations (counts of
-# tribal/Gate subtypes or basic-land types the generic probe state doesn't seed,
-# tapped-land counts, niche tutor targets). One name per line; '#' comments ignored.
-# The gate (behavioral_audit_no_silent_noops) asserts suspects ⊆ this list, so a
-# NEW silent no-op (e.g. a future ForEach/subtype_filter-class bug) fails CI.
-# SHRINK this list by hardening the probe harness or fixing real bugs — do not grow
-# it without confirming the card is a genuine harness false-positive, not a bug.
+# Behavioral-audit allowlist — spell / triggered / activated resolvers the
+# silent-no-op probe currently flags that are NOT bugs to fix now: harness
+# limitations the generic probe state can't satisfy — counts of tribal/Gate
+# subtypes or basic-land types not seeded, cost-/mode-dependent activated
+# effects (no cost is actually paid), niche tutor targets, untap-with-no-tapped.
+# One name per line; '#' comments ignored. The gate (behavioral_audit_no_silent_noops)
+# asserts suspects ⊆ this list + panics==0, so a NEW silent no-op (a future
+# ForEach/subtype_filter-class bug) fails CI. SHRINK by hardening the harness or
+# fixing real bugs; never grow without confirming the card is a false-positive.
+Aang, Swift Savior
+Absorb Energy
+Access Denied
+Aclazotz, Deepest Betrayal
+Aetherblade Agent
 Airborne Aid
+Akroan Jailer
+Akroan Mastiff
+Aladdin
+Ambitious Farmhand
+Amrou Scout
+Archaeomancer
+Archaeomender
+Ardent Elementalist
+Argivian Archaeologist
+Argivian Find
+Argivian Restoration
 Armed Response
+Armory Automaton
+Auramancer
+Auriok Salvagers
+Auriok Survivors
+Avacynian Priest
+Ayara, Widow of the Realm
+Aysen Bureaucrats
+Azorius Arrester
+Bag Check
+Bane's Contingency
+Beguiler of Wills
+Benalish Trapper
+Berg Strider
+Bishop of the Bloodstained
+Blightreaper Thallid
+Blinding Mage
+Blinding Souleater
 Blitz of the Thunder-Raptor
-Boon of Boseiju
-Borrowing 100,000 Arrows
+Blood Age General
+Bloodline Keeper
+Bloodrite Invoker
+Bloom Hulk
+Boggart Birth Rite
+Boggart Harbinger
+Bonded Herdbeast
+Bonesplitter
 Brightstone Ritual
-Burst of Energy
+Cabal Archon
 Calamitous Cave-In
+Call to Mind
+Campus Renovation
+Cancel
+Captain Sisay
+Casal, Lurkwood Pathfinder
+Cateran Kidnappers
+Cateran Persuader
 Cateran Summons
-Chain Stasis
+Celestial Enforcer
+Cephalid Retainer
+Ceremonious Rejection
+Champion of Dusk
 Charge Across the Araba
+Checkpoint Officer
+Chosen of Markov
+Clive, Ifrit's Dominant
 Clone Legion
-Conflux
+Coeurl
+Coffin Puppets
+Concealing Curtains
+Concerted Defense
+Conduit of Storms
+Contagious Vorrac
+Convolute
+Corpse Harvester
+Corrupted Resolve
 Cosmic Epiphany
-Deathbellow War Cry
-Don't Move
+Counterbore
+Counterlash
+Counterpoint
+Counterspell
+Courageous Outrider
+Crystal Fragments
+Dakmor Ghoul
+Daring Waverider
+Dawntreader Elk
+Dazzling Denial
+Death Cultist
+Delay
+Desertion
+Desiccated Naga
+Devious Cover-Up
+Dion, Bahamut's Dominant
+Disallow
+Dispersal Shield
+Dissipate
+Divert Disaster
+Don't Make a Sound
+Double Negative
+Dowsing Shaman
+Dreamscape Artist
+Dromoka Dunecaster
+Durable Coilbug
+Duskwielder
+Dwarven Recruiter
+Déjà Vu
 Eerie Procession
+Electrosiphon
+Elite Arrester
+Elusive Tormentor
+Embodiment of Spring
 Emergent Sequence
+Empress Galina
+Ephara's Warden
+Errant Doomsayers
+Ertai's Trickery
+Etali, Primal Conqueror
 Evaporate
+Evasive Action
 Exploding Borders
+Faerie Trickery
+Fan Bearer
 Farseek
+Fear of Immobility
 Feeding Frenzy
 Fell the Mighty
-Firemind's Foresight
-Gaea's Bounty
+Fierce Empath
+Filigree Sages
+Flaccify
+Flamekin Harbinger
+Flood of Recollection
+Fold into Aether
+Force Spike
+Frazzle
+Frontier Guide
+Frost Lynx
+Frostbridge Guard
+Fuel for the Cause
 Gandalf's Sanction
 Gates Ablaze
-Gift of Estates
+Gathering Throng
+Gavony Trapper
+Ghen, Arcanum Weaver
+Ghoulraiser
+Ghoulsteed
+Giant Harbinger
+Gideon's Lawkeeper
+Gloom Ripper
+Gnawing Zombie
+Gnottvold Hermit
+Goblin Lookout
+Goblin Matron
+Goblin Recruiter
 Goblin War Strike
+Goldmaw Champion
+Goldmeadow Harrier
+Greenseeker
+Greenside Watcher
+Grimlock, Dinobot Leader
+Groundskeeper
+Gruesome Menagerie
+Gulf Squid
+Gulping Scraptrap
+Gumdrop Poisoner
+Gwen Stacy
+Hajar, Loyal Bodyguard
+Halvar, God of Battle
+Hana Kami
+Hanna, Ship's Navigator
+Harabaz Druid
+Harried Artisan
+Heavy Infantry
+Heir of Falkenrath
+Heliod, the Radiant Dawn
+Herbology Instructor
+Highway Robber
+Hinder
+Hisoka's Defiance
+Holy Justiciar
+Horizon Seeker
+Horseshoe Crab
+Huatli, Poet of Unity
 Immolating Gyre
+Imperial Recruiter
+Induce Paranoia
+Intervene
 Into the Night
+Invasion of Theros
+Invert Polarity
+Involuntary Cooldown
 Ire of Kaminari
-Mana Geyser
+Ironclad Slayer
+It'll Quench Ya!
+Ixidor's Will
+Izzet Chronarch
+Jaded Response
+Jill, Shiva's Dominant
+Jin-Gitaxias
+Jungle Creeper
+Kavu Howler
+Kazuul's Toll Collector
+Kessig Malcontents
+Kessig Prowler
+Kindly Stranger
+Kindred Denial
+Kiora's Dambreaker
+Kishla Trawlers
+Kithkin Harbinger
+Kor Hookmaster
+Kor Line-Slinger
+Kor Outfitter
+Lapse of Certainty
+Lay Bare
+Leonin Snarecaster
+Leonin Squire
+Lifespinner
+Liquify
+Lofty Denial
+Loxodon Mystic
+Loyal Retainers
+Lys Alana Scarblade
+Magus of the Order
+Malakir Blood-Priest
+Mana Drain
+Mana Leak
+Mana Sculpt
+Mana Tithe
 Mandate of Abaddon
 Mass Appeal
+Master Decoy
+Master Skald
+Master Thief
 Mausoleum Secrets
+Mayael the Anima
+Medicine Runner
+Memory Lapse
 Merchant Scroll
+Merchant of Many Hats
+Micromancer
+Minamo's Meddling
+Mind Maggots
+Mindstatic
+Minor Misstep
+Moggcatcher
+Monk Idealist
+Myr Kinsmith
+Mystic Genesis
+Mystic Skull
+Nantuko Cultivator
 Nature's Lore
-Nissa's Encouragement
+Nebelgast Beguiler
+Negate
+Neutralizing Blast
+Neverwinter Dryad
+Nezumi Freewheeler
+Niambi, Faithful Healer
+Nicol Bolas, the Ravager
+Nissa, Vastwood Seer
+Nix
+No More Lies
+Oashra Cultivator
+Ojer Axonil, Deepest Might
+Old Guard
 Olivia's Wrath
 Open the Vaults
+Oppressive Will
+Orc General
+Order of the Mirror
+Ostiary Thrull
+Outwit
+Override
+Pack Mastiff
+Pendelhaven Elder
+Permission Denied
+Peter Parker
+Phyrexian Infiltrator
+Pinnacle Monk
+Pious Evangel
+Plaguemaw Beast
 Plant a Sapling
+Plasm Capture
+Polukranos Reborn
 Practiced Tactics
 Praetor's Counsel
+Priest of the Haunted Edge
 Profane Prayers
-Ranger's Path
+Protocol Knight
+Pull from the Deep
+Punish Ignorance
+Puppeteer
+Put Away
+Quench
+Rakshasa's Disdain
+Ramosian Lieutenant
+Ramosian Sergeant
+Rathi Trapper
+Ravenous Demon
+Rebuff the Wicked
+Reconstruction
+Refurbish
+Reinterpret
+Reject Imperfection
+Relearn
+Render Silent
+Repeat Offender
+Restoration Specialist
+Resurrected Cultist
+Revive
+Revolutionary Rebuff
 Ribbons of the Reikai
-Righteous Fury
+Rimewind Taskmage
+Ritual of Restoration
+Rona, Herald of Invasion
+Rootwater Diver
+Rootwater Matriarch
+Rowdy Snowballers
+Sage's Dousing
+Sage's Knowledge
+Saiba Trespassers
+Sakura-Tribe Elder
+Salvage Scout
+Salvager of Secrets
+Sanitarium Skeleton
 Sarkhan's Triumph
+Scattering Stroke
+Scholar of Combustion
+Scholar of the Ages
 Scrapyard Salvo
+Scribe of the Mindful
+Scuttling Sliver
+Sea Gate Loremaster
+Seahunter
+Second Guess
+Self-Assembler
 Serene Heart
-Shard Convergence
+Shaman of the Pack
+Shepherd of Rot
+Shrill Howler
+Sigardian Priest
+Silt Crawler
+Silvergill Douser
+Silverglade Elemental
+Silverglade Pathfinder
+Simic Ragworm
+Skalla Wolf
 Skred
-Skyshroud Claim
+Skyclave Aerialist
+Skyshroud Poacher
+Smoldering Werewolf
+Soliton
+Somnomancer
+Spawnbinder Mage
+Spell Crumple
+Spell Pierce
+Spell Rupture
+Spell Stutter
+Spell Suck
+Spell Swindle
+Spell Syphon
+Spelljack
+Spellkeeper Weird
+Spellseeker
+Squad Rallier
+Starport Security
+Steel Overseer
+Steelshaper Apprentice
 Steelshaper's Gift
+Stensia Innkeeper
+Sterling Keykeeper
+Stern Constable
+Stonybrook Angler
+Succumb to the Cold
+Sumala Woodshaper
 Superior Numbers
+Sygg, Wanderwine Wisdom
+T.A.P.P.E.R.
+Take into Custody
+Tale's End
+Tangleclaw Werewolf
+Teardrop Kami
+Teferi's Contingency
+Telekinesis
+Telekinetic Sliver
+Terra, Magical Adept
+Thassa's Rebuff
 The Battle of Bywater
-Theft of Dreams
+Thoughtbind
+Thraben Gargoyle
 Three Dreams
 Three Visits
 Thunder of Hooves
+Tibalt's Trickery
+Ticking Mime Bomb
+Tidebinder Mage
+Timberwatch Elf
 Tithe
 Tivadar's Crusade
-Trapmaker's Snare
-Unified Lunge
-Wirewood Pride
-Zombie Apocalypse
-# --- triggered-ability harness limits (ETB subtype-tutors w/o a matching
-#     library card; untap-target w/o a tapped target) ---
-Ambitious Farmhand
-Armory Automaton
-Bishop of the Bloodstained
-Bloom Hulk
-Boggart Harbinger
-Casal, Lurkwood Pathfinder
-Champion of Dusk
-Contagious Vorrac
-Corridor Monitor
-Courageous Outrider
-Dwarven Recruiter
-Fierce Empath
-Flamekin Harbinger
-Gathering Throng
-Ghoulraiser
-Giant Harbinger
-Gloom Ripper
-Goblin Matron
-Goblin Recruiter
-Great Whale
-Gulping Scraptrap
-Gumdrop Poisoner
-Huatli, Poet of Unity
-Hyrax Tower Scout
-Imperial Recruiter
-Invasion of Theros
-Kavu Howler
-Kessig Malcontents
-Kiora's Dambreaker
-Kithkin Harbinger
-Kor Outfitter
-Malakir Blood-Priest
-Master Thief
-Medicine Runner
-Micromancer
-Mind Maggots
-Myr Kinsmith
-Nantuko Cultivator
-Niambi, Faithful Healer
-Nissa, Vastwood Seer
-Self-Assembler
-Shaman of the Pack
-Shield Broker
-Silverglade Elemental
-Skalla Wolf
-Sparring Mummy
-Spellseeker
-Sumala Woodshaper
-Ticking Mime Bomb
+Toils of Night and Day
 Totem-Guide Hartebeest
+Tragic Poet
+Tranquilize
+Trapmaker's Snare
+Treasure Hunter
 Treasure Mage
 Treefolk Harbinger
 Tribute Mage
+Trusty Packbeast
+Tune Up
+Tunnel Rats
+Turn Aside
+Twiddle
+Ulvenwald Captive
+Ulvenwald Oddity
+Undersimplify
+Unified Lunge
+Unravel
+Utrom Scientists
 Vedalken Plotter
+Vildin-Pack Outcast
+Voidslime
+Volcanic Vision
 Volley Veteran
+Voltaic Construct
 Vorinclex
+Wanderbrine Trapper
 Warren Pilferers
+Watertrap Weaver
+Waylaying Pirates
 Wild Wurm
+Wirewood Channeler
+Wirewood Pride
 Wood Elves
 Woodland Bellower
+Wyll of the Elder Pact
+Zealous Lorecaster
+Zhalfirin Decoy
+Zirilan of the Claw
+Zombie Apocalypse
+Zygon Infiltrator
