@@ -161,13 +161,27 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 response: ChoiceResponse::DistributeDamage { distribution },
             });
         }
-        ChoiceKind::PayOrDecline { .. } => {
-            for pay in [true, false] {
+        ChoiceKind::PayOrDecline { cost, .. } => {
+            // Decline is always available. Offer pay only if the chooser
+            // can actually afford the (mana) cost — otherwise the
+            // pay-branch hits the solver with no valid plan and panics
+            // in `auto_pay_ward_cost`. Mirrors the `OptionalCost` gate.
+            let can_pay = !crate::mana::enumerate_payment_plans(
+                cost,
+                &state.player(pending.choosing_player).mana_pool,
+                /*x_value=*/ None,
+                &crate::mana::SpendContext::unrestricted(),
+            ).is_empty();
+            if can_pay {
                 out.push(Action::SubmitResolutionChoice {
                     id,
-                    response: ChoiceResponse::PayOrDecline { pay },
+                    response: ChoiceResponse::PayOrDecline { pay: true },
                 });
             }
+            out.push(Action::SubmitResolutionChoice {
+                id,
+                response: ChoiceResponse::PayOrDecline { pay: false },
+            });
         }
         ChoiceKind::OptionalCost { cost } => {
             // Decline is always available. Offer pay only if the
@@ -2436,6 +2450,52 @@ mod tests {
         let actions = legal_actions(&s, &CardRegistry::new());
         assert!(actions.iter().any(|a|
             matches!(a, Action::CastSpell { object_id, .. } if *object_id == bolt)));
+    }
+
+    // --- PayOrDecline (Ward) affordability gate ----------------------------
+
+    /// Build a state with a pending Ward-style PayOrDecline on player 0.
+    fn pending_pay_or_decline(cost: &str) -> GameState {
+        use crate::actions::{ChoiceContext, ChoiceKind, DeclineConsequence,
+                             PendingChoice};
+        let mut s = GameState::new(2, 0);
+        let target = put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1));
+        s.pending_choice = Some(PendingChoice {
+            id: 7,
+            choosing_player: 0,
+            context: ChoiceContext::ResolvingStack(target),
+            kind: ChoiceKind::PayOrDecline {
+                cost: ManaCost::parse(cost).unwrap(),
+                on_decline: DeclineConsequence::CounterStackEntry(target),
+            },
+        });
+        s
+    }
+
+    #[test]
+    fn pay_or_decline_hides_pay_when_unaffordable() {
+        // Regression (found by the random-game harness): with no mana the
+        // engine must NOT offer the pay branch — it would hit the solver
+        // with no valid plan and panic in auto_pay_ward_cost.
+        let s = pending_pay_or_decline("{3}");
+        let actions = legal_actions(&s, &CardRegistry::new());
+        let pays = |pay: bool| Action::SubmitResolutionChoice {
+            id: 7, response: crate::actions::ChoiceResponse::PayOrDecline { pay } };
+        assert!(!actions.contains(&pays(true)),
+            "pay must be hidden when the chooser cannot afford the cost");
+        assert!(actions.contains(&pays(false)),
+            "decline is always available");
+    }
+
+    #[test]
+    fn pay_or_decline_offers_pay_when_affordable() {
+        let mut s = pending_pay_or_decline("{2}");
+        add_mana(&mut s, 0, ManaColor::Red, 2);
+        let actions = legal_actions(&s, &CardRegistry::new());
+        let pays = |pay: bool| Action::SubmitResolutionChoice {
+            id: 7, response: crate::actions::ChoiceResponse::PayOrDecline { pay } };
+        assert!(actions.contains(&pays(true)), "pay must be offered when affordable");
+        assert!(actions.contains(&pays(false)), "decline is always available");
     }
 
     #[test]

@@ -789,8 +789,58 @@ mod tests {
     #[ignore]
     fn random_games_play_to_completion() {
         use arcana_core::engine::{new_game, step, EngineYield};
-        const GAMES: u64 = 200;
+        // 400 games (200 uniform + 200 biased) exercises every KNOWN_OPEN
+        // seed in ~20s. Running with a larger GAMES is a valid deeper sweep
+        // and may surface NEW findings beyond the recorded baseline.
+        const GAMES: u64 = 400;
         const STEP_CAP: usize = 8000;
+        // Safety guards — a fuzz harness must never be able to OOM the
+        // machine. Biased aggressive play can reach large boards where the
+        // engine's combat-enumeration Cartesian products (a documented
+        // legal_actions DEBT) blow up. If the live object count or a single
+        // legal-action set crosses these caps, abort the game and record it
+        // as a *bounded* outcome (not a test failure) so the cliff is
+        // surfaced without crashing the run.
+        // Total live objects (token-loop backstop).
+        const OBJ_CAP: usize = 4000;
+        // Battlefield creatures across both players. The blocker-subset and
+        // damage-distribution enumerations are exponential in creature count
+        // (2^blockers, product of factorials), so this — not total objects —
+        // is the real OOM gate; the explosion is reachable at a few dozen
+        // creatures. Capping here keeps any single legal-action set bounded.
+        const CREATURE_CAP: usize = 24;
+        const LEGAL_CAP: usize = 200_000;
+
+        // Seeds known to hit still-open engine bugs that biased combat
+        // play surfaces — each pinned to its panic site. A failure on a
+        // listed seed whose detail still contains the recorded site is
+        // expected (logged, not fatal); a failure anywhere else, or a
+        // listed seed failing for a *different* reason, is a NEW finding
+        // and fails the test. Remove an entry when its bug is fixed.
+        //   engine.rs:3135 — resume_parked_resolution: pending_choice
+        //                    still set when a parked resolution resumes.
+        //   stack.rs:697   — finalize_resolved_spell: object vanished
+        //                    from the arena before finalize.
+        //   mana.rs:778    — expand_x: {X} cost reached the solver with
+        //                    no x_value supplied.
+        const KNOWN_OPEN: &[(u64, &str)] = &[
+            (129, "stack.rs:697"),
+            (183, "mana.rs:778"),
+            (301, "engine.rs:3135"),
+            (349, "engine.rs:3135"),
+        ];
+
+        // Capture the panic *site* per game (and suppress the default
+        // backtrace spam) so failures are actionable.
+        thread_local! {
+            static PANIC_LOC: std::cell::RefCell<Option<String>> =
+                const { std::cell::RefCell::new(None) };
+        }
+        let prev_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|info| {
+            PANIC_LOC.with(|l| *l.borrow_mut() =
+                info.location().map(|loc| format!("{}:{}", loc.file(), loc.line())));
+        }));
 
         let mut reg = arcana_core::registry::CardRegistry::new();
         let n = crate::register_all::register_all(&mut reg) as u32;
@@ -809,6 +859,53 @@ mod tests {
             self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
             ((self.0 >> 33) as usize) % m.max(1)
         }}
+
+        // Biased action selection. Pure-random play almost always passes
+        // priority and declares "no attacks" (the empty declaration sits
+        // at index 0 alongside one action per attacker), so games rarely
+        // reach combat or low-life states. Weighting by action kind drives
+        // play toward casting / attacking / blocking — exercising the
+        // combat/damage/SBA machinery and the `life <= 0` invariant arm
+        // that uniform play barely touches. Concede is weighted to zero so
+        // games play out; mulligans stay reachable (the deep-mulligan path
+        // that found the bottom-cards bug) but biased toward keeping.
+        fn action_weight(a: &arcana_core::actions::Action) -> u32 {
+            use arcana_core::actions::Action::*;
+            match a {
+                PassPriority => 1,
+                CastSpell { .. } => 8,
+                PlayLand { .. } => 8,
+                ActivateAbility { .. } => 3,
+                DeclareAttackers { attackers } =>
+                    if attackers.is_empty() { 1 } else { 10 },
+                DeclareBlockers { blockers } =>
+                    if blockers.is_empty() { 1 } else { 8 },
+                OrderBlockers { .. } | AssignCombatDamage { .. } => 4,
+                MakeChoice(_) | SubmitResolutionChoice { .. } => 4,
+                MulliganKeep => 4,
+                MulliganAgain => 2,
+                BottomCards(_) => 4,
+                Concede => 0,
+            }
+        }
+
+        // Pick an action index. `bias=false` is uniform random (kept for
+        // half the games — it found the deep-mulligan bug). `bias=true`
+        // is weighted by `action_weight`; a zero total (only zero-weight
+        // actions legal) falls back to uniform.
+        fn pick(rng: &mut Lcg, actions: &[arcana_core::actions::Action],
+                bias: bool) -> usize {
+            if !bias { return rng.next(actions.len()); }
+            let weights: Vec<u32> = actions.iter().map(action_weight).collect();
+            let total: u32 = weights.iter().sum();
+            if total == 0 { return rng.next(actions.len()); }
+            let mut r = rng.next(total as usize) as u32;
+            for (i, w) in weights.iter().enumerate() {
+                if r < *w { return i; }
+                r -= *w;
+            }
+            actions.len() - 1
+        }
 
         // Mid-game state invariants, checked at every decision point.
         // Returns Err with a human-readable reason on the first breach.
@@ -854,7 +951,14 @@ mod tests {
             Ok(())
         }
 
-        let mut failures: Vec<String> = Vec::new();
+        let mut failures: Vec<(u64, String)> = Vec::new();
+        // Per-mode telemetry, indexed [uniform, biased]:
+        //   games, min life seen, attacks, max objects, max legal-set, aborts.
+        #[derive(Clone, Copy)]
+        struct ModeAgg { games: u64, min_life: i32, attacks: u64,
+                         max_obj: usize, max_legal: usize, aborts: u64 }
+        let mut agg = [ModeAgg { games: 0, min_life: i32::MAX, attacks: 0,
+                                 max_obj: 0, max_legal: 0, aborts: 0 }; 2];
         for seed in 0..GAMES {
             let mut rng = Lcg(seed.wrapping_mul(2654435761).wrapping_add(1));
             // Two 40-card decks: 18 basics + 22 random catalog cards.
@@ -865,12 +969,28 @@ mod tests {
                 d
             };
             let decks = vec![deck(&mut rng), deck(&mut rng)];
+            // Even seeds play uniform-random; odd seeds use the biased
+            // picker. Splitting keeps both coverage profiles.
+            let bias = seed % 2 == 1;
 
+            // Per-game telemetry: lowest life any player reached and how
+            // many non-empty attacker declarations were committed. Lets
+            // the harness self-report that biased play actually drives
+            // combat / low-life states uniform play barely reaches.
+            // Per-game report: (min life, attacks, max objects, max legal
+            // set, aborted-by-cap?). `Err` = a real failure (panic / stuck
+            // / non-termination / invariant breach); an abort is `Ok` with
+            // the flag set — bounded, not a failure.
             let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 let (mut state, mut yld) = new_game(decks, &reg, seed);
+                let mut min_life = i32::MAX;
+                let mut attacks: u64 = 0;
+                let mut max_obj = 0usize;
+                let mut max_legal = 0usize;
                 for _ in 0..STEP_CAP {
                     match yld {
-                        EngineYield::GameOver(_) => return Ok(()),
+                        EngineYield::GameOver(_) =>
+                            return Ok((min_life, attacks, max_obj, max_legal, false)),
                         EngineYield::PendingDecision { legal_actions, .. } => {
                             // Mid-game invariants: the engine checks SBAs
                             // and settles before handing back a decision,
@@ -878,11 +998,33 @@ mod tests {
                             // here. A violation is an engine bug the
                             // panic/stuck/terminate checks would miss.
                             game_invariants(&state)?;
+                            for p in 0..state.num_players() {
+                                min_life = min_life.min(state.player(p).life);
+                            }
+                            // Safety caps — abort (not fail) before the
+                            // board or an enumeration grows large enough to
+                            // OOM the process.
+                            let obj = state.objects.iter().count();
+                            let creatures = state.objects
+                                .objects_in_zone(arcana_core::zones::Zone::Battlefield)
+                                .filter(|o| o.characteristics.types.is_creature())
+                                .count();
+                            max_obj = max_obj.max(obj);
+                            max_legal = max_legal.max(legal_actions.len());
+                            if obj > OBJ_CAP || creatures > CREATURE_CAP
+                                || legal_actions.len() > LEGAL_CAP {
+                                return Ok((min_life, attacks, max_obj, max_legal, true));
+                            }
                             if legal_actions.is_empty() {
                                 return Err("stuck: no legal actions".to_string());
                             }
-                            let i = rng.next(legal_actions.len());
+                            let i = pick(&mut rng, &legal_actions, bias);
                             let action = legal_actions[i].clone();
+                            if matches!(&action,
+                                arcana_core::actions::Action::DeclareAttackers { attackers }
+                                if !attackers.is_empty()) {
+                                attacks += 1;
+                            }
                             let (s, y) = step(state, action, &reg);
                             state = s; yld = y;
                         }
@@ -890,15 +1032,48 @@ mod tests {
                 }
                 Err(format!("did not terminate in {STEP_CAP} steps"))
             }));
+            let m = bias as usize;
             match res {
-                Ok(Ok(())) => {}
-                Ok(Err(msg)) => failures.push(format!("seed {seed}: {msg}")),
-                Err(_) => failures.push(format!("seed {seed}: PANIC")),
+                Ok(Ok((ml, atk, mo, mleg, aborted))) => {
+                    agg[m].games += 1;
+                    agg[m].min_life = agg[m].min_life.min(ml);
+                    agg[m].attacks += atk;
+                    agg[m].max_obj = agg[m].max_obj.max(mo);
+                    agg[m].max_legal = agg[m].max_legal.max(mleg);
+                    if aborted { agg[m].aborts += 1; }
+                }
+                Ok(Err(msg)) => failures.push((seed, msg)),
+                Err(_) => {
+                    let loc = PANIC_LOC.with(|l| l.borrow_mut().take())
+                        .unwrap_or_else(|| "?".to_string());
+                    failures.push((seed, format!("PANIC at {loc}")));
+                }
             }
         }
+        std::panic::set_hook(prev_hook);
         eprintln!("random games: {} played, {} failed", GAMES, failures.len());
-        for f in failures.iter().take(40) { eprintln!("  {f}"); }
-        assert!(failures.is_empty(), "{} random game(s) failed", failures.len());
+        for (m, label) in [(0usize, "uniform"), (1usize, "biased")] {
+            let a = agg[m];
+            eprintln!("  {label}: {} games, {} aborted(cap), min life {}, \
+                {} attack-decls, max objects {}, max legal-set {}",
+                a.games, a.aborts,
+                if a.min_life == i32::MAX { 0 } else { a.min_life },
+                a.attacks, a.max_obj, a.max_legal);
+        }
+        // A failure is "known-open" iff its seed is listed AND the detail
+        // still names the recorded site (so a known seed regressing to a
+        // different panic is treated as NEW).
+        let is_known = |seed: u64, detail: &str|
+            KNOWN_OPEN.iter().any(|(s, site)| *s == seed && detail.contains(site));
+        let novel: Vec<&(u64, String)> = failures.iter()
+            .filter(|(s, d)| !is_known(*s, d)).collect();
+        for (s, d) in failures.iter().take(60) {
+            let tag = if is_known(*s, d) { "known-open" } else { "NEW" };
+            eprintln!("  seed {s}: {d} [{tag}]");
+        }
+        assert!(novel.is_empty(),
+            "{} NEW random-game failure(s) not in KNOWN_OPEN (of {} total)",
+            novel.len(), failures.len());
     }
 
     /// CI GATE — behavioral audit. Resolves every spell card in a
