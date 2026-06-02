@@ -774,8 +774,15 @@ fn expand_x(cost: &ManaCost, x_value: Option<u32>) -> ManaCost {
     if cost.x_count() == 0 {
         return cost.clone();
     }
-    let x = x_value.unwrap_or_else(||
-        panic!("mana solver: cost {cost} has {{X}} but no x_value supplied"));
+    // CR 107.3b — when a player must determine X but no value has been
+    // chosen, X is 0. The cast / activation paths pre-expand X (or pass
+    // `Some(x)`) before reaching here, so this branch is only hit by the
+    // auto-pay / affordability-gate contexts (Ward, "you may pay {X}",
+    // "counter unless pays {X}") where the payer never announced an X.
+    // Treat it as 0 rather than panicking on a legal action the engine
+    // itself offered. (Found by the random-game harness: a Ward/optional
+    // cost carrying a raw {X} reached the solver with no x_value.)
+    let x = x_value.unwrap_or(0);
     let components = cost.components.iter().map(|c| match c {
         ManaCostComponent::X => ManaCostComponent::Generic(x),
         other => *other,
@@ -1172,6 +1179,21 @@ mod tests {
         enumerate_payment_plans(&parse(cost), pool, Some(x), ctx)
     }
 
+    #[test]
+    fn x_cost_with_no_x_value_treats_x_as_zero() {
+        // Regression (random-game harness, mana.rs:778): an X cost reaching
+        // the solver with no x_value must NOT panic. Per CR 107.3b an
+        // undefined X is 0, so {X}{R} collapses to {R} — payable from a
+        // single red, no generic charged for the X.
+        let plans = solve("{X}{R}", &pool_of(&[ManaColor::Red]), &nonspell_ctx());
+        assert_eq!(plans.len(), 1, "X treated as 0 -> just {{R}} is payable");
+
+        // And a bare {X} with no value is free (X=0), not a panic.
+        let plans = solve("{X}", &ManaPool::new(), &nonspell_ctx());
+        assert_eq!(plans.len(), 1);
+        assert!(plans[0].assignments.is_empty());
+    }
+
     // --- Empty and affordability edge cases ---------------------------------
 
     #[test]
@@ -1359,12 +1381,9 @@ mod tests {
         assert_eq!(plans[0].assignments.len(), 1);
     }
 
-    #[test]
-    #[should_panic(expected = "no x_value supplied")]
-    fn x_without_value_panics() {
-        let pool = pool_of(&[ManaColor::Red]);
-        let _ = solve("{X}{R}", &pool, &nonspell_ctx());
-    }
+    // (Removed `x_without_value_panics`: an undefined X in the solver now
+    // resolves to 0 per CR 107.3b rather than panicking — see
+    // `x_cost_with_no_x_value_treats_x_as_zero`.)
 
     // --- Restrictions -------------------------------------------------------
 

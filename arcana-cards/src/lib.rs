@@ -819,11 +819,8 @@ mod tests {
         // and fails the test. Remove an entry when its bug is fixed.
         //   stack.rs:697   — finalize_resolved_spell: object vanished
         //                    from the arena before finalize.
-        //   mana.rs:778    — expand_x: {X} cost reached the solver with
-        //                    no x_value supplied.
         const KNOWN_OPEN: &[(u64, &str)] = &[
             (129, "stack.rs:697"),
-            (183, "mana.rs:778"),
         ];
 
         // Capture the panic *site* per game (and suppress the default
