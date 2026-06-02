@@ -411,6 +411,17 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         // copy in the library (subtype TUTORS: "search for an Elf card")
         // and graveyard (subtype recursion: "return a Zombie card").
         make_tribal_creature(&mut state, p, Zone::Battlefield, &tribes);
+        // A big 8/8 creature so power/toughness-gated conditions ("if you
+        // control a creature with power 4 or greater" — Saga chapters,
+        // power-matters triggers) are satisfied; the 2/2s cover the
+        // low-power / max-power side.
+        let big = state.allocate_object_id();
+        state.objects.insert(GameObject::new(big, p, Zone::Battlefield, 0, Characteristics {
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(8)),
+            toughness: Some(PtValue::Fixed(8)),
+            ..Default::default()
+        }));
         // An EXTRA already-tapped creature so untap-all effects show a
         // delta — but NOT the target creature (selection_for targets the
         // first creature, and a tap-spell on an already-tapped target

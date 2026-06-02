@@ -40,7 +40,6 @@ Chain Stasis
 Chandra, Fire of Kaladesh
 Charge Across the Araba
 Chosen of Markov
-Citywide Bust
 Civic Gardener
 Clever Conjurer
 Clive, Ifrit's Dominant
@@ -255,7 +254,6 @@ Teferi's Contingency
 Terra, Magical Adept
 Thassa's Rebuff
 The Akroan War
-The First Iroan Games
 The Legend of Yangchen
 The Many Deeds of Belzenlok
 The Modern Age
