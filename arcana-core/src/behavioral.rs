@@ -204,16 +204,19 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
         let stack_spell = add_dummy_stack_spell(&mut state);
         let dummy = first_battlefield_creature(&state, 0);
         let targets = selection_for(&state, &ability.target_requirements, dummy, stack_spell);
-        let pt = crate::triggers::PendingTrigger {
-            source: src,
-            trigger_id: ability.id,
-            controller: 0,
-            // Generic "this entered" event — covers the dominant ETB
-            // triggers; event-specific readers (damage/combat) get None.
-            trigger_event: crate::events::GameEvent::EntersBattlefield {
+        let dummy = first_battlefield_creature(&state, 0);
+        // Synthesize the event the trigger's CONDITION actually matches
+        // (Saga lore counter, transform, combat, death, cast, …) so it
+        // fires faithfully; falls back to a generic ETB for execution
+        // (panic-catching) when the condition can't be synthesized.
+        let synth = synth_event(&ability.trigger_condition, src, 0, stack_spell, dummy);
+        let event = synth.clone().unwrap_or(
+            crate::events::GameEvent::EntersBattlefield {
                 object_id: src, from_zone: Zone::Stack, was_cast: true,
-            },
-            targets,
+            });
+        let pt = crate::triggers::PendingTrigger {
+            source: src, trigger_id: ability.id, controller: 0,
+            trigger_event: event, targets,
         };
         let before = Snapshot::capture(&state);
         let effects = (ability.effect)(&state, &pt, reg);
@@ -225,19 +228,79 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
             if state.pending_choice.is_some() { break; }
         }
         let after = Snapshot::capture(&state);
-        // Only render a SILENT-NO-OP verdict for ETB triggers — the one
-        // condition our synthesized EntersBattlefield event fires
-        // faithfully. Saga chapters (lore counters), transform/werewolf
-        // (day/night), combat/death triggers need other events; probing
-        // their delta with an ETB event is a false-positive, so we skip
-        // the no-op verdict (the execution above still catches panics).
-        if matches!(ability.trigger_condition,
-            crate::triggers::TriggerCondition::SelfEntersBattlefield)
-        {
+        // Render a SILENT-NO-OP verdict only when we synthesized the
+        // CONDITION'S real event (so the trigger fired faithfully).
+        // Custom predicates / un-synthesizable conditions are executed
+        // (panic-catching) but skip the verdict.
+        if synth.is_some() {
             out.push(ProbeResult { had_effects, observable_delta: before != after });
         }
     }
     out
+}
+
+/// Synthesize a [`crate::events::GameEvent`] that fires `cond` on
+/// `source`, so the trigger resolves faithfully in the probe. `None`
+/// when the condition can't be reproduced (Custom predicates, or filters
+/// no harness object satisfies) — caller skips the no-op verdict.
+fn synth_event(
+    cond: &crate::triggers::TriggerCondition,
+    source: ObjectId,
+    controller: PlayerId,
+    stack_spell: ObjectId,
+    dummy: Option<ObjectId>,
+) -> Option<crate::events::GameEvent> {
+    use crate::triggers::{TriggerCondition as TC, TriggerSelf};
+    use crate::events::{GameEvent as GE, DamageTarget};
+    use crate::targets::ControllerConstraint as CC;
+    // ControllerConstraint → a concrete player.
+    let who = |c: &CC| match c { CC::Opponent => 1 - controller, _ => controller };
+    let other = dummy.unwrap_or(source);
+    Some(match cond {
+        TC::SelfEntersBattlefield =>
+            GE::EntersBattlefield { object_id: source, from_zone: Zone::Stack, was_cast: true },
+        TC::SelfDies => GE::Dies { object_id: source },
+        TC::SelfAttacks => GE::CreatureAttacks {
+            attacker: source, defending: crate::combat::DefendingEntity::Player(1 - controller) },
+        TC::SelfAttacksUnblocked => GE::CreatureNotBlocked { attacker: source },
+        TC::SelfBecomesBlocked => GE::CreatureBlocked { attacker: source, blockers: vec![other] },
+        TC::SelfBlocks => GE::CreatureBlocks { blocker: source, attacker: other },
+        TC::SelfBlocksOrBecomesBlocked => GE::CreatureBlocks { blocker: source, attacker: other },
+        TC::SelfBecomesTapped => GE::Tapped { object_id: source },
+        TC::SelfSpecializes => GE::Specialized { object_id: source },
+        TC::SelfBecomesTarget { caster } => GE::BecomesTarget {
+            target: source, source: stack_spell, controller: who(caster) },
+        TC::SelfIsDealtDamage { combat_only } => GE::DamageDealt {
+            source: other, target: DamageTarget::Object(source), amount: 1, is_combat: *combat_only },
+        TC::StepBegins { step, .. } => GE::StepBegins { step: *step },
+        TC::PhaseBegins { phase, .. } => GE::PhaseBegins { phase: *phase },
+        TC::LifeGained { player } => GE::LifeGained { player: who(player), amount: 1 },
+        TC::CardDrawn { player } => GE::DrawCard { player: who(player), object_id: other },
+        TC::CardDiscarded { player } => GE::Discarded { player: who(player), object_id: other },
+        TC::CreatureAttacks { .. } => GE::CreatureAttacks {
+            attacker: other, defending: crate::combat::DefendingEntity::Player(1 - controller) },
+        TC::Sacrificed { .. } => GE::Sacrifice { player: controller, object_id: other },
+        TC::SpellCast { caster, .. } => GE::SpellCast {
+            object_id: stack_spell, card_id: 0, controller: who(caster),
+            targets: crate::targets::TargetSelection::new() },
+        TC::DamageDealt { combat_only, .. } => GE::DamageDealt {
+            source, target: DamageTarget::Object(other), amount: 1, is_combat: *combat_only },
+        TC::ZoneChange { to, from, .. } => GE::ZoneChange {
+            object_id: source, from: from.unwrap_or(Zone::Battlefield), to: *to,
+            new_id: source, cause: crate::events::MoveCause::SpellResolution },
+        // Saga chapter / counter triggers: stamp the source with the
+        // condition's counter kind + chapter number.
+        TC::CounterAdded { on, kind, chapter } => {
+            let object_id = match on { TriggerSelf::Source => source, _ => source };
+            GE::CounterAdded {
+                object_id,
+                kind: kind.unwrap_or(crate::types::CounterKind::PlusOnePlusOne),
+                count: chapter.unwrap_or(1),
+            }
+        }
+        // Unreproducible — skip the verdict (still executed via ETB fallback).
+        TC::Custom(_) => return None,
+    })
 }
 
 /// Probe each of a card's ACTIVATED abilities: invoke its effect in a
@@ -487,7 +550,10 @@ fn legal_target(
             if req.matches_choice(&choice, state, 0) { return Some(choice); }
         }
     }
-    for p in 0..state.num_players() {
+    // Opponent (player 1) FIRST: "target player loses N life" punishers
+    // self-target to a net-zero delta otherwise (Blood Artist drains
+    // player 0 by 1 and gains 1 → no observable change).
+    for p in [1, 0] {
         for choice in [
             TargetChoice::Player(p),
             TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)),
