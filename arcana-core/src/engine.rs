@@ -2112,6 +2112,21 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
         //     targets, CR 603.3d) or pushes a stack entry + ChooseTargets
         //     prompt; the latter case returns and the settle loop yields.
         if !state.pending_trigger_queue.is_empty() {
+            // Draining a targeted trigger pushes a ChooseTargets choice.
+            // If a resolution is already parked on a choice (a scry /
+            // target / pay prompt mid-resolution), pushing now would trip
+            // the single-slot invariant. Putting a triggered ability on the
+            // stack and choosing its targets happens only when a player
+            // would next receive priority (CR 603.3), so leave the queue
+            // intact and yield; it drains once the parked resolution
+            // finishes and the choice clears. (SBAs above still run — they
+            // don't push a target choice and the engine relies on them
+            // settling mid-resolution.) Found by the random-game harness,
+            // seed 463: a spell parked on a scry OrderCards while a queued
+            // trigger tried to push its ChooseTargets.
+            if state.pending_choice.is_some() {
+                return;
+            }
             if drain_one_queued_targeted_trigger(state, registry) {
                 // A choice was pushed — let settle detect it and yield.
                 return;
@@ -5535,6 +5550,41 @@ mod tests {
 
     fn start(seed: u64) -> (GameState, EngineYield) {
         new_game_from_characteristics(vec![simple_deck(), simple_deck()], seed)
+    }
+
+    #[test]
+    fn targeted_trigger_drain_defers_while_a_choice_is_pending() {
+        // Regression (random-game harness, seed 463 / state.rs:827). A
+        // queued targeted trigger must NOT push its ChooseTargets while a
+        // resolution is already parked on a choice (e.g. a spell mid-scry):
+        // that trips the single-slot pending_choice invariant. The drain is
+        // deferred — queue left intact, function yields — and runs once the
+        // choice clears. (SBAs above the drain still run.)
+        use crate::actions::{ChoiceContext, ChoiceKind, PendingChoice};
+        use crate::triggers::PendingTrigger;
+
+        let mut s = GameState::new(2, 0);
+        s.pending_choice = Some(PendingChoice {
+            id: 1,
+            choosing_player: 0,
+            context: ChoiceContext::ResolvingStack(1),
+            kind: ChoiceKind::YesNo { prompt: 0 },
+        });
+        s.pending_trigger_queue.push_back(PendingTrigger {
+            source: 1,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: GameEvent::TurnBegins { player: 0, turn_number: 1 },
+            targets: Default::default(),
+        });
+
+        // Must not panic (it would, pre-fix, when the drain pushed a 2nd
+        // choice), and must leave both the queue and the choice untouched.
+        run_sba_and_triggers(&mut s, &reg());
+        assert_eq!(s.pending_trigger_queue.len(), 1,
+            "queued trigger must stay deferred while a choice is pending");
+        assert_eq!(s.pending_choice.as_ref().map(|c| c.id), Some(1),
+            "the pending choice must be untouched");
     }
 
     #[test]
