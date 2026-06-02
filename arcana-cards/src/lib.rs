@@ -792,7 +792,7 @@ mod tests {
         // 400 games (200 uniform + 200 biased) exercises every KNOWN_OPEN
         // seed in ~20s. Running with a larger GAMES is a valid deeper sweep
         // and may surface NEW findings beyond the recorded baseline.
-        const GAMES: u64 = 400;
+        const GAMES: u64 = 500;
         const STEP_CAP: usize = 8000;
         // Safety guards — a fuzz harness must never be able to OOM the
         // machine. Biased aggressive play can reach large boards where the
@@ -818,7 +818,13 @@ mod tests {
         // expected (logged, not fatal); a failure anywhere else, or a
         // listed seed failing for a *different* reason, is a NEW finding
         // and fails the test. Remove an entry when its bug is fixed.
-        const KNOWN_OPEN: &[(u64, &str)] = &[];
+        //   state.rs:827 — push_pending_choice single-slot assert: an
+        //                  effect posts a second pending choice while one is
+        //                  already pending (choice-machinery bug, same
+        //                  family as Pox / the parked-resolution fix).
+        const KNOWN_OPEN: &[(u64, &str)] = &[
+            (463, "state.rs:827"),
+        ];
 
         // Capture the panic *site* per game (and suppress the default
         // backtrace spam) so failures are actionable.
@@ -901,13 +907,49 @@ mod tests {
         // Returns Err with a human-readable reason on the first breach.
         fn game_invariants(
             state: &arcana_core::state::GameState,
+            context: &arcana_core::actions::DecisionContext,
         ) -> Result<(), String> {
-            // (1) State-based actions are settled at a decision point.
-            // No player may still satisfy a loss condition (CR 704):
-            // life <= 0, drawn-from-empty-library, or >=10 poison. In a
-            // 2-player game a loss also ends the game, so seeing a
-            // `has_lost` flag at a *pending* (non-over) decision means
-            // SBAs leaked a player who should already have lost.
+            use arcana_core::actions::DecisionContext;
+            use arcana_core::zones::Zone;
+            use arcana_core::types::CounterKind;
+            use arcana_core::effects::KeywordAbility;
+
+            // (1) Context-INDEPENDENT invariants — valid at any decision.
+            // Object identity: every live arena object has a unique id. A
+            // duplicate means a re-id/clone bug (the London-bottom re-id
+            // path could have introduced one).
+            let mut seen = std::collections::HashSet::new();
+            for o in state.objects.iter() {
+                if !seen.insert(o.id) {
+                    return Err(format!("duplicate object id {} in arena", o.id));
+                }
+            }
+            // Runaway-mana ceiling. Floating mana empties at end of step
+            // (CR 500.4) but legitimately floats WITHIN a step, so we don't
+            // assert emptiness — only a loose ceiling that would catch a
+            // mana-doubling loop (no honest game floats this much).
+            for p in 0..state.num_players() {
+                if state.player(p).mana_pool.total() > 10_000 {
+                    return Err(format!(
+                        "runaway mana: player {p} pool has {} units",
+                        state.player(p).mana_pool.total()));
+                }
+            }
+
+            // (2) State-based-action leaks. SBAs are only GUARANTEED applied
+            // when a player would receive priority (CR 704.4). At casting
+            // sub-steps, combat declarations, and mid-resolution choices a
+            // loss/death condition can hold TRANSIENTLY before the action
+            // finishes and SBAs run (e.g. a "draw 3" that decks a player
+            // then prompts a choice). So only assert "should already be
+            // dead/lost" at a Priority decision point — a genuine leak
+            // persists to the next priority check, so nothing real is missed.
+            if !matches!(context, DecisionContext::Priority) {
+                return Ok(());
+            }
+
+            // Player loss conditions (CR 704.5a/c, poison). In 2p a loss
+            // ends the game, so a still-pending `has_lost` is itself a leak.
             for p in 0..state.num_players() {
                 let pl = state.player(p);
                 if pl.has_lost {
@@ -916,8 +958,7 @@ mod tests {
                 }
                 if pl.life <= 0 {
                     return Err(format!(
-                        "SBA leak: player {p} at {} life, game still pending",
-                        pl.life));
+                        "SBA leak: player {p} at {} life, game still pending", pl.life));
                 }
                 if pl.poison_counters >= 10 {
                     return Err(format!(
@@ -929,13 +970,40 @@ mod tests {
                         "SBA leak: player {p} drew from empty library, pending"));
                 }
             }
-            // (2) Object identity: every live arena object has a unique
-            // id. A duplicate means a re-id/clone bug (the kind the
-            // London-bottom re-id path could have introduced).
-            let mut seen = std::collections::HashSet::new();
-            for o in state.objects.iter() {
-                if !seen.insert(o.id) {
-                    return Err(format!("duplicate object id {} in arena", o.id));
+
+            // Battlefield permanent death SBAs (CR 704.5f/g/h/i). The
+            // lethality test MUST mirror the engine's own
+            // `check_creature_graveyard`: layer-aware `computed_toughness`
+            // (not raw counter-only toughness, which false-positives on
+            // anthem/pump) and the Indestructible exemption (CR 702.12b).
+            for o in state.objects.objects_in_zone(Zone::Battlefield) {
+                if o.is_creature() {
+                    let indestructible =
+                        state.has_keyword(o.id, &KeywordAbility::Indestructible);
+                    if let Some(t) = state.computed_toughness(o.id) {
+                        let dies = t <= 0
+                            || (!indestructible && t > 0
+                                && (o.damage_marked as i32) >= t)
+                            || (!indestructible && t > 0
+                                && o.damage_marked > 0 && o.has_deathtouch_damage);
+                        if dies {
+                            return Err(format!(
+                                "SBA leak: creature {} should be in the graveyard \
+                                 (toughness {t}, {} damage, deathtouch={}, \
+                                 indestructible={indestructible}) but is still on \
+                                 the battlefield",
+                                o.id, o.damage_marked, o.has_deathtouch_damage));
+                        }
+                    }
+                }
+                // 704.5i — a planeswalker with 0 loyalty (no indestructible
+                // exemption; indestructible only prevents destruction).
+                if o.is_planeswalker()
+                    && o.count_counters(CounterKind::Loyalty) == 0
+                {
+                    return Err(format!(
+                        "SBA leak: planeswalker {} at 0 loyalty but still on the \
+                         battlefield", o.id));
                 }
             }
             Ok(())
@@ -981,13 +1049,13 @@ mod tests {
                     match yld {
                         EngineYield::GameOver(_) =>
                             return Ok((min_life, attacks, max_obj, max_legal, false)),
-                        EngineYield::PendingDecision { legal_actions, .. } => {
-                            // Mid-game invariants: the engine checks SBAs
-                            // and settles before handing back a decision,
-                            // so the state must be internally consistent
-                            // here. A violation is an engine bug the
-                            // panic/stuck/terminate checks would miss.
-                            game_invariants(&state)?;
+                        EngineYield::PendingDecision { legal_actions, ref context, .. } => {
+                            // Mid-game invariants. SBA-leak checks are gated
+                            // to Priority contexts inside (CR 704.4); object-
+                            // identity / mana checks run at every decision.
+                            // A violation is an engine bug the panic / stuck /
+                            // terminate checks would miss.
+                            game_invariants(&state, context)?;
                             for p in 0..state.num_players() {
                                 min_life = min_life.min(state.player(p).life);
                             }
