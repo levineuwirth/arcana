@@ -803,12 +803,13 @@ mod tests {
         // surfaced without crashing the run.
         // Total live objects (token-loop backstop).
         const OBJ_CAP: usize = 4000;
-        // Battlefield creatures across both players. The blocker-subset and
-        // damage-distribution enumerations are exponential in creature count
-        // (2^blockers, product of factorials), so this — not total objects —
-        // is the real OOM gate; the explosion is reachable at a few dozen
-        // creatures. Capping here keeps any single legal-action set bounded.
-        const CREATURE_CAP: usize = 24;
+        // Battlefield creatures across both players. The combat-enumeration
+        // explosion this once guarded (2^blockers, k! orderings) is now
+        // bounded engine-side by MAX_COMBAT_ENUM, and target-selection by
+        // MAX_TARGET_SELECTIONS, so this is no longer an OOM gate — it just
+        // bounds per-game complexity / step time. Kept generous so bigger
+        // boards (and the deeper combat they drive) get exercised.
+        const CREATURE_CAP: usize = 64;
         const LEGAL_CAP: usize = 200_000;
 
         // Seeds known to hit still-open engine bugs that biased combat

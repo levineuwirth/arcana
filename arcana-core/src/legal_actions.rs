@@ -1529,6 +1529,14 @@ fn legal_priority_actions(
     actions
 }
 
+/// Ceiling on how many target selections one requirement-list produces.
+/// The Cartesian product across single-target clauses is n^k in board
+/// size; this keeps a single spell/ability's cast/activate fan-out
+/// bounded (mirrors [`MAX_COMBAT_ENUM`]). 256 is far more target
+/// permutations than any consumer enumerates; the lowest-id selections
+/// come first, and an exact combination can always be submitted directly.
+const MAX_TARGET_SELECTIONS: usize = 256;
+
 /// Cartesian product of legal target choices across the requirement
 /// list. Returns `[TargetSelection::new()]` (single empty selection)
 /// if there are no requirements. For a single-target requirement
@@ -1556,7 +1564,13 @@ pub(crate) fn enumerate_target_selections(
             crate::targets::TargetCount::Exactly(1) => {
                 let choices = req.filter.enumerate_legal(state, source_controller);
                 let mut next = Vec::new();
-                for partial in &partials {
+                // Bound the Cartesian product across single-target clauses:
+                // a k-target spell over an n-permanent board is otherwise
+                // n^k. The lowest-id targets are enumerated first (choices
+                // come pre-sorted), so a representative selection is always
+                // present; a consumer wanting an exact combination submits
+                // it directly. See [`MAX_TARGET_SELECTIONS`].
+                'build: for partial in &partials {
                     for choice in &choices {
                         // Re-check the outer controller constraint —
                         // `enumerate_legal` doesn't apply it.
@@ -1566,6 +1580,7 @@ pub(crate) fn enumerate_target_selections(
                         let mut extended = partial.clone();
                         extended.push(choice.clone());
                         next.push(extended);
+                        if next.len() >= MAX_TARGET_SELECTIONS { break 'build; }
                     }
                 }
                 if next.is_empty() {
@@ -2571,6 +2586,25 @@ mod tests {
         assert_eq!(perms[0], items, "identity ordering must be emitted first");
         // Small inputs stay fully exhaustive (3! = 6).
         assert_eq!(permutations(&[1, 2, 3]).len(), 6);
+    }
+
+    #[test]
+    fn target_selections_capped_on_multi_target_spell() {
+        // Two single-target clauses over a 40-creature board would be
+        // 40*40 = 1600 selections uncapped; the cap bounds it.
+        let mut s = GameState::new(2, 0);
+        for _ in 0..40 {
+            put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1));
+        }
+        let tc = || TargetRequirement::target_creature();
+        let sels = enumerate_target_selections(&[tc(), tc()], &s, 0);
+        assert!(!sels.is_empty(), "at least one selection");
+        assert!(sels.len() <= MAX_TARGET_SELECTIONS,
+            "target selections must be capped, got {}", sels.len());
+        // A single-target clause over a 40-creature board is just 40 — well
+        // under the cap, so it stays fully enumerated.
+        let one = enumerate_target_selections(&[tc()], &s, 0);
+        assert_eq!(one.len(), 40);
     }
 
     #[test]
