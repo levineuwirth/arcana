@@ -300,6 +300,19 @@ fn legal_special_actions(
 // Combat declarations
 // =============================================================================
 
+/// Upper bound on how many actions any single combat enumerator emits.
+/// The blocker-subset (2^k), damage-assignment-order (k!), and damage-
+/// distribution spaces are combinatorial, and a large board can push one
+/// `legal_actions` result into the millions — enough to OOM the process
+/// (the random-game harness, before this cap, drove a single enumeration
+/// to a 43 GB allocation; the damage-order space alone reached 9! =
+/// 362880). Past this many the enumerator stops early. The canonical /
+/// lowest-id selections are generated first, so a representative legal
+/// action is always present, and a search/AI consumer that wants the
+/// full space constructs the remaining selections itself — the same
+/// contract as `BottomCards` and multi-attacker block batches.
+const MAX_COMBAT_ENUM: usize = 1024;
+
 fn legal_combat_declaration_actions(
     state: &GameState,
     player: PlayerId,
@@ -335,15 +348,17 @@ fn enumerate_blocker_orderings(state: &GameState) -> Vec<Action> {
         .collect();
     if per_attacker.is_empty() { return Vec::new(); }
 
-    // Cartesian product across attackers.
+    // Cartesian product across attackers, bounded each round so the
+    // running product can't explode (see [`MAX_COMBAT_ENUM`]).
     let mut acc: Vec<Vec<(ObjectId, Vec<ObjectId>)>> = vec![Vec::new()];
     for (atk, perms) in &per_attacker {
         let mut next: Vec<Vec<(ObjectId, Vec<ObjectId>)>> = Vec::new();
-        for partial in &acc {
+        'product: for partial in &acc {
             for p in perms {
                 let mut extended = partial.clone();
                 extended.push((*atk, p.clone()));
                 next.push(extended);
+                if next.len() >= MAX_COMBAT_ENUM { break 'product; }
             }
         }
         acc = next;
@@ -378,11 +393,12 @@ fn enumerate_combat_damage_assignments(state: &GameState) -> Vec<Action> {
             .map(|&atk| (atk, enumerate_distributions_for_attacker(state, atk)))
             .collect();
 
-    // Cartesian product across attackers.
+    // Cartesian product across attackers, bounded each round (see
+    // [`MAX_COMBAT_ENUM`]).
     let mut acc: Vec<Vec<crate::combat::DamageAssignment>> = vec![Vec::new()];
     for (atk, dists) in &per_attacker {
         let mut next: Vec<Vec<crate::combat::DamageAssignment>> = Vec::new();
-        for partial in &acc {
+        'product: for partial in &acc {
             for d in dists {
                 let mut extended = partial.clone();
                 extended.push(crate::combat::DamageAssignment {
@@ -390,6 +406,7 @@ fn enumerate_combat_damage_assignments(state: &GameState) -> Vec<Action> {
                     distribution: d.clone(),
                 });
                 next.push(extended);
+                if next.len() >= MAX_COMBAT_ENUM { break 'product; }
             }
         }
         acc = next;
@@ -438,6 +455,11 @@ fn recurse_distributions(
     has_trample: bool,
     out: &mut Vec<Vec<(ObjectId, u32)>>,
 ) {
+    // Bound the distribution space (it grows ~O(power^blockers)). The
+    // canonical "dump all on the first blocker" is emitted before any
+    // recursion, so the cap never starves the caller of a legal
+    // assignment. See [`MAX_COMBAT_ENUM`].
+    if out.len() >= MAX_COMBAT_ENUM { return; }
     if remaining == 0 {
         out.push(current);
         return;
@@ -452,6 +474,7 @@ fn recurse_distributions(
     // Option 2 — pay lethal-or-more, continue to next blocker.
     let lb = lethal.max(1);
     for k in lb..remaining {
+        if out.len() >= MAX_COMBAT_ENUM { return; }
         let mut next = current.clone();
         next.push((blk, k));
         recurse_distributions(remaining - k, rest, next, has_trample, out);
@@ -464,6 +487,7 @@ fn recurse_distributions(
     // can exist.
     if has_trample && rest.is_empty() {
         for k in lb..remaining {
+            if out.len() >= MAX_COMBAT_ENUM { return; }
             let mut next = current.clone();
             next.push((blk, k));
             out.push(next);
@@ -478,19 +502,36 @@ fn raw_remaining_lethal(state: &GameState, id: ObjectId) -> u32 {
     (t as u32).saturating_sub(obj.damage_marked)
 }
 
+/// Lexicographic permutations of `items`, identity-order first, capped
+/// at [`MAX_COMBAT_ENUM`] total. The cap threads INTO the recursion (via
+/// the shared `out`), so the intermediate sub-permutation lists never
+/// blow up either — a 9-blocked attacker yields ≤1024 orderings rather
+/// than 9! = 362880. The first ordering emitted is the input order, so a
+/// canonical damage-assignment order is always available.
 fn permutations(items: &[ObjectId]) -> Vec<Vec<ObjectId>> {
-    if items.is_empty() { return vec![Vec::new()]; }
     let mut out = Vec::new();
-    for i in 0..items.len() {
-        let mut rest: Vec<ObjectId> = items.to_vec();
-        let picked = rest.remove(i);
-        for sub in permutations(&rest) {
-            let mut perm = vec![picked];
-            perm.extend(sub);
-            out.push(perm);
-        }
-    }
+    permute_capped(items, Vec::new(), &mut out);
     out
+}
+
+fn permute_capped(
+    rest: &[ObjectId],
+    prefix: Vec<ObjectId>,
+    out: &mut Vec<Vec<ObjectId>>,
+) {
+    if out.len() >= MAX_COMBAT_ENUM { return; }
+    if rest.is_empty() {
+        out.push(prefix);
+        return;
+    }
+    for i in 0..rest.len() {
+        if out.len() >= MAX_COMBAT_ENUM { return; }
+        let mut sub: Vec<ObjectId> = rest.to_vec();
+        let picked = sub.remove(i);
+        let mut next_prefix = prefix.clone();
+        next_prefix.push(picked);
+        permute_capped(&sub, next_prefix, out);
+    }
 }
 
 /// Emit the empty declaration (no attacks) plus one declaration per
@@ -511,6 +552,10 @@ fn enumerate_attacker_declarations(state: &GameState, active: PlayerId) -> Vec<A
     eligible.sort();
 
     for atk in eligible {
+        // Bound the (linear) attacker×defender fan-out for uniformity with
+        // the other combat enumerators (see [`MAX_COMBAT_ENUM`]); the empty
+        // "no attack" declaration is already emitted first.
+        if out.len() >= MAX_COMBAT_ENUM { break; }
         // CR 701.38a — a goaded creature can't attack any player who
         // is goading it. Planeswalker defenders are still legal (Goad
         // restricts only the "choose the defending *player*" branch).
@@ -616,6 +661,10 @@ fn enumerate_blocker_declarations(state: &GameState, defender: PlayerId) -> Vec<
     attackers.sort();
 
     for atk in attackers {
+        // Total emitted DeclareBlockers actions are bounded too: a wide
+        // board with many attackers could otherwise sum to a large set
+        // even with each attacker's subsets individually capped.
+        if out.len() >= MAX_COMBAT_ENUM { break; }
         // Per-attacker eligibility filter (Flying/Reach, Protection).
         // Menace is now expressed via `block_constraints`, not per-
         // blocker eligibility.
@@ -641,10 +690,11 @@ fn enumerate_blocker_declarations(state: &GameState, defender: PlayerId) -> Vec<
         // Filter the emitted subsets down to the constraint-allowed
         // sizes; drop the empty subset (already emitted above).
         let subsets = enumerate_equivalence_subsets(
-            &eligible_for_atk, max_size,
+            &eligible_for_atk, max_size, MAX_COMBAT_ENUM,
             |&id| object_equivalence_key(state, id),
         );
         for subset in subsets {
+            if out.len() >= MAX_COMBAT_ENUM { break; }
             let size = subset.len() as u32;
             if size == 0 { continue; }
             if !constraints.allows_block_count(size) { continue; }
@@ -1585,6 +1635,7 @@ fn enumerate_mode_combinations(
 pub(crate) fn enumerate_equivalence_subsets<T, K, F>(
     candidates: &[T],
     max_size: usize,
+    cap: usize,
     mut key: F,
 ) -> Vec<Vec<T>>
 where
@@ -1608,17 +1659,24 @@ where
 
     let mut out = Vec::new();
     let mut current = Vec::new();
-    enumerate_groups(&groups, max_size, 0, &mut current, &mut out);
+    enumerate_groups(&groups, max_size, 0, &mut current, &mut out, cap);
     out
 }
 
+/// `cap` bounds the number of subsets emitted. Mana-reduction callers
+/// (delve / convoke / improvise) pass `usize::MAX` and are naturally
+/// bounded by `max_size` (the cost's generic pips); the combat blocker
+/// enumerator passes [`MAX_COMBAT_ENUM`] because its `max_size` is the
+/// eligible-blocker count and the subset space is otherwise 2^k.
 fn enumerate_groups<T: Copy>(
     groups: &[Vec<T>],
     remaining: usize,
     gidx: usize,
     current: &mut Vec<T>,
     out: &mut Vec<Vec<T>>,
+    cap: usize,
 ) {
+    if out.len() >= cap { return; }
     if gidx == groups.len() {
         out.push(current.clone());
         return;
@@ -1626,10 +1684,11 @@ fn enumerate_groups<T: Copy>(
     let group = &groups[gidx];
     let max_take = group.len().min(remaining);
     for take in 0..=max_take {
+        if out.len() >= cap { return; }
         for item in group.iter().take(take) {
             current.push(*item);
         }
-        enumerate_groups(groups, remaining - take, gidx + 1, current, out);
+        enumerate_groups(groups, remaining - take, gidx + 1, current, out, cap);
         for _ in 0..take {
             current.pop();
         }
@@ -1718,7 +1777,7 @@ fn enumerate_delve_subsets(
     let candidates: Vec<ObjectId> =
         sorted_ids_in_zone(state, Zone::Graveyard(player));
     enumerate_equivalence_subsets(
-        &candidates, max_generic,
+        &candidates, max_generic, usize::MAX,
         |&id| object_equivalence_key(state, id),
     )
 }
@@ -1778,7 +1837,7 @@ fn enumerate_convoke_subsets(
 ) -> Vec<Vec<ObjectId>> {
     let candidates = convoke_candidate_creatures(state, player);
     enumerate_equivalence_subsets(
-        &candidates, max_pips,
+        &candidates, max_pips, usize::MAX,
         |&id| convoke_creature_key(state, id),
     )
 }
@@ -1930,7 +1989,7 @@ fn enumerate_improvise_subsets(
 ) -> Vec<Vec<ObjectId>> {
     let candidates = improvise_candidate_artifacts(state, player);
     enumerate_equivalence_subsets(
-        &candidates, max_generic,
+        &candidates, max_generic, usize::MAX,
         |&id| object_equivalence_key(state, id),
     )
 }
@@ -2496,6 +2555,37 @@ mod tests {
             id: 7, response: crate::actions::ChoiceResponse::PayOrDecline { pay } };
         assert!(actions.contains(&pays(true)), "pay must be offered when affordable");
         assert!(actions.contains(&pays(false)), "decline is always available");
+    }
+
+    // --- Combat enumeration caps (anti-OOM) --------------------------------
+
+    #[test]
+    fn permutations_capped_and_identity_first() {
+        // 9 blockers => 9! = 362880 orderings uncapped. The cap bounds it,
+        // and the identity (input) order is emitted first so a canonical
+        // OrderBlockers is always available.
+        let items: Vec<ObjectId> = (1..=9).collect();
+        let perms = permutations(&items);
+        assert!(perms.len() <= MAX_COMBAT_ENUM,
+            "permutations must be capped, got {}", perms.len());
+        assert_eq!(perms[0], items, "identity ordering must be emitted first");
+        // Small inputs stay fully exhaustive (3! = 6).
+        assert_eq!(permutations(&[1, 2, 3]).len(), 6);
+    }
+
+    #[test]
+    fn equivalence_subsets_respect_cap() {
+        // 30 distinct keys => 2^30 subsets uncapped (would OOM). The cap
+        // keeps it bounded; the empty subset (canonical) is generated first.
+        let items: Vec<u32> = (0..30).collect();
+        let subs = enumerate_equivalence_subsets(&items, 30, MAX_COMBAT_ENUM, |&x| x);
+        assert!(subs.len() <= MAX_COMBAT_ENUM,
+            "subset enumeration must be capped, got {}", subs.len());
+        assert!(subs.iter().any(|s| s.is_empty()), "empty subset present");
+        // Mana callers pass usize::MAX and stay bounded by max_size instead:
+        // size<=2 over 5 distinct keys is small and fully enumerated.
+        let bounded = enumerate_equivalence_subsets(&[1u32, 2, 3, 4, 5], 2, usize::MAX, |&x| x);
+        assert_eq!(bounded.len(), 1 + 5 + 10); // C(5,0)+C(5,1)+C(5,2)
     }
 
     #[test]
