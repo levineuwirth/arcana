@@ -21,3 +21,5 @@ pub mod walking_dead;
 pub mod quarum_trench_gnomes;
 pub mod glyph_of_delusion;
 pub mod aisling_leprechaun;
+pub mod falling_star;
+pub mod blazing_effigy;

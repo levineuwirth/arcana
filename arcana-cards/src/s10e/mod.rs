@@ -57,3 +57,4 @@ pub mod ghost_warden;
 pub mod sky_weaver;
 pub mod orcish_artillery;
 pub mod scoria_wurm;
+pub mod samite_healer;

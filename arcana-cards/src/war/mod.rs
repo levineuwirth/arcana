@@ -47,3 +47,5 @@ pub mod relentless_advance;
 pub mod invading_manticore;
 pub mod herald_of_the_dreadhorde;
 pub mod lazotep_reaver;
+pub mod invade_the_city;
+pub mod the_elderspell;

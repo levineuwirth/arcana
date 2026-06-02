@@ -61,3 +61,4 @@ pub mod mage_il_vec;
 pub mod stronghold_assassin;
 pub mod armor_sliver;
 pub mod sliver_queen;
+pub mod acidic_sliver;

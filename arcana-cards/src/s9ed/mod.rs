@@ -51,3 +51,4 @@ pub mod utopia_tree;
 pub mod ley_druid;
 pub mod thought_courier;
 pub mod anaba_shaman;
+pub mod master_healer;

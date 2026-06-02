@@ -72,3 +72,5 @@ pub mod flaxen_intruder_welcome_home;
 pub mod lonesome_unicorn_rider_in_need;
 pub mod mistford_river_turtle;
 pub mod joust;
+pub mod irencrag_pyromancer;
+pub mod reaper_of_night_harvest_fear;

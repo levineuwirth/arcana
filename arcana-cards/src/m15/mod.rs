@@ -41,3 +41,4 @@ pub mod zof_shade;
 pub mod carnivorous_moss_beast;
 pub mod shadowcloak_vampire;
 pub mod ancient_silverback;
+pub mod act_on_impulse;

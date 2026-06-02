@@ -112,3 +112,5 @@ pub mod vedalken_entrancer;
 pub mod time_to_feed;
 pub mod take_heart;
 pub mod flames_of_the_firebrand;
+pub mod seismic_elemental;
+pub mod cinder_elemental;

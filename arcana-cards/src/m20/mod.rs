@@ -80,3 +80,4 @@ pub mod brightwood_tracker;
 pub mod pack_mastiff;
 pub mod chandra_s_embercat;
 pub mod growth_cycle;
+pub mod sorcerer_of_the_fang;

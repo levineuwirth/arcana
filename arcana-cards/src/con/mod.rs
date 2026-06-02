@@ -26,3 +26,5 @@ pub mod sacellum_archers;
 pub mod vagrant_plowbeasts;
 pub mod scattershot_archer;
 pub mod exploding_borders;
+pub mod spore_burst;
+pub mod might_of_alara;

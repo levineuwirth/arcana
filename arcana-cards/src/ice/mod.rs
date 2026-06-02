@@ -26,3 +26,4 @@ pub mod juniper_order_druid;
 pub mod zuran_enchanter;
 pub mod grizzled_wolverine;
 pub mod freyalise_supplicant;
+pub mod elvish_healer;

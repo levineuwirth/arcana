@@ -61,3 +61,4 @@ pub mod laboratory_drudge;
 pub mod hans_eriksson;
 pub mod ancient_animus;
 pub mod perilous_myr;
+pub mod mnemonic_deluge;

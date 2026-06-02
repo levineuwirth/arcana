@@ -76,3 +76,4 @@ pub mod brutal_cathar_moonrage_brute;
 pub mod tireless_hauler_dire_strain_brawler;
 pub mod overwhelmed_archivist_archive_haunt;
 pub mod jerren_corrupted_bishop_ormendahl_the_corrupter;
+pub mod enduring_angel_angelic_enforcer;

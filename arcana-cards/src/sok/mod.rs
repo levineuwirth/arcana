@@ -34,3 +34,4 @@ pub mod descendant_of_soramaro;
 pub mod kitsune_loreweaver;
 pub mod sakura_tribe_scout;
 pub mod charge_across_the_araba;
+pub mod burning_eye_zubera;

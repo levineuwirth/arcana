@@ -41,3 +41,4 @@ pub mod the_weatherseed_treaty;
 pub mod gaea_s_might;
 pub mod tail_swipe;
 pub mod chaotic_transformation;
+pub mod slimefoot_s_survey;

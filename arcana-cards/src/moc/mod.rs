@@ -28,3 +28,4 @@ pub mod order_of_midnight_alter_fate;
 pub mod murderous_rider_swift_end;
 pub mod spell_swindle;
 pub mod excise_the_imperfect;
+pub mod goblin_medics;

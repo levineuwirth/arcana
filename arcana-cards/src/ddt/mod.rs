@@ -11,3 +11,4 @@ pub mod goblin_tunneler;
 pub mod goblin_diplomats;
 pub mod tidal_warrior;
 pub mod aquitect_s_will;
+pub mod rootwater_hunter;

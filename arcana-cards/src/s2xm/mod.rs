@@ -47,3 +47,4 @@ pub mod voice_of_resurgence;
 pub mod orcish_vandal;
 pub mod fulminator_mage;
 pub mod heat_shimmer;
+pub mod kuldotha_flamefiend;

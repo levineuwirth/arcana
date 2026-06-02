@@ -51,6 +51,10 @@ pub struct Snapshot {
     /// front↔back, e.g. werewolves / "transform this Saga") shows a
     /// delta even though it changes no count.
     visible_faces: u32,
+    /// Control fingerprint: sum of (id+1)*(controller+1) over objects, so
+    /// a control change — including a symmetric EXCHANGE (Spawnbroker)
+    /// that leaves per-player counts unchanged — shows a delta.
+    control_fingerprint: u64,
     total_damage: u32,
     tapped: usize,
     pending_choice: bool,
@@ -109,6 +113,8 @@ impl Snapshot {
             total_objects: state.objects.iter().count(),
             total_counters,
             visible_faces: state.objects.iter().map(|o| o.visible_face as u32).sum(),
+            control_fingerprint: state.objects.iter()
+                .map(|o| (o.id as u64 + 1) * (o.controller as u64 + 1)).sum(),
             total_damage,
             tapped,
             pending_choice: state.pending_choice.is_some(),

@@ -63,3 +63,5 @@ pub mod cutthroat_contender;
 pub mod hypnotic_grifter;
 pub mod gathering_throng;
 pub mod exotic_pets;
+pub mod rogues_gallery;
+pub mod unlucky_witness;

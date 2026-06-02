@@ -79,3 +79,4 @@ pub mod notorious_assassin;
 pub mod ramosian_commander;
 pub mod thrashing_wumpus;
 pub mod hired_giant;
+pub mod kris_mage;

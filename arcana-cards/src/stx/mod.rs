@@ -73,3 +73,6 @@ pub mod fortifying_draught;
 pub mod test_of_talents;
 pub mod emergent_sequence;
 pub mod extus_oriq_overlord_awaken_the_blood_avatar;
+pub mod a_ardent_dustspeaker;
+pub mod ardent_dustspeaker;
+pub mod professor_of_symbology;

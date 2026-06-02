@@ -7,3 +7,4 @@ pub mod lithophage;
 pub mod bloodfire_colossus;
 pub mod stone_giant;
 pub mod bloodfire_kavu;
+pub mod jaws_of_stone;

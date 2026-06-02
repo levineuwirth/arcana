@@ -46,3 +46,4 @@ pub mod jhoira_s_timebug;
 pub mod saltfield_recluse;
 pub mod amrou_scout;
 pub mod strength_in_numbers;
+pub mod prodigal_pyromancer;

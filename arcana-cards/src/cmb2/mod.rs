@@ -11,3 +11,4 @@ pub mod learned_learner;
 pub mod bone_rattler;
 pub mod sliv_mizzet_hivemind;
 pub mod lightning_colt;
+pub mod wrath_of_sod;

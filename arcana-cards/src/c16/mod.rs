@@ -6,3 +6,4 @@ pub mod quirion_explorer;
 pub mod sylvok_explorer;
 pub mod slobad_goblin_tinkerer;
 pub mod parting_thoughts;
+pub mod entrapment_maneuver;

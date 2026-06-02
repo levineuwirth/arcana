@@ -31,3 +31,5 @@ pub mod master_of_dark_rites;
 pub mod king_narfi_s_betrayal;
 pub mod tetzin_gnome_champion_the_golden_gear_colossus;
 pub mod ruinous_intrusion;
+pub mod clavile_o_first_of_the_blessed;
+pub mod altar_of_the_wretched_wretched_bonemass;

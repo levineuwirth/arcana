@@ -75,3 +75,5 @@ pub mod okiba_reckoner_raid_nezumi_road_captain;
 pub mod behold_the_unspeakable_vision_of_the_unspeakable;
 pub mod the_long_reach_of_night_animus_of_night_s_reach;
 pub mod the_restoration_of_eiganjo_architect_of_restoration;
+pub mod tribute_to_horobi_echo_of_death_s_wail;
+pub mod boseiju_reaches_skyward_branch_of_boseiju;

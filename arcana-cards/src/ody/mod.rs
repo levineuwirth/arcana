@@ -47,3 +47,6 @@ pub mod painbringer;
 pub mod limestone_golem;
 pub mod twigwalker;
 pub mod muscle_burst;
+pub mod mind_burst;
+pub mod aether_burst;
+pub mod flame_burst;

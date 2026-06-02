@@ -18,6 +18,8 @@ Aetherblade Agent
 Afflicted Deserter
 Airborne Aid
 Aladdin
+All Suns' Dawn
+Altar of the Wretched
 Ambitious Farmhand
 Amrou Scout
 Archaeomancer
@@ -80,6 +82,7 @@ Champion of Dusk
 Chandra, Fire of Kaladesh
 Charge Across the Araba
 Chosen of Markov
+Citywide Bust
 Civic Gardener
 Clever Conjurer
 Clive, Ifrit's Dominant
@@ -125,6 +128,7 @@ Donal, Herald of Wings
 Double Negative
 Dowsing Shaman
 Draconic Muralists
+Drana's Silencer
 Dread Slaver
 Dreamscape Artist
 Drooling Ogre
@@ -228,6 +232,7 @@ Hisoka's Defiance
 Horizon Seeker
 Horseshoe Crab
 Huatli, Poet of Unity
+Huntmaster of the Fells
 Hyrax Tower Scout
 Immolating Gyre
 Imperial Recruiter
@@ -313,6 +318,7 @@ Minamo's Meddling
 Mind Maggots
 Mindstatic
 Minor Misstep
+Mnemonic Deluge
 Moggcatcher
 Mondronen Shaman
 Monk Idealist
@@ -380,6 +386,7 @@ Ramosian Sergeant
 Raph & Leo, Sibling Rivals
 Ratchet, Field Medic
 Ravenous Demon
+Ravenous Rotbelly
 Rebuff the Wicked
 Reconstruction
 Refurbish
@@ -397,10 +404,12 @@ Ribbons of the Reikai
 Rime Tender
 Riot Ringleader
 Ritual of Restoration
+Rogues' Gallery
 Rona, Herald of Invasion
 Rootwater Diver
 Rootwater Matriarch
 Rubblebelt Braggart
+Rune Snag
 Sage of Ancient Lore
 Sage's Dousing
 Sage's Knowledge
@@ -468,6 +477,7 @@ Stormchaser's Talent
 Sumala Woodshaper
 Summon: Fenrir
 Superior Numbers
+Surge to Victory
 Suspicious Stowaway
 Sygg, Wanderwine Wisdom
 Tajuru Archer
@@ -529,6 +539,7 @@ Trusty Packbeast
 Tune Up
 Tunnel Rats
 Turn Aside
+Two-Headed Giant
 Tymaret Calls the Dead
 Ulvenwald Captive
 Ulvenwald Mystics

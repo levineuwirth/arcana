@@ -24,3 +24,4 @@ pub mod drooling_groodion;
 pub mod goblin_fireslinger;
 pub mod blinding_souleater;
 pub mod spikeshot_elder;
+pub mod all_suns_dawn;

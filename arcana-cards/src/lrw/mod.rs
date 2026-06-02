@@ -45,3 +45,5 @@ pub mod wellgabber_apothecary;
 pub mod boggart_forager;
 pub mod lowland_oaf;
 pub mod weed_strangle;
+pub mod kithkin_healer;
+pub mod flamekin_spitfire;

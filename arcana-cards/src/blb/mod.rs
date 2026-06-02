@@ -66,3 +66,5 @@ pub mod gossip_s_talent;
 pub mod wick_s_patrol;
 pub mod jolly_gerbils;
 pub mod harnesser_of_storms;
+pub mod alania_s_pathmaker;
+pub mod alania_divergent_storm;

@@ -100,3 +100,5 @@ pub mod invasion_of_karsus_refraction_elemental;
 pub mod herbology_instructor_malady_invoker;
 pub mod invasion_of_ravnica_guildpact_paragon;
 pub mod wrenn_s_resolve;
+pub mod invasion_of_muraganda_primordial_plasm;
+pub mod invasion_of_pyrulea_gargantuan_slabhorn;

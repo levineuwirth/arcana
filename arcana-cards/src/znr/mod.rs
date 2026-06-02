@@ -52,3 +52,6 @@ pub mod synchronized_spellcraft;
 pub mod a_goma_fada_vanguard;
 pub mod goma_fada_vanguard;
 pub mod cleric_of_chill_depths;
+pub mod grotag_night_runner;
+pub mod drana_s_silencer;
+pub mod rockslide_sorcerer;

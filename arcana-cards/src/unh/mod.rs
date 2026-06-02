@@ -18,3 +18,6 @@ pub mod fascist_art_director;
 pub mod mother_of_goons;
 pub mod dumb_ass;
 pub mod goblin_mime;
+pub mod little_girl;
+pub mod eye_to_eye;
+pub mod bloodletter;

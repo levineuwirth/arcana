@@ -9,3 +9,4 @@ pub mod lunar_mystic;
 pub mod xathrid_necromancer;
 pub mod devout_chaplain;
 pub mod titan_of_eternal_fire;
+pub mod citywide_bust;

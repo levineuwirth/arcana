@@ -28,3 +28,4 @@ pub mod goldnight_commander;
 pub mod guttersnipe;
 pub mod reassembling_skeleton;
 pub mod mindblade_render;
+pub mod thalisse_reverent_medium;
