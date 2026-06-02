@@ -219,7 +219,15 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
             || (ability.trigger_zones.iter().any(|z| matches!(z, Zone::Graveyard(_)))
                 && !ability.trigger_zones.iter().any(|z| matches!(z, Zone::Battlefield)));
         let src_zone = if from_graveyard { Zone::Graveyard(0) } else { Zone::Battlefield };
-        state.objects.insert(GameObject::new(src, 0, src_zone, card_id, chars));
+        let mut src_obj = GameObject::new(src, 0, src_zone, card_id, chars);
+        // Seed the transform back face (as the battlefield-entry path
+        // does) so "transform this" (werewolf upkeep triggers) actually
+        // flips visible_face — without it Transform hits the no-back
+        // fallback that only toggles a status flag, reading as a no-op.
+        if let Some(back) = def.alternate_face.as_ref().and_then(|a| a.as_transform()) {
+            src_obj.back_face_characteristics = Some(back.characteristics.clone());
+        }
+        state.objects.insert(src_obj);
         state.currently_resolving = Some(src);
         // Saga fidelity: actually PLACE the lore counters on the source so
         // chapter dispatch that reads the COUNT (not just the event) fires.

@@ -10,45 +10,31 @@
 # un-triaged baseline — mine it for real bugs (like subtype_filter) and SHRINK
 # it; never grow without confirming the card is a genuine false-positive.
 Aang, Swift Savior
-Aang, at the Crossroads
 Absorb Energy
 Access Denied
 Aclazotz, Deepest Betrayal
 Aetherblade Agent
-Afflicted Deserter
 Aladdin
 All Suns' Dawn
 Altar of the Wretched
 Ambitious Farmhand
-Archangel Avacyn
 Armed Response
 Armory Automaton
 Ashen-Skin Zubera
 Auramancer
-Autumnal Gloom
-Avacynian Missionaries
 Ayara, Widow of the Realm
-Azusa's Many Journeys
 Bag Check
-Ballista Watcher
 Bane's Contingency
-Befriending the Moths
 Beguiler of Wills
-Behold the Unspeakable
-Bereaved Survivor
-Biolume Egg
 Blacksmith's Talent
-Blaster, Combat DJ
 Blightreaper Thallid
 Bloodline Keeper
 Bonded Herdbeast
 Bonesplitter
 Boon of Boseiju
-Breakneck Rider
 Burst of Energy
 Calamitous Cave-In
 Cancel
-Catapult Fodder
 Ceremonious Rejection
 Chain Stasis
 Chandra, Fire of Kaladesh
@@ -58,13 +44,11 @@ Citywide Bust
 Civic Gardener
 Clever Conjurer
 Clive, Ifrit's Dominant
-Cloistered Youth
 Clone Legion
 Coffin Puppets
 Concealing Curtains
 Concerted Defense
 Conduit of Storms
-Convicted Killer
 Convolute
 Corridor Monitor
 Corrupted Resolve
@@ -72,16 +56,11 @@ Counterbore
 Counterlash
 Counterpoint
 Counterspell
-Cryptolith Fragment
 Crystal Fragments
-Curious Homunculus
-Cyclonus, the Saboteur
-Daybreak Ranger
 Dazzling Denial
 Delay
 Descendant of Masumaro
 Desertion
-Desperate Farmer
 Devious Cover-Up
 Dion, Bahamut's Dominant
 Disallow
@@ -97,33 +76,25 @@ Drooling Ogre
 Dross Scorpion
 Dumb Ass
 Durable Coilbug
-Duskwatch Recruiter
 Elder Druid
 Electrosiphon
 Elusive Tormentor
 Elvish Scout
 Empress Galina
-Era of Enlightenment
 Ertai's Trickery
 Etali, Primal Conqueror
 Evaporate
 Evasive Action
-Exdeath, Void Warlock
-Extricator of Sin
-Fable of the Mirror-Breaker
 Faerie Trickery
 Fickle Efreet
 Filigree Sages
 Flaccify
 Fold into Aether
 Force Spike
-Foreboding Statue
 Frazzle
 Fuel for the Cause
 Fyndhorn Brownie
 Gates Ablaze
-Gatstaf Arsonists
-Gatstaf Shepherd
 Ghen, Arcanum Weaver
 Ghoulsteed
 Gnottvold Hermit
@@ -131,7 +102,6 @@ Goblin Assassin
 Goblin Psychopath
 Greenside Watcher
 Grimlock, Dinobot Leader
-Grizzled Outcasts
 Groundskeeper
 Gruesome Menagerie
 Gulf Squid
@@ -142,59 +112,40 @@ Gwen Stacy
 Hajar, Loyal Bodyguard
 Halvar, God of Battle
 Hana Kami
-Hanweir Militia Captain
-Hanweir Watchkeep
 Harried Artisan
 Heir of Falkenrath
 Heliod, the Radiant Dawn
-Henrika Domnathi
 Herbology Instructor
-Hermit of the Natterknolls
-Hidetsugu Consumes All
 Hinder
-Hinterland Hermit
-Hinterland Logger
 Hisoka's Defiance
 Horseshoe Crab
 Huatli, Poet of Unity
-Huntmaster of the Fells
 Hyrax Tower Scout
 Induce Paranoia
 Initiate's Companion
-Innocent Traveler
-Instigator Gang
 Intervene
 Into the Night
-Inventive Iteration
 Invert Polarity
 Inverted Iceberg
 Ire of Kaminari
 It'll Quench Ya!
 Ixidor's Will
 Jaded Response
-Jecht, Reluctant Guardian
 Jill, Shiva's Dominant
 Jin-Gitaxias
-Jugan Defends the Temple
 Jungle Creeper
 Kazuul's Toll Collector
-Kessig Forgemaster
 Kessig Prowler
 Kindly Stranger
 Kindred Denial
 Kiora's Follower
 Kor Outfitter
-Kruin Outlaw
 Kumano Faces Kakkazan
-Kytheon, Hero of Akros
-Lambholt Pacifist
 Lapse of Certainty
 Lay Bare
-Life of Toshiro Umezawa
 Lingering Phantom
 Liquify
 Lofty Denial
-Lone Rider
 Loyal Retainers
 Magebane Lizard
 Mana Drain
@@ -203,18 +154,15 @@ Mana Sculpt
 Mana Tithe
 Mandate of Abaddon
 Master Thief
-Mayor of Avabruck
 Medicine Runner
 Memory Lapse
 Merchant of Many Hats
-Michiko's Reign of Truth
 Midnight Guard
 Mijae Djinn
 Minamo's Meddling
 Mind Maggots
 Mindstatic
 Minor Misstep
-Mondronen Shaman
 Monk Idealist
 Mystic Genesis
 Mystic Skull
@@ -237,7 +185,6 @@ Outwit
 Ovalchase Daredevil
 Override
 Pack Mastiff
-Panicked Bystander
 Pendelhaven Elder
 Permission Denied
 Peter Parker
@@ -245,7 +192,6 @@ Phyrexian Infiltrator
 Pious Evangel
 Plasm Capture
 Polukranos Reborn
-Poppet Stitcher
 Praetor's Counsel
 Priest of the Haunted Edge
 Prince of Thralls
@@ -254,9 +200,7 @@ Put Away
 Quench
 Radagast the Brown
 Rakshasa's Disdain
-Ral, Monsoon Mage
 Raph & Leo, Sibling Rivals
-Ratchet, Field Medic
 Ravenous Demon
 Rebuff the Wicked
 Reinterpret
@@ -272,7 +216,6 @@ Rona, Herald of Invasion
 Rootwater Matriarch
 Rubblebelt Braggart
 Rune Snag
-Sage of Ancient Lore
 Salvager of Secrets
 Sanitarium Skeleton
 Scattering Stroke
@@ -281,11 +224,9 @@ Scroll of Isildur
 Scuttling Sliver
 Second Guess
 Seeker of Skybreak
-Serah Farron
 Serene Heart
 Shagrat, Loot Bearer
 Shrill Howler
-Sidequest: Raise a Chocobo
 Silkenfist Fighter
 Silkenfist Order
 Silt Crawler
@@ -294,7 +235,6 @@ Skred
 Skyclave Aerialist
 Smoldering Werewolf
 Soliton
-Soulcipher Board
 Sparring Mummy
 Spell Crumple
 Spell Pierce
@@ -304,71 +244,45 @@ Spell Suck
 Spell Swindle
 Spell Syphon
 Spelljack
-Starscream, Power Hungry
 Steel Overseer
 Stensia Innkeeper
 Stoneshaker Shaman
 Superior Numbers
-Suspicious Stowaway
 Sygg, Wanderwine Wisdom
 Tale's End
-Tales of Master Seshiro
 Tangleclaw Werewolf
-Teachings of the Kirin
 Teferi's Contingency
 Terra, Magical Adept
 Thassa's Rebuff
 The Akroan War
-The Dragon-Kami Reborn
-The Fall of Lord Konda
 The First Iroan Games
-The Kami War
-The Legend of Kuruk
-The Legend of Kyoshi
-The Legend of Roku
 The Legend of Yangchen
-The Long Reach of Night
 The Many Deeds of Belzenlok
 The Modern Age
-The Restoration of Eiganjo
-The Rise of Sozin
 Thing in the Ice
 Thistledown Players
 Thoughtbind
 Thraben Gargoyle
-Thraben Sentry
 Tibalt's Trickery
 Ticking Mime Bomb
 Tolarian Entrancer
-Tormented Pariah
-Tovolar's Huntmaster
-Tovolar, Dire Overlord
 Tragic Poet
 Trickster Mage
 Tunnel Rats
 Turn Aside
 Two-Headed Giant
 Ulvenwald Captive
-Ulvenwald Mystics
 Ulvenwald Oddity
 Undersimplify
 Unified Lunge
-Uninvited Geist
 Unravel
 Vedalken Plotter
 Vildin-Pack Outcast
-Village Ironsmith
-Village Messenger
-Villagers of Estwald
-Vincent Valentine
 Voidslime
 Voltaic Construct
 Voltaic Servant
 Warren Pilferers
-Weary Prisoner
 Wild Wurm
-Wolfbitten Captive
-Wolfkin Outcast
 Wyll of the Blade Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
