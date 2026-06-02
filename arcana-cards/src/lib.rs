@@ -817,8 +817,6 @@ mod tests {
         // expected (logged, not fatal); a failure anywhere else, or a
         // listed seed failing for a *different* reason, is a NEW finding
         // and fails the test. Remove an entry when its bug is fixed.
-        //   engine.rs:3135 — resume_parked_resolution: pending_choice
-        //                    still set when a parked resolution resumes.
         //   stack.rs:697   — finalize_resolved_spell: object vanished
         //                    from the arena before finalize.
         //   mana.rs:778    — expand_x: {X} cost reached the solver with
@@ -826,8 +824,6 @@ mod tests {
         const KNOWN_OPEN: &[(u64, &str)] = &[
             (129, "stack.rs:697"),
             (183, "mana.rs:778"),
-            (301, "engine.rs:3135"),
-            (349, "engine.rs:3135"),
         ];
 
         // Capture the panic *site* per game (and suppress the default

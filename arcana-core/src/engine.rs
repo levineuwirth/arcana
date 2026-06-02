@@ -3131,9 +3131,16 @@ fn execute_effects_or_park(
 /// remaining effects. If another choice gets pushed mid-way, the
 /// resolution parks again.
 fn resume_parked_resolution(state: &mut GameState) {
+    // A handler in `apply_resolution_choice` may have pushed a *new*
+    // pending_choice while applying the just-answered one — e.g. an
+    // OptionalCost "then" effect that itself prompts, a Ward re-prompt,
+    // or a chained Scry. The parked resolution must keep waiting until
+    // that new choice is answered too: leave it parked and yield. Draining
+    // its remaining effects now would run them on top of an unanswered
+    // choice and clobber it (corrupting resolution order). Check BEFORE
+    // taking so the parked resolution survives to the next answer.
+    if state.pending_choice.is_some() { return; }
     let Some(parked) = state.pending_resolution.take() else { return; };
-    debug_assert!(state.pending_choice.is_none(),
-        "resume_parked_resolution: pending_choice still set");
     execute_effects_or_park(
         state, parked.entry, parked.remaining_effects, parked.is_spell);
 }
@@ -5528,6 +5535,47 @@ mod tests {
 
     fn start(seed: u64) -> (GameState, EngineYield) {
         new_game_from_characteristics(vec![simple_deck(), simple_deck()], seed)
+    }
+
+    #[test]
+    fn parked_resolution_waits_for_a_newly_pushed_choice() {
+        // Regression (random-game harness, engine.rs:3135). When applying
+        // a resolution choice pushes a NEW pending_choice (e.g. an
+        // OptionalCost "then" effect that itself prompts, or a chained
+        // Scry), the parked resolution must STAY parked until that new
+        // choice is answered — not drain its remaining effects on top of
+        // the unanswered choice (which would clobber it) and not panic.
+        use crate::actions::{ChoiceContext, ChoiceKind, PendingChoice,
+                             PendingResolution};
+        use crate::stack::StackEntry;
+
+        let mut s = GameState::new(2, 0);
+        let entry = StackEntry::new_spell(
+            s.allocate_object_id(), 0, 0, instant_chars(),
+            Default::default(), Vec::new(), None);
+        // A parked resolution with remaining work...
+        s.pending_resolution = Some(PendingResolution {
+            entry,
+            remaining_effects: vec![crate::effects::Effect::DrawCards {
+                player: 0, count: 1 }],
+            is_spell: true,
+        });
+        // ...and a still-unanswered choice that a handler just pushed.
+        s.pending_choice = Some(PendingChoice {
+            id: 99,
+            choosing_player: 0,
+            context: ChoiceContext::Other,
+            kind: ChoiceKind::YesNo { prompt: 0 },
+        });
+
+        resume_parked_resolution(&mut s);
+
+        // The guard must leave BOTH untouched: the resolution stays
+        // parked, the new choice is preserved for the next answer.
+        assert!(s.pending_resolution.is_some(),
+            "parked resolution must stay parked while a choice is pending");
+        assert_eq!(s.pending_choice.as_ref().map(|c| c.id), Some(99),
+            "the newly-pushed choice must be preserved untouched");
     }
 
     // --- EngineYield --------------------------------------------------------
