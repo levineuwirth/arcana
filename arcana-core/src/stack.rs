@@ -693,10 +693,17 @@ impl GameState {
         let StackEntry { id, controller, x_value, colors_spent, .. } = entry;
         let chars = entry.characteristics().cloned().unwrap_or_else(||
             panic!("finalize_resolved_spell: entry {id} is not a spell"));
-        let owner = self.objects.get(id)
-            .unwrap_or_else(|| panic!(
-                "finalize_resolved_spell: object {id} vanished from arena"))
-            .owner;
+        // CR 608.2m — a resolving instant/sorcery is put into its owner's
+        // graveyard (and a permanent spell onto the battlefield) only as
+        // the cleanup step, and only if it's still on the stack. An effect
+        // during resolution may have already moved the spell's own object
+        // elsewhere — e.g. a spell that returns ITSELF to hand ("How to
+        // Keep an Izzet Mage Busy") re-ids it into the hand zone (CR
+        // 400.7), so `entry.id` no longer resolves. In that case the spell
+        // has already left; there is nothing to finalize. (Found by the
+        // random-game harness.)
+        let Some(obj) = self.objects.get(id) else { return; };
+        let owner = obj.owner;
         // CR 702.33b — a flashback spell leaving the stack goes to
         // exile, not the graveyard (and not the battlefield, since a
         // permanent spell cast via flashback is already a degenerate
@@ -1107,6 +1114,24 @@ mod tests {
 
         assert!(spell.characteristics().is_some());
         assert!(act.characteristics().is_none());
+    }
+
+    #[test]
+    fn finalize_spell_whose_object_already_left_is_a_noop() {
+        // Regression (random-game harness, stack.rs:697). A spell that
+        // returns ITSELF to hand during resolution ("How to Keep an Izzet
+        // Mage Busy") re-ids its object into the hand zone, so by cleanup
+        // time `entry.id` no longer resolves. CR 608.2m only moves the
+        // spell to the graveyard if it's still on the stack — finalize
+        // must be a no-op here, not panic on the missing object.
+        let mut s = GameState::new(2, 0);
+        // Note: deliberately do NOT insert an object for `id` — it has
+        // already left the arena under a new id.
+        let entry = StackEntry::new_spell(
+            999, 0, 1, instant_chars(), TargetSelection::new(), vec![], None);
+        // Must not panic and must not fabricate a graveyard object.
+        s.finalize_resolved_spell(entry);
+        assert_eq!(s.objects.count_in_zone(Zone::Graveyard(0)), 0);
     }
 
     #[test]

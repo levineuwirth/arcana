@@ -817,11 +817,7 @@ mod tests {
         // expected (logged, not fatal); a failure anywhere else, or a
         // listed seed failing for a *different* reason, is a NEW finding
         // and fails the test. Remove an entry when its bug is fixed.
-        //   stack.rs:697   — finalize_resolved_spell: object vanished
-        //                    from the arena before finalize.
-        const KNOWN_OPEN: &[(u64, &str)] = &[
-            (129, "stack.rs:697"),
-        ];
+        const KNOWN_OPEN: &[(u64, &str)] = &[];
 
         // Capture the panic *site* per game (and suppress the default
         // backtrace spam) so failures are actionable.
