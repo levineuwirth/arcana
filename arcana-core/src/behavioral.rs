@@ -47,6 +47,10 @@ pub struct Snapshot {
     exile: usize,
     total_objects: usize,
     total_counters: u32,
+    /// Sum of visible_face across objects — so a transform (flip
+    /// front↔back, e.g. werewolves / "transform this Saga") shows a
+    /// delta even though it changes no count.
+    visible_faces: u32,
     total_damage: u32,
     tapped: usize,
     pending_choice: bool,
@@ -104,6 +108,7 @@ impl Snapshot {
             exile: state.objects.count_in_zone(Zone::Exile),
             total_objects: state.objects.iter().count(),
             total_counters,
+            visible_faces: state.objects.iter().map(|o| o.visible_face as u32).sum(),
             total_damage,
             tapped,
             pending_choice: state.pending_choice.is_some(),
@@ -201,10 +206,19 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
         };
         state.objects.insert(GameObject::new(src, 0, Zone::Battlefield, card_id, chars));
         state.currently_resolving = Some(src);
+        // Saga fidelity: actually PLACE the lore counters on the source so
+        // chapter dispatch that reads the COUNT (not just the event) fires.
+        if let crate::triggers::TriggerCondition::CounterAdded { kind, chapter, .. } =
+            &ability.trigger_condition
+        {
+            state.place_counters(
+                crate::replacement::CounterTarget::Object(src),
+                kind.unwrap_or(crate::types::CounterKind::Lore),
+                chapter.unwrap_or(1));
+        }
         let stack_spell = add_dummy_stack_spell(&mut state);
         let dummy = first_battlefield_creature(&state, 0);
         let targets = selection_for(&state, &ability.target_requirements, dummy, stack_spell);
-        let dummy = first_battlefield_creature(&state, 0);
         // Synthesize the event the trigger's CONDITION actually matches
         // (Saga lore counter, transform, combat, death, cast, …) so it
         // fires faithfully; falls back to a generic ETB for execution
@@ -373,6 +387,11 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         // would falsely read as a no-op; tap-target is the common case).
         let tapped = make_creature(&mut state, p, ColorSet::colorless(), "{C}");
         state.objects.get_mut(tapped).map(|o| o.tap());
+        // Seed a +1/+1 counter so Proliferate ("add another counter to
+        // each permanent/player that has one") has something to act on.
+        state.place_counters(
+            crate::replacement::CounterTarget::Object(tapped),
+            crate::types::CounterKind::PlusOnePlusOne, 1);
         // One of each other permanent type — satisfies "if you control
         // an artifact / enchantment / land" conditions and type-filtered
         // targets — plus the five basic land types (interned via the
@@ -536,12 +555,12 @@ fn legal_target(
         .filter(|o| o.zone != Zone::Library(o.owner))
         .map(|o| o.id).collect();
     ids.push(stack_spell);
-    // Tapped permanents first (so untap-target shows a delta), then the
-    // rest; deterministic by id within each group.
-    ids.sort_by_key(|id| (
-        !state.objects.get(*id).map(|o| o.is_tapped()).unwrap_or(false),
-        *id,
-    ));
+    // Deterministic id order. Creatures are seeded UNTAPPED (so
+    // "tap target creature" — the common attack/ETB trigger — shows a
+    // delta) and basic lands TAPPED (so "untap target land" mana-dorks
+    // show a delta); the filter routes each to the right type, so we
+    // don't bias by tap state (tapped-first broke tap-target).
+    ids.sort();
     for id in ids {
         for choice in [
             TargetChoice::Object(id),

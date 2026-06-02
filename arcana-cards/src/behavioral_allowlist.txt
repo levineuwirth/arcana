@@ -9,7 +9,6 @@
 # future ForEach/subtype_filter-class bug) fails CI. The trigger block is an
 # un-triaged baseline — mine it for real bugs (like subtype_filter) and SHRINK
 # it; never grow without confirming the card is a genuine false-positive.
-A-Imperial Subduer
 Aang, Swift Savior
 Aang, at the Crossroads
 Absorb Energy
@@ -18,9 +17,6 @@ Aclazotz, Deepest Betrayal
 Aetherblade Agent
 Afflicted Deserter
 Airborne Aid
-Akroan Jailer
-Akroan Mastiff
-Alaborn Cavalier
 Aladdin
 Ambitious Farmhand
 Amrou Scout
@@ -37,13 +33,9 @@ Ashen-Skin Zubera
 Auramancer
 Auriok Salvagers
 Auriok Survivors
-Aurora Champion
 Autumnal Gloom
 Avacynian Missionaries
-Avacynian Priest
 Ayara, Widow of the Realm
-Aysen Bureaucrats
-Azorius Arrester
 Azusa's Many Journeys
 Bag Check
 Ballista Watcher
@@ -52,30 +44,26 @@ Barishi
 Befriending the Moths
 Beguiler of Wills
 Behold the Unspeakable
-Benalish Trapper
 Bereaved Survivor
-Berg Strider
-Binding Mummy
 Binding the Old Gods
 Biolume Egg
 Bishop of the Bloodstained
 Blacksmith's Talent
 Blaster, Combat DJ
 Blightreaper Thallid
-Blinding Mage
-Blinding Souleater
 Blitz of the Thunder-Raptor
 Blood Age General
 Blood-Chin Rager
 Bloodline Keeper
-Bloom Hulk
 Boggart Birth Rite
 Boggart Harbinger
 Bonded Herdbeast
 Bone Rattler
 Bonesplitter
+Boon of Boseiju
 Breakneck Rider
 Brightstone Ritual
+Burst of Energy
 Calamitous Cave-In
 Call to Mind
 Campus Renovation
@@ -86,27 +74,25 @@ Catapult Fodder
 Cateran Kidnappers
 Cateran Persuader
 Cateran Summons
-Celestial Enforcer
-Cephalid Retainer
 Ceremonious Rejection
+Chain Stasis
 Champion of Dusk
 Chandra, Fire of Kaladesh
 Charge Across the Araba
-Checkpoint Officer
-Cho-Arrim Bruiser
 Chosen of Markov
+Civic Gardener
+Clever Conjurer
 Clive, Ifrit's Dominant
 Cloistered Youth
 Clone Legion
-Coeurl
 Coffin Puppets
 Concealing Curtains
 Concerted Defense
 Conduit of Storms
-Contagious Vorrac
 Convicted Killer
 Convolute
 Corpse Harvester
+Corridor Monitor
 Corrupted Resolve
 Cosmic Epiphany
 Counterbore
@@ -114,14 +100,12 @@ Counterlash
 Counterpoint
 Counterspell
 Courageous Outrider
-Court Street Denizen
 Cryptolith Fragment
 Crystal Fragments
 Curious Homunculus
 Cyclonus, the Saboteur
 Cyclopean Giant
 Cyclopean Mummy
-D'Avenant Trapper
 Daring Waverider
 Dawntreader Elk
 Daybreak Ranger
@@ -131,12 +115,10 @@ Descendant of Masumaro
 Desertion
 Desperate Farmer
 Devious Cover-Up
-Devoted Grafkeeper
 Dion, Bahamut's Dominant
 Disallow
 Dispersal Shield
 Dissipate
-Distracting Geist
 Divert Disaster
 Don't Make a Sound
 Donal, Herald of Wings
@@ -145,7 +127,6 @@ Dowsing Shaman
 Draconic Muralists
 Dread Slaver
 Dreamscape Artist
-Dromoka Dunecaster
 Drooling Ogre
 Dross Scorpion
 Dumb Ass
@@ -155,17 +136,16 @@ Dwarven Recruiter
 Déjà Vu
 Edgar, Charmed Groom
 Eerie Procession
+Elder Druid
 Elderfang Ritualist
 Electrosiphon
-Elite Arrester
 Elusive Tormentor
+Elvish Scout
 Embodiment of Spring
 Emergent Sequence
 Empress Galina
 Endless Cockroaches
-Ephara's Warden
 Era of Enlightenment
-Errant Doomsayers
 Ertai's Trickery
 Etali, Primal Conqueror
 Evaporate
@@ -175,41 +155,32 @@ Exploding Borders
 Extricator of Sin
 Fable of the Mirror-Breaker
 Faerie Trickery
-Fan Bearer
 Farseek
-Fear of Immobility
 Feeding Frenzy
-Fell the Mighty
 Fickle Efreet
-Fiend Binder
 Fierce Empath
 Filigree Sages
 Flaccify
 Flamekin Harbinger
-Flanking Troops
 Flood of Recollection
-Flux Channeler
 Fold into Aether
 Force Spike
 Foreboding Statue
 Frazzle
 Frontier Guide
-Frost Lynx
-Frostbridge Guard
 Fuel for the Cause
 Fugitive of the Judoon
 Furious Forebear
+Fyndhorn Brownie
 Gandalf's Sanction
 Gates Ablaze
 Gathering Throng
 Gatstaf Arsonists
 Gatstaf Shepherd
-Gavony Trapper
 Ghen, Arcanum Weaver
 Ghoulraiser
 Ghoulsteed
 Giant Harbinger
-Gideon's Lawkeeper
 Gloom Ripper
 Gnottvold Hermit
 Goblin Assassin
@@ -219,8 +190,6 @@ Goblin Matron
 Goblin Psychopath
 Goblin Recruiter
 Goblin War Strike
-Goldmaw Champion
-Goldmeadow Harrier
 Greenseeker
 Greenside Watcher
 Grimlock, Dinobot Leader
@@ -229,12 +198,10 @@ Groundskeeper
 Grub, Storied Matriarch
 Gruesome Menagerie
 Gulf Squid
-Gulping Scraptrap
 Gumdrop Poisoner
 Gustcloak Runner
 Gustcloak Sentinel
 Gwen Stacy
-Haazda Snare Squad
 Hagra Diabolist
 Hajar, Loyal Bodyguard
 Halimar Excavator
@@ -248,7 +215,6 @@ Harabaz Druid
 Harald Unites the Elves
 Harried Artisan
 Harvest Hand
-Heavy Infantry
 Heir of Falkenrath
 Heliod, the Radiant Dawn
 Henrika Domnathi
@@ -259,15 +225,15 @@ Hinder
 Hinterland Hermit
 Hinterland Logger
 Hisoka's Defiance
-Holy Justiciar
 Horizon Seeker
 Horseshoe Crab
 Huatli, Poet of Unity
+Hyrax Tower Scout
 Immolating Gyre
 Imperial Recruiter
-Imperial Subduer
 Induce Paranoia
 Infernal Vessel
+Initiate's Companion
 Innocent Traveler
 Instigator Gang
 Intervene
@@ -275,7 +241,7 @@ Into the Night
 Invasion of Theros
 Inventive Iteration
 Invert Polarity
-Involuntary Cooldown
+Inverted Iceberg
 Ire of Kaminari
 Ironclad Slayer
 Ironsoul Enforcer
@@ -298,11 +264,9 @@ Kessig Malcontents
 Kessig Prowler
 Kindly Stranger
 Kindred Denial
-Kiora's Dambreaker
+Kiora's Follower
 Kishla Trawlers
 Kithkin Harbinger
-Kor Hookmaster
-Kor Line-Slinger
 Kor Outfitter
 Kruin Outlaw
 Kumano Faces Kakkazan
@@ -311,7 +275,6 @@ Lambholt Pacifist
 Lapse of Certainty
 Lavakin Brawler
 Lay Bare
-Leonin Snarecaster
 Leonin Squire
 Life of Toshiro Umezawa
 Lifespinner
@@ -321,8 +284,6 @@ Living Lightning
 Lofty Denial
 Lone Rider
 Loran, Disciple of History
-Lorthos, the Tidemaker
-Loxodon Mystic
 Loyal Cathar
 Loyal Retainers
 Lys Alana Scarblade
@@ -334,18 +295,14 @@ Mana Leak
 Mana Sculpt
 Mana Tithe
 Mandate of Abaddon
-Martyr for the Cause
 Mass Appeal
-Master Decoy
 Master Skald
 Master Thief
-Master of Diversion
 Mausoleum Secrets
 Mayael the Anima
 Mayor of Avabruck
 Medicine Runner
 Memory Lapse
-Merchant Raiders
 Merchant Scroll
 Merchant of Many Hats
 Michiko's Reign of Truth
@@ -365,9 +322,9 @@ Myr Kinsmith
 Myr Retriever
 Mystic Genesis
 Mystic Skull
+Nanoform Sentinel
 Nantuko Cultivator
 Nature's Lore
-Nebelgast Beguiler
 Negate
 Nether Spirit
 Neutralizing Blast
@@ -375,21 +332,19 @@ Neverwinter Dryad
 Nezumi Freewheeler
 Niambi, Faithful Healer
 Nicol Bolas, the Ravager
-Nimble Hobbit
+Nimbleclaw Adept
 Nissa, Vastwood Seer
 Nix
 No More Lies
 Oashra Cultivator
 Ojer Axonil, Deepest Might
 Ojer Taq, Deepest Foundation
-Old Guard
 Olivia's Wrath
 Ondu Cleric
 Open the Vaults
 Oppressive Will
 Orc General
 Order of the Mirror
-Ostiary Thrull
 Outwit
 Ovalchase Daredevil
 Override
@@ -403,7 +358,6 @@ Phyrexian Infiltrator
 Phytotitan
 Pinnacle Monk
 Pious Evangel
-Plaguemaw Beast
 Plant a Sapling
 Plasm Capture
 Polukranos Reborn
@@ -414,10 +368,8 @@ Priest of the Haunted Edge
 Prince of Thralls
 Prized Amalgam
 Profane Prayers
-Protocol Knight
 Pull from the Deep
 Punish Ignorance
-Puppeteer
 Put Away
 Quench
 Radagast the Brown
@@ -425,8 +377,8 @@ Rakshasa's Disdain
 Ral, Monsoon Mage
 Ramosian Lieutenant
 Ramosian Sergeant
+Raph & Leo, Sibling Rivals
 Ratchet, Field Medic
-Rathi Trapper
 Ravenous Demon
 Rebuff the Wicked
 Reconstruction
@@ -442,19 +394,16 @@ Retched Wretch
 Revive
 Revolutionary Rebuff
 Ribbons of the Reikai
-Rimefur Reindeer
-Rimewind Taskmage
+Rime Tender
 Riot Ringleader
 Ritual of Restoration
 Rona, Herald of Invasion
 Rootwater Diver
 Rootwater Matriarch
-Rowdy Snowballers
 Rubblebelt Braggart
 Sage of Ancient Lore
 Sage's Dousing
 Sage's Knowledge
-Saiba Trespassers
 Sakura-Tribe Elder
 Salvage Scout
 Salvager of Secrets
@@ -472,18 +421,16 @@ Scuttling Sliver
 Sea Gate Loremaster
 Seahunter
 Seascape Aerialist
-Seasoned Marshal
 Second Guess
+Seeker of Skybreak
 Self-Assembler
 Serah Farron
 Serene Heart
-Shackle Slinger
 Shagrat, Loot Bearer
 Shaman of the Pack
 Shepherd of Rot
 Shrill Howler
 Sidequest: Raise a Chocobo
-Sigardian Priest
 Silkenfist Fighter
 Silkenfist Order
 Silt Crawler
@@ -496,11 +443,9 @@ Skred
 Skyclave Aerialist
 Skyshroud Poacher
 Smoldering Werewolf
-Snare Tactician
 Soliton
-Somnomancer
 Soulcipher Board
-Spawnbinder Mage
+Sparring Mummy
 Spell Crumple
 Spell Pierce
 Spell Rupture
@@ -513,43 +458,27 @@ Spellkeeper Weird
 Spellseeker
 Squad Rallier
 Squee, Goblin Nabob
-Star-Crowned Stag
-Starport Security
 Starscream, Power Hungry
 Steel Overseer
 Steelshaper Apprentice
 Steelshaper's Gift
 Stensia Innkeeper
-Sterling Keykeeper
-Stern Constable
-Stinging Lionfish
 Stoneshaker Shaman
-Stonybrook Angler
 Stormchaser's Talent
-Succumb to the Cold
 Sumala Woodshaper
 Summon: Fenrir
-Summon: Shiva
 Superior Numbers
-Surge Conductor
 Suspicious Stowaway
 Sygg, Wanderwine Wisdom
-T.A.P.P.E.R.
 Tajuru Archer
-Take into Custody
 Tale's End
 Tales of Master Seshiro
 Tangleclaw Werewolf
 Teachings of the Kirin
-Teardrop Kami
 Teferi's Contingency
-Telekinesis
-Telekinetic Sliver
 Terra, Magical Adept
-Territorial Hammerskull
 Thassa's Rebuff
 The Akroan War
-The Battle of Bywater
 The Birth of Meletis
 The Cave of Two Lovers
 The Caves of Androzani
@@ -572,8 +501,8 @@ The Rise of Sozin
 The War Games
 The Weatherseed Treaty
 Thing in the Ice
+Thistledown Players
 Thoughtbind
-Thousand Moons Crackshot
 Thraben Gargoyle
 Thraben Sentry
 Three Dreams
@@ -581,30 +510,25 @@ Three Visits
 Thunder of Hooves
 Tibalt's Trickery
 Ticking Mime Bomb
-Tidal Force
-Tidebinder Mage
 Timberwatch Elf
-Time of Ice
 Tithe
 Tivadar's Crusade
-Toils of Night and Day
 Tolarian Entrancer
 Tormented Pariah
 Totem-Guide Hartebeest
 Tovolar's Huntmaster
 Tovolar, Dire Overlord
 Tragic Poet
-Tranquilize
 Trapmaker's Snare
 Treasure Hunter
 Treasure Mage
 Treefolk Harbinger
 Tribute Mage
+Trickster Mage
 Trusty Packbeast
 Tune Up
 Tunnel Rats
 Turn Aside
-Twiddle
 Tymaret Calls the Dead
 Ulvenwald Captive
 Ulvenwald Mystics
@@ -613,10 +537,8 @@ Undersimplify
 Unified Lunge
 Uninvited Geist
 Unravel
-Utrom Scientists
 Vedalken Plotter
 Vengeful Strangler
-Vengeful Villagers
 Vildin-Pack Outcast
 Vile Deacon
 Village Ironsmith
@@ -631,11 +553,8 @@ Voltaic Construct
 Voltaic Servant
 Vorinclex
 Vulpine Harvester
-Wanderbrine Trapper
 War of the Last Alliance
 Warren Pilferers
-Watertrap Weaver
-Waylaying Pirates
 Weary Prisoner
 Welcome to . . .
 Wild Wurm
@@ -653,8 +572,6 @@ Wyll of the Elder Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
 Zealous Lorecaster
-Zhalfirin Decoy
 Zirilan of the Claw
 Zodiac Dragon
 Zombie Apocalypse
-Zygon Infiltrator

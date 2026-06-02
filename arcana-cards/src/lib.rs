@@ -844,3 +844,57 @@ mod tests {
     }
 
 }
+
+#[cfg(test)]
+mod behavioral_triage {
+    #[test]
+    #[ignore]
+    fn classify_trigger_noops() {
+        use std::collections::BTreeMap;
+        let mut reg = arcana_core::registry::CardRegistry::new();
+        let n = crate::register_all::register_all(&mut reg);
+        let mut by_cond: BTreeMap<&str, usize> = BTreeMap::new();
+        let mut examples: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+        for cid in 0..n as u32 {
+            let Some(def) = reg.get(cid) else { continue; };
+            if def.triggered_abilities.is_empty() { continue; }
+            let results = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                arcana_core::behavioral::probe_triggered(&reg, cid))).unwrap_or_default();
+            // results align with abilities that got a verdict (synthesizable)
+            let mut ri = 0;
+            for ab in &def.triggered_abilities {
+                // mirror synth_event's None-only-for-Custom by checking the result stream
+                if ri >= results.len() { break; }
+                let r = results[ri]; ri += 1;
+                if r.is_silent_noop() {
+                    let c = cond_name(&ab.trigger_condition);
+                    *by_cond.entry(c).or_default() += 1;
+                    let e = examples.entry(c).or_default();
+                    if e.len() < 4 {
+                        e.push(reg.interner().resolve(def.name).unwrap_or("?").to_string());
+                    }
+                }
+            }
+        }
+        for (c, n) in &by_cond {
+            eprintln!("{n:4}  {c}   e.g. {:?}", examples[c]);
+        }
+    }
+    fn cond_name(c: &arcana_core::triggers::TriggerCondition) -> &'static str {
+        use arcana_core::triggers::TriggerCondition as T;
+        match c {
+            T::SelfEntersBattlefield => "ETB", T::SelfDies => "Dies",
+            T::SelfAttacks => "Attacks", T::SelfAttacksUnblocked => "AttacksUnblocked",
+            T::SelfBecomesBlocked => "BecomesBlocked", T::SelfBlocks => "Blocks",
+            T::SelfBlocksOrBecomesBlocked => "BlocksOrBlocked", T::SelfBecomesTapped => "Tapped",
+            T::SelfSpecializes => "Specializes", T::SelfBecomesTarget{..} => "BecomesTarget",
+            T::SelfIsDealtDamage{..} => "IsDealtDamage", T::ZoneChange{..} => "ZoneChange",
+            T::SpellCast{..} => "SpellCast", T::DamageDealt{..} => "DamageDealt",
+            T::StepBegins{..} => "StepBegins", T::PhaseBegins{..} => "PhaseBegins",
+            T::LifeGained{..} => "LifeGained", T::CounterAdded{..} => "CounterAdded(Saga)",
+            T::CardDrawn{..} => "CardDrawn", T::CardDiscarded{..} => "CardDiscarded",
+            T::CreatureAttacks{..} => "CreatureAttacks", T::Sacrificed{..} => "Sacrificed",
+            T::Custom(_) => "Custom",
+        }
+    }
+}
