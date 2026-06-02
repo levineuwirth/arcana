@@ -22,19 +22,11 @@ All Suns' Dawn
 Altar of the Wretched
 Ambitious Farmhand
 Amrou Scout
-Archaeomancer
-Archaeomender
 Archangel Avacyn
-Ardent Elementalist
-Argivian Archaeologist
-Argivian Find
-Argivian Restoration
 Armed Response
 Armory Automaton
 Ashen-Skin Zubera
 Auramancer
-Auriok Salvagers
-Auriok Survivors
 Autumnal Gloom
 Avacynian Missionaries
 Ayara, Widow of the Realm
@@ -42,7 +34,6 @@ Azusa's Many Journeys
 Bag Check
 Ballista Watcher
 Bane's Contingency
-Barishi
 Befriending the Moths
 Beguiler of Wills
 Behold the Unspeakable
@@ -53,22 +44,18 @@ Bishop of the Bloodstained
 Blacksmith's Talent
 Blaster, Combat DJ
 Blightreaper Thallid
-Blitz of the Thunder-Raptor
 Blood Age General
 Blood-Chin Rager
 Bloodline Keeper
 Boggart Birth Rite
 Boggart Harbinger
 Bonded Herdbeast
-Bone Rattler
 Bonesplitter
 Boon of Boseiju
 Breakneck Rider
 Brightstone Ritual
 Burst of Energy
 Calamitous Cave-In
-Call to Mind
-Campus Renovation
 Cancel
 Captain Sisay
 Casal, Lurkwood Pathfinder
@@ -97,7 +84,6 @@ Convolute
 Corpse Harvester
 Corridor Monitor
 Corrupted Resolve
-Cosmic Epiphany
 Counterbore
 Counterlash
 Counterpoint
@@ -107,9 +93,6 @@ Cryptolith Fragment
 Crystal Fragments
 Curious Homunculus
 Cyclonus, the Saboteur
-Cyclopean Giant
-Cyclopean Mummy
-Daring Waverider
 Dawntreader Elk
 Daybreak Ranger
 Dazzling Denial
@@ -137,8 +120,6 @@ Dumb Ass
 Durable Coilbug
 Duskwatch Recruiter
 Dwarven Recruiter
-Déjà Vu
-Edgar, Charmed Groom
 Eerie Procession
 Elder Druid
 Elderfang Ritualist
@@ -148,7 +129,6 @@ Elvish Scout
 Embodiment of Spring
 Emergent Sequence
 Empress Galina
-Endless Cockroaches
 Era of Enlightenment
 Ertai's Trickery
 Etali, Primal Conqueror
@@ -166,7 +146,6 @@ Fierce Empath
 Filigree Sages
 Flaccify
 Flamekin Harbinger
-Flood of Recollection
 Fold into Aether
 Force Spike
 Foreboding Statue
@@ -174,9 +153,7 @@ Frazzle
 Frontier Guide
 Fuel for the Cause
 Fugitive of the Judoon
-Furious Forebear
 Fyndhorn Brownie
-Gandalf's Sanction
 Gates Ablaze
 Gathering Throng
 Gatstaf Arsonists
@@ -212,13 +189,11 @@ Halimar Excavator
 Halvar, God of Battle
 Hamlet Captain
 Hana Kami
-Hanna, Ship's Navigator
 Hanweir Militia Captain
 Hanweir Watchkeep
 Harabaz Druid
 Harald Unites the Elves
 Harried Artisan
-Harvest Hand
 Heir of Falkenrath
 Heliod, the Radiant Dawn
 Henrika Domnathi
@@ -234,10 +209,8 @@ Horseshoe Crab
 Huatli, Poet of Unity
 Huntmaster of the Fells
 Hyrax Tower Scout
-Immolating Gyre
 Imperial Recruiter
 Induce Paranoia
-Infernal Vessel
 Initiate's Companion
 Innocent Traveler
 Instigator Gang
@@ -248,11 +221,8 @@ Inventive Iteration
 Invert Polarity
 Inverted Iceberg
 Ire of Kaminari
-Ironclad Slayer
-Ironsoul Enforcer
 It'll Quench Ya!
 Ixidor's Will
-Izzet Chronarch
 Jaded Response
 Jecht, Reluctant Guardian
 Jill, Shiva's Dominant
@@ -270,7 +240,6 @@ Kessig Prowler
 Kindly Stranger
 Kindred Denial
 Kiora's Follower
-Kishla Trawlers
 Kithkin Harbinger
 Kor Outfitter
 Kruin Outlaw
@@ -280,16 +249,12 @@ Lambholt Pacifist
 Lapse of Certainty
 Lavakin Brawler
 Lay Bare
-Leonin Squire
 Life of Toshiro Umezawa
 Lifespinner
 Lingering Phantom
 Liquify
-Living Lightning
 Lofty Denial
 Lone Rider
-Loran, Disciple of History
-Loyal Cathar
 Loyal Retainers
 Lys Alana Scarblade
 Magebane Lizard
@@ -301,7 +266,6 @@ Mana Sculpt
 Mana Tithe
 Mandate of Abaddon
 Mass Appeal
-Master Skald
 Master Thief
 Mausoleum Secrets
 Mayael the Anima
@@ -318,14 +282,11 @@ Minamo's Meddling
 Mind Maggots
 Mindstatic
 Minor Misstep
-Mnemonic Deluge
 Moggcatcher
 Mondronen Shaman
 Monk Idealist
-Mortus Strider
 Murasa Pyromancer
 Myr Kinsmith
-Myr Retriever
 Mystic Genesis
 Mystic Skull
 Nanoform Sentinel
@@ -344,7 +305,6 @@ Nix
 No More Lies
 Oashra Cultivator
 Ojer Axonil, Deepest Might
-Ojer Taq, Deepest Foundation
 Olivia's Wrath
 Ondu Cleric
 Open the Vaults
@@ -361,8 +321,6 @@ Perimeter Sergeant
 Permission Denied
 Peter Parker
 Phyrexian Infiltrator
-Phytotitan
-Pinnacle Monk
 Pious Evangel
 Plant a Sapling
 Plasm Capture
@@ -372,9 +330,7 @@ Practiced Tactics
 Praetor's Counsel
 Priest of the Haunted Edge
 Prince of Thralls
-Prized Amalgam
 Profane Prayers
-Pull from the Deep
 Punish Ignorance
 Put Away
 Quench
@@ -388,43 +344,29 @@ Ratchet, Field Medic
 Ravenous Demon
 Ravenous Rotbelly
 Rebuff the Wicked
-Reconstruction
-Refurbish
 Reinterpret
 Reject Imperfection
-Relearn
 Render Silent
 Repeat Offender
-Restoration Specialist
 Resurrected Cultist
-Retched Wretch
 Revive
 Revolutionary Rebuff
 Ribbons of the Reikai
 Rime Tender
 Riot Ringleader
-Ritual of Restoration
 Rogues' Gallery
 Rona, Herald of Invasion
-Rootwater Diver
 Rootwater Matriarch
 Rubblebelt Braggart
 Rune Snag
 Sage of Ancient Lore
 Sage's Dousing
-Sage's Knowledge
 Sakura-Tribe Elder
-Salvage Scout
 Salvager of Secrets
 Sanitarium Skeleton
 Sarkhan's Triumph
 Scattering Stroke
-Scholar of Combustion
-Scholar of the Ages
 Scoria Wurm
-Scrap Trawler
-Scrapyard Salvo
-Scribe of the Mindful
 Scroll of Isildur
 Scuttling Sliver
 Sea Gate Loremaster
@@ -463,21 +405,17 @@ Spell Suck
 Spell Swindle
 Spell Syphon
 Spelljack
-Spellkeeper Weird
 Spellseeker
 Squad Rallier
-Squee, Goblin Nabob
 Starscream, Power Hungry
 Steel Overseer
 Steelshaper Apprentice
 Steelshaper's Gift
 Stensia Innkeeper
 Stoneshaker Shaman
-Stormchaser's Talent
 Sumala Woodshaper
 Summon: Fenrir
 Superior Numbers
-Surge to Victory
 Suspicious Stowaway
 Sygg, Wanderwine Wisdom
 Tajuru Archer
@@ -504,7 +442,6 @@ The Legend of Roku
 The Legend of Yangchen
 The Long Reach of Night
 The Many Deeds of Belzenlok
-The Mirari Conjecture
 The Modern Age
 The Restoration of Eiganjo
 The Rise of Sozin
@@ -530,13 +467,10 @@ Tovolar's Huntmaster
 Tovolar, Dire Overlord
 Tragic Poet
 Trapmaker's Snare
-Treasure Hunter
 Treasure Mage
 Treefolk Harbinger
 Tribute Mage
 Trickster Mage
-Trusty Packbeast
-Tune Up
 Tunnel Rats
 Turn Aside
 Two-Headed Giant
@@ -549,7 +483,6 @@ Unified Lunge
 Uninvited Geist
 Unravel
 Vedalken Plotter
-Vengeful Strangler
 Vildin-Pack Outcast
 Vile Deacon
 Village Ironsmith
@@ -558,12 +491,10 @@ Villagers of Estwald
 Vincent Valentine
 Vodalian Wave-Knight
 Voidslime
-Volcanic Vision
 Volley Veteran
 Voltaic Construct
 Voltaic Servant
 Vorinclex
-Vulpine Harvester
 War of the Last Alliance
 Warren Pilferers
 Weary Prisoner
@@ -577,12 +508,8 @@ Wolfbitten Captive
 Wolfkin Outcast
 Wood Elves
 Woodland Bellower
-Workshop Assistant
 Wyll of the Blade Pact
-Wyll of the Elder Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
-Zealous Lorecaster
 Zirilan of the Claw
-Zodiac Dragon
 Zombie Apocalypse

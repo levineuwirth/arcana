@@ -210,7 +210,16 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
             toughness: Some(PtValue::Fixed(2)),
             ..Default::default()
         };
-        state.objects.insert(GameObject::new(src, 0, Zone::Battlefield, card_id, chars));
+        // Place the source where the trigger fires FROM: the graveyard
+        // for death triggers ("when this dies, exile/return it" needs the
+        // dead card there) and for graveyard-zone abilities (Lingering
+        // Phantom: "when you cast …, return THIS from your graveyard").
+        let from_graveyard = matches!(ability.trigger_condition,
+            crate::triggers::TriggerCondition::SelfDies)
+            || (ability.trigger_zones.iter().any(|z| matches!(z, Zone::Graveyard(_)))
+                && !ability.trigger_zones.iter().any(|z| matches!(z, Zone::Battlefield)));
+        let src_zone = if from_graveyard { Zone::Graveyard(0) } else { Zone::Battlefield };
+        state.objects.insert(GameObject::new(src, 0, src_zone, card_id, chars));
         state.currently_resolving = Some(src);
         // Saga fidelity: actually PLACE the lore counters on the source so
         // chapter dispatch that reads the COUNT (not just the event) fires.
@@ -420,6 +429,9 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         for _ in 0..2 { make_card(&mut state, p, Zone::Hand(p)); }
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::CREATURE.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::LAND.into());
+        make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::ARTIFACT.into());
+        make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::INSTANT.into());
+        make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::SORCERY.into());
     }
     state
 }
