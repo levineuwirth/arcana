@@ -810,6 +810,50 @@ mod tests {
             ((self.0 >> 33) as usize) % m.max(1)
         }}
 
+        // Mid-game state invariants, checked at every decision point.
+        // Returns Err with a human-readable reason on the first breach.
+        fn game_invariants(
+            state: &arcana_core::state::GameState,
+        ) -> Result<(), String> {
+            // (1) State-based actions are settled at a decision point.
+            // No player may still satisfy a loss condition (CR 704):
+            // life <= 0, drawn-from-empty-library, or >=10 poison. In a
+            // 2-player game a loss also ends the game, so seeing a
+            // `has_lost` flag at a *pending* (non-over) decision means
+            // SBAs leaked a player who should already have lost.
+            for p in 0..state.num_players() {
+                let pl = state.player(p);
+                if pl.has_lost {
+                    return Err(format!(
+                        "SBA leak: player {p} has_lost but game still pending"));
+                }
+                if pl.life <= 0 {
+                    return Err(format!(
+                        "SBA leak: player {p} at {} life, game still pending",
+                        pl.life));
+                }
+                if pl.poison_counters >= 10 {
+                    return Err(format!(
+                        "SBA leak: player {p} at {} poison, game still pending",
+                        pl.poison_counters));
+                }
+                if pl.has_drawn_from_empty_library {
+                    return Err(format!(
+                        "SBA leak: player {p} drew from empty library, pending"));
+                }
+            }
+            // (2) Object identity: every live arena object has a unique
+            // id. A duplicate means a re-id/clone bug (the kind the
+            // London-bottom re-id path could have introduced).
+            let mut seen = std::collections::HashSet::new();
+            for o in state.objects.iter() {
+                if !seen.insert(o.id) {
+                    return Err(format!("duplicate object id {} in arena", o.id));
+                }
+            }
+            Ok(())
+        }
+
         let mut failures: Vec<String> = Vec::new();
         for seed in 0..GAMES {
             let mut rng = Lcg(seed.wrapping_mul(2654435761).wrapping_add(1));
@@ -828,6 +872,12 @@ mod tests {
                     match yld {
                         EngineYield::GameOver(_) => return Ok(()),
                         EngineYield::PendingDecision { legal_actions, .. } => {
+                            // Mid-game invariants: the engine checks SBAs
+                            // and settles before handing back a decision,
+                            // so the state must be internally consistent
+                            // here. A violation is an engine bug the
+                            // panic/stuck/terminate checks would miss.
+                            game_invariants(&state)?;
                             if legal_actions.is_empty() {
                                 return Err("stuck: no legal actions".to_string());
                             }
