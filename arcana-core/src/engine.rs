@@ -1998,6 +1998,16 @@ fn apply_bottom_cards(state: &mut GameState, ids: Vec<ObjectId>) {
         Some(SpecialAction::LondonMulliganBottomCards(n)) => n,
         _ => return,
     };
+    // CR 103.4 — a player never bottoms more cards than are in hand.
+    // After K mulligans the player owes K, but if K exceeds hand size
+    // (deep mulligans down to a small hand) the player simply bottoms
+    // their whole hand. `legal_actions` already clamps the canonical
+    // pick to `hand.len()`; clamp the required count the same way here
+    // so a legal submission can never trip the length check.
+    let hand_size = state.objects.iter()
+        .filter(|o| o.zone == Zone::Hand(player))
+        .count() as u32;
+    let owed = owed.min(hand_size);
     if ids.len() as u32 != owed {
         // Malformed submission — per CR 103.4a the engine should
         // prompt again. For Phase 1 we panic because a correctly
@@ -7447,6 +7457,47 @@ mod tests {
         let hand_ids: Vec<_> = state.objects.ids_in_zone_sorted(Zone::Hand(0));
         let picks = vec![hand_ids[0], hand_ids[1]];
         let _ = step(state, Action::BottomCards(picks), &reg());
+    }
+
+    #[test]
+    fn deep_mulligan_bottoms_whole_hand_without_panic() {
+        // Regression (found by the random-game integration harness):
+        // after K mulligans a player owes K bottom cards, but K can
+        // exceed hand size when mulliganing deep. CR 103.4 caps
+        // bottoming at hand size — the player simply bottoms their
+        // whole hand. `legal_actions` clamps the canonical pick to
+        // `hand.len()`; `apply_bottom_cards` must accept that legal
+        // submission rather than panic on `owed != ids.len()`.
+        let (mut state, _y) = start(23);
+        // Mulligan 8 times: owed becomes 8 while the hand stays at 7.
+        for _ in 0..8 {
+            let (s, _y) = step(state, Action::MulliganAgain, &reg());
+            state = s;
+        }
+        assert_eq!(state.player(0).mulligans_taken, 8);
+        let (state, _y) = step(state, Action::MulliganKeep, &reg());
+        assert_eq!(
+            state.priority.special_action,
+            Some(SpecialAction::LondonMulliganBottomCards(8)),
+        );
+
+        // Consult `legal_actions` exactly as an agent would — it offers
+        // the canonical bottom-the-lowest-ids pick clamped to hand size.
+        let actions = crate::legal_actions::legal_actions(&state, &reg());
+        let bottom = actions.into_iter()
+            .find(|a| matches!(a, Action::BottomCards(_)))
+            .expect("a BottomCards action should be legal");
+        let owed_len = match &bottom {
+            Action::BottomCards(ids) => ids.len(),
+            _ => unreachable!(),
+        };
+        // The hand only has 7 cards, so the canonical pick is 7, not 8.
+        assert_eq!(owed_len, 7);
+
+        // Applying the clamped pick must succeed (no panic) and empty
+        // the hand into the library.
+        let (state, _yld) = step(state, bottom, &reg());
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(0)), 0);
     }
 
     #[test]

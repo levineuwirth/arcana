@@ -779,6 +779,78 @@ mod tests {
             "every register() must yield a distinct CardId —              reg.len()={} != calls={n}", reg.len());
     }
 
+    /// Integration stress test: play full random games to completion,
+    /// asserting no panic, no stuck decision (empty legal-action set),
+    /// and termination within a step cap. Exercises the turn/combat/
+    /// stack/priority/SBA machinery and multi-card interactions that the
+    /// isolated behavioral probe never touches. `#[ignore]` (slow); run:
+    /// `cargo test -p arcana-cards random_games -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn random_games_play_to_completion() {
+        use arcana_core::engine::{new_game, step, EngineYield};
+        const GAMES: u64 = 200;
+        const STEP_CAP: usize = 8000;
+
+        let mut reg = arcana_core::registry::CardRegistry::new();
+        let n = crate::register_all::register_all(&mut reg) as u32;
+        // CardIds are a sparse HashMap key space — sample only VALID ids.
+        let valid: Vec<u32> = (0..n).filter(|&c| reg.get(c).is_some()).collect();
+        // Basic-land CardIds (so mana flows and casting/combat happen).
+        let basics: Vec<u32> = ["Plains","Island","Swamp","Mountain","Forest"].iter()
+            .filter_map(|name| reg.interner().lookup(name).and_then(|sym|
+                valid.iter().copied().find(|&c| reg.get(c).map(|d| d.name) == Some(sym))))
+            .collect();
+        assert!(basics.len() == 5, "expected all 5 basic lands, got {}", basics.len());
+
+        // Deterministic LCG so a failure is replayable from its seed.
+        struct Lcg(u64);
+        impl Lcg { fn next(&mut self, m: usize) -> usize {
+            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            ((self.0 >> 33) as usize) % m.max(1)
+        }}
+
+        let mut failures: Vec<String> = Vec::new();
+        for seed in 0..GAMES {
+            let mut rng = Lcg(seed.wrapping_mul(2654435761).wrapping_add(1));
+            // Two 40-card decks: 18 basics + 22 random catalog cards.
+            let deck = |rng: &mut Lcg| -> Vec<u32> {
+                let mut d = Vec::with_capacity(40);
+                for _ in 0..18 { d.push(basics[rng.next(5)]); }
+                for _ in 0..22 { d.push(valid[rng.next(valid.len())]); }
+                d
+            };
+            let decks = vec![deck(&mut rng), deck(&mut rng)];
+
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let (mut state, mut yld) = new_game(decks, &reg, seed);
+                for _ in 0..STEP_CAP {
+                    match yld {
+                        EngineYield::GameOver(_) => return Ok(()),
+                        EngineYield::PendingDecision { legal_actions, .. } => {
+                            if legal_actions.is_empty() {
+                                return Err("stuck: no legal actions".to_string());
+                            }
+                            let i = rng.next(legal_actions.len());
+                            let action = legal_actions[i].clone();
+                            let (s, y) = step(state, action, &reg);
+                            state = s; yld = y;
+                        }
+                    }
+                }
+                Err(format!("did not terminate in {STEP_CAP} steps"))
+            }));
+            match res {
+                Ok(Ok(())) => {}
+                Ok(Err(msg)) => failures.push(format!("seed {seed}: {msg}")),
+                Err(_) => failures.push(format!("seed {seed}: PANIC")),
+            }
+        }
+        eprintln!("random games: {} played, {} failed", GAMES, failures.len());
+        for f in failures.iter().take(40) { eprintln!("  {f}"); }
+        assert!(failures.is_empty(), "{} random game(s) failed", failures.len());
+    }
+
     /// CI GATE — behavioral audit. Resolves every spell card in a
     /// populated state and flags any whose resolver returns effects that
     /// change NOTHING observable: the silent-no-op class that bones/stub
