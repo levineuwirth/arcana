@@ -788,7 +788,6 @@ mod tests {
     #[test]
     #[ignore]
     fn random_games_play_to_completion() {
-        use arcana_core::engine::{new_game, step, EngineYield};
         // 400 games (200 uniform + 200 biased) exercises every KNOWN_OPEN
         // seed in ~20s. Running with a larger GAMES is a valid deeper sweep
         // and may surface NEW findings beyond the recorded baseline.
@@ -1003,15 +1002,28 @@ mod tests {
             Ok(())
         }
 
-        let mut failures: Vec<(u64, String)> = Vec::new();
         // Per-mode telemetry, indexed [uniform, biased]:
         //   games, min life seen, attacks, max objects, max legal-set, aborts.
         #[derive(Clone, Copy)]
         struct ModeAgg { games: u64, min_life: i32, attacks: u64,
                          max_obj: usize, max_legal: usize, aborts: u64 }
-        let mut agg = [ModeAgg { games: 0, min_life: i32::MAX, attacks: 0,
-                                 max_obj: 0, max_legal: 0, aborts: 0 }; 2];
-        for seed in 0..GAMES {
+
+        // One game, fully self-contained and deterministic from its seed —
+        // independent RNG, decks, and engine state — so games parallelize.
+        // Returns a telemetry record or a failure (panic site / stuck /
+        // non-termination / invariant breach). The per-game report is
+        // (min life, attacks, max objects, max legal-set, aborted-by-cap?);
+        // an abort is bounded, NOT a failure.
+        enum GameResult {
+            Done { bias: bool, min_life: i32, attacks: u64,
+                   max_obj: usize, max_legal: usize, aborted: bool },
+            Failed { seed: u64, detail: String },
+        }
+        fn run_game(
+            reg: &arcana_core::registry::CardRegistry,
+            valid: &[u32], basics: &[u32], seed: u64,
+        ) -> GameResult {
+            use arcana_core::engine::{new_game, step, EngineYield};
             let mut rng = Lcg(seed.wrapping_mul(2654435761).wrapping_add(1));
             // Two 40-card decks: 18 basics + 22 random catalog cards.
             let deck = |rng: &mut Lcg| -> Vec<u32> {
@@ -1024,17 +1036,8 @@ mod tests {
             // Even seeds play uniform-random; odd seeds use the biased
             // picker. Splitting keeps both coverage profiles.
             let bias = seed % 2 == 1;
-
-            // Per-game telemetry: lowest life any player reached and how
-            // many non-empty attacker declarations were committed. Lets
-            // the harness self-report that biased play actually drives
-            // combat / low-life states uniform play barely reaches.
-            // Per-game report: (min life, attacks, max objects, max legal
-            // set, aborted-by-cap?). `Err` = a real failure (panic / stuck
-            // / non-termination / invariant breach); an abort is `Ok` with
-            // the flag set — bounded, not a failure.
             let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let (mut state, mut yld) = new_game(decks, &reg, seed);
+                let (mut state, mut yld) = new_game(decks, reg, seed);
                 let mut min_life = i32::MAX;
                 let mut attacks: u64 = 0;
                 let mut max_obj = 0usize;
@@ -1077,32 +1080,75 @@ mod tests {
                                 if !attackers.is_empty()) {
                                 attacks += 1;
                             }
-                            let (s, y) = step(state, action, &reg);
+                            let (s, y) = step(state, action, reg);
                             state = s; yld = y;
                         }
                     }
                 }
                 Err(format!("did not terminate in {STEP_CAP} steps"))
             }));
-            let m = bias as usize;
             match res {
-                Ok(Ok((ml, atk, mo, mleg, aborted))) => {
-                    agg[m].games += 1;
-                    agg[m].min_life = agg[m].min_life.min(ml);
-                    agg[m].attacks += atk;
-                    agg[m].max_obj = agg[m].max_obj.max(mo);
-                    agg[m].max_legal = agg[m].max_legal.max(mleg);
-                    if aborted { agg[m].aborts += 1; }
-                }
-                Ok(Err(msg)) => failures.push((seed, msg)),
+                Ok(Ok((min_life, attacks, max_obj, max_legal, aborted))) =>
+                    GameResult::Done { bias, min_life, attacks, max_obj, max_legal, aborted },
+                Ok(Err(detail)) => GameResult::Failed { seed, detail },
                 Err(_) => {
                     let loc = PANIC_LOC.with(|l| l.borrow_mut().take())
                         .unwrap_or_else(|| "?".to_string());
-                    failures.push((seed, format!("PANIC at {loc}")));
+                    GameResult::Failed { seed, detail: format!("PANIC at {loc}") }
                 }
             }
         }
+
+        // Fan out games across the available cores. Each game only READS the
+        // shared registry (resolution never mutates it — `step` takes `&reg`),
+        // so `&reg` is shared by reference across `std::thread::scope` workers;
+        // per-game RNG / decks / engine state are independent. Seeds are
+        // strided across threads; results merge commutatively (min / sum /
+        // max), so thread scheduling never changes the outcome.
+        let nthreads = std::thread::available_parallelism()
+            .map(|n| n.get()).unwrap_or(4).min(GAMES.max(1) as usize).max(1);
+        let reg_ref = &reg;
+        let (valid_ref, basics_ref) = (&valid[..], &basics[..]);
+        let batches: Vec<Vec<GameResult>> = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..nthreads).map(|t| {
+                scope.spawn(move || {
+                    let mut out = Vec::new();
+                    let mut seed = t as u64;
+                    while seed < GAMES {
+                        out.push(run_game(reg_ref, valid_ref, basics_ref, seed));
+                        seed += nthreads as u64;
+                    }
+                    out
+                })
+            }).collect();
+            handles.into_iter()
+                .map(|h| h.join().expect("harness game thread panicked outside catch_unwind"))
+                .collect()
+        });
         std::panic::set_hook(prev_hook);
+
+        // Merge per-thread results. Failures sorted by seed for deterministic
+        // output regardless of thread scheduling.
+        let mut failures: Vec<(u64, String)> = Vec::new();
+        let mut agg = [ModeAgg { games: 0, min_life: i32::MAX, attacks: 0,
+                                 max_obj: 0, max_legal: 0, aborts: 0 }; 2];
+        for batch in batches {
+            for r in batch {
+                match r {
+                    GameResult::Done { bias, min_life, attacks, max_obj, max_legal, aborted } => {
+                        let m = bias as usize;
+                        agg[m].games += 1;
+                        agg[m].min_life = agg[m].min_life.min(min_life);
+                        agg[m].attacks += attacks;
+                        agg[m].max_obj = agg[m].max_obj.max(max_obj);
+                        agg[m].max_legal = agg[m].max_legal.max(max_legal);
+                        if aborted { agg[m].aborts += 1; }
+                    }
+                    GameResult::Failed { seed, detail } => failures.push((seed, detail)),
+                }
+            }
+        }
+        failures.sort_by_key(|&(s, _)| s);
         eprintln!("random games: {} played, {} failed", GAMES, failures.len());
         for (m, label) in [(0usize, "uniform"), (1usize, "biased")] {
             let a = agg[m];
