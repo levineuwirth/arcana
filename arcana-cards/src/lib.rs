@@ -817,7 +817,15 @@ mod tests {
         // expected (logged, not fatal); a failure anywhere else, or a
         // listed seed failing for a *different* reason, is a NEW finding
         // and fails the test. Remove an entry when its bug is fixed.
-        const KNOWN_OPEN: &[(u64, &str)] = &[];
+        //   curated-deck non-termination LIVELOCKS (turn frozen across step
+        //   caps — turn 29/18, life unchanged from 8k to 20k steps, so the
+        //   game churns expensive states without advancing): one in a Saga
+        //   deck, one in a Battle deck. Real engine bugs (a phase/turn that
+        //   won't advance, or a re-firing trigger), surfaced by thread (2).
+        const KNOWN_OPEN: &[(u64, &str)] = &[
+            (1000219, "did not terminate"),
+            (1000517, "did not terminate"),
+        ];
 
         // Capture the panic *site* per game (and suppress the default
         // backtrace spam) so failures are actionable.
@@ -978,21 +986,32 @@ mod tests {
         // (min life, attacks, max objects, max legal-set, aborted-by-cap?);
         // an abort is bounded, NOT a failure.
         enum GameResult {
-            Done { bias: bool, min_life: i32, attacks: u64,
+            Done { profile: usize, bias: bool, min_life: i32, attacks: u64,
                    max_obj: usize, max_legal: usize, aborted: bool },
-            Failed { seed: u64, detail: String },
+            Failed { profile: usize, seed: u64, detail: String },
         }
         fn run_game(
             reg: &arcana_core::registry::CardRegistry,
-            valid: &[u32], basics: &[u32], seed: u64,
+            valid: &[u32], basics: &[u32], archetype: Option<&[u32]>,
+            profile: usize, seed: u64,
         ) -> GameResult {
             use arcana_core::engine::{new_game, step, EngineYield};
             let mut rng = Lcg(seed.wrapping_mul(2654435761).wrapping_add(1));
-            // Two 40-card decks: 18 basics + 22 random catalog cards.
+            // 40-card deck: 18 basics + 22 spells. A curated archetype draws
+            // ~half its spells from the archetype pool and the rest from the
+            // whole catalog (so the deck still functions — creatures to
+            // attack, removal, etc.); the random profile draws all 22 from
+            // the catalog (identical to before, preserving determinism).
             let deck = |rng: &mut Lcg| -> Vec<u32> {
                 let mut d = Vec::with_capacity(40);
                 for _ in 0..18 { d.push(basics[rng.next(5)]); }
-                for _ in 0..22 { d.push(valid[rng.next(valid.len())]); }
+                match archetype {
+                    Some(pool) if !pool.is_empty() => {
+                        for _ in 0..11 { d.push(pool[rng.next(pool.len())]); }
+                        for _ in 0..11 { d.push(valid[rng.next(valid.len())]); }
+                    }
+                    _ => for _ in 0..22 { d.push(valid[rng.next(valid.len())]); }
+                }
                 d
             };
             let decks = vec![deck(&mut rng), deck(&mut rng)];
@@ -1048,38 +1067,100 @@ mod tests {
                         }
                     }
                 }
-                Err(format!("did not terminate in {STEP_CAP} steps"))
+                Err(format!("did not terminate in {STEP_CAP} steps (turn {}, life {:?})",
+                    state.turn.turn_number,
+                    (0..state.num_players()).map(|p| state.player(p).life).collect::<Vec<_>>()))
             }));
             match res {
                 Ok(Ok((min_life, attacks, max_obj, max_legal, aborted))) =>
-                    GameResult::Done { bias, min_life, attacks, max_obj, max_legal, aborted },
-                Ok(Err(detail)) => GameResult::Failed { seed, detail },
+                    GameResult::Done { profile, bias, min_life, attacks, max_obj, max_legal, aborted },
+                Ok(Err(detail)) => GameResult::Failed { profile, seed, detail },
                 Err(_) => {
                     let loc = PANIC_LOC.with(|l| l.borrow_mut().take())
                         .unwrap_or_else(|| "?".to_string());
-                    GameResult::Failed { seed, detail: format!("PANIC at {loc}") }
+                    GameResult::Failed { profile, seed, detail: format!("PANIC at {loc}") }
                 }
             }
         }
 
+        // Build curated archetype pools (subsets of `valid` by card type) so
+        // games drive subsystems that random 22-card decks rarely assemble —
+        // and into the SBA coverage just added (saga 704.5s, battle 704.5t,
+        // equipment/aura 704.5q/r/n, planeswalker loyalty 704.5i). An empty
+        // pool (archetype absent from the catalog) is skipped.
+        fn build_pool<F>(reg: &arcana_core::registry::CardRegistry,
+                         valid: &[u32], pred: F) -> Vec<u32>
+        where F: Fn(&arcana_core::registry::CardDefinition,
+                    &arcana_core::types::StringInterner) -> bool {
+            valid.iter().copied()
+                .filter(|&c| reg.get(c).is_some_and(|d| pred(d, reg.interner())))
+                .collect()
+        }
+        let candidate_profiles: [(&str, Vec<u32>); 5] = [
+            ("saga", build_pool(&reg, &valid, |d, i|
+                d.base_characteristics.types.is_enchantment()
+                && d.base_characteristics.subtypes.contains_name(i, "Saga"))),
+            ("planeswalker", build_pool(&reg, &valid, |d, _|
+                d.base_characteristics.types.is_planeswalker())),
+            ("battle", build_pool(&reg, &valid, |d, _|
+                d.base_characteristics.types.is_battle())),
+            ("equipment", build_pool(&reg, &valid, |d, i|
+                d.base_characteristics.types.is_artifact()
+                && d.base_characteristics.subtypes.contains_name(i, "Equipment"))),
+            ("aura", build_pool(&reg, &valid, |d, i|
+                d.base_characteristics.types.is_enchantment()
+                && d.base_characteristics.subtypes.contains_name(i, "Aura"))),
+        ];
+        // profiles[0] is the random profile (no archetype pool); the rest are
+        // non-empty curated archetypes.
+        let mut profiles: Vec<(&str, Option<Vec<u32>>)> = vec![("random", None)];
+        for (label, pool) in candidate_profiles {
+            if pool.is_empty() {
+                eprintln!("curated: no '{label}' cards in catalog — skipping");
+            } else {
+                eprintln!("curated: '{label}' pool = {} cards", pool.len());
+                profiles.push((label, Some(pool)));
+            }
+        }
+
+        // Work list: (profile index, seed). The random profile gets seeds
+        // 0..GAMES (identical decks to before — preserves every regression
+        // seed). Each curated archetype gets CURATED_PER games on a disjoint
+        // high seed range so curated games never collide with random ones and
+        // stay deterministic.
+        const CURATED_PER: u64 = 150;
+        const CURATED_SEED_BASE: u64 = 1_000_000;
+        let mut work: Vec<(usize, u64)> = (0..GAMES).map(|s| (0usize, s)).collect();
+        for pidx in 1..profiles.len() {
+            for i in 0..CURATED_PER {
+                work.push((pidx, CURATED_SEED_BASE + (pidx as u64) * CURATED_PER + i));
+            }
+        }
+        let total = work.len();
+
         // Fan out games across the available cores. Each game only READS the
         // shared registry (resolution never mutates it — `step` takes `&reg`),
-        // so `&reg` is shared by reference across `std::thread::scope` workers;
-        // per-game RNG / decks / engine state are independent. Seeds are
-        // strided across threads; results merge commutatively (min / sum /
-        // max), so thread scheduling never changes the outcome.
+        // so `&reg` (and the profile pools) are shared by reference across
+        // `std::thread::scope` workers; per-game RNG / decks / engine state
+        // are independent. Work items are strided across threads; results
+        // merge commutatively (min / sum / max), so thread scheduling never
+        // changes the outcome.
         let nthreads = std::thread::available_parallelism()
-            .map(|n| n.get()).unwrap_or(4).min(GAMES.max(1) as usize).max(1);
+            .map(|n| n.get()).unwrap_or(4).min(total.max(1)).max(1);
         let reg_ref = &reg;
         let (valid_ref, basics_ref) = (&valid[..], &basics[..]);
+        let work_ref = &work[..];
+        let profiles_ref = &profiles;
         let batches: Vec<Vec<GameResult>> = std::thread::scope(|scope| {
             let handles: Vec<_> = (0..nthreads).map(|t| {
                 scope.spawn(move || {
                     let mut out = Vec::new();
-                    let mut seed = t as u64;
-                    while seed < GAMES {
-                        out.push(run_game(reg_ref, valid_ref, basics_ref, seed));
-                        seed += nthreads as u64;
+                    let mut wi = t;
+                    while wi < total {
+                        let (pidx, seed) = work_ref[wi];
+                        let arch = profiles_ref[pidx].1.as_deref();
+                        out.push(run_game(reg_ref, valid_ref, basics_ref, arch, pidx, seed));
+                        wi += nthreads;
                     }
                     out
                 })
@@ -1090,47 +1171,53 @@ mod tests {
         });
         std::panic::set_hook(prev_hook);
 
-        // Merge per-thread results. Failures sorted by seed for deterministic
-        // output regardless of thread scheduling.
-        let mut failures: Vec<(u64, String)> = Vec::new();
-        let mut agg = [ModeAgg { games: 0, min_life: i32::MAX, attacks: 0,
-                                 max_obj: 0, max_legal: 0, aborts: 0 }; 2];
+        // Merge per-thread results, keyed by [profile][bias]. Failures sorted
+        // by (profile, seed) for deterministic output regardless of scheduling.
+        let mut failures: Vec<(usize, u64, String)> = Vec::new();
+        let blank = ModeAgg { games: 0, min_life: i32::MAX, attacks: 0,
+                              max_obj: 0, max_legal: 0, aborts: 0 };
+        let mut agg: Vec<[ModeAgg; 2]> = vec![[blank; 2]; profiles.len()];
         for batch in batches {
             for r in batch {
                 match r {
-                    GameResult::Done { bias, min_life, attacks, max_obj, max_legal, aborted } => {
-                        let m = bias as usize;
-                        agg[m].games += 1;
-                        agg[m].min_life = agg[m].min_life.min(min_life);
-                        agg[m].attacks += attacks;
-                        agg[m].max_obj = agg[m].max_obj.max(max_obj);
-                        agg[m].max_legal = agg[m].max_legal.max(max_legal);
-                        if aborted { agg[m].aborts += 1; }
+                    GameResult::Done { profile, bias, min_life, attacks, max_obj, max_legal, aborted } => {
+                        let a = &mut agg[profile][bias as usize];
+                        a.games += 1;
+                        a.min_life = a.min_life.min(min_life);
+                        a.attacks += attacks;
+                        a.max_obj = a.max_obj.max(max_obj);
+                        a.max_legal = a.max_legal.max(max_legal);
+                        if aborted { a.aborts += 1; }
                     }
-                    GameResult::Failed { seed, detail } => failures.push((seed, detail)),
+                    GameResult::Failed { profile, seed, detail } =>
+                        failures.push((profile, seed, detail)),
                 }
             }
         }
-        failures.sort_by_key(|&(s, _)| s);
-        eprintln!("random games: {} played, {} failed", GAMES, failures.len());
-        for (m, label) in [(0usize, "uniform"), (1usize, "biased")] {
-            let a = agg[m];
-            eprintln!("  {label}: {} games, {} aborted(cap), min life {}, \
+        failures.sort_by_key(|&(p, s, _)| (p, s));
+        eprintln!("random-game harness: {total} games across {} profiles, {} failed",
+            profiles.len(), failures.len());
+        for (idx, (label, _)) in profiles.iter().enumerate() {
+            let (u, b) = (&agg[idx][0], &agg[idx][1]);
+            let games = u.games + b.games;
+            if games == 0 { continue; }
+            let min_life = u.min_life.min(b.min_life);
+            eprintln!("  {label}: {games} games, {} aborted(cap), min life {}, \
                 {} attack-decls, max objects {}, max legal-set {}",
-                a.games, a.aborts,
-                if a.min_life == i32::MAX { 0 } else { a.min_life },
-                a.attacks, a.max_obj, a.max_legal);
+                u.aborts + b.aborts,
+                if min_life == i32::MAX { 0 } else { min_life },
+                u.attacks + b.attacks, u.max_obj.max(b.max_obj), u.max_legal.max(b.max_legal));
         }
         // A failure is "known-open" iff its seed is listed AND the detail
         // still names the recorded site (so a known seed regressing to a
         // different panic is treated as NEW).
         let is_known = |seed: u64, detail: &str|
             KNOWN_OPEN.iter().any(|(s, site)| *s == seed && detail.contains(site));
-        let novel: Vec<&(u64, String)> = failures.iter()
-            .filter(|(s, d)| !is_known(*s, d)).collect();
-        for (s, d) in failures.iter().take(60) {
+        let novel: Vec<&(usize, u64, String)> = failures.iter()
+            .filter(|(_, s, d)| !is_known(*s, d)).collect();
+        for (p, s, d) in failures.iter().take(60) {
             let tag = if is_known(*s, d) { "known-open" } else { "NEW" };
-            eprintln!("  seed {s}: {d} [{tag}]");
+            eprintln!("  [{}] seed {s}: {d} [{tag}]", profiles[*p].0);
         }
         assert!(novel.is_empty(),
             "{} NEW random-game failure(s) not in KNOWN_OPEN (of {} total)",
