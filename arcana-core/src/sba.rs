@@ -107,16 +107,38 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
 /// Non-mutating variant: does any SBA apply right now? Useful as a
 /// cheap check ("is resolution pending interruption?") in the engine.
 pub fn has_pending_state_based_actions(state: &GameState) -> bool {
-    pending_player_loss(state) || pending_creature_to_graveyard(state)
-        || pending_planeswalker_to_graveyard(state)
-        || pending_legend_conflict(state)
-        || pending_pt_annihilation(state)
-        || pending_token_cease(state)
-        || pending_attachment_illegal(state)
-        || pending_fortification_illegal(state)
-        || pending_aura_illegal(state)
-        || pending_saga_sacrifice(state)
-        || pending_battle_defeat(state)
+    pending_state_based_action_kind(state).is_some()
+}
+
+/// Diagnostic variant of [`has_pending_state_based_actions`]: returns the
+/// CR clause + name of the first SBA that still applies, or `None` when
+/// the state is fully settled. Intended for assertions / fuzz harnesses
+/// that want an actionable message — and as the single source of truth so
+/// a checker can't drift from what the SBA pass actually does. Checked in
+/// the same order [`apply_state_based_actions`] applies them.
+pub fn pending_state_based_action_kind(state: &GameState) -> Option<&'static str> {
+    if pending_player_loss(state) { return Some("704.5a/b/c player loss"); }
+    if pending_creature_to_graveyard(state) {
+        return Some("704.5f/g creature to graveyard");
+    }
+    if pending_planeswalker_to_graveyard(state) {
+        return Some("704.5i planeswalker loyalty 0");
+    }
+    if pending_legend_conflict(state) { return Some("704.5j legend rule"); }
+    if pending_pt_annihilation(state) { return Some("704.5p +1/+1 & -1/-1 annihilation"); }
+    if pending_token_cease(state) { return Some("704.5d token in non-battlefield zone"); }
+    if pending_attachment_illegal(state) {
+        return Some("704.5q equipment illegally attached");
+    }
+    if pending_fortification_illegal(state) {
+        return Some("704.5r fortification illegally attached");
+    }
+    if pending_aura_illegal(state) {
+        return Some("704.5n aura illegally attached / unattached");
+    }
+    if pending_saga_sacrifice(state) { return Some("704.5s saga past final chapter"); }
+    if pending_battle_defeat(state) { return Some("704.5t battle defeated"); }
+    None
 }
 
 // =============================================================================

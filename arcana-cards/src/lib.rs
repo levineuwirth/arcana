@@ -903,9 +903,6 @@ mod tests {
             context: &arcana_core::actions::DecisionContext,
         ) -> Result<(), String> {
             use arcana_core::actions::DecisionContext;
-            use arcana_core::zones::Zone;
-            use arcana_core::types::CounterKind;
-            use arcana_core::effects::KeywordAbility;
 
             // (1) Context-INDEPENDENT invariants — valid at any decision.
             // Object identity: every live arena object has a unique id. A
@@ -934,69 +931,35 @@ mod tests {
             // sub-steps, combat declarations, and mid-resolution choices a
             // loss/death condition can hold TRANSIENTLY before the action
             // finishes and SBAs run (e.g. a "draw 3" that decks a player
-            // then prompts a choice). So only assert "should already be
-            // dead/lost" at a Priority decision point — a genuine leak
-            // persists to the next priority check, so nothing real is missed.
+            // then prompts a choice). So only assert at a Priority decision
+            // point — a genuine leak persists to the next priority check,
+            // so nothing real is missed.
             if !matches!(context, DecisionContext::Priority) {
                 return Ok(());
             }
 
-            // Player loss conditions (CR 704.5a/c, poison). In 2p a loss
-            // ends the game, so a still-pending `has_lost` is itself a leak.
-            for p in 0..state.num_players() {
-                let pl = state.player(p);
-                if pl.has_lost {
-                    return Err(format!(
-                        "SBA leak: player {p} has_lost but game still pending"));
-                }
-                if pl.life <= 0 {
-                    return Err(format!(
-                        "SBA leak: player {p} at {} life, game still pending", pl.life));
-                }
-                if pl.poison_counters >= 10 {
-                    return Err(format!(
-                        "SBA leak: player {p} at {} poison, game still pending",
-                        pl.poison_counters));
-                }
-                if pl.has_drawn_from_empty_library {
-                    return Err(format!(
-                        "SBA leak: player {p} drew from empty library, pending"));
-                }
+            // Ask the engine's OWN aggregate predicate whether any SBA still
+            // applies. Using the engine's predicate (not a hand-rolled copy)
+            // means the check can never drift from what the SBA pass actually
+            // does — the divergence trap an earlier raw-toughness version of
+            // this fell into. Covers every implemented SBA at once: player
+            // loss (704.5a/b/c), creature/PW death (704.5f/g/i), legend
+            // (704.5j), ±1/±1 (704.5p), tokens (704.5d), equipment /
+            // fortification / aura (704.5q/r/n), saga (704.5s), battle
+            // (704.5t).
+            if let Some(kind) = arcana_core::sba::pending_state_based_action_kind(state) {
+                return Err(format!(
+                    "SBA leak: {kind} still applies at a priority decision"));
             }
-
-            // Battlefield permanent death SBAs (CR 704.5f/g/h/i). The
-            // lethality test MUST mirror the engine's own
-            // `check_creature_graveyard`: layer-aware `computed_toughness`
-            // (not raw counter-only toughness, which false-positives on
-            // anthem/pump) and the Indestructible exemption (CR 702.12b).
-            for o in state.objects.objects_in_zone(Zone::Battlefield) {
-                if o.is_creature() {
-                    let indestructible =
-                        state.has_keyword(o.id, &KeywordAbility::Indestructible);
-                    if let Some(t) = state.computed_toughness(o.id) {
-                        let dies = t <= 0
-                            || (!indestructible && t > 0
-                                && (o.damage_marked as i32) >= t)
-                            || (!indestructible && t > 0
-                                && o.damage_marked > 0 && o.has_deathtouch_damage);
-                        if dies {
-                            return Err(format!(
-                                "SBA leak: creature {} should be in the graveyard \
-                                 (toughness {t}, {} damage, deathtouch={}, \
-                                 indestructible={indestructible}) but is still on \
-                                 the battlefield",
-                                o.id, o.damage_marked, o.has_deathtouch_damage));
-                        }
-                    }
-                }
-                // 704.5i — a planeswalker with 0 loyalty (no indestructible
-                // exemption; indestructible only prevents destruction).
-                if o.is_planeswalker()
-                    && o.count_counters(CounterKind::Loyalty) == 0
-                {
+            // In a 2-player game a loss ends the game, so a player still
+            // flagged `has_lost` at a pending (non-over) decision means
+            // game-over detection lagged behind the SBA. (The aggregate
+            // above won't flag an already-lost player — its loss predicate
+            // is `!has_lost && ...` — so check this separately.)
+            for p in 0..state.num_players() {
+                if state.player(p).has_lost {
                     return Err(format!(
-                        "SBA leak: planeswalker {} at 0 loyalty but still on the \
-                         battlefield", o.id));
+                        "player {p} has_lost but game still pending"));
                 }
             }
             Ok(())
