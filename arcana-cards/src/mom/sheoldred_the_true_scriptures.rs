@@ -13,12 +13,9 @@
 //! {4}{B}: Exile Sheoldred, then return it to the battlefield transformed
 //!   under its owner's control. Activate only as a sorcery and only if an
 //!   opponent has eight or more cards in their graveyard.
-//! GAP: "only if an opponent has 8+ cards in their graveyard" is an ACTIVATION
-//!   precondition (CR 602.5), not a triggered-ability intervening-if (CR 603.4).
-//!   `conditions::an_opponent_graveyard_at_least(state, you, 8)` expresses the
-//!   predicate, but ActivatedAbilityDef has no opponent-state precondition hook
-//!   (only `min_self_counters`, which gates on counters on the source). Deferred
-//!   pending an activation-precondition field. Modeled as always-available.
+//!   "only if an opponent has 8+ cards in their graveyard" is an ACTIVATION
+//!   precondition (CR 602.5), modeled via `activation_condition` +
+//!   `conditions::an_opponent_graveyard_at_least(state, you, 8)`.
 //!
 //! Back face — The True Scriptures (Enchantment — Saga):
 //! I — For each opponent, destroy up to one target creature or planeswalker
@@ -35,9 +32,10 @@
 //! GAP: "put all creature cards from all graveyards" — Reanimate is
 //!   non-targeted from one graveyard; mass-reanimate not expressible.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -48,7 +46,7 @@ use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -104,12 +102,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // {4}{B}: Exile then return transformed.
-            // GAP: "only if an opponent has 8+ cards in their graveyard" not
-            // expressible as an ActivationCost precondition.
+            // "only if an opponent has 8+ cards in their graveyard" modeled
+            // via activation_condition.
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{4}{B}: Exile Sheoldred, then return it to the battlefield transformed.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{4}{B}").expect("valid cost"),
+                    activation_condition: Some(precond_opp_gy_8),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![],
@@ -154,4 +153,8 @@ fn activate_exile_transform(
         Effect::ReturnFromExileToBattlefield { target: ctx.source },
         Effect::Transform { target: ctx.source },
     ]
+}
+
+fn precond_opp_gy_8(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::an_opponent_graveyard_at_least(state, you, 8)
 }

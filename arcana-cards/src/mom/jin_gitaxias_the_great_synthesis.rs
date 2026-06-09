@@ -6,8 +6,8 @@
 //!   {3}{U}: Exile Jin-Gitaxias, then return it to the battlefield transformed under its
 //!     owner's control. Activate only as a sorcery and only if you have seven or more
 //!     cards in hand.
-//!     GAP: "only if you have seven or more cards in hand" activation condition not
-//!     expressible; modeled as sorcery-speed transform without hand size check.
+//!     "only if you have seven or more cards in hand" modeled via
+//!     `activation_condition` + `conditions::hand_at_least`.
 //!     GAP: exile-then-return-transformed not directly expressible; modeled as Transform.
 //!
 //! Back face: Enchantment — Saga (The Great Synthesis)
@@ -26,10 +26,11 @@
 //!   GAP: back-face-only triggered abilities (Saga chapter triggers) not auto-installed
 //!     on transform.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -39,7 +40,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -105,11 +106,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // {3}{U}: Transform (exile then return transformed). Sorcery speed.
-            // GAP: "only if you have 7+ cards in hand" condition not expressible.
+            // "only if you have 7+ cards in hand" modeled via activation_condition.
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{3}{U}: Exile Jin-Gitaxias, then return it to the battlefield transformed. Activate only as a sorcery and only if you have seven or more cards in hand.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}{U}").unwrap(),
+                    activation_condition: Some(precond_hand_7),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -144,4 +146,8 @@ fn transform_to_saga(
     // GAP: oracle says "exile Jin-Gitaxias, then return it transformed";
     // modeled as Transform directly.
     vec![Effect::Transform { target: ctx.source }]
+}
+
+fn precond_hand_7(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::hand_at_least(state, you, 7)
 }

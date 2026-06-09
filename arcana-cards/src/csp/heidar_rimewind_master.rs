@@ -1,19 +1,20 @@
 //! Heidar, Rimewind Master — `{4}{U}` 3/3 blue Legendary Human Wizard.
 //! "{2}, {T}: Return target permanent to its owner's hand.
 //! Activate only if you control four or more snow permanents."
-//! GAP: "Activate only if you control four or more snow permanents" — activation
-//! legality condition not expressible in ActivationCost (no snow-count gate field).
+//! "Activate only if you control four or more snow permanents" modeled via
+//! `activation_condition` + `conditions::you_control_at_least` (snow supertype).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement, TargetFilter, TargetCount, ObjectFilter};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Heidar, Rimewind Master");
@@ -37,10 +38,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}, {T}: Return target permanent to its owner's hand. Activate only if you control four or more snow permanents.".into(),
-                // GAP: "four or more snow permanents" legality condition not in ActivationCost.
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}").unwrap(),
                     tap: true,
+                    activation_condition: Some(precond_four_snow),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
@@ -66,4 +67,9 @@ fn bounce_permanent(
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::ReturnToHand { target: *id }]
+}
+
+fn precond_four_snow(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    let filter = ObjectFilter::new().with_supertypes(SupertypeSet(SupertypeSet::SNOW));
+    conditions::you_control_at_least(state, you, &filter, 4)
 }

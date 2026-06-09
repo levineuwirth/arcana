@@ -1,17 +1,19 @@
 //! Desiccated Naga — `{2}{B}` 3/2 Zombie Snake.
 //! `{3}{B}: Target opponent loses 2 life and you gain 2 life. Activate only if you control a Liliana planeswalker.`
-//! GAP: "Activate only if you control a Liliana planeswalker" — activation precondition not modeled.
+//! "Activate only if you control a Liliana planeswalker" modeled via
+//! `activation_condition` + `conditions::you_control_subtype`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Desiccated Naga");
@@ -36,6 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{3}{B}: Target opponent loses 2 life and you gain 2 life. Activate only if you control a Liliana planeswalker.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}{B}").unwrap(),
+                    activation_condition: Some(precond_liliana),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -54,7 +57,6 @@ fn drain_effect(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Activate only if you control a Liliana planeswalker" precondition not checked
     let Some(target) = ctx.targets.targets.first() else {
         return Vec::new();
     };
@@ -65,4 +67,8 @@ fn drain_effect(
         Effect::LoseLife { player: *p, amount: 2 },
         Effect::GainLife { player: ctx.controller, amount: 2 },
     ]
+}
+
+fn precond_liliana(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Liliana")
 }

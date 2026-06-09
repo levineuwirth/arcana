@@ -1,19 +1,20 @@
 //! Rimewind Taskmage — `{1}{U}` 1/2 blue Human Wizard.
 //! "{1}, {T}: You may tap or untap target permanent. Activate only if you control
 //! four or more snow permanents."
-//! GAP: "Activate only if you control four or more snow permanents" condition is not
-//! modeled (no activation_condition field in ActivatedAbilityDef).
+//! "Activate only if you control four or more snow permanents" modeled via
+//! `activation_condition` + `conditions::you_control_at_least` (snow supertype).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rimewind Taskmage");
@@ -39,6 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
                     tap: true,
+                    activation_condition: Some(precond_four_snow),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
@@ -68,4 +70,9 @@ fn tap_or_untap_permanent(
     // GAP: "you may tap or untap" — choice between Tap and Untap not modeled;
     // emitting Tap as default.
     vec![Effect::Tap { target: *id }]
+}
+
+fn precond_four_snow(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    let filter = ObjectFilter::new().with_supertypes(SupertypeSet(SupertypeSet::SNOW));
+    conditions::you_control_at_least(state, you, &filter, 4)
 }

@@ -1,17 +1,18 @@
 //! Sacred White Deer — `{1}{G}` 2/2 green Elk.
 //! "{3}{G}, {T}: You gain 4 life. Activate only if you control a Yanggu planeswalker."
-//! GAP: "only if you control a Yanggu planeswalker" activation condition not in
-//! ActivatedAbilityDef (no activation_condition field).
+//! "only if you control a Yanggu planeswalker" modeled via
+//! `activation_condition` + `conditions::you_control_subtype`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sacred White Deer");
@@ -35,8 +36,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}{G}").unwrap(),
                     tap: true,
+                    activation_condition: Some(precond_yanggu),
                     ..ActivationCost::default()
-                    // GAP: "only if you control a Yanggu planeswalker" condition not modeled
                 },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
@@ -55,4 +56,8 @@ fn gain_4_life(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::GainLife { player: ctx.controller, amount: 4 }]
+}
+
+fn precond_yanggu(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Yanggu")
 }

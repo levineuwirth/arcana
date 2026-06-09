@@ -1,19 +1,20 @@
 //! Bramblefort Fink — `{1}{G}` 2/2 Ouphe.
 //! `{8}:` This creature has base power and toughness 10/10 until end of turn.
 //! Activate only if you control an Oko planeswalker.
-//! GAP: "Activate only if you control an Oko planeswalker" — named-card
-//! precondition not expressible; emitting ability without precondition.
+//! "Activate only if you control an Oko planeswalker" modeled via
+//! `activation_condition` + `conditions::you_control_subtype`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Bramblefort Fink");
@@ -36,6 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{8}: This creature has base power and toughness 10/10 until end of turn. Activate only if you control an Oko planeswalker.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{8}").unwrap(),
+                    activation_condition: Some(precond_oko),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -60,4 +62,8 @@ fn set_10_10(
         toughness: 10,
         duration: Duration::EndOfTurn,
     }]
+}
+
+fn precond_oko(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Oko")
 }

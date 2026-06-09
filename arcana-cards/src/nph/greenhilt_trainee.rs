@@ -1,20 +1,21 @@
 //! Greenhilt Trainee — `{3}{G}` 2/3 green Elf Warrior.
 //! "{T}: Target creature gets +4/+4 until end of turn. Activate only if this creature's power
 //! is 4 or greater."
-//! GAP: "Activate only if this creature's power is 4 or greater" — board-state activation
-//! precondition not expressible in ActivationCost.
+//! "Activate only if this creature's power is 4 or greater" modeled via
+//! `activation_condition` + `conditions::source_power_at_least`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Greenhilt Trainee");
@@ -36,10 +37,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "Activate only if this creature's power is 4 or greater" —
-                // power-based activation precondition not expressible in ActivationCost.
                 text: "{T}: Target creature gets +4/+4 until end of turn. Activate only if this creature's power is 4 or greater.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    tap: true,
+                    activation_condition: Some(precond_power_4),
+                    ..ActivationCost::default()
+                },
                 target_requirements: vec![TargetRequirement::target_creature()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -65,4 +68,8 @@ fn pump_target(
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]
+}
+
+fn precond_power_4(state: &GameState, source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::source_power_at_least(state, source, 4)
 }
