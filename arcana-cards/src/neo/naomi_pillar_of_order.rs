@@ -2,19 +2,23 @@
 //! "Whenever Naomi enters or attacks, if you control an artifact and
 //! an enchantment, create a 2/2 white Samurai creature token with
 //! vigilance."
-//! GAP: the "if you control an artifact and an enchantment" intervening
-//! condition is noted; intervening_if uses None per convention.
-//! Two triggers (ETB + attacks) share the same effect fn.
+//! Intervening-if "if you control an artifact and an enchantment" modeled via
+//! `conditions::you_control_a` on both triggers' `intervening_if` (gating on
+//! the artifact half of the clause). Two triggers (ETB + attacks) share the
+//! same effect fn and the same intervening-if fn.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,8 +45,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening_if — "if you control an artifact and an enchantment"
-                intervening_if: None,
+                // Intervening-if via conditions::you_control_a (artifact half of the clause).
+                intervening_if: Some(iif_control_artifact_and_enchantment),
                 effect: create_samurai_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -51,14 +55,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening_if — "if you control an artifact and an enchantment"
-                intervening_if: None,
+                // Intervening-if via conditions::you_control_a (artifact half of the clause).
+                intervening_if: Some(iif_control_artifact_and_enchantment),
                 effect: create_samurai_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_control_artifact_and_enchantment(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_a(state, you, &ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()))
+        && conditions::you_control_a(state, you, &ObjectFilter::new().with_types(TypeLine::ENCHANTMENT.into()))
 }
 
 fn create_samurai_token(

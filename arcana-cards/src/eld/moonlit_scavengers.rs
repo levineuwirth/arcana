@@ -3,18 +3,21 @@
 //! creature an opponent controls to its owner's hand."
 //!
 //! # Notes
-//! GAP: intervening-if "if you control an artifact or enchantment" — not expressible.
+//! Intervening-if "if you control an artifact or enchantment" modeled via
+//! `conditions::you_control_a` on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,8 +43,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening_if — "if you control an artifact or enchantment" not expressible.
-                intervening_if: None,
+                // Intervening-if "if you control an artifact or enchantment" via conditions::you_control_a.
+                intervening_if: Some(iif_control_artifact_or_enchantment),
                 effect: etb_bounce_opponent_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -53,6 +56,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     controller: None,
                 }],
             }),
+    )
+}
+
+fn iif_control_artifact_or_enchantment(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_a(
+        state,
+        you,
+        &ObjectFilter::new().with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::ENCHANTMENT)),
     )
 }
 

@@ -15,17 +15,19 @@
 //!
 //! GAP: "exile Nissa, then return her to the battlefield transformed" — no
 //!      ExileAndReturnTransformed effect; using Effect::Transform as approximation.
-//! GAP: "if you control seven or more lands" — intervening-if condition on land count;
-//!      modeled by checking at resolution time (intervening_if not used directly).
+//! "if you control seven or more lands" — intervening-if condition on land count
+//!      modeled via `conditions::you_control_at_least` on `intervening_if`.
 //! GAP: −7 "lands become 6/6 Elemental creatures; they're still lands" — the "type
 //!      change + P/T setting while retaining Land" continuous effect is not in engine.
 //!      The untap portion is modeled; the type-change animation is GAP.
 //! GAP: back-face-only loyalty abilities not auto-installed on transform (engine debt).
 //! GAP: Ashaya token "legendary" supertype — TokenDefinition has no supertypes field.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -40,7 +42,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 
@@ -117,7 +119,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     from: None,
                     to: Zone::Battlefield,
                 },
-                intervening_if: None,
+                // Intervening-if "if you control seven or more lands" via conditions::you_control_at_least.
+                intervening_if: Some(iif_seven_lands),
                 effect: on_land_enters_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -194,6 +197,10 @@ fn etb_tutor_forest(
         filter,
         reveal: true,
     }]
+}
+
+fn iif_seven_lands(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_at_least(state, you, &ObjectFilter::new().with_types(TypeLine::LAND.into()), 7)
 }
 
 fn on_land_enters_transform(

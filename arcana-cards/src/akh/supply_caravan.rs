@@ -1,18 +1,21 @@
 //! Supply Caravan — `{4}{W}` 3/5 white Camel.
 //! "When this creature enters, if you control a tapped creature, create a 1/1 white
 //! Warrior creature token with vigilance."
-//! GAP: intervening-if (tapped creature check) — emitted unconditionally as approximation.
+//! Intervening-if "if you control a tapped creature" modeled via
+//! `conditions::you_control_a` (with a tapped_only filter) on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,12 +39,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
+                // Intervening-if "if you control a tapped creature" via conditions::you_control_a.
+                intervening_if: Some(iif_control_tapped_creature),
                 effect: etb_warrior_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
+    )
+}
+
+fn iif_control_tapped_creature(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_a(
+        state,
+        you,
+        &ObjectFilter::new().with_types(TypeLine::CREATURE.into()).tapped_only(),
     )
 }
 

@@ -1,13 +1,14 @@
 //! Kyoshi Warrior Exemplars — `{3}{G}` 4/3 green Human Warrior Ally.
 //! "Whenever this creature attacks, if you control eight or more lands,
 //! creatures you control get +2/+2 until end of turn."
-//! GAP: Intervening-if "if you control eight or more lands" not expressible
-//! as an engine condition; using intervening_if: None as best-effort.
+//! Intervening-if "if you control eight or more lands" modeled via
+//! `conditions::you_control_at_least` on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -15,7 +16,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,14 +44,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: "if you control eight or more lands" not expressible.
-                intervening_if: None,
+                // Intervening-if "if you control eight or more lands" via conditions::you_control_at_least.
+                intervening_if: Some(iif_eight_lands),
                 effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_eight_lands(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_at_least(state, you, &ObjectFilter::new().with_types(TypeLine::LAND.into()), 8)
 }
 
 fn on_attacks(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

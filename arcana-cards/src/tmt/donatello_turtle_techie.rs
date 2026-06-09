@@ -1,18 +1,21 @@
 //! Donatello, Turtle Techie — `{3}{U}` 3/4 legendary blue creature. "When
 //! Donatello enters, if you control an artifact, draw a card."
 //!
-//! GAP: intervening_if — "if you control an artifact" condition not
-//! representable in TriggeredAbilityDef.intervening_if.
+//! Intervening-if "if you control an artifact" modeled via
+//! `conditions::you_control_a` on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,13 +43,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None, // GAP: intervening_if — "if you control an artifact"
+                // Intervening-if "if you control an artifact" via conditions::you_control_a.
+                intervening_if: Some(iif_control_artifact),
                 effect: etb_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_control_artifact(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_a(state, you, &ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()))
 }
 
 fn etb_draw(

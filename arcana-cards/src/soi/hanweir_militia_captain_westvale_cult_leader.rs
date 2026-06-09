@@ -6,14 +6,17 @@
 //! Back: Westvale Cult Leader's power and toughness are each equal to the number of creatures you control.
 //!   At the beginning of your end step, create a 1/1 white and black Human Cleric creature token.
 //!
-//! GAP: "if you control four or more creatures" intervening-if condition not modeled — fires unconditionally.
+//! "if you control four or more creatures" intervening-if modeled via
+//!   `conditions::you_control_at_least` on the front-face upkeep transform trigger.
 //! GAP: Back face dynamic P/T (equal to number of creatures you control) not expressible as a
 //!   characteristic; back face is registered as a fixed-size creature with placeholder stats.
 //! GAP: Back-face end step token creation not auto-installed on transform.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -22,7 +25,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -76,15 +79,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front face: at beginning of your upkeep, (if 4+ creatures) transform.
-            // GAP: "if you control four or more creatures" condition not modeled.
+            // Front face: at beginning of your upkeep, if 4+ creatures, transform.
+            // Intervening-if "if you control four or more creatures" via conditions::you_control_at_least.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_four_creatures),
                 effect: front_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -105,6 +108,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
     )
+}
+
+fn iif_four_creatures(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_at_least(state, you, &ObjectFilter::new().with_types(TypeLine::CREATURE.into()), 4)
 }
 
 fn front_upkeep_transform(

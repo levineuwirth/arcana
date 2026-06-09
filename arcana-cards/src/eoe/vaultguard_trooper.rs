@@ -1,20 +1,22 @@
 //! Vaultguard Trooper — `{4}{R}` 5/5 red Kavu Soldier creature. "At the
 //! beginning of your end step, if you control two or more tapped creatures,
 //! you may discard your hand. If you do, draw two cards."
-//! GAP: intervening-if "two or more tapped creatures" check is not expressible
-//! with current engine API.
+//! Intervening-if "if you control two or more tapped creatures" modeled via
+//! `conditions::you_control_at_least` (with a tapped_only filter) on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,12 +45,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None, // GAP: intervening-if "two or more tapped creatures"
+                // Intervening-if "if you control two or more tapped creatures" via conditions::you_control_at_least.
+                intervening_if: Some(iif_two_tapped_creatures),
                 effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
+    )
+}
+
+fn iif_two_tapped_creatures(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_at_least(
+        state,
+        you,
+        &ObjectFilter::new()
+            .with_types(TypeLine::CREATURE.into())
+            .tapped_only(),
+        2,
     )
 }
 

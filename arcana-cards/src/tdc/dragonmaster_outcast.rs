@@ -1,12 +1,14 @@
 //! Dragonmaster Outcast — `{R}` 1/1 red Human Shaman.
 //! "At the beginning of your upkeep, if you control six or more lands,
 //! create a 5/5 red Dragon creature token with flying."
-//! GAP: Intervening-if "if you control six or more lands" not expressible
-//! as an engine condition; using intervening_if: None as best-effort.
+//! Intervening-if "if you control six or more lands" modeled via
+//! `conditions::you_control_at_least` on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -15,7 +17,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,14 +47,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: "if you control six or more lands" intervening-if not expressible.
-                intervening_if: None,
+                // Intervening-if "if you control six or more lands" via conditions::you_control_at_least.
+                intervening_if: Some(iif_six_lands),
                 effect: on_upkeep,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_six_lands(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_at_least(state, you, &ObjectFilter::new().with_types(TypeLine::LAND.into()), 6)
 }
 
 fn on_upkeep(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
