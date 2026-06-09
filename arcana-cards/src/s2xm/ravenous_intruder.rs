@@ -1,6 +1,6 @@
 //! Ravenous Intruder — `{1}{R}` 1/2 Creature — Gremlin.
 //! Sacrifice an artifact: This creature gets +2/+2 until end of turn.
-//! GAP: ActivationCost::sacrifice is self-only; "sacrifice an artifact" (any artifact) not expressible.
+//! "Sacrifice an artifact" cost modeled via `sacrifice_other` (artifact filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -29,7 +29,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice an artifact: This creature gets +2/+2 until end of turn.".into(),
-                cost: ActivationCost { ..ActivationCost::default() },
+                cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::ARTIFACT.into()),
+                        ..Default::default()
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

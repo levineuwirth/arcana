@@ -1,7 +1,7 @@
 //! Atog — `{1}{R}` 1/2 red Atog.
 //! "Sacrifice an artifact: This creature gets +2/+2 until end of turn."
 //!
-//! GAP: "Sacrifice an artifact" (not self) not expressible in ActivationCost.
+//! "Sacrifice an artifact" cost modeled via `sacrifice_other` (artifact filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -33,8 +33,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice an artifact: This creature gets +2/+2 until end of turn.".into(),
-                // GAP: "Sacrifice an artifact" (non-self) not expressible.
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::ARTIFACT.into()),
+                        ..Default::default()
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

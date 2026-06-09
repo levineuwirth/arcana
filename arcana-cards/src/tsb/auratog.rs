@@ -1,8 +1,7 @@
 //! Auratog — `{1}{W}` 1/2 white Atog.
 //! "Sacrifice an enchantment: This creature gets +2/+2 until end of turn."
-//! GAP: "Sacrifice an enchantment" (a specific type, not self) — no ActivationCost
-//! for sacrificing a specific type of permanent other than self. Approximated as
-//! sacrifice-self.
+//! "Sacrifice an enchantment" cost modeled via `sacrifice_other` (enchantment
+//! filter).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -33,10 +32,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "Sacrifice an enchantment" (not self) — approximated as no-cost
-                // (the sacrifice-specific-type requirement is not modeled).
                 text: "Sacrifice an enchantment: This creature gets +2/+2 until end of turn.".into(),
                 cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::ENCHANTMENT.into()),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

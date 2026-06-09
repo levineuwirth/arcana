@@ -1,6 +1,7 @@
 //! Vampire Warlord — `{4}{B}` 4/2 Vampire Warrior.
 //! `Sacrifice another creature: Regenerate this creature.`
-//! GAP: ActivationCost has no "sacrifice another creature" (non-self).
+//! "Sacrifice another creature" cost modeled via `sacrifice_other` (creature
+//! filter; the enumerator excludes the source).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,7 +35,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice another creature: Regenerate this creature.".into(),
                 cost: ActivationCost {
-                    // GAP: no "sacrifice another creature" cost field
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::CREATURE.into()),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

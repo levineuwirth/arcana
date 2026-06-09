@@ -1,8 +1,8 @@
 //! Defiant Salvager — `{2}{B}` 2/2 black Aetherborn Artificer.
 //! "Sacrifice an artifact or creature: Put a +1/+1 counter on this creature. Activate only as a sorcery."
 //!
-//! GAP: "Sacrifice an artifact or creature" — ActivationCost.sacrifice is a boolean that
-//! sacrifices the source (self). Sacrificing another permanent is not expressible.
+//! "Sacrifice an artifact or creature" cost modeled via `sacrifice_other`
+//! (artifact-or-creature filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,9 +35,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice an artifact or creature: Put a +1/+1 counter on this creature.".into(),
-                // GAP: "Sacrifice an artifact or creature" (not self) not expressible.
-                // Using no-cost placeholder; sacrifice costs require a separate permanent.
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types_any: Some(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
+                        ..Default::default()
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

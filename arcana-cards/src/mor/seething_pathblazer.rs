@@ -1,6 +1,7 @@
 //! Seething Pathblazer — `{2}{R}` 2/2 red Elemental Warrior. "Sacrifice an
 //! Elemental: This creature gets +2/+0 and gains first strike until end of turn."
-//! GAP: "Sacrifice an Elemental (not self)" is not expressible in ActivationCost.
+//! "Sacrifice an Elemental" cost modeled via `sacrifice_other` (Elemental
+//! subtype filter).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -35,7 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice an Elemental: This creature gets +2/+0 and gains first strike until end of turn.".into(),
                 cost: ActivationCost {
-                    // GAP: "Sacrifice an Elemental (not self)" not in ActivationCost
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        subtypes: Some(vec![elemental]),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

@@ -1,7 +1,8 @@
 //! Maw of the Obzedat — `{3}{W}{B}` 3/3 white/black Thrull.
 //! "Sacrifice a creature: Creatures you control get +1/+1 until end of turn."
 //!
-//! GAP: ActivationCost cannot sacrifice a specific-type "creature" (other).
+//! "Sacrifice a creature" cost modeled via `sacrifice_other` (creature filter;
+//! the enumerator excludes the source, the standard approximation).
 //! The pump-all effect is expressible.
 
 use arcana_core::effects::Effect;
@@ -37,8 +38,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice a creature: Creatures you control get +1/+1 until end of turn.".into(),
-                // GAP: cannot sacrifice "a creature" (another permanent)
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::CREATURE.into()),
+                        ..Default::default()
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

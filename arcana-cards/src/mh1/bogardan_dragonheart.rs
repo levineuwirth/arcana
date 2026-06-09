@@ -2,7 +2,8 @@
 //! "Sacrifice another creature: Until end of turn, this creature becomes a
 //! Dragon with base power and toughness 4/4, flying, and haste."
 //!
-//! GAP: ActivationCost cannot sacrifice another specific creature.
+//! "Sacrifice another creature" cost modeled via `sacrifice_other` (creature
+//! filter).
 //! SetBasePT + GrantKeyword for flying + haste approximates the pump.
 
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -37,8 +38,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice another creature: Become a 4/4 Dragon with flying and haste until end of turn.".into(),
-                // GAP: cannot sacrifice "another" creature
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::CREATURE.into()),
+                        ..Default::default()
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

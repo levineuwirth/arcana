@@ -1,7 +1,7 @@
 //! Skirk Prospector — `{R}` 1/1 red Goblin.
 //! "Sacrifice a Goblin: Add {R}."
-//! GAP: "Sacrifice a Goblin" (specific subtype, not self) — not in ActivationCost.
-//! Approximated as no-cost (the sacrifice requirement is not modeled).
+//! "Sacrifice a Goblin" cost modeled via `sacrifice_other` (Goblin subtype
+//! filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -31,9 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "Sacrifice a Goblin" (specific subtype, not self) — not in ActivationCost.
                 text: "Sacrifice a Goblin: Add {R}.".into(),
                 cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        subtypes: Some(vec![goblin]),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

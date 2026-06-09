@@ -1,7 +1,8 @@
 //! Faith Healer — `{1}{W}` 1/1 Creature — Human Cleric.
 //! Sacrifice an enchantment: You gain life equal to the sacrificed enchantment's mana value.
-//! GAP: "sacrifice an enchantment" (any enchantment, not self) — ActivationCost::sacrifice is self-only.
-//! GAP: "life equal to sacrificed enchantment's mana value" — can't read mana value of a just-sacrificed permanent.
+//! "Sacrifice an enchantment" cost modeled via `sacrifice_other` (enchantment
+//! filter). GAP: "life equal to sacrificed enchantment's mana value" — can't
+//! read the mana value of a just-sacrificed permanent (effect is a no-op).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,7 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice an enchantment: You gain life equal to the sacrificed enchantment's mana value.".into(),
                 cost: ActivationCost {
-                    // GAP: "sacrifice an enchantment (not self)" not in ActivationCost fields
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::ENCHANTMENT.into()),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

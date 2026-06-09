@@ -1,6 +1,6 @@
 //! Trenching Steed — `{3}{W}` 2/3 Creature — Horse Rebel.
 //! Sacrifice a land: This creature gets +0/+3 until end of turn.
-//! GAP: ActivationCost::sacrifice only supports sacrifice-self; "sacrifice a land" (non-self) not modeled.
+//! "Sacrifice a land" cost modeled via `sacrifice_other` (land filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,8 +35,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice a land: This creature gets +0/+3 until end of turn.".into(),
                 cost: ActivationCost {
-                    // GAP: "sacrifice a land" (any land you control) — ActivationCost::sacrifice is
-                    // for sacrifice-self only. Using empty cost as placeholder.
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::LAND.into()),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

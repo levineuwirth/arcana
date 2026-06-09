@@ -1,8 +1,7 @@
 //! Glimmer Bairn — `{G}` 1/2 green Ouphe.
 //! "Sacrifice a token: This creature gets +2/+2 until end of turn."
 //!
-//! GAP: "sacrifice a token" (non-self) as activation cost — ActivationCost
-//! only supports sacrifice-self.
+//! "Sacrifice a token" cost modeled via `sacrifice_other` (token filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,8 +33,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice a token: This creature gets +2/+2 until end of turn.".into(),
-                // GAP: "sacrifice a token" (non-self) not in ActivationCost.
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        is_token: Some(true),
+                        ..Default::default()
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,
