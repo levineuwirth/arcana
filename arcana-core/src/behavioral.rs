@@ -489,11 +489,24 @@ fn tribal_subtypes(reg: &CardRegistry) -> crate::types::SubtypeSet {
 fn make_tribal_creature(state: &mut GameState, owner: PlayerId, zone: Zone,
     tribes: &crate::types::SubtypeSet) -> ObjectId {
     let id = state.allocate_object_id();
+    // Keyword seeding mirrors the tribal seeding: one creature carrying
+    // the keywords that keyword-filtered sweeps/targets/tutors look for
+    // ("each creature with flying", "with deathtouch, hexproof, reach,
+    // or trample", …) so they find a referent. Deliberately NO
+    // Hexproof/Shroud — the probe's selection prefers opponent
+    // creatures, and an untargetable seed would falsely no-op every
+    // targeted effect. The plain `make_creature` seeds stay keyword-
+    // less so "without flying" filters keep a referent too.
+    use crate::effects::KeywordAbility as KA;
     let chars = Characteristics {
         types: TypeLine::CREATURE.into(),
         subtypes: tribes.clone(),
         power: Some(PtValue::Fixed(2)),
         toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![
+            KA::Flying, KA::Shadow, KA::Horsemanship, KA::Defender,
+            KA::Deathtouch, KA::Reach, KA::Trample,
+        ],
         ..Default::default()
     };
     state.objects.insert(GameObject::new(id, owner, zone, 0, chars));

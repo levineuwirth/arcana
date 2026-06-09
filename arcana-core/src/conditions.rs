@@ -88,6 +88,17 @@ pub fn you_control_a(state: &GameState, you: PlayerId, filter: &ObjectFilter) ->
     count_you_control(state, you, filter) >= 1
 }
 
+/// "if an opponent controls a/an [filter]" — any battlefield permanent
+/// controlled by a player other than `you` that matches. The filter's
+/// controller constraints (if any) still resolve against `you` as the
+/// source controller, consistent with [`you_control_a`].
+pub fn an_opponent_controls_a(state: &GameState, you: PlayerId, filter: &ObjectFilter) -> bool {
+    state
+        .objects
+        .objects_in_zone(Zone::Battlefield)
+        .any(|o| o.controller != you && filter.matches(o, state, you))
+}
+
 /// "if you control N or more permanents with subtype `subtype`" — the
 /// name is resolved to its [`crate::types::SmallString`] id via the
 /// registry's interner (subtype ids are dynamic, so an intervening-if
@@ -460,5 +471,32 @@ mod tests {
         put_gy(&mut s, 1, TypeLine::SORCERY.into(), none);
         assert!(an_opponent_graveyard_at_least(&s, 0, 1));
         assert!(!an_opponent_graveyard_at_least(&s, 0, 2));
+    }
+
+    #[test]
+    fn opponent_controls_predicate() {
+        use crate::effects::KeywordAbility;
+        let mut s = GameState::new(2, 0);
+        let put = |s: &mut GameState, controller: PlayerId, flying: bool| {
+            let id = s.allocate_object_id();
+            let mut chars = Characteristics {
+                types: TypeLine::CREATURE.into(),
+                ..Default::default()
+            };
+            if flying { chars.keywords.push(KeywordAbility::Flying); }
+            let mut o = GameObject::new(id, controller, Zone::Battlefield, 0, chars);
+            o.controller = controller;
+            s.objects.insert(o);
+        };
+        let flyers = ObjectFilter::creature().with_keyword(KeywordAbility::Flying);
+        // Your own flyer doesn't satisfy "an opponent controls".
+        put(&mut s, 0, true);
+        assert!(!an_opponent_controls_a(&s, 0, &flyers));
+        // An opponent's grounded creature doesn't either.
+        put(&mut s, 1, false);
+        assert!(!an_opponent_controls_a(&s, 0, &flyers));
+        // An opponent's flyer does.
+        put(&mut s, 1, true);
+        assert!(an_opponent_controls_a(&s, 0, &flyers));
     }
 }

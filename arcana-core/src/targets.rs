@@ -36,6 +36,7 @@
 
 use serde::{Serialize, Deserialize};
 
+use crate::effects::KeywordAbility;
 use crate::objects::{GameObject, ObjectId};
 use crate::state::GameState;
 use crate::types::*;
@@ -451,6 +452,20 @@ pub struct ObjectFilter {
     /// No supertype bit here may be set on the object. "nonlegendary
     /// creature" = `not_supertypes: SupertypeSet(SupertypeSet::LEGENDARY)`.
     pub not_supertypes: Option<SupertypeSet>,
+    /// Every keyword here must be on the object (AND). Layer-aware:
+    /// checked via [`GameState::has_keyword`], so Layer-6 grants
+    /// ("target creature gains flying") and removals ("loses all
+    /// abilities") are respected. Payload keywords (`Ward`,
+    /// `Landwalk`) match by full equality including the payload.
+    pub keywords: Option<Vec<KeywordAbility>>,
+    /// At least one keyword here must be on the object (OR). Use for
+    /// "creature with deathtouch, hexproof, reach, or trample" — where
+    /// the AND-only [`Self::keywords`] can't express the disjunction.
+    /// An empty Vec matches no object.
+    pub keywords_any: Option<Vec<KeywordAbility>>,
+    /// No keyword here may be on the object. "creature without flying"
+    /// = `not_keywords: Some(vec![KeywordAbility::Flying])`.
+    pub not_keywords: Option<Vec<KeywordAbility>>,
     pub controller: Option<ControllerConstraint>,
     pub cmc_condition: Option<CmcCondition>,
     pub power_condition: Option<PtCondition>,
@@ -580,6 +595,25 @@ impl ObjectFilter {
         self.not_colors = Some(colors);
         self
     }
+    /// Builder: require a keyword (AND if called repeatedly). "creature
+    /// with flying" = `creature().with_keyword(KeywordAbility::Flying)`.
+    /// Layer-aware — granted keywords count, removed ones don't.
+    pub fn with_keyword(mut self, kw: KeywordAbility) -> Self {
+        self.keywords.get_or_insert_with(Vec::new).push(kw);
+        self
+    }
+    /// Builder: accept any of the given keywords (OR). For "creature
+    /// with deathtouch, hexproof, reach, or trample" pass all four.
+    pub fn with_keywords_any(mut self, kws: Vec<KeywordAbility>) -> Self {
+        self.keywords_any = Some(kws);
+        self
+    }
+    /// Builder: exclude a keyword ("creature without flying" =
+    /// `creature().without_keyword(KeywordAbility::Flying)`).
+    pub fn without_keyword(mut self, kw: KeywordAbility) -> Self {
+        self.not_keywords.get_or_insert_with(Vec::new).push(kw);
+        self
+    }
     /// Builder: only tapped permanents.
     pub fn tapped_only(mut self) -> Self {
         self.tapped = Some(true);
@@ -663,6 +697,36 @@ impl ObjectFilter {
         if let Some(forbidden) = self.not_supertypes {
             if obj.characteristics.supertypes.0 & forbidden.0 != 0 {
                 return false;
+            }
+        }
+
+        // --- keywords: layer-aware via the state when the object is
+        // registered there (grants and removals respected); base
+        // characteristics otherwise (e.g. a hypothetical object not
+        // yet in the state's object table). ---
+        if self.keywords.is_some() || self.keywords_any.is_some() || self.not_keywords.is_some() {
+            let has = |kw: &KeywordAbility| -> bool {
+                if state.objects.get(obj.id).is_some() {
+                    state.has_keyword(obj.id, kw)
+                } else {
+                    obj.characteristics.keywords.contains(kw)
+                }
+            };
+            if let Some(kws) = &self.keywords {
+                if !kws.iter().all(&has) {
+                    return false;
+                }
+            }
+            // Empty Vec matches no object (consistent with subtypes_any).
+            if let Some(any) = &self.keywords_any {
+                if !any.iter().any(&has) {
+                    return false;
+                }
+            }
+            if let Some(excluded) = &self.not_keywords {
+                if excluded.iter().any(&has) {
+                    return false;
+                }
             }
         }
 
@@ -1258,6 +1322,54 @@ mod tests {
             .without_supertypes(SupertypeSet::new().with(SupertypeSet::LEGENDARY));
         assert!(!nonlegendary_only.matches(s.objects.get(legendary_id).unwrap(), &s, 0));
         assert!( nonlegendary_only.matches(s.objects.get(mundane_id).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_keywords_layer_aware_and_excluded() {
+        use crate::effects::KeywordAbility;
+        let mut s = GameState::new(2, 0);
+        let flyer    = put_creature(&mut s, 0, 0, Zone::Battlefield, 1, 1);
+        let grounded = put_creature(&mut s, 0, 0, Zone::Battlefield, 1, 1);
+        s.objects.get_mut(flyer).unwrap()
+            .characteristics.keywords.push(KeywordAbility::Flying);
+
+        let with_flying = ObjectFilter::creature().with_keyword(KeywordAbility::Flying);
+        assert!( with_flying.matches(s.objects.get(flyer).unwrap(),    &s, 0));
+        assert!(!with_flying.matches(s.objects.get(grounded).unwrap(), &s, 0));
+
+        // "without flying" — the exclusion mirror.
+        let without_flying = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
+        assert!(!without_flying.matches(s.objects.get(flyer).unwrap(),    &s, 0));
+        assert!( without_flying.matches(s.objects.get(grounded).unwrap(), &s, 0));
+
+        // Layer-aware: a Layer-6 grant makes the grounded creature match.
+        s.add_continuous_effect(crate::layers::ContinuousEffect::grant_keyword(
+            0, grounded, KeywordAbility::Flying, crate::layers::Duration::EndOfTurn,
+        ));
+        assert!( with_flying.matches(s.objects.get(grounded).unwrap(),    &s, 0));
+        assert!(!without_flying.matches(s.objects.get(grounded).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_keywords_any_disjunction() {
+        use crate::effects::KeywordAbility;
+        let mut s = GameState::new(2, 0);
+        let trampler = put_creature(&mut s, 0, 0, Zone::Battlefield, 1, 1);
+        let vanilla  = put_creature(&mut s, 0, 0, Zone::Battlefield, 1, 1);
+        s.objects.get_mut(trampler).unwrap()
+            .characteristics.keywords.push(KeywordAbility::Trample);
+
+        // Mwonvuli Beast Tracker — "deathtouch, hexproof, reach, or trample".
+        let f = ObjectFilter::creature().with_keywords_any(vec![
+            KeywordAbility::Deathtouch, KeywordAbility::Hexproof,
+            KeywordAbility::Reach, KeywordAbility::Trample,
+        ]);
+        assert!( f.matches(s.objects.get(trampler).unwrap(), &s, 0));
+        assert!(!f.matches(s.objects.get(vanilla).unwrap(),  &s, 0));
+
+        // Empty disjunction matches nothing (consistent with subtypes_any).
+        let empty = ObjectFilter::creature().with_keywords_any(vec![]);
+        assert!(!empty.matches(s.objects.get(trampler).unwrap(), &s, 0));
     }
 
     #[test]
