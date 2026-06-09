@@ -1,21 +1,24 @@
 //! Brotherhood Spy — `{1}{U}` 1/3 blue Human Assassin.
 //! "At the beginning of combat on your turn, if you control a legendary Assassin, this
 //! creature gets +1/+0 until end of turn. It can't be blocked this turn."
-//! GAP: "if you control a legendary Assassin" intervening-if not in catalog;
+//! "if you control a legendary Assassin" intervening-if wired via a legendary-supertype
+//! + Assassin-subtype filter on conditions::you_control_a.
 //! GAP: "can't be blocked" — unblockable effect not in catalog; emitting pump unconditionally.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -44,14 +47,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     phase: Phase::Combat,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: "if you control a legendary Assassin" intervening-if not in catalog
-                intervening_if: None,
+                intervening_if: Some(iif_control_legendary_assassin),
                 effect: pump_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+/// "if you control a legendary Assassin" — legendary supertype + Assassin subtype.
+fn iif_control_legendary_assassin(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    reg: &CardRegistry,
+) -> bool {
+    match reg.interner().lookup("Assassin") {
+        Some(a) => conditions::you_control_a(
+            state,
+            you,
+            &ObjectFilter::new()
+                .with_supertypes(SupertypeSet(SupertypeSet::LEGENDARY))
+                .with_subtype_sym(a),
+        ),
+        None => false,
+    }
 }
 
 fn pump_self(

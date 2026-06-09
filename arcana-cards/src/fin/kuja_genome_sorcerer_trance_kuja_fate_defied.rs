@@ -7,12 +7,15 @@
 //!   (GAP: token's triggered sub-ability "whenever you cast a noncreature spell, deal 1 damage"
 //!    is not expressible on a TokenDefinition — token is minted without that ability.)
 //!   (GAP: token "enters tapped" not a TokenDefinition field — token enters untapped.)
-//!   (GAP: "if you control four or more Wizards" conditional transform — modeled unconditionally.)
+//!   "if you control four or more Wizards" gates the Transform at resolution time via
+//!   conditions::you_control_subtype_at_least (resolution-time clause inside the end-step
+//!   trigger, not a whole-trigger intervening-if — the token is created unconditionally).
 //!
 //! Back (Trance Kuja, Fate Defied, Legendary Avatar Wizard):
 //!   Flare Star — If a Wizard you control would deal damage to a permanent or player, it deals
 //!   double that damage instead. (GAP: replacement effect not modeled.)
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -94,7 +97,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn end_step_trigger(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
@@ -115,9 +118,12 @@ fn end_step_trigger(
         abilities: vec![],
     };
 
-    // GAP: transform only if 4+ Wizards controlled — modeled unconditionally.
-    vec![
-        Effect::CreateToken { controller: trig.controller, token },
-        Effect::Transform { target: trig.source },
-    ]
+    // "Then if you control four or more Wizards, transform Kuja." Resolution-time
+    // gate via conditions::you_control_subtype_at_least (the token is created
+    // unconditionally; only the Transform is conditional).
+    let mut effects = vec![Effect::CreateToken { controller: trig.controller, token }];
+    if conditions::you_control_subtype_at_least(state, reg, trig.controller, "Wizard", 4) {
+        effects.push(Effect::Transform { target: trig.source });
+    }
+    effects
 }

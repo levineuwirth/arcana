@@ -1,21 +1,21 @@
 //! Karplusan Hound — `{3}{R}` 3/3 red Dog.
 //! "Whenever this creature attacks, if you control a Chandra
 //! planeswalker, this creature deals 2 damage to any target."
-//! GAP: intervening-if "if you control a Chandra planeswalker" —
-//! no subtype filter for named planeswalker subtype via script::*.
-//! Effect fires unconditionally.
+//! Intervening-if "if you control a Chandra planeswalker" modeled via
+//! `conditions::you_control_subtype` ("Chandra" is the planeswalker subtype).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectOrPlayer, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                intervening_if: None,
+                intervening_if: Some(iif_control_chandra),
                 effect: attacks_deal_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -47,13 +47,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_control_chandra(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Chandra")
+}
+
 fn attacks_deal_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: intervening-if "if you control a Chandra planeswalker" —
-    // no subtype filter for Chandra planeswalker subtype via script::*.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     match target {
         TargetChoice::Object(id) => vec![Effect::DealDamage {

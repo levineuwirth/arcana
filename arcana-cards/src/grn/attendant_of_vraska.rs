@@ -2,18 +2,19 @@
 //! "When this creature dies, if you control a Vraska planeswalker, you gain
 //! life equal to this creature's power."
 //!
-//! GAP: intervening-if "if you control a Vraska planeswalker" — planeswalker-by-name
-//! check not available in engine; condition dropped, life gain is expressed.
+//! Intervening-if "if you control a Vraska planeswalker" modeled via
+//! `conditions::you_control_subtype` ("Vraska" is the planeswalker subtype).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -39,14 +40,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::SelfDies,
-            // GAP: intervening-if "if you control a Vraska planeswalker" not expressible
-            intervening_if: None,
+            intervening_if: Some(iif_control_vraska),
             effect: on_dies_gain_life,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
             target_requirements: Vec::new(),
         }),
     )
+}
+
+fn iif_control_vraska(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Vraska")
 }
 
 fn on_dies_gain_life(

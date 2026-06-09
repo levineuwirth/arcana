@@ -7,6 +7,10 @@
 //! conditional tutor destination (top-of-library vs battlefield tapped)
 //! based on board state not expressible. Emitting TutorToHand with basic
 //! land filter as best effort; Dragon condition dropped.
+//! NOTE: NOT an intervening-if — the ETB trigger fires regardless of Dragon
+//! control; "if you control a Dragon" only switches the search destination
+//! WITHIN the effect. Gating the whole trigger would wrongly suppress the
+//! unconditional search. Deferred until conditional tutor destination exists.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

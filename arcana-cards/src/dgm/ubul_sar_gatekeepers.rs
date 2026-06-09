@@ -1,19 +1,21 @@
 //! Ubul Sar Gatekeepers — `{3}{B}` 2/4 black Creature — Zombie Soldier.
 //! "When this creature enters, if you control two or more Gates, target
 //! creature an opponent controls gets -2/-2 until end of turn."
-//! GAP: intervening-if "if you control two or more Gates" not expressible.
+//! Intervening-if "if you control two or more Gates" modeled via
+//! `conditions::you_control_subtype_at_least`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,8 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: intervening-if "if you control two or more Gates" not expressible
-                intervening_if: None,
+                intervening_if: Some(iif_two_or_more_gates),
                 effect: etb_weaken_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -50,6 +51,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 }],
             }),
     )
+}
+
+fn iif_two_or_more_gates(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype_at_least(state, reg, you, "Gate", 2)
 }
 
 fn etb_weaken_creature(

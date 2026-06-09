@@ -6,24 +6,27 @@
 //! Back (Tovolar, the Midnight Scourge): Whenever a Wolf or Werewolf you control deals combat damage
 //! to a player, draw a card. {X}{R}{G}: Target Wolf or Werewolf you control gets +X/+0 and gains
 //! trample until end of turn. Nightbound (GAP: Nightbound not modeled).
-//! GAP: "if you control three or more Wolves and/or Werewolves" intervening-if condition not modeled.
+//! "if you control three or more Wolves and/or Werewolves" intervening-if wired on the upkeep
+//! transform trigger via a manual with_subtypes_any(["Wolf","Werewolf"]) filter + you_control_at_least.
 //! GAP: "transform any number of Human Werewolves you control" — mass transform of others not expressible.
 //! GAP: Back-face activated ability ({X}{R}{G}: pump target Wolf/Werewolf) not modeled (face-gated activation with X cost not in engine).
 //! GAP: back-face-only triggered ability not modeled for the combat-damage draw trigger on back face.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::state::GameState;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -81,7 +84,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_three_wolves_or_werewolves),
                 effect: upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -90,13 +93,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// "if you control three or more Wolves and/or Werewolves" — OR of two subtypes
+/// via a manually-built with_subtypes_any filter (empty Vec ⇒ matches nothing ⇒
+/// false, which is correct if neither subtype name interns).
+fn iif_three_wolves_or_werewolves(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    reg: &CardRegistry,
+) -> bool {
+    let subs: Vec<_> = ["Wolf", "Werewolf"]
+        .iter()
+        .filter_map(|n| reg.interner().lookup(n))
+        .collect();
+    conditions::you_control_at_least(state, you, &ObjectFilter::new().with_subtypes_any(subs), 3)
+}
+
 fn upkeep_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: intervening-if "if you control three or more Wolves and/or Werewolves" not modeled.
-    // GAP: "it becomes night" — day/night cycle not modeled.
+    // "it becomes night" — day/night cycle not modeled.
     // GAP: "transform any number of Human Werewolves you control" — mass transform not expressible.
     // Emitting the transform of the source as a best-effort approximation.
     vec![Effect::Transform { target: trig.source }]

@@ -1,18 +1,19 @@
 //! Sunspire Gatekeepers — `{3}{W}` 2/4 white Creature — Human Soldier.
 //! "When this creature enters, if you control two or more Gates, create a
 //! 2/2 white Knight creature token with vigilance."
-//! GAP: intervening-if "two or more Gates" condition not expressible;
-//! using intervening_if: None and emitting token unconditionally.
+//! Intervening-if "two or more Gates" modeled via
+//! `conditions::you_control_subtype_at_least`.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,14 +39,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: "if you control two or more Gates" not expressible
-                intervening_if: None,
+                intervening_if: Some(iif_two_or_more_gates),
                 effect: etb_knight_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_two_or_more_gates(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype_at_least(state, reg, you, "Gate", 2)
 }
 
 fn etb_knight_token(

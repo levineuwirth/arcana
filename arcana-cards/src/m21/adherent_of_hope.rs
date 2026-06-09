@@ -3,12 +3,13 @@
 //! put a +1/+1 counter on this creature."
 //!
 //! # Notes
-//! The "if you control a Basri planeswalker" is an intervening-if condition.
-//! GAP: intervening_if condition (control a specific named planeswalker) — not expressible.
+//! The "if you control a Basri planeswalker" is an intervening-if condition,
+//! modeled via `conditions::you_control_subtype` ("Basri" is the PW subtype).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -16,7 +17,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,14 +46,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     phase: Phase::Combat,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening_if — "if you control a Basri planeswalker" not expressible.
-                intervening_if: None,
+                intervening_if: Some(iif_control_basri),
                 effect: combat_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_control_basri(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Basri")
 }
 
 fn combat_counter(

@@ -1,18 +1,19 @@
 //! Historian of Zhalfir — `{2}{U}{U}` 3/3 blue Human Wizard.
 //! "Whenever this creature attacks, if you control a Teferi planeswalker,
 //! draw a card."
-//! GAP: Intervening-if "if you control a Teferi planeswalker" requires
-//! name-based filter not in engine; using intervening_if: None as best-effort.
+//! Intervening-if "if you control a Teferi planeswalker" modeled via
+//! `conditions::you_control_subtype` ("Teferi" is the planeswalker subtype).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,14 +39,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: "if you control a Teferi planeswalker" not expressible.
-                intervening_if: None,
+                intervening_if: Some(iif_control_teferi),
                 effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_control_teferi(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Teferi")
 }
 
 fn on_attacks(

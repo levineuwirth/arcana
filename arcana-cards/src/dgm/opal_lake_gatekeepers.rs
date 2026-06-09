@@ -1,18 +1,19 @@
 //! Opal Lake Gatekeepers — `{3}{U}` 2/4 Vedalken Soldier. "When this creature
 //! enters, if you control two or more Gates, you may draw a card."
 //!
-//! GAP: intervening-if "if you control two or more Gates" — no script helper
-//! to count permanents by subtype-as-land-type (Gate).
+//! Intervening-if "if you control two or more Gates" modeled via
+//! `conditions::you_control_subtype_at_least` (CR 603.4 gate at fire time).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
+                intervening_if: Some(iif_two_or_more_gates),
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -47,12 +48,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_two_or_more_gates(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype_at_least(state, reg, you, "Gate", 2)
+}
+
 fn on_etb(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: cannot check "if you control two or more Gates" (no subtype count
-    // helper for land subtypes); emitting draw unconditionally as best effort.
+    // Intervening-if "two or more Gates" gates the trigger; emit the draw here.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

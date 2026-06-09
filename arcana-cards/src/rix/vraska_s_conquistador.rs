@@ -1,20 +1,21 @@
 //! Vraska's Conquistador — `{1}{B}` 2/1 black Creature — Vampire Soldier.
 //! "Whenever this creature attacks or blocks, if you control a Vraska
 //! planeswalker, target opponent loses 2 life and you gain 2 life."
-//! GAP: intervening-if "if you control a Vraska planeswalker" not expressible.
-//! Two triggers (attacks / blocks) both use None. Target opponent is read from
-//! target_requirements as a Player target.
+//! Intervening-if "if you control a Vraska planeswalker" modeled via
+//! `conditions::you_control_subtype` on both triggers (attacks / blocks).
+//! Target opponent is read from target_requirements as a Player target.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -44,8 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening-if "if you control a Vraska planeswalker" not expressible
-                intervening_if: None,
+                intervening_if: Some(iif_control_vraska),
                 effect: drain_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -54,13 +54,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfBlocks,
-                intervening_if: None,
+                intervening_if: Some(iif_control_vraska),
                 effect: drain_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: target_reqs,
             }),
     )
+}
+
+fn iif_control_vraska(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Vraska")
 }
 
 fn drain_opponent(
