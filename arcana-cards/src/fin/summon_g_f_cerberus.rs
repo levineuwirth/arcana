@@ -2,10 +2,10 @@
 //! I — Surveil 1.
 //! II — Double — When you next cast an instant or sorcery spell this turn, copy it.
 //! III — Triple — When you next cast an instant or sorcery spell this turn, copy it twice.
-//! GAP: Chapter II/III "when you next cast instant/sorcery this turn, copy it (twice)" — delayed next-cast copy trigger not in catalog.
+//! Chapter II/III wired via `Effect::NextCastThisTurn { InstantOrSorcery, Copy / CopyTwice }`.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, NextCastKind, NextCastRider};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -29,8 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_enters_with(EntersWithSpec::Counters { kind: CounterKind::Lore, count: 1 })
             .with_triggered_ability(TriggeredAbilityDef { id: 1, trigger_condition: TriggerCondition::PhaseBegins { phase: Phase::PreCombatMain, whose: ControllerConstraint::You }, intervening_if: None, effect: add_lore_counter, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
             .with_triggered_ability(TriggeredAbilityDef { id: 2, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(1) }, intervening_if: None, effect: chapter_i, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
-            .with_triggered_ability(TriggeredAbilityDef { id: 3, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(2) }, intervening_if: None, effect: chapter_gap, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
-            .with_triggered_ability(TriggeredAbilityDef { id: 4, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(3) }, intervening_if: None, effect: chapter_gap, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() }),
+            .with_triggered_ability(TriggeredAbilityDef { id: 3, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(2) }, intervening_if: None, effect: chapter_ii, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
+            .with_triggered_ability(TriggeredAbilityDef { id: 4, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(3) }, intervening_if: None, effect: chapter_iii, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() }),
     )
 }
 
@@ -42,7 +42,12 @@ fn chapter_i(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec
     vec![Effect::Surveil { player: trig.controller, count: 1 }]
 }
 
-fn chapter_gap(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "when you next cast instant/sorcery this turn, copy it" — delayed next-cast copy trigger not in catalog
-    Vec::new()
+fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // II — "when you next cast an instant or sorcery spell this turn, copy it"
+    vec![Effect::NextCastThisTurn { controller: trig.controller, kind: NextCastKind::InstantOrSorcery, rider: NextCastRider::Copy }]
+}
+
+fn chapter_iii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // III — "when you next cast an instant or sorcery spell this turn, copy it twice"
+    vec![Effect::NextCastThisTurn { controller: trig.controller, kind: NextCastKind::InstantOrSorcery, rider: NextCastRider::CopyTwice }]
 }

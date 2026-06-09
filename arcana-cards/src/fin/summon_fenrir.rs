@@ -2,12 +2,12 @@
 //!
 //! I (Crescent Fang) — Search library for a basic land, put it onto battlefield tapped.
 //! II (Heavenward Howl) — When you next cast a creature spell this turn, it enters with an
-//!   additional +1/+1 counter. (GAP: "next time you cast" delayed trigger not modeled.)
+//!   additional +1/+1 counter. (Wired via `Effect::NextCastThisTurn { Creature, EntersWithPlusOneCounter }`.)
 //! III (Ecliptic Growl) — Draw a card if you control the creature with the greatest power
 //!   or tied for greatest. (GAP: "greatest power among creatures" conditional not modeled;
 //!   emitting draw unconditionally as best effort.)
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, NextCastKind, NextCastRider};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -128,12 +128,15 @@ fn chapter_i(
 
 fn chapter_ii(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "when you next cast a creature spell this turn, it enters with an additional +1/+1 counter"
-    // — delayed "next cast" trigger not modeled in the current engine
-    Vec::new()
+    // II — "when you next cast a creature spell this turn, it enters with an additional +1/+1 counter"
+    vec![Effect::NextCastThisTurn {
+        controller: trig.controller,
+        kind: NextCastKind::Creature,
+        rider: NextCastRider::EntersWithPlusOneCounter,
+    }]
 }
 
 fn chapter_iii(

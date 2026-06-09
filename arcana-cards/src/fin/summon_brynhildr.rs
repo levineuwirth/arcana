@@ -2,10 +2,10 @@
 //! I — Chain — Exile the top card of your library. During any turn you put a lore counter on this Saga, you may play that card.
 //! II, III — Gestalt Mode — When you next cast a creature spell this turn, it gains haste until end of turn.
 //! GAP: Chapter I "exile top card, play it on turns you add a lore counter" — conditional play-from-exile not in catalog.
-//! GAP: Chapter II/III "when you next cast a creature spell this turn, it gains haste" — "next cast" trigger not in catalog.
+//! Chapter II/III wired via `Effect::NextCastThisTurn { Creature, GainsHaste }`.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, NextCastKind, NextCastRider};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -15,7 +15,6 @@ use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, 
 use arcana_core::turn::Phase;
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::effects::KeywordAbility;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Summon: Brynhildr");
@@ -44,7 +43,7 @@ fn chapter_i(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Ve
     Vec::new()
 }
 
-fn chapter_gap(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "when you next cast a creature spell this turn, it gains haste" — delayed next-cast trigger not in catalog
-    Vec::new()
+fn chapter_gap(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // II/III — "when you next cast a creature spell this turn, it gains haste until end of turn"
+    vec![Effect::NextCastThisTurn { controller: trig.controller, kind: NextCastKind::Creature, rider: NextCastRider::GainsHaste }]
 }

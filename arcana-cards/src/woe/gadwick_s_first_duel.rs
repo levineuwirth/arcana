@@ -3,10 +3,10 @@
 //! II — Scry 2.
 //! III — When you next cast an instant or sorcery spell with mana value 3 or less this turn, copy that spell.
 //! GAP: Chapter I Cursed Role token — Role Enchantment Aura token type not in catalog.
-//! GAP: Chapter III "when you next cast ... copy that spell" — delayed single-cast copy trigger not in catalog.
+//! Chapter III wired via `Effect::NextCastThisTurn { InstantOrSorceryMaxCmc(3), Copy }`.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, NextCastKind, NextCastRider};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -47,7 +47,7 @@ fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Ve
     vec![Effect::Scry { player: trig.controller, count: 2 }]
 }
 
-fn chapter_iii(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "when you next cast an instant/sorcery mv 3 or less, copy it" — delayed next-cast trigger not in catalog
-    Vec::new()
+fn chapter_iii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // III — "when you next cast an instant or sorcery spell with mana value 3 or less this turn, copy that spell"
+    vec![Effect::NextCastThisTurn { controller: trig.controller, kind: NextCastKind::InstantOrSorceryMaxCmc(3), rider: NextCastRider::Copy }]
 }

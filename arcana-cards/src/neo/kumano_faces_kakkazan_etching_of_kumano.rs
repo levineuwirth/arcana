@@ -10,7 +10,7 @@
 //! This file generates the Saga front face only. Chapter III transforms the
 //! Saga into Etching of Kumano (the back face is its own card definition).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, NextCastKind, NextCastRider};
 use arcana_core::events::DamageTarget;
 use arcana_core::objects::Characteristics;
 use arcana_core::mana::ManaCost;
@@ -132,12 +132,14 @@ fn chapter_i(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> V
     effects
 }
 
-fn chapter_ii(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "When you next cast a creature spell this turn, that creature enters
-    // with an additional +1/+1 counter" — a delayed cast-replacement that adds an
-    // ETB counter to the next creature spell. No engine primitive for a one-shot
-    // "next creature spell enters with a counter" replacement effect.
-    Vec::new()
+fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // II — "When you next cast a creature spell this turn, that creature enters
+    // with an additional +1/+1 counter on it."
+    vec![Effect::NextCastThisTurn {
+        controller: trig.controller,
+        kind: NextCastKind::Creature,
+        rider: NextCastRider::EntersWithPlusOneCounter,
+    }]
 }
 
 fn chapter_iii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

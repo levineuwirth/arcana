@@ -2,11 +2,14 @@
 //! I — Surveil 3.
 //! II — When you next cast a creature spell this turn, copy it, except the copy isn't legendary.
 //! III — Choose a card name. Whenever a creature with the chosen name deals combat damage to a player this turn, draw a card.
-//! GAP: Chapter II "when you next cast a creature spell, copy it" — delayed next-cast copy trigger not in catalog.
+//! Chapter II wired via `Effect::NextCastThisTurn { Creature, Copy }` ("except the copy isn't
+//! legendary" is implicit: a copied creature spell resolves through the normal permanent path —
+//! the CR 707.10e copy-is-a-token nuance is a documented approximation; legend-rule clash is the
+//! residual inaccuracy).
 //! GAP: Chapter III "choose a card name; trigger based on named creature's combat damage" — named-card trigger not in catalog.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, NextCastKind, NextCastRider};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -28,8 +31,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_enters_with(EntersWithSpec::Counters { kind: CounterKind::Lore, count: 1 })
             .with_triggered_ability(TriggeredAbilityDef { id: 1, trigger_condition: TriggerCondition::PhaseBegins { phase: Phase::PreCombatMain, whose: ControllerConstraint::You }, intervening_if: None, effect: add_lore_counter, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
             .with_triggered_ability(TriggeredAbilityDef { id: 2, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(1) }, intervening_if: None, effect: chapter_i, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
-            .with_triggered_ability(TriggeredAbilityDef { id: 3, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(2) }, intervening_if: None, effect: chapter_gap, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
-            .with_triggered_ability(TriggeredAbilityDef { id: 4, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(3) }, intervening_if: None, effect: chapter_gap, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() }),
+            .with_triggered_ability(TriggeredAbilityDef { id: 3, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(2) }, intervening_if: None, effect: chapter_ii, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
+            .with_triggered_ability(TriggeredAbilityDef { id: 4, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(3) }, intervening_if: None, effect: chapter_iii_gap, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() }),
     )
 }
 
@@ -41,7 +44,15 @@ fn chapter_i(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec
     vec![Effect::Surveil { player: trig.controller, count: 3 }]
 }
 
-fn chapter_gap(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: chapters II/III — delayed next-cast copy trigger and named-card triggers not in catalog
+fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // II — "when you next cast a creature spell this turn, copy it, except the copy isn't
+    // legendary". The copy resolves through the normal permanent path (copy-is-not-a-token
+    // approximation, CR 707.10e); the "isn't legendary" exception is not modeled.
+    vec![Effect::NextCastThisTurn { controller: trig.controller, kind: NextCastKind::Creature, rider: NextCastRider::Copy }]
+}
+
+fn chapter_iii_gap(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // GAP: chapter III — "choose a card name; whenever a creature with the chosen name deals
+    // combat damage to a player this turn, draw a card" — named-card trigger not in catalog
     Vec::new()
 }

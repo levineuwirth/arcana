@@ -5,13 +5,14 @@
 //!
 //! GAP: "greatest mana value among instant and sorcery spells cast this turn" is not
 //! expressible with the available script helpers (only spells_cast_this_turn count is
-//! accessible, not max mana value). Token P/T falls back to a fixed size of 0/0 (incorrect).
-//! The intervening-if condition "if you've cast an instant or sorcery spell this turn" also
-//! cannot be modeled as an intervening_if (no variant); the trigger fires unconditionally.
+//! accessible, not max mana value); using the count as a proxy for X (incorrect).
+//! The intervening-if "if you've cast an instant or sorcery spell this turn" is wired via
+//! `conditions::you_cast_matching_this_turn`.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -20,7 +21,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -50,9 +51,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     phase: Phase::Combat,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you've cast an instant or sorcery spell this turn"
-                // not expressible as TriggerCondition; fires unconditionally.
-                intervening_if: None,
+                // "if you've cast an instant or sorcery spell this turn"
+                intervening_if: Some(iif_cast_instant_or_sorcery_this_turn),
                 effect: create_elemental_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -61,16 +61,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_cast_instant_or_sorcery_this_turn(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::you_cast_matching_this_turn(
+        state,
+        you,
+        &ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+    )
+}
+
 fn create_elemental_token(
     state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Check if any instant or sorcery was cast this turn
     let filter = ObjectFilter::new()
         .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY));
     let n = script::spells_cast_this_turn(state, &filter, trig.controller);
     if n == 0 {
+        // Belt-and-suspenders alongside the intervening_if (re-checked at resolution).
         return Vec::new();
     }
     // GAP: "greatest mana value among instant and sorcery spells cast this turn" is not
