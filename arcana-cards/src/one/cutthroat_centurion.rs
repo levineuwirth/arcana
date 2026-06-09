@@ -39,6 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Sacrifice another artifact or creature: This creature gets +2/+2 until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     sacrifice: true,
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

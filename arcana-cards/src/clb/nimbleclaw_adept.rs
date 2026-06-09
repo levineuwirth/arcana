@@ -33,7 +33,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Bigby's Hand — {T}: Untap two other target permanents. Activate only as a sorcery and only once each turn.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    tap: true,
+                    once_per_turn: true,
+                    ..ActivationCost::default()
+                },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(ObjectFilter::new()),
                     count: TargetCount::Exactly(2),

@@ -3,8 +3,7 @@
 //! Activate only once each turn and only if an opponent controls a creature with flying."
 //! "only if an opponent controls a creature with flying" modeled via
 //! `activation_condition` + `conditions::an_opponent_controls_a` (creature with Flying).
-//! GAP: "Activate only once each turn" — per-turn activation limit not
-//! expressible in ActivationCost.
+//! "Activate only once each turn" enforced via `once_per_turn`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::targets::ObjectFilter;
@@ -36,8 +35,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "Activate only once each turn" — per-turn activation
-                // limit not expressible in ActivationCost.
                 text: "{G/U}: This creature gets +1/+3 and gains flying until end of turn. Activate only once each turn and only if an opponent controls a creature with flying.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{G/U}").unwrap(),
@@ -48,6 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                             &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
                         )
                     }),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

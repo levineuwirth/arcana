@@ -4,7 +4,7 @@
 //! creature, and only once each turn."
 //! GAP: "activate only during declare blockers step" timing restriction and
 //! "only if blocking" condition are not in ActivatedAbilityDef; "once each
-//! turn" also not modeled.
+//! turn" is enforced via ActivationCost::once_per_turn.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -38,6 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{R}: This creature gets +2/+0 until end of turn. (Activate only during declare blockers step, only if blocking, only once each turn.)".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{R}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

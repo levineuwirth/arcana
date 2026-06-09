@@ -1,6 +1,6 @@
 //! Rootwalla — `{2}{G}` 2/2 Creature — Lizard.
 //! `{1}{G}: This creature gets +2/+2 until end of turn. Activate only once each turn.`
-//! NOTE: "Activate only once each turn" — no per-turn activation limit in ActivationCost.
+//! "Activate only once each turn" enforced via `ActivationCost::once_per_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,9 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{1}{G}: This creature gets +2/+2 until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{G}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
-                // NOTE: "once each turn" limit not in ActivationCost
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

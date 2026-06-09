@@ -37,6 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{G}{U}: This creature gets +2/+2 and gains flying until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{G}{U}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

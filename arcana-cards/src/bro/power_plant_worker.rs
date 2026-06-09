@@ -39,6 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{3}: This creature gets +2/+2 until end of turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

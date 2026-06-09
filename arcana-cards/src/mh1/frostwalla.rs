@@ -36,6 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // GAP: {S} not representable; using {1} as placeholder
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

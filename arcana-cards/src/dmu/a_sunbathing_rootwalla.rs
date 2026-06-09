@@ -35,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Domain — {1}{G}: Until end of turn, this creature gets +1/+1 for each basic land type among lands you control. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{G}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

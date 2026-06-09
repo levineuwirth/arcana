@@ -37,6 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     // GAP: {S} snow mana not parseable; using {1} as approximation
                     mana_cost: ManaCost::parse("{1}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

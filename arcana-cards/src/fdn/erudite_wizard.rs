@@ -2,20 +2,21 @@
 //! "Whenever you draw your second card each turn, put a +1/+1 counter on this
 //! creature."
 //!
-//! GAP: "your second card each turn" — CardDrawn fires on every draw; tracking
-//! which draw is the second requires per-turn state. Using OncePerTurn as best
-//! effort (fires once per turn on any draw).
+//! "your second card each turn": CardDrawn fires on every draw (EachTime); an
+//! intervening_if of `cards_drawn_this_turn(...) == 2` narrows it to exactly
+//! the second draw — the triggering draw is already in the event log at
+//! intervening-if time (same pattern as dds/jori_en_ruin_diver.rs for spells).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,18 +40,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
-            // GAP: "second card each turn" tracking not available; using OncePerTurn
-            // CardDrawn as best effort.
+            // "your second card each turn": CardDrawn fires on every draw;
+            // the intervening_if narrows it to exactly the second one.
             trigger_condition: TriggerCondition::CardDrawn {
                 player: ControllerConstraint::You,
             },
-            intervening_if: None,
+            intervening_if: Some(iif_second_draw),
             effect: on_draw_add_counter,
             trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::OncePerTurn,
+            frequency: TriggerFrequency::EachTime,
             target_requirements: Vec::new(),
         }),
     )
+}
+
+/// True exactly when the triggering draw is your second card this turn.
+/// intervening_if runs at trigger stack-add time, when the DrawCard event
+/// that fired the trigger is ALREADY in the event log — so the count is 2
+/// exactly on the second draw (1 on the first, 3+ afterwards).
+fn iif_second_draw(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    arcana_core::script::cards_drawn_this_turn(state, you) == 2
 }
 
 fn on_draw_add_counter(

@@ -40,6 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Discard a card at random: This creature gets +2/+2 until end of turn unless a player has this creature deal 4 damage to them. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     discard_random: 1,
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

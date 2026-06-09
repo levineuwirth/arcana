@@ -42,6 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     // GAP: "discard any card" cost — using discard_self as approximation
                     discard_self: true,
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

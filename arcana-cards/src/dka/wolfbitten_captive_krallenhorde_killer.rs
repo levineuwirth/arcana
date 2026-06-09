@@ -7,7 +7,6 @@
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
 //!
 //! # GAPs
-//! - "Activate only once each turn" restriction not modeled on ActivationCost.
 //! - Front transform trigger "if no spells were cast last turn" — intervening_if not modeled;
 //!   trigger fires every upkeep (GAP: day/night / "no spells last turn" condition).
 //! - Back transform trigger "if a player cast two or more spells last turn" — same GAP.
@@ -73,11 +72,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Front activated: {1}{G}: +2/+2 until end of turn (face 0 only)
-            // GAP: "activate only once each turn" not modeled on ActivationCost
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{1}{G}: This creature gets +2/+2 until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{G}").expect("valid cost"),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -89,11 +88,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: front_pump,
             })
             // Back activated: {3}{G}: +4/+4 until end of turn (face 1 only)
-            // GAP: "activate only once each turn" not modeled on ActivationCost
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{3}{G}: This creature gets +4/+4 until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}{G}").expect("valid cost"),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

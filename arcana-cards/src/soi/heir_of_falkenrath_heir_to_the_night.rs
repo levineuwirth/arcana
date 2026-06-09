@@ -7,8 +7,7 @@
 //! Back face (Heir to the Night):
 //!   Flying
 //!
-//! GAP: "Activate only once each turn" enforcement is engine debt (not modeled
-//!      in ActivationCost); the ability fires each time the cost is paid.
+//! "Activate only once each turn" enforced via `ActivationCost::once_per_turn`.
 //! GAP: back-face-only triggered abilities not auto-installed on transform.
 
 use arcana_core::effects::Effect;
@@ -68,12 +67,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // "Discard a card: Transform this creature. Activate only once each turn."
-            // GAP: "only once each turn" not enforced by engine; modeled as an activated ability.
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a card: Transform this creature. Activate only once each turn."
                     .into(),
                 cost: ActivationCost {
                     discard_other: Some(ObjectFilter::new()),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![],

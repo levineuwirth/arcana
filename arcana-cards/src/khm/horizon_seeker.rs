@@ -1,6 +1,10 @@
 //! Horizon Seeker — `{2}{G}` 3/2 green Human Warrior.
 //! Boast — `{1}{G}: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.`
 //! (Boast activates only if this creature attacked this turn and only once each turn.)
+//!
+//! The "attacked this turn" half of Boast is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`;
+//! "only once each turn" via `once_per_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,6 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Boast — {1}{G}: Search your library for a basic land card, reveal it, put it into your hand, then shuffle. (Activate only if this creature attacked this turn and only once each turn.)".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{G}").unwrap(),
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

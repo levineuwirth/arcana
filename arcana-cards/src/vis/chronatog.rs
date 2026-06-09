@@ -34,6 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{0}: This creature gets +3/+3 until end of turn. You skip your next turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

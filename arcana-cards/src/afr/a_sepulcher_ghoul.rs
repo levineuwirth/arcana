@@ -38,6 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // GAP: "sacrifice another creature" (non-self) not expressible.
                 cost: ActivationCost {
                     sacrifice: true,
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

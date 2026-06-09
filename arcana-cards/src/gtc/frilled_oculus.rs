@@ -15,7 +15,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(homunculus);
     let chars = Characteristics { name, mana_cost: Some(ManaCost::parse("{1}{U}").expect("valid cost")), colors: ColorSet::blue(), types: TypeLine::CREATURE.into(), subtypes, power: Some(PtValue::Fixed(1)), toughness: Some(PtValue::Fixed(3)), ..Default::default() };
-    reg.register(CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef { text: "{1}{G}: This creature gets +2/+2 until end of turn.".into(), cost: ActivationCost { mana_cost: ManaCost::parse("{1}{G}").unwrap(), ..ActivationCost::default() }, target_requirements: Vec::new(), is_mana_ability: false, is_loyalty_ability: false, activation_zone: ActivationZone::Battlefield, is_instant_speed: false, face_gate: None, effect: pump }))
+    reg.register(CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef { text: "{1}{G}: This creature gets +2/+2 until end of turn.".into(), cost: ActivationCost { mana_cost: ManaCost::parse("{1}{G}").unwrap(), once_per_turn: true, ..ActivationCost::default() }, target_requirements: Vec::new(), is_mana_ability: false, is_loyalty_ability: false, activation_zone: ActivationZone::Battlefield, is_instant_speed: false, face_gate: None, effect: pump }))
 }
 
 fn pump(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {

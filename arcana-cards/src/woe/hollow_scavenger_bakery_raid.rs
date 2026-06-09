@@ -4,7 +4,7 @@
 //! Adventure face "Bakery Raid" (`{G}` Sorcery): "Create a Food token."
 //! GAP: "Sacrifice a Food" cost uses specific subtype — ActivationCost.sacrifice
 //! is general; can't filter to Food only.
-//! GAP: "Activate only once each turn" — OncePerTurn not available for activated abilities.
+//! "Activate only once each turn" enforced via `ActivationCost::once_per_turn`.
 
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::layers::Duration;
@@ -63,6 +63,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
                     sacrifice: true, // GAP: should be sacrifice-a-Food, not any creature
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

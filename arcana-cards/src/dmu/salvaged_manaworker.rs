@@ -32,6 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{1}: Add one mana of any color. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -51,7 +52,7 @@ fn add_any_mana(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "any color" choice not expressible — emitting colorless as proxy.
-    // "Once each turn" limit is not modeled in ActivatedAbilityDef.
+    // "Once each turn" limit enforced via ActivationCost::once_per_turn.
     vec![Effect::AddMana {
         player: ctx.controller,
         mana: vec![ManaUnit::plain(ManaColor::Colorless, ctx.source)],

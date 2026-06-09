@@ -1,8 +1,7 @@
 //! Knight of the Skyward Eye — `{1}{W}` 2/2 white Human Knight. "{3}{G}: This
 //! creature gets +3/+3 until end of turn. Activate only once each turn."
 //!
-//! Note: "Activate only once each turn" — the engine doesn't enforce this per-card
-//! restriction beyond normal activation rules.
+//! "Activate only once each turn" is enforced via `ActivationCost::once_per_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -38,6 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{3}{G}: This creature gets +3/+3 until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}{G}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

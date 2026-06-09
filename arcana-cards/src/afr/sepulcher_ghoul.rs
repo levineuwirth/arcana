@@ -3,7 +3,7 @@
 //! Activate only once each turn."
 //!
 //! "Sacrifice another creature" cost modeled via `sacrifice_other` (creature
-//! filter). GAP: "Activate only once each turn" not enforced.
+//! filter). "Activate only once each turn" enforced via `once_per_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -40,6 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         types: Some(TypeLine::CREATURE.into()),
                         ..Default::default()
                     }),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

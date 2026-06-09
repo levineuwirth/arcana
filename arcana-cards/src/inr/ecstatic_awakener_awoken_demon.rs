@@ -10,8 +10,7 @@
 //!
 //! # Notes
 //! - Activation cost: {2}{B} + sacrifice another creature → `mana_cost` + `sacrifice_other`.
-//! - "Activate only once each turn" — no per-turn activation gate in ActivationCost;
-//!   the engine does not enforce this limit. GAP: once-per-turn restriction not modeled.
+//! - "Activate only once each turn" enforced via `ActivationCost::once_per_turn`.
 //! - Back face P/T: 4/4 per oracle (inferred from Awoken Demon).
 
 use arcana_core::effects::Effect;
@@ -68,12 +67,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // {2}{B}, Sacrifice another creature: Draw a card, then transform.
-            // GAP: "activate only once each turn" restriction not modeled.
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}{B}, Sacrifice another creature: Draw a card, then transform this creature. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{B}").expect("valid cost"),
                     sacrifice_other: Some(ObjectFilter::creature()),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

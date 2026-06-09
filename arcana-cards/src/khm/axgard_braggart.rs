@@ -3,8 +3,8 @@
 //! (Activate only if this creature attacked this turn and only once each turn.)"
 //!
 //! The "attacked this turn" half of Boast is enforced via
-//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
-//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`;
+//! "only once each turn" via `once_per_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     activation_condition: Some(|s, src, _you, _reg| {
                         arcana_core::conditions::source_attacked_this_turn(s, src)
                     }),
-                    // GAP: "only once each turn" not expressible.
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

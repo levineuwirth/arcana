@@ -34,6 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{G}: This creature gets +3/+0 and gains trample until end of turn. Destroy this creature at the beginning of the next end step.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{G}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

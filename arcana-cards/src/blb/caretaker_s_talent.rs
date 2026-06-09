@@ -4,8 +4,7 @@
 //! {W}: Level 2 — When this Class becomes level 2, create a token that's a copy
 //!               of target token you control.
 //! {3}{W}: Level 3 — Creature tokens you control get +2/+2.
-//! GAP: Level 1 "triggers only once each turn" frequency not expressible
-//!      (TriggerFrequency::EachTime is used; once-per-turn gating not modeled).
+//! Level 1 "triggers only once each turn" via TriggerFrequency::OncePerTurn.
 //! GAP: Level 2 "when this Class becomes level 2, create a copy of target token"
 //!      is a triggered ability on level-up; modeled as the level-2 activation effect
 //!      creating a copy of target token you control. Targeting not directly supported
@@ -51,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: 1,
             })
             // Level 1 base triggered ability: whenever one or more tokens you control enter,
-            // draw a card. GAP: once-per-turn gating not modeled.
+            // draw a card; OncePerTurn frequency caps it per turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
@@ -64,7 +63,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 intervening_if: None,
                 effect: draw_on_token_etb,
                 trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
+                // "This ability triggers only once each turn."
+                frequency: TriggerFrequency::OncePerTurn,
                 target_requirements: Vec::new(),
             })
             // {W}: Level 2 — requires level >= 1

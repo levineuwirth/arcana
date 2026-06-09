@@ -35,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Pay 2 life: This creature gets +2/+2 until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
                     life: 2,
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

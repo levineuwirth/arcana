@@ -1,7 +1,7 @@
 //! Erstwhile Trooper — `{1}{B}{G}` 2/2 Zombie Soldier.
 //! `Discard a creature card: This creature gets +2/+2 and gains trample until end of turn. Activate only once each turn.`
 //! "Discard a creature card" cost modeled via `discard_other` (creature-card
-//! filter). GAP: "Activate only once each turn" not enforced.
+//! filter). "Activate only once each turn" enforced via `once_per_turn`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -40,6 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         types: Some(TypeLine::CREATURE.into()),
                         ..Default::default()
                     }),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

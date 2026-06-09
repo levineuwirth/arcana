@@ -3,7 +3,7 @@
 //! of turn. Activate only once each turn."
 //!
 //! GAP: "becomes a Bear Berserker" — subtype change not expressible.
-//! "activate only once each turn" — not expressible.
+//! "Activate only once each turn" enforced via `once_per_turn`.
 //! The +3/+3 pump is expressible.
 
 use arcana_core::effects::Effect;
@@ -38,9 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{5}{G}: This creature gets +3/+3 and becomes a Bear Berserker until end of turn. Activate only once each turn.".into(),
-                // GAP: "only once each turn" not expressible
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{5}{G}").unwrap(),
+                    once_per_turn: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

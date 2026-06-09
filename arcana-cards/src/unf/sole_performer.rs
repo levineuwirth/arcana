@@ -35,7 +35,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 // GAP: "Add {T}{T}" — tap mana symbol not a ManaColor; using 2 green as placeholder.
                 text: "{T}: Add {T}{T}. Activate only once each turn.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    tap: true,
+                    once_per_turn: true,
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: true,
                 is_loyalty_ability: false,
