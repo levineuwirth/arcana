@@ -1,6 +1,7 @@
 //! Aquamoeba — `{1}{U}` 1/3 blue Elemental Beast.
 //! `Discard a card: Switch this creature's power and toughness until end of turn.`
-//! GAP: ActivationCost has no "discard a card" cost field. "Switch P/T" not modeled in effect catalog.
+//! Discard-a-card cost modeled via `discard_other`.
+//! GAP: "Switch P/T" not modeled in the effect catalog (resolves to a no-op).
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -33,9 +34,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a card: Switch this creature's power and toughness until end of turn.".into(),
-                // GAP: no "discard a card" cost field; using zero-mana cost as placeholder
                 cost: ActivationCost {
-                    mana_cost: ManaCost::parse("{0}").unwrap(),
+                    discard_other: Some(arcana_core::targets::ObjectFilter::default()),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

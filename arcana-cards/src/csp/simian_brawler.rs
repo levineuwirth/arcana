@@ -1,7 +1,6 @@
 //! Simian Brawler — `{3}{G}` 3/3 green Ape Warrior.
 //! "Discard a land card: This creature gets +1/+1 until end of turn."
-//! GAP: "Discard a land card" (a specific type of card, not self) is not in ActivationCost;
-//! approximated as no-cost (cannot model discard-specific-card-type).
+//! "Discard a land card" cost modeled via `discard_other` (land-card filter).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -34,9 +33,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "Discard a land card" — not modeled in ActivationCost.
                 text: "Discard a land card: This creature gets +1/+1 until end of turn.".into(),
                 cost: ActivationCost {
+                    discard_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::LAND.into()),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

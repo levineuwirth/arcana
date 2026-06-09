@@ -1,6 +1,6 @@
 //! Wild Mongrel — `{1}{G}` 2/2 green Dog.
 //! "Discard a card: This creature gets +1/+1 and becomes the color of your choice until end of turn."
-//! GAP: "Discard a card" (not self, any card) — no ActivationCost for discarding a nonspecific card.
+//! Discard-a-card cost modeled via `discard_other`.
 //! GAP: "becomes the color of your choice" — no Effect variant for color change.
 
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -32,9 +32,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: cost "Discard a card" (nonself discard) — not in ActivationCost.
                 text: "Discard a card: This creature gets +1/+1 and becomes the color of your choice until end of turn.".into(),
                 cost: ActivationCost {
+                    discard_other: Some(arcana_core::targets::ObjectFilter::default()),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

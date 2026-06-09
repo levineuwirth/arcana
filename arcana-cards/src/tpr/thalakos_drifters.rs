@@ -1,8 +1,8 @@
 //! Thalakos Drifters — `{2}{U}{U}` 3/3 blue Thalakos. "Discard a card: This
 //! creature gains shadow until end of turn."
 //!
-//! GAP: "Discard a card" activation cost not expressible via ActivationCost.
-//! Shadow is a supported keyword so the effect is wired.
+//! Discard-a-card cost modeled via `discard_other`; Shadow is a supported
+//! keyword so the effect is wired.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -34,7 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a card: This creature gains shadow until end of turn.".into(),
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    discard_other: Some(arcana_core::targets::ObjectFilter::default()),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -51,7 +54,6 @@ fn gain_shadow(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Discard a card" activation cost not expressible in ActivationCost.
     vec![Effect::GrantKeyword {
         target: ctx.source,
         keyword: KeywordAbility::Shadow,

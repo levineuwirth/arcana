@@ -1,6 +1,7 @@
 //! Erstwhile Trooper — `{1}{B}{G}` 2/2 Zombie Soldier.
 //! `Discard a creature card: This creature gets +2/+2 and gains trample until end of turn. Activate only once each turn.`
-//! GAP: ActivationCost has no "discard a creature card" field (non-self discard cost).
+//! "Discard a creature card" cost modeled via `discard_other` (creature-card
+//! filter). GAP: "Activate only once each turn" not enforced.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -35,7 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a creature card: This creature gets +2/+2 and gains trample until end of turn. Activate only once each turn.".into(),
                 cost: ActivationCost {
-                    // GAP: no "discard a creature card" cost field
+                    discard_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::CREATURE.into()),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

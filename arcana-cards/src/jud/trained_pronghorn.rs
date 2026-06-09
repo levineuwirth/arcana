@@ -1,7 +1,7 @@
 //! Trained Pronghorn — `{1}{W}` 1/1 white Antelope.
 //! "Discard a card: Prevent all damage that would be dealt to this creature this turn."
 //!
-//! GAP: "Discard a card" (not self) as activation cost not expressible.
+//! Discard-a-card cost modeled via `discard_other`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -34,8 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a card: Prevent all damage that would be dealt to this creature this turn.".into(),
-                // GAP: "Discard a card" (non-self) not expressible; using zero-cost placeholder.
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    discard_other: Some(arcana_core::targets::ObjectFilter::default()),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

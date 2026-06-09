@@ -1,6 +1,7 @@
 //! Vampire Hounds — `{2}{B}` 2/2 Creature — Vampire Dog.
 //! Discard a creature card: This creature gets +2/+2 until end of turn.
-//! GAP: "discard a creature card" (filtered discard cost) not in ActivationCost.
+//! "Discard a creature card" cost modeled via `discard_other` (creature
+//! filter).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -32,7 +33,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a creature card: This creature gets +2/+2 until end of turn.".into(),
                 cost: ActivationCost {
-                    // GAP: "discard a creature card" (filtered) not in ActivationCost
+                    discard_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::CREATURE.into()),
+                        ..Default::default()
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

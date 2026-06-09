@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Discard a card, Sacrifice this creature: Add {B}{B}{B}.".into(),
                 cost: ActivationCost {
                     sacrifice: true,
-                    // GAP: "Discard a card" (any card) not in ActivationCost.
+                    discard_other: Some(arcana_core::targets::ObjectFilter::default()),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

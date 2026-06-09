@@ -1,7 +1,7 @@
 //! Cephalid Inkshrouder — `{2}{U}` 2/1 Octopus.
 //! `Discard a card: This creature gains shroud until end of turn and can't be blocked this turn.`
-//! GAP: ActivationCost has no "discard a card" field (non-self discard);
-//! also no Effect for "can't be blocked this turn".
+//! The "Discard a card" cost is modeled via the `discard_other` activation
+//! cost. GAP: no Effect for "can't be blocked this turn".
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a card: This creature gains shroud until end of turn and can't be blocked this turn.".into(),
                 cost: ActivationCost {
-                    // GAP: no "discard a card" cost field
+                    discard_other: Some(arcana_core::targets::ObjectFilter::default()),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -53,7 +53,6 @@ fn gain_shroud(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ActivationCost has no "discard a card" field.
     // GAP: No Effect for "can't be blocked this turn".
     vec![Effect::GrantKeyword {
         target: ctx.source,
