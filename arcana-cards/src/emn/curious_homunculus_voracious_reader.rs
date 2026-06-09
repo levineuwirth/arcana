@@ -5,25 +5,27 @@
 //!   (GAP: "spend only to cast instant or sorcery" restriction not modeled — adds plain {C}.)
 //!   At the beginning of your upkeep, if there are three or more instant and/or sorcery cards
 //!   in your graveyard, transform this creature.
-//!   (Intervening-if condition: graveyard count ≥ 3. Modeled via intervening_if + script.)
+//!   (Intervening-if condition: graveyard count ≥ 3. Modeled via intervening_if +
+//!    conditions::graveyard_matching_at_least over instant|sorcery.)
 //!
 //! Back (Voracious Reader, Eldrazi Homunculus):
 //!   Prowess (GAP: Prowess keyword not in engine keyword surface — omitted.)
 //!   Instant and sorcery spells you cast cost {1} less to cast. (GAP: cost reduction not modeled.)
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
 };
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::state::GameState;
 
@@ -92,7 +94,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_three_inst_sorc_in_gy),
                 effect: upkeep_transform_check,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -114,13 +116,24 @@ fn tap_add_colorless(
     }]
 }
 
+fn iif_three_inst_sorc_in_gy(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::graveyard_matching_at_least(
+        state,
+        you,
+        &ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+        3,
+    )
+}
+
 fn upkeep_transform_check(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if there are three or more instant and/or sorcery cards in your graveyard"
-    // — no graveyard type-filtered count helper available in script::*. Condition is dropped;
-    // transform fires unconditionally at each upkeep. The verify pipeline will flag this.
     vec![Effect::Transform { target: trig.source }]
 }

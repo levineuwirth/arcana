@@ -14,9 +14,8 @@
 //! - ETB "you may sacrifice another permanent. If you do," gate — OptionalPaymentKind does not
 //!   support Sacrifice; the token is created unconditionally as best-effort.
 //!   GAP: sacrifice-gate on ETB not expressible via OptionalPaymentKind.
-//! - Delirium intervening-if (four or more card types in graveyard) is not expressible; the
-//!   upkeep trigger fires each upkeep without the delirium check.
-//!   GAP: delirium intervening-if condition not modeled.
+//! - Delirium intervening-if (four or more card types in graveyard) gates the upkeep transform
+//!   trigger via `conditions::delirium`.
 //! - "Eldrazi you control have vigilance" is a static keyword-grant — not modeled.
 //!   GAP: static keyword-grant to subtype not modeled.
 //! - Back face activated ability ({2},{T}, Sacrifice non-Eldrazi: create token) not modeled
@@ -25,9 +24,10 @@
 //! - Back face triggered abilities are not auto-installed on transform.
 //!   GAP: back-face-only triggered ability not modeled.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -35,7 +35,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -99,14 +99,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // Triggered ability 2: beginning of upkeep, transform (delirium intervening-if GAP)
+            // Triggered ability 2: beginning of upkeep, if delirium, transform.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_delirium),
                 effect: transform_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -141,6 +141,15 @@ fn etb_create_token(
         controller: trig.controller,
         token,
     }]
+}
+
+fn iif_delirium(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::delirium(state, you)
 }
 
 fn transform_self(

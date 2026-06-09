@@ -3,14 +3,15 @@
 //! I — Mill three cards, then create a Food token.
 //! II — Put a +1/+1 counter on each of up to two target creatures you control.
 //! III — Draw a card if there's a creature or Lesson card in your graveyard.
-//!        (GAP: "if there's a creature or Lesson card in your graveyard"
-//!        — using graveyard_size > 0 as approximation.)
+//!        ("creature card" via type filter, "Lesson card" via
+//!        `graveyard_has_subtype`, joined with `||` — an effect-level
+//!        conditional inside chapter III, not a trigger intervening-if.)
 
+use arcana_core::conditions;
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
     TargetFilter, TargetRequirement};
@@ -81,9 +82,16 @@ fn chapter_ii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<E
         } else { None })
         .collect()
 }
-fn chapter_iii(state: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
-    if script::graveyard_size(state, trig.controller) > 0 {
-        vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+fn chapter_iii(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let you = trig.controller;
+    let has_creature = conditions::graveyard_has(
+        state,
+        you,
+        &ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+    );
+    let has_lesson = conditions::graveyard_has_subtype(state, reg, you, "Lesson");
+    if has_creature || has_lesson {
+        vec![Effect::DrawCards { player: you, count: 1 }]
     } else {
         Vec::new()
     }

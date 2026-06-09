@@ -16,9 +16,12 @@
 //!   transform Trystan.
 //!
 //! # GAP
-//! - Front ETB/transforms trigger: "if there is an Elf card in your graveyard"
-//!   conditional is not expressible (no graveyard-card-type check in script).
-//!   Modeled as unconditional mill 3 + gain 2 life (best effort).
+//! - Front ETB/transforms trigger: "mill three, THEN if there is an Elf card
+//!   in your graveyard, gain 2 life". The Elf-in-graveyard check is an
+//!   effect-level conditional that must be evaluated AFTER the mill (not a
+//!   trigger-level intervening-if), so it is gated inside the effect fn via
+//!   `conditions::graveyard_has_subtype(.., "Elf")` rather than on
+//!   `intervening_if`.
 //! - "Enters or transforms into" front trigger: ETB wired via SelfEntersBattlefield;
 //!   "transforms into Trystan, Callous Cultivator" (transform-to-front) not
 //!   separately expressible as a distinct trigger.
@@ -30,6 +33,7 @@
 //!   CardDefinition — fires on both faces.
 
 use arcana_core::actions::OptionalPaymentKind;
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -132,17 +136,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn front_enters_trigger(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     // "mill three cards. Then if there is an Elf card in your graveyard, you gain 2 life."
-    // GAP: "if there is an Elf card in your graveyard" conditional not expressible.
-    // Modeling as mill 3 + gain 2 life unconditionally (best effort).
-    vec![
-        Effect::Mill { player: trig.controller, count: 3 },
-        Effect::GainLife { player: trig.controller, amount: 2 },
-    ]
+    // The Elf-in-graveyard check is an effect-level conditional evaluated
+    // here (not a trigger intervening-if): mill always happens; gain 2 life
+    // only if you have an Elf card in your graveyard.
+    let mut effects = vec![Effect::Mill { player: trig.controller, count: 3 }];
+    if conditions::graveyard_has_subtype(state, reg, trig.controller, "Elf") {
+        effects.push(Effect::GainLife { player: trig.controller, amount: 2 });
+    }
+    effects
 }
 
 fn front_main_phase_trigger(

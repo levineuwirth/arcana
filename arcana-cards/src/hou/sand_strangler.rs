@@ -3,21 +3,21 @@
 //! card in your graveyard, you may have this creature deal 3 damage to target
 //! creature."
 //!
-//! GAP: "if you control a Desert or there is a Desert card in your graveyard"
-//! intervening-if condition not expressible. Emitting damage effect
-//! unconditionally.
+//! Intervening-if "control a Desert OR Desert card in graveyard" modeled via
+//! `conditions::you_control_subtype("Desert") || graveyard_has_subtype("Desert")`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,15 +40,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            // GAP: intervening-if "if you control a Desert or Desert in
-            // graveyard" not expressible; using None.
-            intervening_if: None,
+            intervening_if: Some(iif_desert),
             effect: etb_damage_creature,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
             target_requirements: vec![TargetRequirement::target_creature()],
         }),
     )
+}
+
+fn iif_desert(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Desert")
+        || conditions::graveyard_has_subtype(state, reg, you, "Desert")
 }
 
 fn etb_damage_creature(

@@ -6,15 +6,13 @@
 //! Back (Ancient of the Equinox — Creature — Treefolk, G, 5/5):
 //!   Trample, hexproof.
 //!
-//! GAPs:
-//! - Delirium intervening-if: "four or more card types among cards in your
-//!   graveyard" has no `conditions::` predicate (card-type-count over the
-//!   graveyard is not exposed). The transform trigger fires every end step
-//!   instead of being gated; the delirium count cannot be expressed.
+//! The delirium intervening-if ("four or more card types among cards in your
+//! graveyard") gates the end-step transform trigger via `conditions::delirium`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
     CardFace, CardRegistry,
@@ -26,7 +24,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Step;
 use arcana_core::effects::KeywordAbility;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -77,16 +75,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0),
                 effect: mill_one,
             })
-            // Front (face 0): Delirium end-step transform.
-            // GAP: the "four or more card types in graveyard" gate is not
-            //   expressible; trigger fires unconditionally.
+            // Front (face 0): Delirium end-step transform (gated on delirium).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_delirium),
                 effect: transform_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -101,6 +97,10 @@ fn mill_one(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) ->
         player: ctx.controller,
         count: 1,
     }]
+}
+
+fn iif_delirium(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::delirium(state, you)
 }
 
 fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

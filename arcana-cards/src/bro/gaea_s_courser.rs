@@ -1,18 +1,20 @@
 //! Gaea's Courser — `{4}{G}` 4/5 green Centaur Soldier.
 //! "Whenever this creature attacks, if there are three or more
 //! creature cards in your graveyard, draw a card."
-//! GAP: intervening_if — "if there are 3+ creature cards in your
-//! graveyard" (graveyard creature card count not accessible).
+//! Intervening-if "3+ creature cards in your graveyard" modeled via
+//! `conditions::graveyard_matching_at_least` on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,13 +40,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                // GAP: intervening_if — "if 3+ creature cards in your graveyard"
-                intervening_if: None,
+                intervening_if: Some(iif_three_creatures_in_gy),
                 effect: attack_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
+    )
+}
+
+fn iif_three_creatures_in_gy(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::graveyard_matching_at_least(
+        state,
+        you,
+        &ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+        3,
     )
 }
 

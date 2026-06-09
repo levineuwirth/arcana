@@ -1,20 +1,21 @@
 //! Gilded Cerodon — `{4}{R}` 4/4 red Beast.
 //! "Whenever this creature attacks, if you control a Desert or there is a Desert card
 //! in your graveyard, target creature can't block this turn."
-//! GAP: "if you control a Desert or there is a Desert card in your graveyard" —
-//! Desert subtype check not available as intervening-if.
+//! Intervening-if "control a Desert OR Desert card in graveyard" modeled via
+//! `conditions::you_control_subtype("Desert") || graveyard_has_subtype("Desert")`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
-                intervening_if: None, // GAP: Desert control/graveyard check not expressible
+                intervening_if: Some(iif_desert),
                 effect: on_attack,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -49,6 +50,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 }],
             }),
     )
+}
+
+fn iif_desert(state: &GameState, _source: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+    conditions::you_control_subtype(state, reg, you, "Desert")
+        || conditions::graveyard_has_subtype(state, reg, you, "Desert")
 }
 
 fn on_attack(

@@ -8,20 +8,22 @@
 //!   At the beginning of your upkeep, you may exile a card from a graveyard. If a
 //!   creature card was exiled this way, put a +1/+1 counter on this creature.
 //!
-//! GAP: "if there are three or more creature cards in your graveyard" — intervening-if
-//!   condition on graveyard contents not expressible; transform fires unconditionally
-//!   after the mill (always transforms after first mill).
+//! The "if there are three or more creature cards in your graveyard, transform" clause is
+//!   an effect-level branch AFTER the (unconditional) mill — not a whole-trigger
+//!   intervening-if — so it is gated inside the resolver via
+//!   `conditions::graveyard_matching_at_least` (the mill happens every upkeep regardless).
 //! GAP: Back-face upkeep trigger ("exile a card from a graveyard, if creature put +1/+1")
 //!   — "exile from any graveyard" with creature-check and conditional counter not
 //!   expressible (no graveyard-exile targeting in TriggerCondition). Emitted as GAP.
 //! GAP: Back-face-only triggered ability not auto-installed on transform.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -72,9 +74,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face upkeep trigger: mill 1, then transform.
-            // GAP: "if there are 3+ creature cards in graveyard" condition not modeled;
-            //   transform fires unconditionally after mill.
+            // Front-face upkeep trigger: mill 1, then (if 3+ creature cards in
+            //   graveyard) transform. The transform is gated inside the resolver
+            //   (effect-level branch after the unconditional mill).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -92,13 +94,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn front_upkeep(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if three or more creature cards in your graveyard" not checked; always transforms.
-    vec![
-        Effect::Mill { player: trig.controller, count: 1 },
-        Effect::Transform { target: trig.source },
-    ]
+    // Mill is unconditional; the transform is gated on "3+ creature cards in your
+    // graveyard". The count is read pre-mill (the resolver builds all effects up
+    // front), a slight off-by-one approximation only in the case where the milled
+    // card itself is the 3rd creature.
+    let mut effects = vec![Effect::Mill { player: trig.controller, count: 1 }];
+    if conditions::graveyard_matching_at_least(
+        state,
+        trig.controller,
+        &ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+        3,
+    ) {
+        effects.push(Effect::Transform { target: trig.source });
+    }
+    effects
 }

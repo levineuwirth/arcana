@@ -13,9 +13,12 @@
 //! {4}{B}: Exile Sheoldred, then return it to the battlefield transformed
 //!   under its owner's control. Activate only as a sorcery and only if an
 //!   opponent has eight or more cards in their graveyard.
-//! GAP: "only if an opponent has 8+ cards in their graveyard" precondition
-//!   not expressible via min_self_counters (requires opponent state check).
-//!   Modeled as always-available activation (GAP on the condition).
+//! GAP: "only if an opponent has 8+ cards in their graveyard" is an ACTIVATION
+//!   precondition (CR 602.5), not a triggered-ability intervening-if (CR 603.4).
+//!   `conditions::an_opponent_graveyard_at_least(state, you, 8)` expresses the
+//!   predicate, but ActivatedAbilityDef has no opponent-state precondition hook
+//!   (only `min_self_counters`, which gates on counters on the source). Deferred
+//!   pending an activation-precondition field. Modeled as always-available.
 //!
 //! Back face — The True Scriptures (Enchantment — Saga):
 //! I — For each opponent, destroy up to one target creature or planeswalker

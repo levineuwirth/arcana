@@ -3,9 +3,13 @@
 //! and up to one target creature an opponent controls gets -0/-X until end of turn,
 //! where X is the number of Elves you control plus the number of Elf cards in your graveyard."
 //!
-//! GAP: graveyard count (Elf cards in graveyard) not accessible; also two-target shape
-//! (friendly + optional enemy) is not expressible as a simple target pair. Using
-//! single-target pump on a friendly creature with just the battlefield Elf count.
+//! GAP: the "Elf cards in your graveyard" clause is part of the dynamic-X
+//! AMOUNT (X = Elves you control + Elf cards in graveyard), not a bool
+//! intervening-if on the trigger — so it is NOT wired on `intervening_if`.
+//! Folding the graveyard count into X is a dynamic-X-from-graveyard effect
+//! shape (deferred). Also two-target shape (friendly + optional enemy) is not
+//! expressible as a simple target pair. Using single-target pump on a friendly
+//! creature with just the battlefield Elf count.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;

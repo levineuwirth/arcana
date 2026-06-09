@@ -11,20 +11,22 @@
 //! continuous effect layer modification, not modeled — back face registers 0/0 P/T as a
 //! placeholder.
 //! GAP: Back-face-only triggered ability not modeled.
-//! GAP: "If there are six or more permanent cards in your graveyard" intervening-if uses
-//! graveyard permanent count; no intervening_if closure provided — trigger fires unconditionally
-//! (engine debt: intervening-if needs state access; closest available approximation).
+//! The "if there are six or more permanent cards in your graveyard, transform" clause is a
+//! pure intervening-if on the end-step trigger, modeled via
+//! `conditions::graveyard_matching_at_least` over the permanent card types.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     ControllerConstraint, PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -85,20 +87,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // Beginning of end step: if 6+ permanent cards in graveyard, transform.
-            // GAP: intervening-if "six or more permanent cards in graveyard" not expressible;
-            // trigger fires unconditionally each end step (owner must decide at resolution).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_six_permanents_in_gy),
                 effect: end_step_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
+    )
+}
+
+fn iif_six_permanents_in_gy(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::graveyard_matching_at_least(
+        state,
+        you,
+        &ObjectFilter::new().with_types_any(TypeLine(
+            TypeLine::ARTIFACT
+                | TypeLine::CREATURE
+                | TypeLine::ENCHANTMENT
+                | TypeLine::LAND
+                | TypeLine::PLANESWALKER
+                | TypeLine::BATTLE,
+        )),
+        6,
     )
 }
 
