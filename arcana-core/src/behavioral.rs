@@ -405,6 +405,7 @@ fn populated_state(reg: &CardRegistry) -> GameState {
     let mut omni_ids  = [crate::objects::NULL_OBJECT_ID; 2];
     let mut big_ids   = [crate::objects::NULL_OBJECT_ID; 2];
     let mut first_2x2 = [crate::objects::NULL_OBJECT_ID; 2];
+    let mut dead_ids  = [crate::objects::NULL_OBJECT_ID; 2];
     for p in 0..2 {
         for (i, (cs, cost)) in colors.into_iter().enumerate() {
             let id = make_creature(&mut state, p, cs, cost);
@@ -466,7 +467,8 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::ARTIFACT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::INSTANT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::SORCERY.into());
-        make_tribal_creature(&mut state, p, Zone::Graveyard(p), &tribes);
+        let dead = make_tribal_creature(&mut state, p, Zone::Graveyard(p), &tribes);
+        dead_ids[p as usize] = dead;
     }
     // COMBAT seeding (mirrors the tribal/keyword seeding): a live
     // CombatState so combat-status filters ("each attacking creature",
@@ -507,6 +509,40 @@ fn populated_state(reg: &CardRegistry) -> GameState {
             });
         }
         state.combat = Some(combat);
+    }
+    // EVENT-HISTORY seeding (companion to the combat seeding): this-turn
+    // event-log entries so `*_this_turn` conditions (Boast "attacked this
+    // turn", morbid "a creature died this turn", "an opponent lost life
+    // this turn", "entered this turn") find referents. The probe state
+    // has turn_event_log_start = 0, so everything pushed here is in the
+    // live turn's slice and the LAST-turn slice stays empty —
+    // deliberately NO SpellCast events, which would flip the werewolf
+    // "no spells were cast last turn" transform conditions. The dead
+    // referent is the seeded GRAVEYARD tribal creature (coherent: it's
+    // in the graveyard and "died this turn", and carries subtypes for
+    // "a <tribe> died this turn" counts).
+    {
+        use crate::combat::DefendingEntity;
+        use crate::events::GameEvent;
+        for p in 0..2usize {
+            let foe = (1 - p) as PlayerId;
+            state.event_log.push(GameEvent::CreatureAttacks {
+                attacker: omni_ids[p],
+                defending: DefendingEntity::Player(foe),
+            });
+            state.event_log.push(GameEvent::CreatureAttacks {
+                attacker: big_ids[p],
+                defending: DefendingEntity::Player(foe),
+            });
+            state.event_log.push(GameEvent::Dies { object_id: dead_ids[p] });
+            state.event_log.push(GameEvent::LifeLost { player: p as PlayerId, amount: 2 });
+            state.event_log.push(GameEvent::LifeGained { player: p as PlayerId, amount: 2 });
+            state.event_log.push(GameEvent::EntersBattlefield {
+                object_id: omni_ids[p],
+                from_zone: Zone::Hand(p as PlayerId),
+                was_cast: false,
+            });
+        }
     }
     state
 }

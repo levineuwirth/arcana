@@ -311,6 +311,98 @@ pub fn cards_discarded_this_turn(
         .count() as u32
 }
 
+/// Did `id` attack this turn? Scans [`crate::events::GameEvent::CreatureAttacks`]
+/// for the live turn. The Boast gate ("activate only if this creature
+/// attacked this turn") — `id` is stable while the creature stays on
+/// the battlefield, which is the only zone Boast activates from.
+pub fn creature_attacked_this_turn(state: &GameState, id: ObjectId) -> bool {
+    this_turn_events(state).iter().any(|ev| matches!(ev,
+        crate::events::GameEvent::CreatureAttacks { attacker, .. } if *attacker == id))
+}
+
+/// Did `player` attack with any creature this turn? The attacker's
+/// controller is read from the live arena or LKI (controller at attack
+/// time ≈ controller now; a mid-combat control change after declaring
+/// is not tracked — documented approximation).
+pub fn player_attacked_this_turn(state: &GameState, player: PlayerId) -> bool {
+    this_turn_events(state).iter().any(|ev| {
+        if let crate::events::GameEvent::CreatureAttacks { attacker, .. } = ev {
+            state.objects.get(*attacker)
+                .or_else(|| state.lki.get(attacker))
+                .is_some_and(|o| o.controller == player)
+        } else {
+            false
+        }
+    })
+}
+
+/// Creatures (and planeswalkers — both emit `Dies`) that died this
+/// turn, ANY controller. Morbid ("if a creature died this turn") and
+/// "for each creature that died this turn" scaling.
+pub fn creatures_died_this_turn(state: &GameState) -> u32 {
+    this_turn_events(state).iter()
+        .filter(|ev| matches!(ev, crate::events::GameEvent::Dies { .. }))
+        .count() as u32
+}
+
+/// Total life `player` has lost this turn. Sums
+/// [`crate::events::GameEvent::LifeLost`], which the engine emits for
+/// BOTH effect-driven loss and damage to the player (combat or spell),
+/// per CR 120.3.
+pub fn life_lost_this_turn(state: &GameState, player: PlayerId) -> u32 {
+    if !valid(state, player) { return 0; }
+    this_turn_events(state).iter()
+        .filter_map(|ev| match ev {
+            crate::events::GameEvent::LifeLost { player: p, amount } if *p == player =>
+                Some(*amount),
+            _ => None,
+        })
+        .sum()
+}
+
+/// Total life `player` has gained this turn.
+pub fn life_gained_this_turn(state: &GameState, player: PlayerId) -> u32 {
+    if !valid(state, player) { return 0; }
+    this_turn_events(state).iter()
+        .filter_map(|ev| match ev {
+            crate::events::GameEvent::LifeGained { player: p, amount } if *p == player =>
+                Some(*amount),
+            _ => None,
+        })
+        .sum()
+}
+
+/// Did `id` enter the battlefield this turn? Per-object timestamp
+/// check ("if ~ entered the battlefield this turn").
+pub fn entered_battlefield_this_turn(state: &GameState, id: ObjectId) -> bool {
+    this_turn_events(state).iter().any(|ev| matches!(ev,
+        crate::events::GameEvent::EntersBattlefield { object_id, .. } if *object_id == id))
+}
+
+/// Permanents matching `filter` that entered the battlefield this turn.
+/// `you` resolves the filter's controller constraints — "a creature
+/// entered the battlefield under your control this turn" =
+/// `ObjectFilter::creature().controlled_by(ControllerConstraint::You)`.
+/// Entrants are looked up via arena-then-LKI (an entrant that already
+/// left still counts — it did enter).
+pub fn entered_this_turn_matching(
+    state: &GameState,
+    filter: &ObjectFilter,
+    you: PlayerId,
+) -> u32 {
+    let mut n = 0u32;
+    for ev in this_turn_events(state) {
+        if let crate::events::GameEvent::EntersBattlefield { object_id, .. } = ev {
+            let obj = state.objects.get(*object_id)
+                .or_else(|| state.lki.get(object_id));
+            if let Some(o) = obj {
+                if filter.matches(o, state, you) { n += 1; }
+            }
+        }
+    }
+    n
+}
+
 /// Events of the turn that JUST ended — the slice between last turn's
 /// start marker and this turn's. Empty on turn one. Powers the
 /// werewolf transform condition and the CR 726.4 day/night flip.

@@ -111,6 +111,61 @@ pub fn a_permanent_matches(state: &GameState, you: PlayerId, filter: &ObjectFilt
         .any(|o| filter.matches(o, state, you))
 }
 
+// --- This-turn event history (Boast / morbid / bloodthirst-adjacent) --
+// Thin wrappers over the `script::*_this_turn` event-log scanners.
+
+/// Boast and friends — "activate only if this creature attacked this
+/// turn" / intervening-if "if ~ attacked this turn".
+pub fn source_attacked_this_turn(state: &GameState, source: ObjectId) -> bool {
+    crate::script::creature_attacked_this_turn(state, source)
+}
+
+/// "if you attacked this turn" (any creature you control was declared
+/// as an attacker).
+pub fn you_attacked_this_turn(state: &GameState, you: PlayerId) -> bool {
+    crate::script::player_attacked_this_turn(state, you)
+}
+
+/// Morbid — "if a creature died this turn" (any controller).
+pub fn a_creature_died_this_turn(state: &GameState) -> bool {
+    crate::script::creatures_died_this_turn(state) >= 1
+}
+
+/// "if an opponent lost life this turn" — the MID/VOW Vampire gate.
+/// Life lost includes damage dealt to the player (CR 120.3).
+pub fn an_opponent_lost_life_this_turn(state: &GameState, you: PlayerId) -> bool {
+    (0..state.num_players())
+        .any(|p| p != you && crate::script::life_lost_this_turn(state, p) >= 1)
+}
+
+/// "if you gained life this turn".
+pub fn you_gained_life_this_turn(state: &GameState, you: PlayerId) -> bool {
+    crate::script::life_gained_this_turn(state, you) >= 1
+}
+
+/// "if you've cast a/an [filter] spell this turn" — e.g. noncreature:
+/// `ObjectFilter::new().without_types(TypeLine::CREATURE.into())`.
+/// The filter is matched against the cast spell's stack object (arena
+/// or LKI); controller is hard-scoped to `you`.
+pub fn you_cast_matching_this_turn(
+    state: &GameState,
+    you: PlayerId,
+    filter: &ObjectFilter,
+) -> bool {
+    let scoped = ObjectFilter {
+        controller: Some(crate::targets::ControllerConstraint::You),
+        ..filter.clone()
+    };
+    crate::script::spells_cast_this_turn(state, &scoped, you) >= 1
+}
+
+/// "if a [filter] entered the battlefield this turn" — e.g. "a
+/// creature entered under your control this turn" =
+/// `ObjectFilter::creature().controlled_by(ControllerConstraint::You)`.
+pub fn entered_this_turn(state: &GameState, you: PlayerId, filter: &ObjectFilter) -> bool {
+    crate::script::entered_this_turn_matching(state, filter, you) >= 1
+}
+
 /// "if you control N or more permanents with subtype `subtype`" — the
 /// name is resolved to its [`crate::types::SmallString`] id via the
 /// registry's interner (subtype ids are dynamic, so an intervening-if
@@ -510,5 +565,78 @@ mod tests {
         // An opponent's flyer does.
         put(&mut s, 1, true);
         assert!(an_opponent_controls_a(&s, 0, &flyers));
+    }
+
+    #[test]
+    fn this_turn_event_history_predicates() {
+        use crate::combat::DefendingEntity;
+        use crate::events::GameEvent;
+        let mut s = GameState::new(2, 0);
+        let attacker = put(&mut s, 0, creature(2, 2));
+        let bystander = put(&mut s, 0, creature(2, 2));
+
+        // Stale history from an earlier turn must NOT count.
+        s.event_log.push(GameEvent::CreatureAttacks {
+            attacker, defending: DefendingEntity::Player(1),
+        });
+        s.event_log.push(GameEvent::Dies { object_id: bystander });
+        s.event_log.push(GameEvent::LifeLost { player: 1, amount: 3 });
+        s.turn_event_log_start = s.event_log.len();
+
+        assert!(!source_attacked_this_turn(&s, attacker));
+        assert!(!you_attacked_this_turn(&s, 0));
+        assert!(!a_creature_died_this_turn(&s));
+        assert!(!an_opponent_lost_life_this_turn(&s, 0));
+        assert!(!you_gained_life_this_turn(&s, 0));
+
+        // Live-turn events flip each predicate.
+        s.event_log.push(GameEvent::CreatureAttacks {
+            attacker, defending: DefendingEntity::Player(1),
+        });
+        assert!(source_attacked_this_turn(&s, attacker));
+        assert!(!source_attacked_this_turn(&s, bystander));
+        assert!(you_attacked_this_turn(&s, 0));
+        assert!(!you_attacked_this_turn(&s, 1));
+
+        s.event_log.push(GameEvent::Dies { object_id: bystander });
+        assert!(a_creature_died_this_turn(&s));
+
+        s.event_log.push(GameEvent::LifeLost { player: 1, amount: 2 });
+        assert!(an_opponent_lost_life_this_turn(&s, 0));
+        assert!(!an_opponent_lost_life_this_turn(&s, 1)); // p0 lost none
+
+        s.event_log.push(GameEvent::LifeGained { player: 0, amount: 1 });
+        assert!(you_gained_life_this_turn(&s, 0));
+        assert!(!you_gained_life_this_turn(&s, 1));
+
+        // Entered-this-turn: the EntersBattlefield event marks it.
+        let entrant = put(&mut s, 0, creature(1, 1));
+        assert!(!entered_this_turn(&s, 0, &ObjectFilter::creature()));
+        s.event_log.push(GameEvent::EntersBattlefield {
+            object_id: entrant, from_zone: Zone::Hand(0), was_cast: false,
+        });
+        assert!(entered_this_turn(&s, 0, &ObjectFilter::creature()));
+        assert!(crate::script::entered_battlefield_this_turn(&s, entrant));
+        assert!(!crate::script::entered_battlefield_this_turn(&s, bystander));
+
+        // Cast-matching: a noncreature (sorcery) stack object cast by p0.
+        use crate::objects::GameObject;
+        let spell_id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        };
+        let mut spell = GameObject::new(spell_id, 0, Zone::Stack, 9, chars);
+        spell.controller = 0;
+        s.objects.insert(spell);
+        let noncreature = ObjectFilter::new()
+            .without_types(TypeLine::CREATURE.into());
+        assert!(!you_cast_matching_this_turn(&s, 0, &noncreature));
+        s.event_log.push(GameEvent::SpellCast {
+            object_id: spell_id, card_id: 9, controller: 0,
+            targets: crate::targets::TargetSelection::new(),
+        });
+        assert!(you_cast_matching_this_turn(&s, 0, &noncreature));
+        assert!(!you_cast_matching_this_turn(&s, 1, &noncreature));
     }
 }
