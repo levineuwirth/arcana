@@ -89,7 +89,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn iif_it_is_night(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+fn iif_it_is_night(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::it_is_night(state)
 }
 

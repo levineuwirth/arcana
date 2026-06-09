@@ -6,12 +6,13 @@
 //! return the *bool* a trigger's `intervening_if` needs).
 //!
 //! A generated card wires an intervening-if by writing a tiny named
-//! `fn(&GameState, ObjectId, PlayerId) -> bool` (state, source,
-//! controller) that calls one of these, then setting
+//! `fn(&GameState, ObjectId, PlayerId, &CardRegistry) -> bool` (state,
+//! source, controller, registry — the registry trailing, matching
+//! [`crate::triggers::EffectFn`]) that calls one of these, then setting
 //! `intervening_if: Some(that_fn)` on its [`crate::triggers::TriggeredAbilityDef`]:
 //!
 //! ```ignore
-//! fn if_control_three_artifacts(s: &GameState, _src: ObjectId, you: PlayerId) -> bool {
+//! fn if_control_three_artifacts(s: &GameState, _src: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
 //!     conditions::you_control_at_least(
 //!         s, you,
 //!         &ObjectFilter { types: Some(TypeLine::ARTIFACT.into()), ..Default::default() },
@@ -20,11 +21,26 @@
 //! }
 //! ```
 //!
+//! Conditions that name a SUBTYPE ("if you control two or more Gates",
+//! "if you control a Chandra planeswalker") need the registry's interner
+//! to resolve the name to a [`crate::types::SmallString`] id — that's
+//! why the predicate receives `&CardRegistry`. Use
+//! [`you_control_subtype`] / [`you_control_subtype_at_least`], which do
+//! the lookup (and answer `false` for a never-interned name, since you
+//! can't control a permanent of a subtype no card has introduced):
+//!
+//! ```ignore
+//! fn if_two_or_more_gates(s: &GameState, _src: ObjectId, you: PlayerId, reg: &CardRegistry) -> bool {
+//!     conditions::you_control_subtype_at_least(s, reg, you, "Gate", 2)
+//! }
+//! ```
+//!
 //! Same defensive contract as [`crate::script`]: an invalid player or
 //! missing object yields the neutral answer (`false` / `0`), never a
 //! panic.
 
 use crate::objects::ObjectId;
+use crate::registry::CardRegistry;
 use crate::state::GameState;
 use crate::targets::ObjectFilter;
 use crate::types::{CounterKind, PlayerId};
@@ -70,6 +86,41 @@ pub fn you_control_at_most(
 /// "if you control a/an [filter]" (one or more).
 pub fn you_control_a(state: &GameState, you: PlayerId, filter: &ObjectFilter) -> bool {
     count_you_control(state, you, filter) >= 1
+}
+
+/// "if you control N or more permanents with subtype `subtype`" — the
+/// name is resolved to its [`crate::types::SmallString`] id via the
+/// registry's interner (subtype ids are dynamic, so an intervening-if
+/// `fn` can't bake one in; it gets `&CardRegistry` for exactly this).
+/// A name that was never interned can't be on any permanent, so the
+/// answer is `false` (you control zero) rather than a panic. Matches
+/// any card type — "Gate" only appears on lands, "Chandra" only on
+/// planeswalkers, so a bare subtype check is sufficient; combine with a
+/// type filter manually if a subtype is shared across types.
+pub fn you_control_subtype_at_least(
+    state: &GameState,
+    reg: &CardRegistry,
+    you: PlayerId,
+    subtype: &str,
+    n: u32,
+) -> bool {
+    match reg.interner().lookup(subtype) {
+        Some(sym) => {
+            count_you_control(state, you, &ObjectFilter::new().with_subtype_sym(sym)) >= n
+        }
+        None => false,
+    }
+}
+
+/// "if you control a/an [subtype]" (one or more) — see
+/// [`you_control_subtype_at_least`].
+pub fn you_control_subtype(
+    state: &GameState,
+    reg: &CardRegistry,
+    you: PlayerId,
+    subtype: &str,
+) -> bool {
+    you_control_subtype_at_least(state, reg, you, subtype, 1)
 }
 
 /// "if you have N or more life".
@@ -244,5 +295,31 @@ mod tests {
         assert!(!source_counters_at_least(&s, c, CounterKind::PlusOnePlusOne, 3));
         // missing object → false, no panic.
         assert!(!source_has_counter(&s, 99999, CounterKind::PlusOnePlusOne));
+    }
+
+    #[test]
+    fn subtype_predicate_resolves_name_via_interner() {
+        use crate::types::{SubtypeSet, TypeLine};
+        let mut reg = CardRegistry::new();
+        let gate = reg.interner_mut().intern("Gate");
+        let gate_land = || {
+            let mut subs = SubtypeSet::default();
+            subs.0.insert(gate);
+            Characteristics { types: TypeLine::LAND.into(), subtypes: subs, ..Default::default() }
+        };
+        let mut s = GameState::new(2, 0);
+        // No Gates yet → false.
+        assert!(!you_control_subtype(&s, &reg, 0, "Gate"));
+        // Two Gates you control + one the opponent controls.
+        put(&mut s, 0, gate_land());
+        put(&mut s, 0, gate_land());
+        put(&mut s, 1, gate_land()); // opponent's — must not count for you
+        assert!(you_control_subtype(&s, &reg, 0, "Gate"));
+        assert!(you_control_subtype_at_least(&s, &reg, 0, "Gate", 2));
+        assert!(!you_control_subtype_at_least(&s, &reg, 0, "Gate", 3));
+        // Opponent controls only one.
+        assert!(!you_control_subtype_at_least(&s, &reg, 1, "Gate", 2));
+        // A never-interned subtype can't be on any permanent → false, no panic.
+        assert!(!you_control_subtype(&s, &reg, 0, "Sliver"));
     }
 }

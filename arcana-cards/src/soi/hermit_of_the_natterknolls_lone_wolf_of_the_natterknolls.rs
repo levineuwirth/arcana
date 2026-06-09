@@ -105,7 +105,7 @@ fn draw_one(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> V
     }]
 }
 
-fn iif_no_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+fn iif_no_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
 }
 

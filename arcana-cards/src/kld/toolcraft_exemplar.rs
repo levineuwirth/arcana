@@ -59,7 +59,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn iif_control_artifact(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+fn iif_control_artifact(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::you_control_a(state, you, &ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()))
 }
 
@@ -115,15 +115,16 @@ mod tests {
     // on the stack when the condition is false).
     #[test]
     fn intervening_if_gates_on_controlling_an_artifact() {
+        let reg = CardRegistry::new();
         let mut s = GameState::new(2, 0);
         // No artifacts → must not fire.
-        assert!(!iif_control_artifact(&s, 1, 0));
+        assert!(!iif_control_artifact(&s, 1, 0, &reg));
         // An artifact YOU control → fires.
         put_artifact(&mut s, 0);
-        assert!(iif_control_artifact(&s, 1, 0));
+        assert!(iif_control_artifact(&s, 1, 0, &reg));
         // Only an OPPONENT's artifact → still must not fire for you.
         let mut s2 = GameState::new(2, 0);
         put_artifact(&mut s2, 1);
-        assert!(!iif_control_artifact(&s2, 1, 0));
+        assert!(!iif_control_artifact(&s2, 1, 0, &reg));
     }
 }

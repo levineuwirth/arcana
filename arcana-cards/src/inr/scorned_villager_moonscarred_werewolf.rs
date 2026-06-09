@@ -156,11 +156,11 @@ fn add_green_green(
     }]
 }
 
-fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
 }
 
-fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::a_player_cast_two_or_more_last_turn(state)
 }
 

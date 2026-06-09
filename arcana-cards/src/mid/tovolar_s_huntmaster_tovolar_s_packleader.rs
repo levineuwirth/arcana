@@ -176,10 +176,10 @@ fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry
     }]
 }
 
-fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId) -> bool {
+fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(s)
 }
 
-fn if_player_cast_two_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId) -> bool {
+fn if_player_cast_two_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::a_player_cast_two_or_more_last_turn(s)
 }

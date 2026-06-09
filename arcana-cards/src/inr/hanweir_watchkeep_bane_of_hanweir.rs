@@ -103,11 +103,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId) -> bool {
+fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(s)
 }
 
-fn if_two_or_more_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId) -> bool {
+fn if_two_or_more_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::a_player_cast_two_or_more_last_turn(s)
 }
 

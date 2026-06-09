@@ -58,7 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn iif_source_untapped(state: &GameState, source: ObjectId, _you: PlayerId) -> bool {
+fn iif_source_untapped(state: &GameState, source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     state.objects.get(source).is_some_and(|o| !o.is_tapped())
 }
 

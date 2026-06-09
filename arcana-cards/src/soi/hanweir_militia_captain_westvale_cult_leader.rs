@@ -110,7 +110,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn iif_four_creatures(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+fn iif_four_creatures(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::you_control_at_least(state, you, &ObjectFilter::new().with_types(TypeLine::CREATURE.into()), 4)
 }
 

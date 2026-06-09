@@ -2339,7 +2339,7 @@ fn collect_pending_triggers(
                     if visible_face != face { continue; }
                 }
                 if let Some(pt) = ability.should_fire(
-                    event, source, controller, state)
+                    event, source, controller, state, registry)
                 {
                     pending.push(pt);
                 }
@@ -2350,7 +2350,7 @@ fn collect_pending_triggers(
             if let Some(obj) = state.objects.get(source) {
                 for granted in &obj.granted_triggered_abilities {
                     if let Some(pt) = granted.def.should_fire(
-                        event, source, controller, state)
+                        event, source, controller, state, registry)
                     {
                         pending.push(pt);
                     }
@@ -2361,7 +2361,7 @@ fn collect_pending_triggers(
         // 2. Delayed triggers matching this event. `take_matching_delayed_triggers`
         //    is APNAP-sorted internally; we re-sort after merging with
         //    registered-trigger matches anyway.
-        let delayed = state.take_matching_delayed_triggers(event);
+        let delayed = state.take_matching_delayed_triggers(event, registry);
         pending.extend(delayed);
 
         // 3. Synthesized Ward triggers (CR 702.21a). Ward lives on

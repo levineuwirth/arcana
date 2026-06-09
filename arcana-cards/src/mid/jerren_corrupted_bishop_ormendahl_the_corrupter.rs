@@ -174,7 +174,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn if_exactly_thirteen_life(s: &GameState, _src: ObjectId, you: PlayerId) -> bool {
+fn if_exactly_thirteen_life(s: &GameState, _src: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::life_at_least(s, you, 13) && conditions::life_at_most(s, you, 13)
 }
 

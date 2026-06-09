@@ -117,7 +117,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn if_four_or_more_birds(s: &GameState, _src: ObjectId, you: PlayerId) -> bool {
+fn if_four_or_more_birds(s: &GameState, _src: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
     // "if you control four or more Birds"
     // GAP: a per-name "Bird" subtype filter needs the interner, which the
     // intervening-if signature does not provide; gating on creature count of 4 as

@@ -5157,7 +5157,8 @@ mod tests {
         assert_eq!(s.delayed_triggers.len(), before + 1);
         // Fire the next end step; the revert restores control.
         let fired = s.take_matching_delayed_triggers(
-            &GameEvent::StepBegins { step: crate::turn::Step::End });
+            &GameEvent::StepBegins { step: crate::turn::Step::End },
+            &crate::registry::CardRegistry::new());
         assert_eq!(fired.len(), 1);
         let revert_effects = (fired[0].trigger_event.clone(), &fired[0]);
         let effects = revert_control_to_original(&s, fired.first().unwrap(), &crate::registry::CardRegistry::new());

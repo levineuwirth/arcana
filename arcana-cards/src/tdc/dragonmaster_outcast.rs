@@ -57,7 +57,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn iif_six_lands(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+fn iif_six_lands(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::you_control_at_least(state, you, &ObjectFilter::new().with_types(TypeLine::LAND.into()), 6)
 }
 

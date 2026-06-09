@@ -199,7 +199,7 @@ fn etb_tutor_forest(
     }]
 }
 
-fn iif_seven_lands(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+fn iif_seven_lands(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::you_control_at_least(state, you, &ObjectFilter::new().with_types(TypeLine::LAND.into()), 7)
 }
 

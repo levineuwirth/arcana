@@ -77,14 +77,18 @@ pub type EffectFn = fn(&GameState, &PendingTrigger, &crate::registry::CardRegist
     -> Vec<crate::effects::Effect>;
 
 /// Function pointer for intervening-if clauses (CR 603.4).
-/// CR 603.4 "intervening if" predicate. Receives the game state plus
-/// the ability's `source` object id and its `controller` — so a
-/// condition can resolve "you"/"this permanent" ("if you control three
-/// or more artifacts", "if you have 10 or less life", "if this creature
-/// has a +1/+1 counter on it"). Pair with the [`crate::conditions`]
-/// query helpers. Returns `true` to allow the trigger to fire / stay on
-/// the stack, `false` to fizzle it.
-pub type InterveningIfFn = fn(&GameState, ObjectId, PlayerId) -> bool;
+/// CR 603.4 "intervening if" predicate. Receives the game state, the
+/// ability's `source` object id and its `controller` — so a condition
+/// can resolve "you"/"this permanent" ("if you control three or more
+/// artifacts", "if you have 10 or less life", "if this creature has a
+/// +1/+1 counter on it") — plus the [`crate::registry::CardRegistry`]
+/// (trailing, matching [`EffectFn`]) so a condition can resolve
+/// subtype/card NAMES via its interner ("if you control two or more
+/// Gates", "if you control a Chandra planeswalker"). Pair with the
+/// [`crate::conditions`] query helpers. Returns `true` to allow the
+/// trigger to fire / stay on the stack, `false` to fizzle it.
+pub type InterveningIfFn =
+    fn(&GameState, ObjectId, PlayerId, &crate::registry::CardRegistry) -> bool;
 /// Computes a dynamic X-value at trigger-fire time from a fired-but-not-
 /// yet-on-stack [`PendingTrigger`]. The returned u32 is stamped into
 /// the triggered-ability stack entry's `x_value` and consumed by any
@@ -181,6 +185,7 @@ impl TriggeredAbilityDef {
         source: ObjectId,
         source_controller: PlayerId,
         state: &GameState,
+        reg: &crate::registry::CardRegistry,
     ) -> Option<PendingTrigger> {
         // Zone gate.
         if let Some(obj) = state.objects.get(source) {
@@ -198,7 +203,7 @@ impl TriggeredAbilityDef {
 
         // Intervening-if.
         if let Some(cond) = self.intervening_if {
-            if !cond(state, source, source_controller) { return None; }
+            if !cond(state, source, source_controller, reg) { return None; }
         }
 
         // Frequency budget.
@@ -658,10 +663,11 @@ pub fn collect_triggers_for_event<'a>(
     abilities: impl IntoIterator<Item = (ObjectId, PlayerId, &'a TriggeredAbilityDef)>,
     event: &GameEvent,
     state: &GameState,
+    reg: &crate::registry::CardRegistry,
 ) -> Vec<PendingTrigger> {
     let mut out: Vec<PendingTrigger> = abilities.into_iter()
         .filter_map(|(source, ctrl, def)|
-            def.should_fire(event, source, ctrl, state))
+            def.should_fire(event, source, ctrl, state, reg))
         .collect();
     sort_by_apnap(&mut out, state.active_player(), state.num_players());
     out
@@ -726,14 +732,18 @@ impl GameState {
 
     /// Indices of delayed triggers whose condition matches `event`,
     /// in registration (FIFO) order.
-    pub fn match_delayed_triggers(&self, event: &GameEvent) -> Vec<usize> {
+    pub fn match_delayed_triggers(
+        &self,
+        event: &GameEvent,
+        reg: &crate::registry::CardRegistry,
+    ) -> Vec<usize> {
         self.delayed_triggers.iter().enumerate()
             .filter_map(|(i, t)| {
                 if t.condition.matches(event, t.source, t.controller, self) {
                     // Intervening-if runs at both stack-add and resolve;
                     // check it here as the stack-add check.
                     if let Some(f) = t.intervening_if {
-                        if !f(self, t.source, t.controller) { return None; }
+                        if !f(self, t.source, t.controller, reg) { return None; }
                     }
                     Some(i)
                 } else { None }
@@ -747,8 +757,9 @@ impl GameState {
     pub fn take_matching_delayed_triggers(
         &mut self,
         event: &GameEvent,
+        reg: &crate::registry::CardRegistry,
     ) -> Vec<PendingTrigger> {
-        let indices = self.match_delayed_triggers(event);
+        let indices = self.match_delayed_triggers(event, reg);
         // Build pending triggers first (needs indexed access).
         let mut out: Vec<PendingTrigger> = indices.iter().map(|&i| {
             let t = &self.delayed_triggers[i];
@@ -1219,18 +1230,18 @@ mod tests {
             target_requirements: Vec::new(),
         };
         let event = GameEvent::Dies { object_id: src };
-        assert!(def.should_fire(&event, src, 0, &s).is_none());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_none());
 
         // Move to battlefield; now the zone gate passes.
         s.objects.get_mut(src).unwrap().zone = Zone::Battlefield;
-        assert!(def.should_fire(&event, src, 0, &s).is_some());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_some());
     }
 
     #[test]
     fn should_fire_respects_intervening_if() {
         let mut s = GameState::new(2, 0);
         let src = put_creature(&mut s, 0, Zone::Battlefield);
-        fn always_false(_: &GameState, _: ObjectId, _: PlayerId) -> bool { false }
+        fn always_false(_: &GameState, _: ObjectId, _: PlayerId, _: &crate::registry::CardRegistry) -> bool { false }
         let def = TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -1243,7 +1254,7 @@ mod tests {
         let event = GameEvent::EntersBattlefield {
             object_id: src, from_zone: Zone::Hand(0), was_cast: true,
         };
-        assert!(def.should_fire(&event, src, 0, &s).is_none());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_none());
     }
 
     #[test]
@@ -1262,13 +1273,13 @@ mod tests {
         let event = GameEvent::EntersBattlefield {
             object_id: src, from_zone: Zone::Hand(0), was_cast: true,
         };
-        assert!(def.should_fire(&event, src, 0, &s).is_some());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_some());
         // Simulate firing.
         s.record_trigger_fired(src, 1);
-        assert!(def.should_fire(&event, src, 0, &s).is_none());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_none());
         // New turn resets.
         s.clear_per_turn_trigger_ledger();
-        assert!(def.should_fire(&event, src, 0, &s).is_some());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_some());
     }
 
     #[test]
@@ -1287,12 +1298,12 @@ mod tests {
         let event = GameEvent::EntersBattlefield {
             object_id: src, from_zone: Zone::Hand(0), was_cast: true,
         };
-        assert!(def.should_fire(&event, src, 0, &s).is_some());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_some());
         s.record_trigger_fired(src, 1);
-        assert!(def.should_fire(&event, src, 0, &s).is_none());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_none());
         s.clear_per_turn_trigger_ledger();
         // Still exhausted for the game.
-        assert!(def.should_fire(&event, src, 0, &s).is_none());
+        assert!(def.should_fire(&event, src, 0, &s, &crate::registry::CardRegistry::new()).is_none());
     }
 
     // --- APNAP sort --------------------------------------------------------
@@ -1356,7 +1367,7 @@ mod tests {
         // Two copies of the ability, one controlled by each player.
         let triggers = collect_triggers_for_event(
             [(a, 0, &def), (b, 1, &def)],
-            &event, &s,
+            &event, &s, &crate::registry::CardRegistry::new(),
         );
         assert_eq!(triggers.len(), 2);
         // APNAP order with active=0 → controller 0 first.
@@ -1379,12 +1390,13 @@ mod tests {
             no_effect,
         ));
         let event = GameEvent::StepBegins { step: Step::End };
-        let matches = s.match_delayed_triggers(&event);
+        let reg = crate::registry::CardRegistry::new();
+        let matches = s.match_delayed_triggers(&event, &reg);
         assert_eq!(matches, vec![0]);
 
         // Non-matching event: draw step.
         let event2 = GameEvent::StepBegins { step: Step::Draw };
-        assert!(s.match_delayed_triggers(&event2).is_empty());
+        assert!(s.match_delayed_triggers(&event2, &reg).is_empty());
     }
 
     #[test]
@@ -1399,12 +1411,13 @@ mod tests {
             no_effect,
         ));
         let event = GameEvent::StepBegins { step: Step::End };
-        let fired = s.take_matching_delayed_triggers(&event);
+        let reg = crate::registry::CardRegistry::new();
+        let fired = s.take_matching_delayed_triggers(&event, &reg);
         assert_eq!(fired.len(), 1);
         assert!(s.delayed_triggers.is_empty());
 
         // Firing again matches nothing.
-        let fired_again = s.take_matching_delayed_triggers(&event);
+        let fired_again = s.take_matching_delayed_triggers(&event, &reg);
         assert!(fired_again.is_empty());
     }
 
@@ -1423,8 +1436,9 @@ mod tests {
         s.register_delayed_trigger(t);
 
         let event = GameEvent::StepBegins { step: Step::End };
-        s.take_matching_delayed_triggers(&event);
-        s.take_matching_delayed_triggers(&event);
+        let reg = crate::registry::CardRegistry::new();
+        s.take_matching_delayed_triggers(&event, &reg);
+        s.take_matching_delayed_triggers(&event, &reg);
         assert_eq!(s.delayed_triggers.len(), 1);
     }
 

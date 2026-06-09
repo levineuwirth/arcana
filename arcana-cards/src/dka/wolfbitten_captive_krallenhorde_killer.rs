@@ -151,7 +151,7 @@ fn back_pump(
     }]
 }
 
-fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
 }
 

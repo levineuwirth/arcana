@@ -131,7 +131,7 @@ fn tap_for_mana_and_drain(
     effects
 }
 
-fn if_each_player_ten_or_less(s: &GameState, _src: ObjectId, _you: PlayerId) -> bool {
+fn if_each_player_ten_or_less(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     script::all_players(s)
         .into_iter()
         .all(|p| script::life(s, p) <= 10)

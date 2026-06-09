@@ -57,7 +57,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn iif_control_blue(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+fn iif_control_blue(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::you_control_a(state, you, &ObjectFilter::new().with_colors(ColorSet::blue()))
 }
 

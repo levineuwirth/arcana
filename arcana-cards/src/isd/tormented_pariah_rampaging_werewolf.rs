@@ -85,7 +85,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId) -> bool {
+fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
 }
 
