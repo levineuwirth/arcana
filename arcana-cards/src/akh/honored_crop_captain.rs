@@ -1,7 +1,5 @@
 //! Honored Crop-Captain — `{R}{W}` 3/2 red/white Creature — Human Warrior.
 //! "Whenever this creature attacks, other attacking creatures get +1/+0 until end of turn."
-//! GAP: no "attacking creatures" filter on ObjectFilter; using all creatures you control
-//! minus self as approximation (can't restrict to only those currently attacking).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -10,7 +8,7 @@ use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -53,10 +51,9 @@ fn attacks_pump_others(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no "attacking" filter; pumps all other creatures you control as approximation.
     let others = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature().attacking_only(),
         trig.controller,
     )
     .into_iter()

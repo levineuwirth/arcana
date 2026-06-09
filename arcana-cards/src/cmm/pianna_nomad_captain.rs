@@ -7,7 +7,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -52,10 +52,9 @@ fn on_attacks(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no "attacking creatures" filter; pumping all creatures you control as approximation.
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature().attacking_only(),
         trig.controller,
     );
     vec![Effect::ForEach {

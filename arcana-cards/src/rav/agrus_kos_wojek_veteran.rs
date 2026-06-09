@@ -1,8 +1,6 @@
 //! Agrus Kos, Wojek Veteran — `{3}{R}{W}` 3/3 legendary red-white Human Soldier.
 //! "Whenever Agrus Kos attacks, attacking red creatures get +2/+0 and
 //! attacking white creatures get +0/+2 until end of turn."
-//! GAP: "attacking red/white creatures" — no filter for attacking
-//! status; using all red/white creatures you control as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -58,14 +56,14 @@ fn attack_pump_red_white(
     let red_ids = script::ids_matching(
         state,
         &ObjectFilter::creature()
-            .controlled_by(ControllerConstraint::You)
+            .attacking_only()
             .with_colors(ColorSet::red()),
         trig.controller,
     );
     let white_ids = script::ids_matching(
         state,
         &ObjectFilter::creature()
-            .controlled_by(ControllerConstraint::You)
+            .attacking_only()
             .with_colors(ColorSet::white()),
         trig.controller,
     );

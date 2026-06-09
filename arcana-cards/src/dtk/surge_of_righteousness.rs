@@ -1,7 +1,8 @@
 //! Surge of Righteousness — `{1}{W}` instant. "Destroy target black or
 //! red creature that's attacking or blocking. You gain 2 life." The
-//! "attacking or blocking" target restriction isn't expressible via
-//! ObjectFilter — best effort: target a black or red creature.
+//! combat-state restriction is enforced via
+//! `ObjectFilter::attacking_or_blocking_only()` composed with the
+//! black-or-red color filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,7 +31,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()
-                            .with_colors(ColorSet::black() | ColorSet::red()),
+                            .with_colors(ColorSet::black() | ColorSet::red())
+                            .attacking_or_blocking_only(),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -48,8 +50,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'that's attacking or blocking' restriction — no combat-state
-    // ObjectFilter refinement in the catalog.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::GainLife { player: entry.controller, amount: 2 },

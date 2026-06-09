@@ -9,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -64,7 +64,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You)
+                            .attacking_only()
                             .without_keyword(KeywordAbility::Flying),
                     ),
                     count: TargetCount::Exactly(1),
@@ -82,9 +82,8 @@ fn hippogriff_attacks(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "target attacking creature" — no ObjectFilter predicate for
-    // attacking state; without-flying is enforced, controlled-by-you is the
-    // best approximation of "attacking".
+    // "target attacking creature without flying" enforced by the
+    // target filter (attacking_only + without Flying).
     vec![Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Flying, duration: Duration::EndOfTurn }]
 }
 

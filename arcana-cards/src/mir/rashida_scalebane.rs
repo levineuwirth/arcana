@@ -1,6 +1,8 @@
 //! Rashida Scalebane — `{3}{W}{W}` 3/4 legendary white Human Soldier.
 //! "{T}: Destroy target attacking or blocking Dragon. It can't be regenerated.
-//! You gain life equal to its power."
+//! You gain life equal to its power." The target is an attacking-or-blocking
+//! Dragon via `ObjectFilter::creature().with_subtype_sym(dragon)
+//! .attacking_or_blocking_only()`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,13 +13,16 @@ use arcana_core::registry::{
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rashida Scalebane");
     let human = reg.interner_mut().intern("Human");
     let soldier = reg.interner_mut().intern("Soldier");
+    let dragon = reg.interner_mut().intern("Dragon");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(soldier);
@@ -35,11 +40,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "target attacking or blocking Dragon" — no ObjectFilter for combat state.
-                // Using target creature as approximation.
                 text: "{T}: Destroy target attacking or blocking Dragon. It can't be regenerated. You gain life equal to its power.".into(),
                 cost: ActivationCost::tap_only(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .with_subtype_sym(dragon)
+                            .attacking_or_blocking_only(),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

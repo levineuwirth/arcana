@@ -1,7 +1,13 @@
 //! Roil's Retribution — `{3}{W}{W}` instant. 5 damage divided as you
 //! choose among any number of target attacking or blocking creatures.
-//! (Divided-damage among UpTo targets — emit 1 damage to each chosen
-//! target as a best-effort distribution.)
+//!
+//! The combat-state restriction is enforced via
+//! `ObjectFilter::creature().attacking_or_blocking_only()`, and the
+//! division uses `Effect::DealDamageDivided`. `UpTo(5)` matches the
+//! real ceiling (each chosen target must be assigned at least 1 of
+//! the 5 damage). (The player's exact division is a documented
+//! fidelity gap; the engine spreads `total` across the chosen
+//! targets.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +16,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Roil's Retribution deals 5 damage divided as you choose among any number of target attacking or blocking creatures.".into(),
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().attacking_or_blocking_only(),
+                ),
                 count: TargetCount::UpTo(5),
                 controller: None,
             }],
@@ -41,17 +51,21 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "divided as you choose" + "attacking or blocking" predicate not modeled.
-    // Approximate as 1 damage per chosen target (matches default "as you choose" up to 5).
-    let mut effects: Vec<Effect> = Vec::new();
-    for choice in &entry.targets.targets {
-        if let TargetChoice::Object(id) = choice {
-            effects.push(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(*id),
-                amount: 1,
-            });
-        }
+    let targets: Vec<DamageTarget> = entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(DamageTarget::Object(*id)),
+            _ => None,
+        })
+        .collect();
+    if targets.is_empty() {
+        return Vec::new();
     }
-    effects
+    vec![Effect::DealDamageDivided {
+        source: entry.source,
+        targets,
+        total: 5,
+    }]
 }

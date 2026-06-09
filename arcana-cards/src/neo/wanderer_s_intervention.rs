@@ -1,6 +1,7 @@
 //! Wanderer's Intervention — `{1}{W}` instant. "Wanderer's
 //! Intervention deals 4 damage to target attacking or blocking
-//! creature."
+//! creature." The combat-state restriction is enforced via
+//! `ObjectFilter::creature().attacking_or_blocking_only()`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,8 +27,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Wanderer's Intervention deals 4 damage to target attacking or blocking creature.".into(),
-            // GAP: no attacking/blocking ObjectFilter predicate.
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().attacking_or_blocking_only(),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),

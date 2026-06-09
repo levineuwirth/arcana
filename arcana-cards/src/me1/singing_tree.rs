@@ -34,8 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{T}: Target attacking creature has base power 0 until end of turn.".into(),
                 cost: ActivationCost::tap_only(),
                 target_requirements: vec![TargetRequirement {
-                    // GAP: "attacking creature" filter not expressible in ObjectFilter
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

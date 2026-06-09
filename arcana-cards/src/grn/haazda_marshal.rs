@@ -3,10 +3,10 @@
 //! Soldier creature token with lifelink."
 //!
 //! # Notes
-//! GAP: "this creature and at least two other creatures attack" — no compound attack condition.
-//! SelfAttacks fires whenever this creature attacks; the "at least two other" condition is
-//! evaluated inline using script::count_matching on attacking creatures.
-//! GAP: no script helper for "creatures currently attacking" — using battlefield creature count.
+//! SelfAttacks fires whenever this creature attacks; the "at least two other
+//! creatures attack" condition is evaluated inline by counting attacking
+//! creatures you control (via `ObjectFilter::attacking_only()`), excluding
+//! this creature by id.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -58,14 +58,19 @@ fn attack_with_two_more_soldiers(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at least two other creatures attack" — no script helper for attacking count;
-    // using total battlefield creature count >= 3 as approximation.
-    let creature_count = script::count_matching(
+    // "at least two other creatures attack" — count attacking creatures
+    // you control, excluding this creature by id.
+    let other_attackers = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::You)
+            .attacking_only(),
         trig.controller,
-    );
-    if creature_count < 3 {
+    )
+    .into_iter()
+    .filter(|&id| id != trig.source)
+    .count();
+    if other_attackers < 2 {
         return Vec::new();
     }
     let soldier = reg.interner().lookup("Soldier").expect("Soldier interned during register()");

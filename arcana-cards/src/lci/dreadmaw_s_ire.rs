@@ -10,7 +10,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +27,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Until end of turn, target attacking creature gets +2/+2 and gains trample and \"Whenever this creature deals combat damage to a player, destroy target artifact that player controls.\"".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
@@ -46,8 +52,7 @@ fn resolve(
         duration: Duration::EndOfTurn,
         keywords: vec![KeywordAbility::Trample],
     }]
-    // GAP: "attacking" target restriction is not expressible, and the
-    // granted combat-damage triggered ability ("destroy target
-    // artifact that player controls") cannot be attached to a
+    // GAP: the granted combat-damage triggered ability ("destroy
+    // target artifact that player controls") cannot be attached to a
     // permanent at resolve time.
 }

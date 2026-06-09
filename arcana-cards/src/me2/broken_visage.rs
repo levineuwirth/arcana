@@ -2,9 +2,9 @@
 //! attacking creature. It can't be regenerated. Create a black Spirit
 //! creature token. Its power is equal to that creature's power and
 //! its toughness is equal to that creature's toughness. Sacrifice the
-//! token at the beginning of the next end step." The
-//! 'attacking creature' refinement isn't in ObjectFilter; we
-//! approximate target with nonartifact creature.
+//! token at the beginning of the next end step."
+//!
+//! GAP: the "can't be regenerated" rider is not modeled.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,7 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Destroy target nonartifact attacking creature. It can't be regenerated. Create a black Spirit creature token. Its power is equal to that creature's power and its toughness is equal to that creature's toughness. Sacrifice the token at the beginning of the next end step.".into(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().without_types(TypeLine::ARTIFACT.into()),
+                        ObjectFilter::creature()
+                            .without_types(TypeLine::ARTIFACT.into())
+                            .attacking_only(),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -67,7 +69,7 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: 'attacking creature' target restriction and 'can't be regenerated' rider.
+    // GAP: 'can't be regenerated' rider not modeled.
     vec![
         Effect::DestroyPermanent { target: *id },
         Effect::CreateTokenSacEot { controller: entry.controller, token },

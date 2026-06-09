@@ -1,8 +1,11 @@
 //! Deft Dismissal — `{3}{W}` instant. "Deft Dismissal deals 3 damage divided
 //! as you choose among one, two, or three target attacking or blocking creatures."
 //!
-//! # GAP: divided damage distribution and targeting specifically attacking/blocking
-//! creatures are not expressible via the catalog.
+//! The combat-state restriction is enforced via
+//! `ObjectFilter::creature().attacking_or_blocking_only()`, and the
+//! division uses `Effect::DealDamageDivided` over up to three targets.
+//! (The player's exact division of the 3 damage is a documented
+//! fidelity gap; the engine spreads `total` across the chosen targets.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -11,7 +14,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +33,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Deft Dismissal deals 3 damage divided as you choose among one, two, or three target attacking or blocking creatures.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: arcana_core::targets::TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().attacking_or_blocking_only(),
+                    ),
                     count: TargetCount::UpTo(3),
                     controller: None,
                 }],
@@ -43,13 +50,21 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: divided damage and attacking/blocking filter not expressible
-    // Emit 1 damage to first target as best-effort; full divided distribution unsupported
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DealDamage {
+    let targets: Vec<DamageTarget> = entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(DamageTarget::Object(*id)),
+            _ => None,
+        })
+        .collect();
+    if targets.is_empty() {
+        return Vec::new();
+    }
+    vec![Effect::DealDamageDivided {
         source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 3,
+        targets,
+        total: 3,
     }]
 }

@@ -1,15 +1,20 @@
 //! Barge In — `{R}` instant. "Target attacking creature gets +2/+2
 //! until end of turn. Each attacking non-Human creature gains trample
-//! until end of turn." Attacking-state filter not in catalog.
+//! until end of turn."
+//! GAP: "non-Human" — ObjectFilter has no subtype-exclusion builder;
+//! trample is granted to each attacking creature (Humans included).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,7 +29,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Target attacking creature gets +2/+2 until end of turn. Each attacking non-Human creature gains trample until end of turn.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
@@ -32,18 +41,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: attacking-state filter and "each attacking non-Human" trample-grant not in catalog.
-    vec![Effect::Pump {
+    let mut effects = vec![Effect::Pump {
         target: *id,
         power: 2,
         toughness: 2,
         duration: Duration::EndOfTurn,
         keywords: vec![],
-    }]
+    }];
+    // GAP: "non-Human" exclusion not expressible (no subtype-exclusion
+    // builder); granting trample to each attacking creature.
+    let attackers = script::ids_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        entry.controller,
+    );
+    for aid in attackers {
+        effects.push(Effect::GrantKeyword {
+            target: aid,
+            keyword: KeywordAbility::Trample,
+            duration: Duration::EndOfTurn,
+        });
+    }
+    effects
 }

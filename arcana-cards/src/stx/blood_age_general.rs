@@ -1,7 +1,5 @@
 //! Blood Age General — `{1}{R}` 2/2 red Spirit Warrior.
 //! "{T}: Attacking Spirits get +1/+0 until end of turn."
-//! GAP: "Attacking Spirits" — ObjectFilter has no "attacking" filter. Using Spirit
-//! subtype filter without attacking condition.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -13,7 +11,6 @@ use arcana_core::registry::{
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -54,9 +51,7 @@ fn pump_spirits(
     ctx: &ActivationContext,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Attacking Spirits" — no attacking filter; pumping all Spirits you control.
-    let filter = script::subtype_filter(reg, "Spirit")
-        .controlled_by(ControllerConstraint::You);
+    let filter = script::subtype_filter(reg, "Spirit").attacking_only();
     let ids = script::ids_matching(state, &filter, ctx.controller);
     vec![Effect::ForEach {
         targets: ids,

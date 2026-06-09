@@ -2,9 +2,14 @@
 //! creatures attack you, if this creature is untapped, you may untap all
 //! creatures you control."
 //!
-//! "if this creature is untapped" modeled via `intervening_if` reading the
-//! source's tap state. Effect "untap all creatures you control" uses
-//! ForEach + script::ids_matching.
+//! "creatures attack you" modeled via `CreatureAttacks` with an
+//! `attacking_you_only()` filter (defending player == this card's
+//! controller). "if this creature is untapped" modeled via
+//! `intervening_if` reading the source's tap state. Effect "untap all
+//! creatures you control" uses ForEach + script::ids_matching.
+//! GAP: "one or more creatures attack you" should fire once per attack
+//! event; EachTime fires once per attacking creature (untap is
+//! idempotent, and "you may" is auto-yes).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,11 +47,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "creatures attack you" (creatures attacking
-                // the controller specifically); using CreatureAttacks with
-                // Opponent filter as closest match.
+                // "creatures attack you" — attacking_you_only() restricts to
+                // attackers whose defending player is this card's controller.
                 trigger_condition: TriggerCondition::CreatureAttacks {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                    filter: ObjectFilter::creature().attacking_you_only(),
                 },
                 // "if this creature is untapped" via the source's tap state.
                 intervening_if: Some(iif_source_untapped),

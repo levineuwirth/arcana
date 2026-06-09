@@ -40,8 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
-                    // GAP: ObjectFilter has no "blocking" filter; using generic creature filter
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().blocking_only()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

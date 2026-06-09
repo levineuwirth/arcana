@@ -3,17 +3,18 @@
 //! ({Q} is the untap symbol.)
 //!
 //! GAP: "{Q}" untap symbol — no ActivationCost field for untap-as-cost.
-//! GAP: "attacking creatures get +1/+0" — ForEach over attacking creatures
-//! not selectable via filter (no attacking_only filter).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -54,10 +55,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn pump_attackers(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacking creatures get +1/+0" — no filter for attacking-only creatures.
-    Vec::new()
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        ctx.controller,
+    );
+    vec![Effect::ForEach {
+        targets: ids,
+        effect: Box::new(Effect::Pump {
+            target: NULL_OBJECT_ID,
+            power: 1,
+            toughness: 0,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        }),
+    }]
 }

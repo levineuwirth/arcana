@@ -1,6 +1,9 @@
 //! Gideon's Defeat — `{W}` instant. "Exile target white creature
 //! that's attacking or blocking. If it was a Gideon planeswalker,
-//! you gain 5 life."
+//! you gain 5 life." The combat-state restriction is enforced via
+//! `ObjectFilter::attacking_or_blocking_only()` composed with the
+//! white-creature filter; the "was a Gideon planeswalker" rider
+//! remains a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -28,7 +31,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Exile target white creature that's attacking or blocking. If it was a Gideon planeswalker, you gain 5 life.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().with_colors(ColorSet::white()),
+                    ObjectFilter::creature()
+                        .with_colors(ColorSet::white())
+                        .attacking_or_blocking_only(),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -46,7 +51,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "attacking or blocking" filter; "was a Gideon
-    // planeswalker" tribal-conditional life gain. Emit the exile.
+    // GAP: "was a Gideon planeswalker" conditional life gain. Emit
+    // the exile.
     vec![Effect::ExilePermanent { target: *id }]
 }

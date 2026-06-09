@@ -1,11 +1,10 @@
 //! Giant Trap Door Spider — `{1}{R}{G}` 2/3 red/green Spider.
 //! "{1}{R}{G}, {T}: Exile this creature and target creature without flying that's
 //! attacking you."
-//! GAP: Targeting "a creature without flying that's attacking you" requires a combat
-//! state filter (attacking + no flying + targeting you) not expressible in ObjectFilter.
-//! Also exiling this creature as part of the effect (not as a cost) is unusual.
+//! Target enforced via `ObjectFilter::without_keyword(Flying).attacking_you_only()`.
+//! Note: exiling this creature as part of the effect (not as a cost) is unusual.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -13,7 +12,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,7 +41,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     tap: true,
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .without_keyword(KeywordAbility::Flying)
+                            .attacking_you_only(),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
@@ -58,8 +67,8 @@ fn trap_door_exile(
 ) -> Vec<Effect> {
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: The filter "without flying, attacking you" is not expressible. The exile
-    // of this creature itself as an effect is emitted via ExilePermanent on ctx.source.
+    // The exile of this creature itself as an effect is emitted via
+    // ExilePermanent on ctx.source.
     vec![
         Effect::ExilePermanent { target: *id },
         Effect::ExilePermanent { target: ctx.source },

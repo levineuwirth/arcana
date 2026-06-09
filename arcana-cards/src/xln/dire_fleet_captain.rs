@@ -8,7 +8,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -51,11 +50,13 @@ fn attacks_pump_per_pirate(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Count other attacking Pirates you control — use all Pirates you control minus 1 (self)
-    // GAP: no "attacking" filter on ObjectFilter; using all Pirates you control as approximation.
-    let pirate_filter = script::subtype_filter(reg, "Pirate")
-        .controlled_by(ControllerConstraint::You);
-    let n = script::count_matching(state, &pirate_filter, trig.controller).saturating_sub(1);
+    // Count other attacking Pirates: attacking Pirates minus self (the
+    // source is itself an attacking Pirate when this trigger fires).
+    let pirate_filter = script::subtype_filter(reg, "Pirate").attacking_only();
+    let n = script::ids_matching(state, &pirate_filter, trig.controller)
+        .into_iter()
+        .filter(|id| *id != trig.source)
+        .count();
     if n == 0 {
         return Vec::new();
     }

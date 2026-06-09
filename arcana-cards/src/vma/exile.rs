@@ -25,11 +25,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Exile target nonwhite attacking creature. You gain life equal to its toughness.".into(),
-            // GAP: "attacking" predicate not exposed on ObjectFilter.
-            // Best-effort: target nonwhite creature.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().without_colors(ColorSet::white()),
+                    ObjectFilter::creature()
+                        .without_colors(ColorSet::white())
+                        .attacking_only(),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,

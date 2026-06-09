@@ -3,8 +3,9 @@
 //! equal to twice the number of creatures in your party." 'Party'
 //! (one each of Cleric/Rogue/Warrior/Wizard) requires per-subtype
 //! counts; we approximate by checking each of the four party subtypes
-//! and summing 'has at least one' to get N (capped at 4). 'Attacking
-//! or blocking' is a GAP on the target.
+//! and summing 'has at least one' to get N (capped at 4). The
+//! attacking-or-blocking restriction is enforced via
+//! `ObjectFilter::creature().attacking_or_blocking_only()`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -14,7 +15,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -30,12 +34,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
-    // GAP: 'attacking or blocking' combat-state filter on target.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Choose target attacking or blocking creature. Practiced Tactics deals damage to that creature equal to twice the number of creatures in your party.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().attacking_or_blocking_only(),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),

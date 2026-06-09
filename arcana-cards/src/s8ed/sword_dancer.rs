@@ -1,7 +1,5 @@
 //! Sword Dancer — `{1}{W}` 1/2 Human Rebel.
 //! `{W}{W}: Target attacking creature gets -1/-0 until end of turn.`
-//! GAP: "target attacking creature" — ObjectFilter has no .attacking_only() method;
-//! using generic creature target.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,7 +10,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,8 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     mana_cost: ManaCost::parse("{W}{W}").unwrap(),
                     ..ActivationCost::default()
                 },
-                // GAP: "attacking" filter not in ObjectFilter; using generic creature
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

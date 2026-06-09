@@ -37,8 +37,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no "attacking creature" filter — fall back to every creature.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        entry.controller,
+    );
     ids.into_iter()
         .map(|id| Effect::DealDamage {
             source: entry.source,

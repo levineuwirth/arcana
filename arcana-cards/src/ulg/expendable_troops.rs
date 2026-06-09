@@ -1,8 +1,7 @@
 //! Expendable Troops — `{1}{W}` 2/1 white Human Soldier.
 //! "{T}, Sacrifice this creature: It deals 2 damage to target attacking or blocking creature."
-//!
-//! GAP: "Target attacking or blocking creature" filter not available in TargetFilter.
-//! Using target_creature as approximation.
+//! The combat-state restriction is expressed via
+//! ObjectFilter::attacking_or_blocking_only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -13,7 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,8 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     sacrifice: true,
                     ..ActivationCost::default()
                 },
-                // GAP: "attacking or blocking creature" filter not available; using any creature.
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_or_blocking_only()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

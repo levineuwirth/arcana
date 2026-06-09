@@ -1,8 +1,5 @@
 //! Aetherize — `{3}{U}` instant. "Return all attacking creatures to
 //! their owner's hand."
-//!
-//! The "attacking" subset cannot be filtered, so this returns all
-//! creatures — the attacking restriction is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,9 +31,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: cannot filter to only attacking creatures; all creatures
-    // are returned instead.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::ReturnToHand { target: NULL_OBJECT_ID }),

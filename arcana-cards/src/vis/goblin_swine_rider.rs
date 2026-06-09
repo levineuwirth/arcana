@@ -7,7 +7,9 @@ use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -45,25 +47,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn deal_to_combatants(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // ~ is the attacking creature; deal 2 to it and to the blocking creature.
-    // GAP: "each attacking creature and each blocking creature" board-wide —
-    // no attacking/blocking-status ObjectFilter; only the two combatants in
-    // this block are reachable (trig.source + trig.other_combatant()).
-    let mut effects = vec![Effect::DealDamage {
-        target: DamageTarget::Object(trig.source),
-        amount: 2,
-        source: trig.source,
-    }];
-    if let Some(blocker) = trig.other_combatant() {
-        effects.push(Effect::DealDamage {
-            target: DamageTarget::Object(blocker),
+    // 2 damage to each attacking creature and each blocking creature.
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().attacking_or_blocking_only(),
+        trig.controller,
+    );
+    ids.into_iter()
+        .map(|id| Effect::DealDamage {
+            target: DamageTarget::Object(id),
             amount: 2,
             source: trig.source,
-        });
-    }
-    effects
+        })
+        .collect()
 }

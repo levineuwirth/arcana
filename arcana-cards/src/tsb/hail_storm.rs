@@ -1,8 +1,6 @@
 //! Hail Storm — `{1}{G}{G}` instant. "Hail Storm deals 2 damage to
 //! each attacking creature and 1 damage to you and each creature you
-//! control." We can't filter 'attacking creatures'; we emit the 1
-//! damage to you and to each creature you control, GAP the 2-to-each-
-//! attacker.
+//! control."
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -40,12 +38,26 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'each attacking creature' — no attacking-status filter.
-    let mut effects = vec![Effect::DealDamage {
+    let mut effects = Vec::new();
+    // 2 damage to each attacking creature.
+    let attackers = script::ids_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        entry.controller,
+    );
+    for id in attackers {
+        effects.push(Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(id),
+            amount: 2,
+        });
+    }
+    // 1 damage to you and each creature you control.
+    effects.push(Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Player(entry.controller),
         amount: 1,
-    }];
+    });
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),

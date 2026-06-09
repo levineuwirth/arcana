@@ -34,8 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{T}: Target blocking creature gets -1/-1 until end of turn.".into(),
                 cost: ActivationCost::tap_only(),
                 target_requirements: vec![TargetRequirement {
-                    // GAP: "blocking creature" filter (currently blocking) not in ObjectFilter
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().blocking_only()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

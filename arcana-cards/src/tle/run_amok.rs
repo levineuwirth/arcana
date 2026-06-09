@@ -8,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,9 +25,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Target attacking creature gets +3/+3 and gains trample until end of turn.".into(),
-            // GAP: no ObjectFilter predicate for "attacking"; target is an
-            // unfiltered creature.
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),

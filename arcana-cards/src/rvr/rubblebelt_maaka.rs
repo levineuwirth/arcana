@@ -39,8 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
-                    // GAP: "attacking creature" filter not in ObjectFilter
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

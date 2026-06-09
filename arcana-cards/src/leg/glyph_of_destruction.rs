@@ -2,7 +2,7 @@
 //! control gets +10/+0 until end of combat. Prevent all damage that
 //! would be dealt to it this turn. Destroy it at the beginning of the
 //! next end step." Until-end-of-combat duration isn't in Duration
-//! (only EndOfTurn); 'blocking' filter isn't available. We emit the
+//! (only EndOfTurn), so the pump uses EndOfTurn. We emit the
 //! +10/+0 EOT, the prevention, and the delayed self-destroy.
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
@@ -22,7 +22,9 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Glyph of Destruction");
-    let wall_filter = script::subtype_filter(reg, "Wall").controlled_by(ControllerConstraint::You);
+    let wall_filter = script::subtype_filter(reg, "Wall")
+        .controlled_by(ControllerConstraint::You)
+        .blocking_only();
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{R}").expect("valid cost")),
@@ -50,7 +52,7 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'blocking' filter; 'until end of combat' duration. We use
+    // GAP: 'until end of combat' duration not in Duration — we use
     // EndOfTurn for the pump and emit prevention + delayed destroy.
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };

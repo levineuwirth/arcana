@@ -2,19 +2,18 @@
 //! creature gains trample and gets +X/+X, where X is the number of
 //! attacking creatures."
 //!
-//! The trample grant is fully expressible. The +X/+X rider is dynamic,
-//! scaling with the number of attacking creatures — a quantity that has
-//! no `script::*` helper (there is no attacking-creature count), so the
-//! pump is GAP-ed rather than emitted with a wrong literal.
+//! Both halves are expressible: trample via `GrantKeyword`, and X via
+//! counting `ObjectFilter::creature().attacking_only()`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,17 +37,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else { return Vec::new(); };
-    // GAP: +X/+X where X is the number of attacking creatures — there is
-    // no script:: helper that counts attacking creatures, so the dynamic
-    // pump cannot be computed. Emitting only the trample grant.
-    vec![Effect::GrantKeyword {
-        target: *id,
-        keyword: KeywordAbility::Trample,
-        duration: Duration::EndOfTurn,
-    }]
+    let x = script::count_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        entry.controller,
+    ) as i32;
+    vec![
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Trample,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::Pump {
+            target: *id,
+            power: x,
+            toughness: x,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+    ]
 }

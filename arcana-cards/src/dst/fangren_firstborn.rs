@@ -1,8 +1,6 @@
 //! Fangren Firstborn — `{1}{G}{G}{G}` 4/2 green Beast.
 //! "Whenever this creature attacks, put a +1/+1 counter on each attacking
 //! creature."
-//! GAP: "each attacking creature" filter — ObjectFilter has no "is attacking"
-//! predicate; using ids_matching all creatures you control as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +8,7 @@ use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -48,11 +46,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_attacks(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "attacking creature" filter not expressible; applying to all
-    // creatures you control as best-effort.
     let targets = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature().attacking_only(),
         trig.controller,
     );
     vec![Effect::ForEach {

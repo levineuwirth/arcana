@@ -1,7 +1,4 @@
 //! Sandstorm — `{G}` instant, "Sandstorm deals 1 damage to each attacking creature."
-//!
-//! GAP: filtering attacking creatures specifically is not expressible with available
-//! ObjectFilter refinements. Using all creatures as a best-effort approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -11,7 +8,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetRequirement};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 use arcana_core::objects::NULL_OBJECT_ID;
 
@@ -40,8 +37,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacking creature" filter not available; applying to all creatures instead
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

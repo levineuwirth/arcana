@@ -1,5 +1,6 @@
 //! Searing Light — `{W}` instant. "Destroy target attacking or blocking
-//! creature with power 2 or less."
+//! creature with power 2 or less." Both restrictions are expressed:
+//! ObjectFilter::attacking_or_blocking_only + with_max_power(2).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -23,10 +24,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target attacking or blocking creature with power 2 or less.".into(),
-                // GAP: "attacking or blocking" has no ObjectFilter refinement; only the
-                // "power 2 or less" half of the restriction is expressed.
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature().with_max_power(2)),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_max_power(2).attacking_or_blocking_only(),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

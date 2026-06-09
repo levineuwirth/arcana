@@ -1,10 +1,8 @@
 //! Femeref Archers — `{2}{G}` 2/2 green Human Archer.
 //! "{T}: This creature deals 4 damage to target attacking creature with
 //! flying."
-//! GAP: "attacking creature with flying" filter — "attacking" constraint
-//! is not in ObjectFilter; filtering flying creatures only.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -13,7 +11,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,8 +38,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: This creature deals 4 damage to target attacking creature with flying.".into(),
                 cost: ActivationCost::tap_only(),
-                target_requirements: vec![TargetRequirement::target_creature()],
-                // GAP: "attacking" + "flying" filter — using any creature.
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .attacking_only()
+                            .with_keyword(KeywordAbility::Flying),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

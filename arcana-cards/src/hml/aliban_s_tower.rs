@@ -1,7 +1,5 @@
 //! Aliban's Tower — `{1}{R}` instant. "Target blocking creature gets
-//! +3/+1 until end of turn." The 'blocking' attribute isn't on the
-//! ObjectFilter surface — accept any creature for targeting and
-//! emit the pump.
+//! +3/+1 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -10,7 +8,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +26,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Target blocking creature gets +3/+1 until end of turn.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().blocking_only()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -40,7 +44,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'blocking' target predicate not in the ObjectFilter surface.
     vec![Effect::Pump {
         target: *id,
         power: 3,

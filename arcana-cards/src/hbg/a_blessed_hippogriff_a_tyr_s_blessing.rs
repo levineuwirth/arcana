@@ -4,8 +4,8 @@
 //! flying gains flying until end of turn."
 //! Adventure face "A-Tyr's Blessing" (`{1}{W}` Instant):
 //! "Target creature gains indestructible until end of turn."
-//! GAP: "target attacking creature without flying" is a constrained target
-//! not expressible with simple TargetFilter; using any creature.
+//! "target attacking creature without flying" enforced via
+//! `ObjectFilter::attacking_only().without_keyword(Flying)`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -16,7 +16,9 @@ use arcana_core::registry::{
 };
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -70,7 +72,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: grant_flying_to_attacker,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .attacking_only()
+                            .without_keyword(KeywordAbility::Flying),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             })
             .with_adventure(adventure),
     )
@@ -83,7 +93,7 @@ fn grant_flying_to_attacker(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: should target "attacking creature without flying"; any creature used
+    // "attacking creature without flying" enforced by the target filter.
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Flying,

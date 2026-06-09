@@ -1,7 +1,7 @@
 //! Crossbow Infantry — `{1}{W}` 1/1 Human Soldier Archer.
 //! `{T}: This creature deals 1 damage to target attacking or blocking creature.`
-//! GAP: "attacking or blocking creature" filter — ObjectFilter has no attacking_only() /
-//! blocking_only() methods. Using generic creature target.
+//! The combat-state restriction is expressed via
+//! ObjectFilter::attacking_or_blocking_only.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -12,7 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,8 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: This creature deals 1 damage to target attacking or blocking creature.".into(),
                 cost: ActivationCost::tap_only(),
-                // GAP: "attacking or blocking" filter not in ObjectFilter; using any creature
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_or_blocking_only()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

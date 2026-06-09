@@ -1,13 +1,13 @@
 //! Iroh, Firebending Instructor — `{2}{R}` 2/2 red Legendary Human Noble Ally.
 //! "Whenever Iroh attacks, attacking creatures get +1/+1 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -55,11 +55,9 @@ fn on_attacks(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Pump all attacking creatures +1/+1 until end of turn.
-    // GAP: no "attacking creatures" filter in ObjectFilter; use controlled_by(You) creatures
-    // as the best approximation — the engine does not expose an "attacking" filter.
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature().attacking_only(),
         trig.controller,
     );
     vec![Effect::ForEach {

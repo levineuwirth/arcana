@@ -1,7 +1,9 @@
 //! Steer Clear — `{W}` instant. "Steer Clear deals 2 damage to target
 //! attacking or blocking creature. Steer Clear deals 4 damage to that
 //! creature instead if you controlled a Mount as you cast this
-//! spell."
+//! spell." The combat-state restriction is enforced via
+//! `ObjectFilter::creature().attacking_or_blocking_only()`; the
+//! cast-time "controlled a Mount" damage upgrade remains a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +12,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,7 +33,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                        blocking creature. Steer Clear deals 4 damage to that \
                        creature instead if you controlled a Mount as you cast \
                        this spell.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().attacking_or_blocking_only(),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -44,8 +54,7 @@ fn resolve(
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "attacking or blocking" target restriction and the
-    // cast-time "controlled a Mount" damage upgrade are not
+    // GAP: the cast-time "controlled a Mount" damage upgrade is not
     // expressible; emit the base 2 damage.
     vec![Effect::DealDamage {
         source: entry.source,

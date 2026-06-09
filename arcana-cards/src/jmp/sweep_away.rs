@@ -1,6 +1,9 @@
 //! Sweep Away — `{2}{U}` instant. "Return target creature to its owner's
 //! hand. If that creature is attacking, you may put it on top of its
 //! owner's library instead."
+//! Attacking status checked directly against `state.combat` at resolve.
+//! GAP: the "you may ... instead" choice is auto-yes (always puts an
+//! attacking creature on top of its owner's library).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,14 +34,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "if attacking, may put on top of library instead" — no
-    // attacking predicate inside Effect::Conditional and no
-    // player-may-choose replacement primitive.
+    // If the creature is attacking, put it on top of its owner's library
+    // instead (the "you may" is auto-yes; see module GAP note).
+    if state.combat.as_ref().is_some_and(|c| c.is_attacker(*id)) {
+        return vec![Effect::PutOnTopOfLibrary { target: *id }];
+    }
     vec![Effect::ReturnToHand { target: *id }]
 }

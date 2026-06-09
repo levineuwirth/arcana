@@ -15,13 +15,16 @@
 //!   cost-modification continuous effect; not in ContinuousEffect builders.
 //!   // GAP: Level 1 opponent spell cost increase — continuous-effect engine
 //!   debt (cost modification not in ContinuousEffect builders).
-//! - Level 3 "+1/+1 for each other attacking creature" is a dynamic Pump
-//!   amount that requires counting attacking creatures not controlled by you.
-//!   script::count_matching counts permanents, not just attacking creatures;
-//!   no attacking-creature-count helper exists. The whole Level 3 trigger
-//!   effect is GAP'd.
-//!   // GAP: Level 3 "for each other attacking creature" dynamic scaling +
-//!   double strike grant — no script helper for attacking creature count.
+//! - Level 3 installs a triggered ability ("Whenever you attack, target
+//!   attacking creature gets +1/+1 for each other attacking creature and
+//!   gains double strike"). The attacker count is now expressible
+//!   (`ObjectFilter::attacking_only()` + script::count_matching, minus the
+//!   target by id), but the trigger shape is not: there is no mechanism for
+//!   a level-gated triggered ability installed by an activated ability, and
+//!   "Whenever you attack" must fire once per combat (CreatureAttacks +
+//!   EachTime fires per attacker). The Level 3 trigger remains GAP'd.
+//!   // GAP: Level 3 trigger — level-gated triggered-ability installation +
+//!   once-per-combat "whenever you attack" condition not available.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -118,9 +121,10 @@ fn level_up_to_3(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Level 3 "for each other attacking creature" dynamic scaling +
-    // double strike grant on attack trigger — no script helper for attacking
-    // creature count; entire Level 3 triggered ability is deferred.
+    // GAP: Level 3 triggered ability — the "for each other attacking
+    // creature" count is now expressible (attacking_only filter), but
+    // installing a level-gated "whenever you attack" (once-per-combat)
+    // trigger is not; entire Level 3 triggered ability is deferred.
     vec![Effect::AddCounters {
         target: ctx.source,
         kind: CounterKind::Level,

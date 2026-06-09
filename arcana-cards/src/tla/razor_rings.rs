@@ -1,6 +1,8 @@
 //! Razor Rings — `{1}{W}` instant. "Razor Rings deals 4 damage to
 //! target attacking or blocking creature. You gain life equal to the
-//! excess damage dealt this way."
+//! excess damage dealt this way." The combat-state restriction is
+//! enforced via `ObjectFilter::creature().attacking_or_blocking_only()`;
+//! the excess-damage life gain remains a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -9,7 +11,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,7 +31,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Razor Rings deals 4 damage to target attacking or \
                        blocking creature. You gain life equal to the excess \
                        damage dealt this way.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().attacking_or_blocking_only(),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -42,8 +52,8 @@ fn resolve(
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "attacking or blocking" target restriction and the
-    // excess-damage life gain are not expressible; emit the 4 damage.
+    // GAP: the excess-damage life gain is not expressible; emit the
+    // 4 damage.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

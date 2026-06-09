@@ -1,8 +1,5 @@
 //! Terashi's Verdict — `{1}{W}` Instant — Arcane. "Destroy target
 //! attacking creature with power 3 or less."
-//!
-//! GAP: 'attacking' predicate isn't exposed by ObjectFilter; emit a
-//! destroy-target-creature-with-max-power filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -29,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "Destroy target attacking creature with power 3 or less.".into(),
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().with_max_power(3),
+                    ObjectFilter::creature().with_max_power(3).attacking_only(),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,
@@ -47,6 +44,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(t) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = t else { return Vec::new(); };
-    // GAP: 'attacking' restriction not modeled.
     vec![Effect::DestroyPermanent { target: *id }]
 }

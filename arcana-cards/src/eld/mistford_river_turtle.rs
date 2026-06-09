@@ -21,11 +21,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let human = reg.interner_mut().intern("Human");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(turtle);
-    // Build a non-Human attacking creature filter. We need to exclude creatures with Human subtype.
-    // ObjectFilter doesn't have a direct "without subtype" refinement, so we use
-    // creature() filter and note the Human-exclusion as a partial GAP.
-    // The target is "another target attacking non-Human creature" — we model creature target;
-    // GAP: non-Human restriction and "attacking" restriction not expressible in TargetFilter.
+    // The target is "another target attacking non-Human creature" — the attacking
+    // restriction is wired via .attacking_only(); GAP: the non-Human subtype
+    // exclusion is not expressible (ObjectFilter has no "without subtype"
+    // refinement).
     let _ = human;
     let chars = Characteristics {
         name,
@@ -47,8 +46,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    // GAP: "attacking non-Human creature" — no filter for "attacking" or "non-Human subtype"
-                    filter: TargetFilter::Creature,
+                    // GAP: "non-Human" subtype exclusion not expressible
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

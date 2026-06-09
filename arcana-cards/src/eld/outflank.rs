@@ -1,6 +1,7 @@
 //! Outflank — `{W}` instant. "Outflank deals damage to target
 //! attacking or blocking creature equal to the number of creatures
-//! you control."
+//! you control." The combat-state restriction is enforced via
+//! `ObjectFilter::creature().attacking_or_blocking_only()`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +11,10 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +29,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Outflank deals damage to target attacking or blocking creature equal to the number of creatures you control.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().attacking_or_blocking_only(),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
@@ -49,6 +59,4 @@ fn resolve(
         target: DamageTarget::Object(*id),
         amount: n,
     }]
-    // GAP: "attacking or blocking creature" — the target cannot be
-    // restricted to combatants; an unfiltered creature target is used.
 }

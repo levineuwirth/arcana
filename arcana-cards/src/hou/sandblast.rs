@@ -1,7 +1,6 @@
 //! Sandblast — `{2}{W}` instant. "Sandblast deals 5 damage to target
-//! attacking or blocking creature." 'Attacking-or-blocking' filter
-//! isn't an ObjectFilter refinement; emit any-creature target and
-//! GAP the attacking/blocking restriction.
+//! attacking or blocking creature." The combat-state restriction is
+//! enforced via `ObjectFilter::creature().attacking_or_blocking_only()`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +9,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -26,7 +27,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Sandblast deals 5 damage to target attacking or blocking creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().attacking_or_blocking_only(),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
@@ -40,7 +47,6 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'attacking-or-blocking' restriction on the target filter.
     vec![Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(*id),

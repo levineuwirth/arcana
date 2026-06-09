@@ -1,8 +1,6 @@
 //! Akroan Hoplite — `{R}{W}` 1/2 red-white Creature — Human Soldier.
 //! "Whenever this creature attacks, it gets +X/+0 until end of turn, where
 //! X is the number of attacking creatures you control."
-//! Note: "number of attacking creatures you control" approximated as total
-//! creatures you control (no attacking-only filter available).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -54,11 +52,11 @@ fn on_attacks_pump_x(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "number of attacking creatures" not filterable; using all your
-    // creatures as approximation
     let x = script::count_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature()
+            .attacking_only()
+            .controlled_by(ControllerConstraint::You),
         trig.controller,
     ) as i32;
     vec![Effect::Pump {

@@ -1,10 +1,4 @@
 //! Keep Watch — `{2}{U}` instant, "Draw a card for each attacking creature."
-//!
-//! # GAP
-//! Counting attacking creatures specifically is not available via script
-//! helpers (ObjectFilter has no in-combat/attacking filter). Using
-//! count_matching with plain creature() as a proxy — the attacking-only
-//! restriction is a GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,8 +35,10 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no attacking-creature filter; counting all
-    // creatures as proxy.
-    let n = script::count_matching(state, &ObjectFilter::creature(), entry.controller);
+    let n = script::count_matching(
+        state,
+        &ObjectFilter::creature().attacking_only(),
+        entry.controller,
+    );
     vec![Effect::DrawCards { player: entry.controller, count: n }]
 }
