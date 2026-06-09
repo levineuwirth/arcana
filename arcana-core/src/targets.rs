@@ -466,6 +466,12 @@ pub struct ObjectFilter {
     /// No keyword here may be on the object. "creature without flying"
     /// = `not_keywords: Some(vec![KeywordAbility::Flying])`.
     pub not_keywords: Option<Vec<KeywordAbility>>,
+    /// Combat-state constraint ("target attacking creature", "each
+    /// blocking creature", "creature attacking you"). Read from
+    /// [`GameState::combat`]; outside combat nothing is attacking or
+    /// blocking, so every variant except `NotAttacking` matches no
+    /// object.
+    pub combat_status: Option<CombatStatusFilter>,
     pub controller: Option<ControllerConstraint>,
     pub cmc_condition: Option<CmcCondition>,
     pub power_condition: Option<PtCondition>,
@@ -614,6 +620,33 @@ impl ObjectFilter {
         self.not_keywords.get_or_insert_with(Vec::new).push(kw);
         self
     }
+    /// Builder: only attacking creatures ("target attacking creature").
+    pub fn attacking_only(mut self) -> Self {
+        self.combat_status = Some(CombatStatusFilter::Attacking);
+        self
+    }
+    /// Builder: only blocking creatures ("target blocking creature").
+    pub fn blocking_only(mut self) -> Self {
+        self.combat_status = Some(CombatStatusFilter::Blocking);
+        self
+    }
+    /// Builder: attacking or blocking ("target attacking or blocking
+    /// creature").
+    pub fn attacking_or_blocking_only(mut self) -> Self {
+        self.combat_status = Some(CombatStatusFilter::AttackingOrBlocking);
+        self
+    }
+    /// Builder: attacking the filter's source controller ("creature
+    /// attacking you").
+    pub fn attacking_you_only(mut self) -> Self {
+        self.combat_status = Some(CombatStatusFilter::AttackingYou);
+        self
+    }
+    /// Builder: not attacking ("nonattacking creature").
+    pub fn nonattacking_only(mut self) -> Self {
+        self.combat_status = Some(CombatStatusFilter::NotAttacking);
+        self
+    }
     /// Builder: only tapped permanents.
     pub fn tapped_only(mut self) -> Self {
         self.tapped = Some(true);
@@ -730,6 +763,27 @@ impl ObjectFilter {
             }
         }
 
+        // --- combat status (CR 506.2: attacking/blocking only have
+        // meaning during combat; state.combat is None otherwise) ---
+        if let Some(cs) = self.combat_status {
+            let combat = state.combat.as_ref();
+            let attacking = combat.is_some_and(|c| c.is_attacker(obj.id));
+            let ok = match cs {
+                CombatStatusFilter::Attacking => attacking,
+                CombatStatusFilter::Blocking =>
+                    combat.is_some_and(|c| c.is_blocker(obj.id)),
+                CombatStatusFilter::AttackingOrBlocking =>
+                    attacking || combat.is_some_and(|c| c.is_blocker(obj.id)),
+                CombatStatusFilter::AttackingYou => combat
+                    .and_then(|c| c.attacker(obj.id))
+                    .is_some_and(|a| a.defending_player == source_controller),
+                CombatStatusFilter::NotAttacking => !attacking,
+            };
+            if !ok {
+                return false;
+            }
+        }
+
         // --- controller ---
         if let Some(ctrl) = &self.controller {
             if !ctrl.matches(obj.controller, source_controller) {
@@ -790,6 +844,30 @@ impl ObjectFilter {
 
         true
     }
+}
+
+// =============================================================================
+// Combat-state constraint
+// =============================================================================
+
+/// Combat-state filter for [`ObjectFilter::combat_status`]. One enum
+/// (not separate bools) because "attacking or blocking" is a
+/// disjunction the AND-only field set can't express.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CombatStatusFilter {
+    /// Declared as an attacker in the current combat.
+    Attacking,
+    /// Declared as a blocker in the current combat.
+    Blocking,
+    /// Either of the above ("target attacking or blocking creature").
+    AttackingOrBlocking,
+    /// Attacking the filter's source controller (or a planeswalker /
+    /// battle they control — CR 508.1: the defending player is who
+    /// the attack was declared against). "creature attacking you".
+    AttackingYou,
+    /// NOT declared as an attacker ("nonattacking creature"). Matches
+    /// everything outside combat.
+    NotAttacking,
 }
 
 // =============================================================================
@@ -1370,6 +1448,61 @@ mod tests {
         // Empty disjunction matches nothing (consistent with subtypes_any).
         let empty = ObjectFilter::creature().with_keywords_any(vec![]);
         assert!(!empty.matches(s.objects.get(trampler).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_combat_status_variants() {
+        use crate::combat::{AttackerInfo, BlockerInfo, CombatState};
+        let mut s = GameState::new(2, 0);
+        // P0 attacks P1 with two creatures; P1 blocks one and keeps
+        // one home.
+        let atk_vs_p1  = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+        let atk_vs_p0_ = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+        let blocker    = put_creature(&mut s, 1, 1, Zone::Battlefield, 2, 2);
+        let bystander  = put_creature(&mut s, 1, 1, Zone::Battlefield, 2, 2);
+
+        let attacking    = ObjectFilter::creature().attacking_only();
+        let blocking     = ObjectFilter::creature().blocking_only();
+        let in_combat    = ObjectFilter::creature().attacking_or_blocking_only();
+        let attacking_me = ObjectFilter::creature().attacking_you_only();
+        let nonattacking = ObjectFilter::creature().nonattacking_only();
+
+        // Outside combat: nothing attacks/blocks; NotAttacking matches all.
+        assert!(!attacking.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
+        assert!(!in_combat.matches(s.objects.get(blocker).unwrap(), &s, 1));
+        assert!(nonattacking.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
+
+        let mut combat = CombatState::new();
+        combat.attackers.push(AttackerInfo {
+            object_id: atk_vs_p1, defending_player: 1,
+            defending_planeswalker: None,
+            blocked_by: vec![blocker], is_blocked: true,
+        });
+        combat.attackers.push(AttackerInfo {
+            object_id: atk_vs_p0_, defending_player: 1,
+            defending_planeswalker: None,
+            blocked_by: Vec::new(), is_blocked: false,
+        });
+        combat.blockers.push(BlockerInfo { object_id: blocker, blocking: atk_vs_p1 });
+        s.combat = Some(combat);
+
+        assert!( attacking.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
+        assert!(!attacking.matches(s.objects.get(blocker).unwrap(),   &s, 1));
+        assert!(!attacking.matches(s.objects.get(bystander).unwrap(), &s, 1));
+
+        assert!( blocking.matches(s.objects.get(blocker).unwrap(),   &s, 1));
+        assert!(!blocking.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
+
+        assert!( in_combat.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
+        assert!( in_combat.matches(s.objects.get(blocker).unwrap(),   &s, 1));
+        assert!(!in_combat.matches(s.objects.get(bystander).unwrap(), &s, 1));
+
+        // "attacking you": true for P1 (the defender), false for P0.
+        assert!( attacking_me.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
+        assert!(!attacking_me.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 0));
+
+        assert!(!nonattacking.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
+        assert!( nonattacking.matches(s.objects.get(bystander).unwrap(), &s, 1));
     }
 
     #[test]

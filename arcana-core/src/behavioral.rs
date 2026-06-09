@@ -401,16 +401,22 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         (ColorSet::green(), "{G}"),
     ];
     let tribes = tribal_subtypes(reg);
+    // Battlefield ids captured per player for the combat seeding below.
+    let mut omni_ids  = [crate::objects::NULL_OBJECT_ID; 2];
+    let mut big_ids   = [crate::objects::NULL_OBJECT_ID; 2];
+    let mut first_2x2 = [crate::objects::NULL_OBJECT_ID; 2];
     for p in 0..2 {
-        for (cs, cost) in colors {
-            make_creature(&mut state, p, cs, cost);
+        for (i, (cs, cost)) in colors.into_iter().enumerate() {
+            let id = make_creature(&mut state, p, cs, cost);
+            if i == 0 { first_2x2[p as usize] = id; }
         }
         // An "omni-tribal" creature carrying every common creature
         // subtype, so subtype COUNTS ("X = Goblins you control") and
         // tribal lords find a referent. One on the battlefield, plus a
         // copy in the library (subtype TUTORS: "search for an Elf card")
         // and graveyard (subtype recursion: "return a Zombie card").
-        make_tribal_creature(&mut state, p, Zone::Battlefield, &tribes);
+        omni_ids[p as usize] =
+            make_tribal_creature(&mut state, p, Zone::Battlefield, &tribes);
         // A big 8/8 creature so power/toughness-gated conditions ("if you
         // control a creature with power 4 or greater" — Saga chapters,
         // power-matters triggers) are satisfied; the 2/2s cover the
@@ -422,6 +428,7 @@ fn populated_state(reg: &CardRegistry) -> GameState {
             toughness: Some(PtValue::Fixed(8)),
             ..Default::default()
         }));
+        big_ids[p as usize] = big;
         // An EXTRA already-tapped creature so untap-all effects show a
         // delta — but NOT the target creature (selection_for targets the
         // first creature, and a tap-spell on an already-tapped target
@@ -460,6 +467,46 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::INSTANT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::SORCERY.into());
         make_tribal_creature(&mut state, p, Zone::Graveyard(p), &tribes);
+    }
+    // COMBAT seeding (mirrors the tribal/keyword seeding): a live
+    // CombatState so combat-status filters ("each attacking creature",
+    // "target blocking creature", "creature attacking you") find
+    // referents instead of silently matching nothing. Harness fiction:
+    // BOTH players have declared attackers in the one CombatState —
+    // rules-impossible (one combat has one attacking player) but the
+    // filter code only reads the vecs, and it gives every combat
+    // filter a referent regardless of which side the probe card's
+    // controller is on. Per player: the omni-tribal creature attacks
+    // (so "attacking <subtype>" / "attacking + keyword" match) and is
+    // blocked by an opposing 2/2; the 8/8 attacks unblocked (a
+    // keyword-less attacker, so "attacking without flying" matches).
+    // Bystanders (the other color 2/2s) stay out of combat so
+    // NotAttacking keeps referents too.
+    {
+        use crate::combat::{AttackerInfo, BlockerInfo, CombatState};
+        let mut combat = CombatState::new();
+        for p in 0..2usize {
+            let foe = 1 - p;
+            combat.attackers.push(AttackerInfo {
+                object_id: omni_ids[p],
+                defending_player: foe as PlayerId,
+                defending_planeswalker: None,
+                blocked_by: vec![first_2x2[foe]],
+                is_blocked: true,
+            });
+            combat.attackers.push(AttackerInfo {
+                object_id: big_ids[p],
+                defending_player: foe as PlayerId,
+                defending_planeswalker: None,
+                blocked_by: Vec::new(),
+                is_blocked: false,
+            });
+            combat.blockers.push(BlockerInfo {
+                object_id: first_2x2[foe],
+                blocking: omni_ids[p],
+            });
+        }
+        state.combat = Some(combat);
     }
     state
 }

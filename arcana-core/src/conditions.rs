@@ -99,6 +99,18 @@ pub fn an_opponent_controls_a(state: &GameState, you: PlayerId, filter: &ObjectF
         .any(|o| o.controller != you && filter.matches(o, state, you))
 }
 
+/// "if a/an [filter] is on the battlefield" — battlefield-wide,
+/// regardless of controller (any controller constraint inside the
+/// filter still resolves against `you`). Pair with
+/// [`crate::targets::ObjectFilter::attacking_only`]-style combat
+/// builders for "if a Rat is attacking"-shaped conditions.
+pub fn a_permanent_matches(state: &GameState, you: PlayerId, filter: &ObjectFilter) -> bool {
+    state
+        .objects
+        .objects_in_zone(Zone::Battlefield)
+        .any(|o| filter.matches(o, state, you))
+}
+
 /// "if you control N or more permanents with subtype `subtype`" — the
 /// name is resolved to its [`crate::types::SmallString`] id via the
 /// registry's interner (subtype ids are dynamic, so an intervening-if
