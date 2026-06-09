@@ -1,19 +1,22 @@
 //! Boundary Lands Ranger — `{1}{R}` 2/2 red Human Ranger.
 //! "At the beginning of combat on your turn, if you control a creature with power 4 or greater, you may discard a card. If you do, draw a card."
-//! GAP: intervening-if "if you control a creature with power 4 or greater" not expressible via script at trigger-check time.
+//! Intervening-if "if you control a creature with power 4 or greater" modeled via
+//! `conditions::you_control_a` with a `with_min_power(4)` creature filter.
 //! GAP: "you may discard, if you do draw" optional loot not expressible; emitted unconditionally.
 
+use arcana_core::conditions;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,13 +45,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     phase: Phase::Combat,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if you control a creature with power 4 or greater" not expressible
-                intervening_if: None,
+                // Intervening-if: "if you control a creature with power 4 or greater".
+                intervening_if: Some(iif_control_power4_creature),
                 effect: combat_loot,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
+    )
+}
+
+fn iif_control_power4_creature(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_a(
+        state,
+        you,
+        &ObjectFilter::new().with_types(TypeLine::CREATURE.into()).with_min_power(4),
     )
 }
 

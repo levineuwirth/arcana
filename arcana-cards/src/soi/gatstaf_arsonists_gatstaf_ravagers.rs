@@ -2,13 +2,16 @@
 //! {4}{R} Creature — Human Werewolf // Creature — Werewolf
 //! Front (5/4): At the beginning of each upkeep, if no spells were cast last turn, transform.
 //! Back: Menace. At the beginning of each upkeep, if a player cast two or more spells last turn, transform back.
-//! GAP: Precise werewolf transform condition ("no spells cast last turn" / "two or more spells cast last turn")
-//!      is not modeled — wired via StepBegins Upkeep trigger with GAP note.
+//! Front-face werewolf transform condition ("if no spells were cast last turn")
+//! is modeled via `conditions::no_spells_cast_last_turn` on the upkeep trigger's
+//! `intervening_if`.
 //! GAP: back-face-only triggered ability not modeled (back-to-front transform on 2+ spells).
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -16,7 +19,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -63,14 +66,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Front-face trigger: at the beginning of each upkeep
-            // GAP: "if no spells were cast last turn" condition not modeled; transform fires unconditionally
+            // Front-face: "if no spells were cast last turn" → intervening_if.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells_last_turn),
                 effect: upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -80,8 +83,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_no_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
 fn upkeep_transform(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "if no spells were cast last turn" / "if a player cast two or more spells last turn"
-    //      condition not modeled — transform fires unconditionally as approximation.
+    // Front-to-back transform; gated by intervening_if (no spells cast last turn).
     vec![Effect::Transform { target: trig.source }]
 }

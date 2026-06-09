@@ -16,9 +16,11 @@
 //! not available; using spells_cast_this_turn == 0 as a closest approximation for the upkeep
 //! trigger intervening-if. Back-face-only triggered ability not modeled.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -26,7 +28,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -76,15 +78,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_transform_back(back_face)
             // Front face: at the beginning of each upkeep, if no spells were cast last turn,
             // transform this creature.
-            // GAP: "no spells cast last turn" — using spells_cast_this_turn as approximation;
-            // "last turn" tracking not available. This triggers at each upkeep with no intervening-if.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: front_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -96,12 +96,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
 fn front_upkeep_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if no spells were cast last turn" — last-turn spell tracking not available.
-    // Emitting the transform unconditionally as a best-effort (verify will flag condition gap).
     vec![Effect::Transform { target: trig.source }]
 }

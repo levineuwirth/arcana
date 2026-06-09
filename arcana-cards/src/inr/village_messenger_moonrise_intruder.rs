@@ -14,9 +14,10 @@
 //! GAP: back-face-only triggered ability not auto-installed on transform; both
 //!      upkeep triggers are authored on the CardDefinition and fire on both faces.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -24,7 +25,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -71,29 +72,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Front-face trigger: at the beginning of each upkeep, if no spells were
-            // cast last turn, transform. GAP: condition not modeled; fires unconditionally.
+            // cast last turn, transform. Intervening-if modeled via conditions::no_spells_cast_last_turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: upkeep_transform_day_to_night,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
             // Back-face trigger: at the beginning of each upkeep, if a player cast two
-            // or more spells last turn, transform back. GAP: condition not modeled; fires
-            // unconditionally. GAP: back-face-only trigger fires on both faces.
+            // or more spells last turn, transform back. Intervening-if modeled via
+            // conditions::a_player_cast_two_or_more_last_turn.
+            // GAP: back-face-only trigger fires on both faces.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_two_or_more),
                 effect: upkeep_transform_night_to_day,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -102,12 +104,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
+}
+
 fn upkeep_transform_day_to_night(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if no spells were cast last turn" condition not modeled.
     vec![Effect::Transform { target: trig.source }]
 }
 

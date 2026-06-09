@@ -14,9 +14,10 @@
 //! GAP: Krallenhorde Howler cost-reduction static ability not modeled (continuous effect layer).
 //! GAP: Back-face-only triggered ability (transform back) not auto-installed on transform.
 
+use arcana_core::conditions;
 use arcana_core::effects::{DigRest, Effect};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -27,7 +28,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -91,21 +92,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: dig_top_three,
             })
             // Front-face upkeep trigger: transform if no spells were cast last turn.
-            // GAP: "no spells cast last turn" condition not modeled; fires unconditionally.
+            // Intervening-if modeled via conditions::no_spells_cast_last_turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: front_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
             // Back-face upkeep trigger: transform back if a player cast 2+ spells last turn.
-            // GAP: "2+ spells last turn" condition not modeled; fires unconditionally.
+            // Intervening-if modeled via conditions::a_player_cast_two_or_more_last_turn.
             // GAP: back-face-only triggered ability not modeled correctly; emitted for structure.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
@@ -113,7 +114,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_two_or_more),
                 effect: back_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -138,12 +139,19 @@ fn dig_top_three(
     }]
 }
 
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
+}
+
 fn front_upkeep_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if no spells were cast last turn (day/night condition)
     vec![Effect::Transform { target: trig.source }]
 }
 

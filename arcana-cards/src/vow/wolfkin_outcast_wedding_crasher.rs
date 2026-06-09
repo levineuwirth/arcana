@@ -7,14 +7,18 @@
 //!
 //! GAP: "This spell costs {2} less to cast if you control a Wolf or Werewolf" —
 //! cost-reduction as a cast-time check is not expressible (no cost-reduction engine).
-//! GAP: Daybound / Nightbound (day/night cycle transform conditions) are not modeled.
-//! The transform is wired unconditionally at upkeep as the closest available trigger.
+//! Daybound: the front (day) face transforms to the night face when it becomes
+//! night, modeled by gating the upkeep transform trigger's `intervening_if` on
+//! `conditions::it_is_night` (the front→back transform no longer fires during day).
+//! GAP: Nightbound back-transform (back→front when it becomes day) not modeled.
 //! GAP: back-face-only triggered ability (Wolf/Werewolf dies → draw a card) not
 //! auto-installed on transform.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -22,7 +26,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -66,15 +70,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // GAP: Daybound condition (no spells cast last turn) not modeled.
-            // Wire as unconditional upkeep transform (front -> back).
+            // Daybound: front (day) face transforms to night face when it is night.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_it_is_night),
                 effect: daybound_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -86,11 +89,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_it_is_night(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::it_is_night(state)
+}
+
 fn daybound_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire when Daybound condition is met (no spells cast last turn).
+    // Front (day) → back (night) transform; gated by intervening_if (it is night).
     vec![Effect::Transform { target: trig.source }]
 }

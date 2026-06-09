@@ -9,16 +9,18 @@
 //! - Back-face-only triggered ability ("This creature attacks each combat if able") is not
 //!   modeled — triggers live on the CardDefinition, not on the face.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::state::GameState;
 
@@ -64,15 +66,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // GAP: Daybound/Nightbound — no-spells-last-turn condition not modeled.
-            // Front->back transform wired to beginning of upkeep as approximation.
+            // Daybound front->back transform: fires if no spells were cast last turn.
+            // GAP: full Daybound/Nightbound day/night state machine not modeled; gated on
+            // the no-spells-last-turn condition as the closest available approximation.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::PhaseBegins {
                     phase: Phase::PreCombatMain,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: transform_front_to_back,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -81,11 +84,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
 fn transform_front_to_back(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire when no spells were cast last turn (Daybound condition)
     vec![Effect::Transform { target: trig.source }]
 }

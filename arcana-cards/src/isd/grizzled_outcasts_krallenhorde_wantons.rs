@@ -14,9 +14,11 @@
 //! expressed. Both triggers fire unconditionally at each upkeep.
 //! Back-face-only triggered ability not modeled (engine debt).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
@@ -24,7 +26,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 use arcana_core::state::GameState;
@@ -69,16 +71,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face upkeep trigger: transform if no spells were cast last
-            // turn. GAP: "no spells last turn" condition not expressible;
-            // fires unconditionally.
+            // Front-face upkeep trigger: transform if no spells were cast last turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: transform_front,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -88,11 +88,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
 fn transform_front(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if no spells were cast last turn.
     vec![Effect::Transform { target: trig.source }]
 }

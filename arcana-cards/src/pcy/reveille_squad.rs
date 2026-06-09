@@ -2,13 +2,14 @@
 //! creatures attack you, if this creature is untapped, you may untap all
 //! creatures you control."
 //!
-//! GAP: intervening-if "if this creature is untapped" — emitted as None
-//! per instructions. Effect "untap all creatures you control" uses
+//! "if this creature is untapped" modeled via `intervening_if` reading the
+//! source's tap state. Effect "untap all creatures you control" uses
 //! ForEach + script::ids_matching.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -16,7 +17,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,13 +48,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                 },
-                intervening_if: None, // GAP: "if this creature is untapped"
+                // "if this creature is untapped" via the source's tap state.
+                intervening_if: Some(iif_source_untapped),
                 effect: untap_all_creatures,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_source_untapped(state: &GameState, source: ObjectId, _you: PlayerId) -> bool {
+    state.objects.get(source).is_some_and(|o| !o.is_tapped())
 }
 
 fn untap_all_creatures(

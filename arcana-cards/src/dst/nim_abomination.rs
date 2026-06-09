@@ -1,10 +1,12 @@
 //! Nim Abomination — `{2}{B}` 3/4 black Zombie. "At the beginning of your end step,
 //! if this creature is untapped, you lose 3 life."
-//! StepBegins End trigger; intervening-if checks untapped state (GAP: none available).
+//! StepBegins End trigger; "if this creature is untapped" modeled via
+//! `intervening_if` reading the source's tap state.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -12,7 +14,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,7 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                // "if this creature is untapped" via the source's tap state.
+                intervening_if: Some(iif_source_untapped),
                 effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -47,11 +50,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_source_untapped(state: &GameState, source: ObjectId, _you: PlayerId) -> bool {
+    state.objects.get(source).is_some_and(|o| !o.is_tapped())
+}
+
 fn on_end_step(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: intervening-if "if this creature is untapped" not expressible with current API
     vec![Effect::LoseLife { player: trig.controller, amount: 3 }]
 }

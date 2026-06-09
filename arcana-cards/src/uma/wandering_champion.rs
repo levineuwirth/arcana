@@ -2,20 +2,21 @@
 //! deals combat damage to a player, if you control a blue or red permanent,
 //! you may discard a card. If you do, draw a card."
 //!
-//! GAP: intervening-if "if you control a blue or red permanent" cannot be
-//! expressed as an intervening_if predicate; source_filter cannot scope to
-//! "this creature" specifically. Emitting discard + draw as best effort.
+//! "if you control a blue or red permanent" modeled via an OR of two
+//! `conditions::you_control_a` color-filter checks on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,7 +46,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },
-                intervening_if: None,
+                // "if you control a blue or red permanent" via conditions::you_control_a (OR).
+                intervening_if: Some(iif_control_blue_or_red),
                 effect: on_combat_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -54,13 +56,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_control_blue_or_red(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_a(state, you, &ObjectFilter::new().with_colors(ColorSet::blue()))
+        || conditions::you_control_a(state, you, &ObjectFilter::new().with_colors(ColorSet::red()))
+}
+
 fn on_combat_damage(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: intervening-if "if you control a blue or red permanent" not
-    // expressible; emitting discard + draw as best effort.
     vec![
         Effect::Discard {
             player: trig.controller,

@@ -13,10 +13,11 @@
 //! - Back transform trigger "if a player cast two or more spells last turn" — same GAP.
 //! - GAP: back-face-only triggered ability (back transform trigger) not modeled as separate.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -27,7 +28,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -103,15 +104,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(1),
                 effect: back_pump,
             })
-            // Front transform trigger: at the beginning of each upkeep
-            // GAP: "if no spells were cast last turn" — intervening_if not modeled
+            // Front transform trigger: at the beginning of each upkeep, if no spells were cast
+            // last turn, transform. Intervening-if modeled via conditions::no_spells_cast_last_turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: transform_to_back,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -150,11 +151,14 @@ fn back_pump(
     }]
 }
 
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
 fn transform_to_back(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if no spells were cast last turn" — condition not checked
     vec![Effect::Transform { target: trig.source }]
 }

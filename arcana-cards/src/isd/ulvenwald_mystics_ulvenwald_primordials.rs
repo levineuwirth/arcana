@@ -18,9 +18,11 @@
 //!      not auto-installed on transform. Regenerate modeled as an ActivatedAbilityDef
 //!      (shared across faces since abilities live on CardDefinition, not faces).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -31,7 +33,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -79,23 +81,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face upkeep trigger — transform if no spells cast last turn.
-            // GAP: "no spells cast last turn" condition not accessible; trigger fires
-            // unconditionally (engine will quarantine as incorrect behavior).
+            // Front-face upkeep trigger — transform if no spells were cast last turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: front_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
             // Back-face upkeep trigger — transform if a player cast 2+ spells last turn.
-            // GAP: same last-turn constraint; fires unconditionally.
             // GAP: This should only fire on the back face; face-gate not available for triggered abilities.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
@@ -103,7 +102,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_two_or_more),
                 effect: back_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -128,13 +127,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _s: ObjectId, _y: PlayerId) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
+}
+
 fn front_upkeep_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if no spells were cast last turn" — last-turn data not available.
-    // Emitting transform unconditionally; verify pipeline will flag.
     vec![Effect::Transform { target: trig.source }]
 }
 
@@ -143,8 +148,6 @@ fn back_upkeep_transform(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if a player cast two or more spells last turn" — last-turn data not available.
-    // Emitting transform unconditionally; verify pipeline will flag.
     vec![Effect::Transform { target: trig.source }]
 }
 

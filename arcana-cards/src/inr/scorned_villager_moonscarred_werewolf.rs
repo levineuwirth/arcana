@@ -14,9 +14,10 @@
 //! - Back face triggered ability (transform back) is modeled as a front-face TriggeredAbilityDef
 //!   (engine limitation: back-face-only triggered ability not auto-installed on transform).
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::{ManaCost, ManaUnit};
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -26,7 +27,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -97,29 +98,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(1),
                 effect: add_green_green,
             })
-            // Front face transform trigger: at beginning of each upkeep, if no spells cast last turn
+            // Front face transform trigger: at beginning of each upkeep, if no spells were cast
+            // last turn, transform. Intervening-if modeled via conditions::no_spells_cast_last_turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: arcana_core::targets::ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: front_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // Back face transform trigger: at beginning of each upkeep, if player cast 2+ spells last turn
-            // GAP: back-face-only triggered ability not modeled; authored here as always-present but
-            // condition not expressible — returns Vec::new() until engine supports face-gated triggers.
+            // Back face transform trigger: at beginning of each upkeep, if a player cast 2+ spells
+            // last turn, transform back. Intervening-if modeled via
+            // conditions::a_player_cast_two_or_more_last_turn.
+            // GAP: back-face-only triggered ability not modeled; authored here as always-present.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: arcana_core::targets::ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_two_or_more),
                 effect: back_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -151,6 +154,14 @@ fn add_green_green(
             ManaUnit::plain(ManaColor::Green, ctx.source),
         ],
     }]
+}
+
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 /// Front face upkeep trigger: if no spells were cast last turn, transform.

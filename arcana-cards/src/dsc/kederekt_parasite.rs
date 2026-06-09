@@ -2,20 +2,22 @@
 //! "Whenever an opponent draws a card, if you control a red permanent, you
 //! may have this creature deal 1 damage to that player."
 //!
-//! GAP: "if you control a red permanent" intervening-if condition is not
-//! expressible. Emitting the damage effect unconditionally.
+//! "if you control a red permanent" modeled via `conditions::you_control_a`
+//! with a red color filter on `intervening_if`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,15 +42,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             trigger_condition: TriggerCondition::CardDrawn {
                 player: ControllerConstraint::Opponent,
             },
-            // GAP: intervening-if "if you control a red permanent" not
-            // expressible; using None.
-            intervening_if: None,
+            // "if you control a red permanent" via conditions::you_control_a.
+            intervening_if: Some(iif_control_red),
             effect: on_opponent_draws,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
             target_requirements: Vec::new(),
         }),
     )
+}
+
+fn iif_control_red(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    conditions::you_control_a(state, you, &ObjectFilter::new().with_colors(ColorSet::red()))
 }
 
 fn on_opponent_draws(

@@ -18,15 +18,17 @@
 //!      replacement effect, not expressible in Characteristics; using PtValue::Fixed(0)
 //!      as placeholder (the actual * value is engine debt).
 //! GAP: Back-face P/T equal to total cards in all players' hands — same gap.
-//! GAP: Werewolf transform conditions ("no spells cast last turn" / "two or more spells
-//!      last turn") not expressible as TriggerCondition predicates; transforms
-//!      unconditionally at upkeep for the front face.
+//! Front-face werewolf transform condition ("if no spells were cast last turn") is
+//!      modeled via `conditions::no_spells_cast_last_turn` on the upkeep trigger's
+//!      `intervening_if`.
 //! GAP: Back-face-only triggered ability (upkeep back-transform) not auto-installed
 //!      on transform.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -34,7 +36,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -96,15 +98,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
-            // Front: at beginning of each upkeep, (if no spells were cast last turn) transform.
-            // GAP: "if no spells were cast last turn" condition not modeled; fires unconditionally.
+            // Front: at beginning of each upkeep, if no spells were cast last turn, transform.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells_last_turn),
                 effect: front_upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -127,11 +128,15 @@ fn etb_draw(
     }]
 }
 
+fn iif_no_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
 fn front_upkeep_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if no spells were cast last turn.
+    // Front-to-back transform; gated by intervening_if (no spells cast last turn).
     vec![Effect::Transform { target: trig.source }]
 }
