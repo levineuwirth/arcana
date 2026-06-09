@@ -1,9 +1,9 @@
 //! Seeker of Insight — `{1}{U}` 1/3 Human Wizard.
 //! `{T}: Draw a card, then discard a card. Activate only if you've cast a noncreature spell
 //! this turn.`
-//! GAP: "Activate only if you've cast a noncreature spell this turn" — activation
-//! precondition not expressible via ActivationCost fields; emitting the ability without
-//! the precondition gate.
+//! "Activate only if you've cast a noncreature spell this turn" is enforced via
+//! `ActivationCost::activation_condition` + `conditions::you_cast_matching_this_turn`
+//! with a noncreature filter.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Draw a card, then discard a card. Activate only if you've cast a noncreature spell this turn.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    tap: true,
+                    // Only if you've cast a noncreature spell this turn.
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        let noncreature = arcana_core::targets::ObjectFilter::new()
+                            .without_types(TypeLine::CREATURE.into());
+                        arcana_core::conditions::you_cast_matching_this_turn(s, you, &noncreature)
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -53,7 +62,6 @@ fn draw_discard(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: precondition "you've cast a noncreature spell this turn" not checked
     vec![
         Effect::DrawCards { player: ctx.controller, count: 1 },
         Effect::Discard {

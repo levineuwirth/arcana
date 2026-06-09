@@ -3,8 +3,9 @@
 //! (Activate only if this creature attacked this turn and only once each turn.)"
 //!
 //! Boast is not a keyword in the engine; modeled as a regular activated
-//! ability with mana cost. The "only if attacked this turn" precondition
-//! is a GAP.
+//! ability with mana cost. The "attacked this turn" half is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
+//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -37,9 +38,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Boast — {2}{R}: Create a 2/1 red Dwarf Berserker creature token.".into(),
-                // GAP: Boast "only if attacked this turn" precondition not expressible
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{R}").unwrap(),
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    // GAP: "only once each turn" not expressible.
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

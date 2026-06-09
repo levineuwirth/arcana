@@ -1,18 +1,21 @@
 //! Jori En, Ruin Diver — `{1}{U}{R}` 2/3 blue-red Legendary Creature — Merfolk Wizard.
 //! "Whenever you cast your second spell each turn, draw a card."
-//! GAP: "second spell each turn" count tracking not in TriggerCondition; using SpellCast
-//! with OncePerTurn as approximation.
+//! Modeled as SpellCast (caster: You, EachTime) with an intervening_if of
+//! `spells_cast_this_turn(...) == 2`: the triggering cast is already in the
+//! event log when intervening_if runs, so the count equals exactly 2 on the
+//! second cast — the trigger fires once per turn, on the second spell only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,19 +40,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "second spell cast this turn" tracking not in catalog; using SpellCast
-                // OncePerTurn as approximation.
+                // "your second spell each turn": SpellCast fires on every cast;
+                // the intervening_if narrows it to exactly the second one.
                 trigger_condition: TriggerCondition::SpellCast {
                     filter: None,
                     caster: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_second_spell),
                 effect: second_spell_draw,
                 trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::OncePerTurn,
+                frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+/// True exactly when the triggering cast is your second spell this turn.
+/// intervening_if runs at trigger stack-add time, when the SpellCast event
+/// that fired the trigger is ALREADY in the event log — so the count is 2
+/// exactly on the second cast (1 on the first, 3+ afterwards).
+fn iif_second_spell(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    script::spells_cast_this_turn(
+        state,
+        &ObjectFilter::new().controlled_by(ControllerConstraint::You),
+        you,
+    ) == 2
 }
 
 fn second_spell_draw(

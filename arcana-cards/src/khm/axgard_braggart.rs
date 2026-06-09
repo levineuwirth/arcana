@@ -2,7 +2,9 @@
 //! "Boast — {1}{W}: Untap this creature. Put a +1/+1 counter on it.
 //! (Activate only if this creature attacked this turn and only once each turn.)"
 //!
-//! GAP: "activate only if attacked this turn and only once each turn" not expressible.
+//! The "attacked this turn" half of Boast is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
+//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,9 +37,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Boast — {1}{W}: Untap this creature. Put a +1/+1 counter on it.".into(),
-                // GAP: "only if attacked this turn and only once" not expressible
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{W}").unwrap(),
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    // GAP: "only once each turn" not expressible.
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

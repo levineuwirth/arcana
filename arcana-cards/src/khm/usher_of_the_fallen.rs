@@ -2,9 +2,9 @@
 //! a 1/1 white Human Warrior creature token. (Activate only if this creature attacked
 //! this turn and only once each turn.)
 //!
-//! GAP: Boast "only if this creature attacked this turn" gate — ActivationCost has
-//! no field for an "attacked this turn" precondition. The ability fires as a once-
-//! per-turn {1}{W} activation without that guard.
+//! The "attacked this turn" half of Boast is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
+//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -41,6 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Boast — {1}{W}: Create a 1/1 white Human Warrior creature token. (Activate only if this creature attacked this turn and only once each turn.)".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{W}").unwrap(),
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    // GAP: "only once each turn" not expressible.
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

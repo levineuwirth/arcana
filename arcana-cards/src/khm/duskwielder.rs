@@ -1,7 +1,8 @@
 //! Duskwielder — `{B}` 1/2 black Elf Berserker.
 //! "Boast — {1}: Target opponent loses 1 life and you gain 1 life."
-//! GAP: Boast (activate only if attacked this turn, once per turn) — using
-//! standard mana-only activated ability as approximation; boast precondition not enforced.
+//! The "attacked this turn" half of Boast is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
+//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +38,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Boast — {1}: Target opponent loses 1 life and you gain 1 life.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    // GAP: "only once each turn" not expressible.
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -55,7 +61,6 @@ fn boast_drain(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Boast precondition "attacked this turn, once per turn" not enforced.
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
     vec![

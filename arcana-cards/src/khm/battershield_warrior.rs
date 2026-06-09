@@ -1,6 +1,10 @@
 //! Battershield Warrior — `{2}{W}` 2/2 Human Warrior.
 //! Boast — `{1}{W}:` Creatures you control get +1/+1 until end of turn.
 //! (Activate only if this creature attacked this turn and only once each turn.)
+//!
+//! The "attacked this turn" half of Boast is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
+//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -39,10 +43,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Boast — {1}{W}: Creatures you control get +1/+1 until end of turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{W}").unwrap(),
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    // GAP: "only once each turn" not expressible.
                     ..ActivationCost::default()
                 },
-                // GAP: Boast "activate only if this creature attacked this turn"
-                // precondition not in ActivationCost.
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

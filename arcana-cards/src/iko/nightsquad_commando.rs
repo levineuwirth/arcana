@@ -2,18 +2,20 @@
 //! "When this creature enters, if you attacked this turn, create a 1/1 white
 //! Human Soldier creature token."
 //!
-//! GAP: "if you attacked this turn" intervening-if condition not expressible.
-//! Emitting token unconditionally.
+//! Intervening-if "if you attacked this turn" wired via
+//! `conditions::you_attacked_this_turn` (any creature you control was
+//! declared as an attacker this turn).
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,14 +40,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            // GAP: intervening-if "if you attacked this turn" not expressible.
-            intervening_if: None,
+            // Intervening-if "if you attacked this turn" via
+            // conditions::you_attacked_this_turn.
+            intervening_if: Some(iif_you_attacked),
             effect: etb_soldier_token,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
             target_requirements: Vec::new(),
         }),
     )
+}
+
+fn iif_you_attacked(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::you_attacked_this_turn(state, you)
 }
 
 fn etb_soldier_token(

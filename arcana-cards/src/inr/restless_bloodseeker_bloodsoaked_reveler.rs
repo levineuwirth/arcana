@@ -5,7 +5,8 @@
 //! Sacrifice two Blood tokens: Transform this creature. Activate only as a sorcery.
 //! (GAP: "Sacrifice two Blood tokens" as an activated ability cost not modeled —
 //!  SacrificeOther cost not in OptionalPaymentKind. The transform is not triggered here.)
-//! (GAP: "if you gained life this turn" condition not checkable; emitting unconditionally.)
+//! ("if you gained life this turn" wired as intervening_if via
+//!  conditions::you_gained_life_this_turn.)
 //!
 //! Back (Bloodsoaked Reveler): Creature — Vampire
 //! At the beginning of your end step, if you gained life this turn, create a Blood token.
@@ -13,16 +14,17 @@
 //! GAP: back-face-only activated ability ({4}{B}) not modeled.
 //! GAP: back-face-only triggered ability not modeled.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::state::GameState;
 
@@ -72,15 +74,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Front-face trigger: at beginning of your end step, if you gained life this turn,
-            // create a Blood token.
-            // GAP: "if you gained life this turn" condition not checkable; emitting unconditionally.
+            // create a Blood token. Intervening-if wired via
+            // conditions::you_gained_life_this_turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_gained_life),
                 effect: end_step_blood_token,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -90,6 +92,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // GAP: back-face-only activated ability {4}{B} not modeled.
             // GAP: back-face-only triggered ability not modeled.
     )
+}
+
+fn iif_gained_life(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::you_gained_life_this_turn(state, you)
 }
 
 fn end_step_blood_token(

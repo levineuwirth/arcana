@@ -1,7 +1,7 @@
 //! Undercity Scrounger — `{2}{B}` 1/4 black Artifact Creature — Human Rogue.
 //! "{T}: Create a Treasure token. Activate only if a creature died this turn."
-//! GAP: "Activate only if a creature died this turn" is a legality precondition
-//! not expressible in ActivationCost.
+//! "Activate only if a creature died this turn" is enforced via
+//! `ActivationCost::activation_condition` + `conditions::a_creature_died_this_turn`.
 
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaCost;
@@ -34,9 +34,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Create a Treasure token. Activate only if a creature died this turn.".into(),
-                cost: ActivationCost::tap_only(),
-                // GAP: "Activate only if a creature died this turn" legality precondition
-                // not expressible in ActivationCost
+                cost: ActivationCost {
+                    tap: true,
+                    // Only if a creature died this turn.
+                    activation_condition: Some(|s, _src, _you, _reg| {
+                        arcana_core::conditions::a_creature_died_this_turn(s)
+                    }),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

@@ -3,12 +3,14 @@
 //! put a +1/+1 counter on target Vampire you control."
 //!
 //! # Notes
-//! The "if an opponent lost life this turn" is an intervening-if clause.
-//! GAP: intervening_if condition (opponent lost life this turn) — no engine support; using None.
+//! The "if an opponent lost life this turn" intervening-if clause is wired via
+//! `conditions::an_opponent_lost_life_this_turn` (life lost includes damage
+//! dealt to the player, CR 120.3).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
@@ -16,7 +18,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,8 +47,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening_if — "if an opponent lost life this turn" not expressible.
-                intervening_if: None,
+                // Intervening-if "if an opponent lost life this turn" via
+                // conditions::an_opponent_lost_life_this_turn.
+                intervening_if: Some(iif_opponent_lost_life),
                 effect: end_step_counter_on_vampire,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -60,6 +63,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 }],
             }),
     )
+}
+
+fn iif_opponent_lost_life(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::an_opponent_lost_life_this_turn(state, you)
 }
 
 fn end_step_counter_on_vampire(

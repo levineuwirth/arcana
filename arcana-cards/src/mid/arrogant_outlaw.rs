@@ -1,19 +1,20 @@
 //! Arrogant Outlaw — `{2}{B}` 3/2 black Vampire Noble.
 //! "When this creature enters, if an opponent lost life this turn, each
 //! opponent loses 2 life and you gain 2 life."
-//! GAP: Intervening-if "if an opponent lost life this turn" is not expressible
-//! as an engine condition; using intervening_if: None as best-effort.
+//! Intervening-if "if an opponent lost life this turn" wired via
+//! `conditions::an_opponent_lost_life_this_turn`.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,14 +40,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: "if an opponent lost life this turn" not expressible.
-                intervening_if: None,
+                // Intervening-if "if an opponent lost life this turn" via
+                // conditions::an_opponent_lost_life_this_turn.
+                intervening_if: Some(iif_opponent_lost_life),
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_opponent_lost_life(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::an_opponent_lost_life_this_turn(state, you)
 }
 
 fn on_etb(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

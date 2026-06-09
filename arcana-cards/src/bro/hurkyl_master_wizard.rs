@@ -4,16 +4,17 @@
 //! noncreature spells you've cast this turn, you may put a card of that type
 //! from among the revealed cards into your hand. Put the rest on the bottom of
 //! your library in a random order."
-//! GAP: intervening_if — "if you've cast a noncreature spell this turn" not
-//! expressible as an intervening_if condition.
+//! Intervening-if "if you've cast a noncreature spell this turn" wired via
+//! `conditions::you_cast_matching_this_turn` (noncreature filter).
 //! GAP: effect — "for each card type among noncreature spells you've cast this
 //! turn, you may put a card of that type" requires multi-pick by card type
 //! among a revealed set; DigTopN supports only single-pick. Best effort: look
 //! at top 5, put one noncreature card into hand, rest to bottom random.
 
+use arcana_core::conditions;
 use arcana_core::effects::{DigRest, Effect};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
@@ -21,7 +22,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::zones::Zone;
 
@@ -53,14 +54,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening_if — "if you've cast a noncreature spell this
-                // turn" is not expressible as an intervening_if condition.
-                intervening_if: None,
+                // Intervening-if "if you've cast a noncreature spell this turn"
+                // via conditions::you_cast_matching_this_turn.
+                intervening_if: Some(iif_cast_noncreature),
                 effect: end_step_dig,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
+    )
+}
+
+fn iif_cast_noncreature(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::you_cast_matching_this_turn(
+        state,
+        you,
+        &ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
     )
 }
 

@@ -2,10 +2,8 @@
 //! opponent controls. Then draw a card for each creature that died this
 //! turn."
 //!
-//! The destroy half is expressed; the rider draws a card for each
-//! creature that died this turn, but the script helper surface exposes
-//! no "creatures that died this turn" counter, so that DYNAMIC amount
-//! cannot be computed and the draw is GAP-ed rather than hardcoded.
+//! The destroy half is expressed; the rider's dynamic draw count comes
+//! from `script::creatures_died_this_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,11 +42,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "draw a card for each creature that died this turn" — no script
-    // helper exposes a count of creatures that died this turn, so the
-    // dynamic draw amount cannot be computed. Only the destroy is emitted.
-    vec![Effect::DestroyPermanent { target: *id }]
+    let mut effects = vec![Effect::DestroyPermanent { target: *id }];
+    // "Then draw a card for each creature that died this turn."
+    // NOTE: counted at resolution, before the destroy above is applied —
+    // the destroyed target itself is not included in the count.
+    let died = arcana_core::script::creatures_died_this_turn(state);
+    if died > 0 {
+        effects.push(Effect::DrawCards {
+            player: entry.controller,
+            count: died,
+        });
+    }
+    effects
 }

@@ -1,7 +1,8 @@
 //! Chart a Course — `{1}{U}` sorcery. "Draw two cards. Then discard a
-//! card unless you attacked this turn." No "attacked this turn"
-//! predicate in script::; emit Draw 2 + Discard 1; GAP the gating.
+//! card unless you attacked this turn." The discard is gated on
+//! `conditions::you_attacked_this_turn` in the resolver.
 
+use arcana_core::conditions;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -31,17 +32,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no "you attacked this turn" predicate in script:: to gate the discard.
-    vec![
-        Effect::DrawCards { player: entry.controller, count: 2 },
-        Effect::Discard {
+    let mut effects = vec![Effect::DrawCards { player: entry.controller, count: 2 }];
+    // "Then discard a card unless you attacked this turn."
+    if !conditions::you_attacked_this_turn(state, entry.controller) {
+        effects.push(Effect::Discard {
             player: entry.controller,
             count: 1,
             choice: DiscardChoice::ControllerChooses,
-        },
-    ]
+        });
+    }
+    effects
 }

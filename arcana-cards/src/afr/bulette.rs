@@ -2,9 +2,8 @@
 //! "At the beginning of your end step, if a creature died this turn,
 //! put a +1/+1 counter on this creature."
 //!
-//! GAP: intervening-if "if a creature died this turn" — no catalog
-//! variant for intervening-if conditions. Using None; the condition
-//! cannot be checked at resolution.
+//! The intervening-if is checked via
+//! `conditions::a_creature_died_this_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -43,8 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                // GAP: intervening-if "if a creature died this turn" not supported
-                intervening_if: None,
+                // Intervening-if: "if a creature died this turn".
+                intervening_if: Some(|s, _src, _you, _reg| {
+                    arcana_core::conditions::a_creature_died_this_turn(s)
+                }),
                 effect: on_end_step,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,

@@ -2,7 +2,9 @@
 //! "Boast — {1}{R}: This creature deals 1 damage to any target.
 //! (Activate only if this creature attacked this turn and only once each turn.)"
 //!
-//! GAP: Boast condition (attacked this turn) not expressible in ActivationCost.
+//! The "attacked this turn" half of Boast is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
+//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -39,7 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Boast — {1}{R}: This creature deals 1 damage to any target.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{R}").unwrap(),
-                    // GAP: Boast condition (attacked this turn) not expressible.
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    // GAP: "only once each turn" not expressible.
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement::any_target()],

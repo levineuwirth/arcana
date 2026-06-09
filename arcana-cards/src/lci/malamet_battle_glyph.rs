@@ -1,14 +1,14 @@
 //! Malamet Battle Glyph — `{G}` sorcery. "Choose target creature you
 //! control and target creature you don't control. If the creature
 //! you control entered this turn, put a +1/+1 counter on it. Then
-//! those creatures fight each other." "Entered this turn"
-//! conditional not exposed; add the counter unconditionally as best
-//! effort and fight.
+//! those creatures fight each other." The counter is gated on the
+//! per-id `script::entered_battlefield_this_turn` check.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -53,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
@@ -61,13 +61,15 @@ fn resolve(
     let Some(t1) = entry.targets.targets.get(1) else { return Vec::new(); };
     let TargetChoice::Object(a) = t0 else { return Vec::new(); };
     let TargetChoice::Object(b) = t1 else { return Vec::new(); };
-    // GAP: "entered this turn" per-id timestamp check — not exposed via script::*.
-    vec![
-        Effect::AddCounters {
+    let mut effects = Vec::new();
+    // "If the creature you control entered this turn, put a +1/+1 counter on it."
+    if script::entered_battlefield_this_turn(state, *a) {
+        effects.push(Effect::AddCounters {
             target: *a,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
-        },
-        Effect::Fight { a: *a, b: *b },
-    ]
+        });
+    }
+    effects.push(Effect::Fight { a: *a, b: *b });
+    effects
 }

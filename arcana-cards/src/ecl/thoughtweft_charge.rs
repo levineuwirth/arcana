@@ -1,8 +1,9 @@
 //! Thoughtweft Charge — `{1}{G}` instant. "Target creature gets +3/+3
 //! until end of turn. If a creature entered the battlefield under
-//! your control this turn, draw a card." The this-turn-ETB predicate
-//! isn't a script helper; emit the pump and GAP the conditional draw.
+//! your control this turn, draw a card." The conditional draw is gated
+//! on `conditions::entered_this_turn` in the resolver.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
@@ -10,7 +11,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -34,18 +35,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'a creature entered under your control this turn' predicate.
-    vec![Effect::Pump {
+    let mut effects = vec![Effect::Pump {
         target: *id,
         power: 3,
         toughness: 3,
         duration: Duration::EndOfTurn,
         keywords: vec![],
-    }]
+    }];
+    // "If a creature entered the battlefield under your control this turn, draw a card."
+    if conditions::entered_this_turn(
+        state,
+        entry.controller,
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+    ) {
+        effects.push(Effect::DrawCards { player: entry.controller, count: 1 });
+    }
+    effects
 }

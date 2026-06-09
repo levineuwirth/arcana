@@ -1,8 +1,9 @@
 //! Tuskeri Firewalker — `{2}{R}` 3/2 red Human Berserker. "Boast — {1}: Exile the
 //! top card of your library. You may play that card this turn."
-//! GAP: "Exile top card of library and may play it this turn" is not in the Effect
-//! catalog. Boast activation condition ("only if this creature attacked this turn")
-//! is also not expressible in ActivationCost.
+//! The effect is `Effect::ImpulseExile` (exile top card, may play it this turn).
+//! The "attacked this turn" half of Boast is enforced via
+//! `ActivationCost::activation_condition` + `conditions::source_attacked_this_turn`.
+//! GAP: "only once each turn" — no per-turn activation counter on ActivationCost.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,7 +38,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{1}: Exile the top card of your library. You may play that card this turn. (Boast — activate only if this creature attacked this turn, once each turn.)".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
-                    // GAP: "Boast" legality condition (attacked this turn) not in ActivationCost
+                    // Boast: only if this creature attacked this turn.
+                    activation_condition: Some(|s, src, _you, _reg| {
+                        arcana_core::conditions::source_attacked_this_turn(s, src)
+                    }),
+                    // GAP: "only once each turn" not expressible.
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -53,9 +58,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn boast_exile_play(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Exile top card and may play it this turn" is not in the Effect catalog.
-    Vec::new()
+    // Impulse: exile the top card; you may play it this turn.
+    vec![Effect::ImpulseExile { player: ctx.controller, count: 1 }]
 }

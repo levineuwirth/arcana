@@ -2,8 +2,8 @@
 //! "{1}{B}, {T}: Each opponent loses 2 life. Activate only if a creature
 //! died this turn."
 //!
-//! GAP: "Activate only if a creature died this turn" — timing/precondition
-//! check not expressible in ActivationCost.
+//! "Activate only if a creature died this turn" is enforced via
+//! `ActivationCost::activation_condition` + `conditions::a_creature_died_this_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,6 +38,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{B}").unwrap(),
                     tap: true,
+                    // Only if a creature died this turn.
+                    activation_condition: Some(|s, _src, _you, _reg| {
+                        arcana_core::conditions::a_creature_died_this_turn(s)
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

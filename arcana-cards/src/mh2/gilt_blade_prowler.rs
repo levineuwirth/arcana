@@ -1,7 +1,8 @@
 //! Gilt-Blade Prowler — `{2}{B}` 2/3 black Human Rogue.
 //! "{1}, {T}, Pay 1 life: Draw a card. Activate only if you've discarded a card this turn."
 //!
-//! GAP: "Activate only if you've discarded a card this turn" precondition not expressible.
+//! "Activate only if you've discarded a card this turn" is enforced via
+//! `ActivationCost::activation_condition` + `script::cards_discarded_this_turn`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -38,7 +39,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
                     tap: true,
                     life: 1,
-                    // GAP: "only if discarded this turn" precondition not expressible.
+                    // Only if you've discarded a card this turn.
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::script::cards_discarded_this_turn(s, you) >= 1
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

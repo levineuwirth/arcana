@@ -2,19 +2,19 @@
 //! "When this creature enters, if an opponent lost life this turn,
 //! create a 1/1 black Bat creature token with flying."
 //!
-//! GAP: "if an opponent lost life this turn" — intervening-if checking
-//! whether an opponent lost life this turn is not expressible. Creating
-//! the Bat token unconditionally as best effort.
+//! Intervening-if "if an opponent lost life this turn" wired via
+//! `conditions::an_opponent_lost_life_this_turn`.
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,15 +39,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: "if an opponent lost life this turn" — not
-                // expressible as intervening-if condition.
-                intervening_if: None,
+                // Intervening-if "if an opponent lost life this turn" via
+                // conditions::an_opponent_lost_life_this_turn.
+                intervening_if: Some(iif_opponent_lost_life),
                 effect: on_enters,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn iif_opponent_lost_life(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::an_opponent_lost_life_this_turn(state, you)
 }
 
 fn on_enters(
@@ -69,7 +73,7 @@ fn on_enters(
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    // GAP: "if an opponent lost life this turn" not evaluated;
-    // creating token unconditionally as best effort.
+    // "if an opponent lost life this turn" enforced via intervening_if at
+    // stack-add time (monotone within a turn — no resolution re-check needed).
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }

@@ -1,11 +1,12 @@
 //! Drag the Canal — `{U}{B}` instant. "Create a 2/2 white and blue
 //! Detective creature token. If a creature died this turn, you gain 2
-//! life, surveil 2, then investigate." 'A creature died this turn' is
-//! not a script helper, and the Clue token sub-ability ('{2}, Sacrifice:
-//! Draw') isn't modelable on a token (no activated ability primitive on
-//! TokenDefinition). We emit the Detective token + best-effort gain 2 /
-//! surveil 2 (we cannot gate on the conditional — emit honest GAP for
-//! the conditional and the Clue's draw activation).
+//! life, surveil 2, then investigate." The died-this-turn conditional is
+//! checked via `conditions::a_creature_died_this_turn` (gain 2 / surveil 2
+//! emitted only when it holds).
+//!
+//! GAP: investigate — the Clue token sub-ability ('{2}, Sacrifice: Draw')
+//! isn't modelable on a token (no activated ability primitive on
+//! TokenDefinition).
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -37,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
@@ -57,10 +58,23 @@ fn resolve(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: 'if a creature died this turn' predicate; investigate
-    // (Clue tokens with activated-ability draw).
-    vec![Effect::CreateToken {
+    let mut effects = vec![Effect::CreateToken {
         controller: entry.controller,
         token,
-    }]
+    }];
+    // "If a creature died this turn, you gain 2 life, surveil 2, then
+    // investigate."
+    if arcana_core::conditions::a_creature_died_this_turn(state) {
+        effects.push(Effect::GainLife {
+            player: entry.controller,
+            amount: 2,
+        });
+        effects.push(Effect::Surveil {
+            player: entry.controller,
+            count: 2,
+        });
+        // GAP: investigate not wired here (Effect::CreateCommodityToken
+        // with CommodityToken::Clue now exists; migration deferred).
+    }
+    effects
 }

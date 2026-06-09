@@ -7,12 +7,10 @@
 //! Level 3 ({6}{B}): At the beginning of your end step, each opponent loses
 //!   life equal to the life they lost this turn.
 //!
-//! GAP: Level 1 "if a creature died this turn" — there is no script helper
-//!   for "any creature died this turn" (only creatures_of_subtype_died_this_turn).
-//!   The conditional is NOT checked; the effect fires unconditionally.
-//! GAP: Level 3 "each opponent loses life equal to the life they lost this turn"
-//!   — there is no script helper for opponent life-lost-this-turn. Effect
-//!   is omitted (Vec::new()) for the level-3 end-step trigger.
+//! Level 1's "if a creature died this turn" intervening-if is checked via
+//! `conditions::a_creature_died_this_turn`; Level 3's drain amount uses
+//! `script::life_lost_this_turn` per opponent.
+//!
 //! GAP: Level-gating triggers (level 1/3 end-step abilities should only fire
 //!   at the correct level) — the engine does not support level-gated triggers.
 
@@ -54,15 +52,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 kind: CounterKind::Level,
                 count: 1,
             })
-            // Level 1: at beginning of end step, (if creature died) each opponent loses 1 life
-            // GAP: conditional "if a creature died this turn" not checked (no script helper).
+            // Level 1: at beginning of end step, if a creature died this
+            // turn, each opponent loses 1 life.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                // Intervening-if: "if a creature died this turn".
+                intervening_if: Some(|s, _src, _you, _reg| {
+                    arcana_core::conditions::a_creature_died_this_turn(s)
+                }),
                 effect: end_step_level1,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -101,7 +102,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: level_up_to_3,
             })
             // Level 3: at beginning of end step, each opponent loses life equal to life they lost
-            // GAP: "life they lost this turn" not computable — omitted.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -117,8 +117,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// Level 1 end-step: each opponent loses 1 life.
-/// GAP: fires unconditionally (should only fire if a creature died this turn).
+/// Level 1 end-step: each opponent loses 1 life (intervening-if checked
+/// on the trigger definition).
 fn end_step_level1(
     state: &GameState,
     trig: &PendingTrigger,
@@ -165,13 +165,16 @@ fn level_up_to_3(
 }
 
 /// Level 3 end-step trigger: each opponent loses life equal to life they lost this turn.
-/// GAP: no script helper for opponent life-lost-this-turn; emitting Vec::new().
 fn end_step_level3(
-    _state: &GameState,
-    _trig: &PendingTrigger,
+    state: &GameState,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each opponent loses life equal to the life they lost this turn" —
-    // no script helper for life-lost-this-turn by a player.
-    Vec::new()
+    arcana_core::script::opponents(state, trig.controller)
+        .into_iter()
+        .filter_map(|opp| {
+            let lost = arcana_core::script::life_lost_this_turn(state, opp);
+            (lost > 0).then_some(Effect::LoseLife { player: opp, amount: lost })
+        })
+        .collect()
 }
