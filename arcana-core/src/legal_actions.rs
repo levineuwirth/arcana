@@ -2067,7 +2067,7 @@ fn enumerate_activation_actions(
             // is the source of truth.
             let _is_intrinsic = i >= reg_count;
             if !ability_is_activatable(
-                state, obj, ability, player, sorcery_speed_ok,
+                state, obj, ability, player, sorcery_speed_ok, registry,
             ) {
                 continue;
             }
@@ -2249,6 +2249,7 @@ fn ability_is_activatable(
     ability: &crate::registry::ActivatedAbilityDef,
     activator: crate::types::PlayerId,
     sorcery_speed_ok: bool,
+    reg: &crate::registry::CardRegistry,
 ) -> bool {
     // Zone gate: the ability's declared `activation_zone` must match
     // the object's current zone (CR 113.6). Cycling (Hand) and the
@@ -2294,6 +2295,15 @@ fn ability_is_activatable(
     // from `remove_self_counter` above (which both gates and consumes).
     if let Some((kind, count)) = ability.cost.min_self_counters {
         if obj.count_counters(kind) < count {
+            return false;
+        }
+    }
+    // Pure board/zone/player precondition (CR 602.5b — "you may activate
+    // this ability only if <condition>"): a predicate over game state
+    // that gates legality without paying anything. Resolves subtype/card
+    // names via the registry (e.g. "only if you control a Swamp").
+    if let Some(cond) = ability.cost.activation_condition {
+        if !cond(state, obj.id, activator, reg) {
             return false;
         }
     }
@@ -3253,6 +3263,56 @@ mod tests {
                 | crate::actions::AdditionalCostPayment::AddCounters { .. })),
             "min_self_counters is a precondition, not a cost — \
              no counter payment should be emitted");
+    }
+
+    // --- activation_condition precondition (CR 602.5b) ------------------
+
+    /// A permanent with a costless activated ability gated only by an
+    /// `activation_condition`: "you may activate this only if an opponent
+    /// has a card in their graveyard". Exercises the predicate end-to-end
+    /// through the legal-action enumerator.
+    fn register_opponent_gy_gated_stub(reg: &mut CardRegistry) -> CardId {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let name = reg.interner_mut().intern("Opp-GY Gated Stub");
+        reg.register(
+            CardDefinition::new(name, creature_chars(0, 0))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Only if an opponent has a card in their graveyard: …".into(),
+                    cost: ActivationCost {
+                        activation_condition: Some(|s, _src, you, _reg|
+                            crate::conditions::an_opponent_graveyard_at_least(s, you, 1)),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        )
+    }
+
+    #[test]
+    fn activation_condition_gates_legality() {
+        let mut reg = CardRegistry::new();
+        let cid = register_opponent_gy_gated_stub(&mut reg);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(0, 0), cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+
+        // Opponent's graveyard empty → the activation is gated out.
+        assert!(!legal_actions(&s, &reg).iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)),
+            "activation must be illegal while the precondition is false");
+
+        // Put a card in the opponent's graveyard → now legal.
+        let _ = state_put_with_card(&mut s, 1, Zone::Graveyard(1), creature_chars(0, 0), cid);
+        assert!(legal_actions(&s, &reg).iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)),
+            "activation must become legal once the precondition holds");
     }
 
     // --- choice-bearing additional costs (sacrifice-other / discard) ----

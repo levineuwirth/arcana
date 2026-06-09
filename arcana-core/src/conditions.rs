@@ -238,6 +238,14 @@ pub fn an_opponent_graveyard_at_least(state: &GameState, you: PlayerId, n: u32) 
     (0..state.num_players()).any(|p| p != you && crate::script::graveyard_size(state, p) >= n)
 }
 
+/// "if [this permanent]'s power is N or greater" — reads the source's
+/// current power after the layer system ("activate only if this
+/// creature's power is 4 or greater"). A missing/non-creature source
+/// reads as power 0.
+pub fn source_power_at_least(state: &GameState, source: ObjectId, n: i32) -> bool {
+    crate::script::power_of(state, source) >= n
+}
+
 /// "if [this permanent] has a [kind] counter on it" (≥1). Uses the
 /// ability's `source`, which is why intervening-if fns receive it.
 pub fn source_has_counter(state: &GameState, source: ObjectId, kind: CounterKind) -> bool {

@@ -92,6 +92,21 @@ pub fn dispatch_modal_effect(
 pub type ActivatedEffectFn =
     fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>;
 
+/// CR 602.5b — a pure ACTIVATION precondition: "you may activate this
+/// ability only if <condition>". Receives the game state, the ability's
+/// source object id, the activating player, and the registry (so a
+/// condition can resolve subtype/card names — e.g.
+/// [`crate::conditions::you_control_subtype`] for "only if you control a
+/// Swamp / a Yanggu planeswalker", or
+/// [`crate::conditions::an_opponent_graveyard_at_least`]). Returns
+/// `true` to allow the ability to be offered as a legal action. Unlike a
+/// cost nothing is paid; like [`ActivationCost::min_self_counters`] it
+/// only gates legality, and shares the [`crate::conditions`] predicate
+/// helpers an intervening-if uses (same `(state, source, controller,
+/// reg)` shape as [`crate::triggers::InterveningIfFn`]).
+pub type ActivationConditionFn =
+    fn(&GameState, ObjectId, PlayerId, &CardRegistry) -> bool;
+
 // =============================================================================
 // ActivationContext
 // =============================================================================
@@ -1011,6 +1026,18 @@ pub struct ActivationCost {
     /// counters). This field changes nothing on resolution — it only
     /// gates whether the ability is offered as legal at all.
     pub min_self_counters: Option<(CounterKind, u32)>,
+    /// CR 602.5b — a general "you may activate this ability only if
+    /// <condition>" precondition, as a predicate over game state. Like
+    /// [`Self::min_self_counters`] this is a pure legality gate (nothing
+    /// is paid), but it can express board/zone/player conditions that
+    /// don't reduce to a counter count: "only if you control a Swamp",
+    /// "only if an opponent has eight or more cards in their graveyard",
+    /// "only if you control a Yanggu planeswalker", "only if a player
+    /// has one or fewer cards in hand". The legal-action enumerator
+    /// filters the ability out when the predicate is false. See
+    /// [`ActivationConditionFn`]; write it with the [`crate::conditions`]
+    /// helpers.
+    pub activation_condition: Option<ActivationConditionFn>,
     /// "Sacrifice a [filtered permanent]: …" where the sacrificed
     /// permanent is CHOSEN, not the ability's own source (CR 118.3 —
     /// an additional cost the activator pays by sacrificing one
