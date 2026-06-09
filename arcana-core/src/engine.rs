@@ -970,7 +970,7 @@ fn apply_activate_ability(
     // sacrifice-self or discard-self moves the card before the
     // ability resolves (CR 400.7).
     let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice, life,
-         effect_fn) = {
+         discard_random, effect_fn) = {
         let Some(obj) = state.objects.get(source) else { return; };
         // Flat index covers registry-backed abilities first, then the
         // object's intrinsic abilities (commodity tokens). Snapshot the
@@ -987,6 +987,7 @@ fn apply_activate_ability(
             ability.cost.tap,
             ability.cost.sacrifice,
             ability.cost.life,
+            ability.cost.discard_random,
             ability.effect,
         )
     };
@@ -1024,6 +1025,12 @@ fn apply_activate_ability(
     // graveyard, reveal, remove-counters — flow through the shared
     // helper that also powers `apply_cast_spell`.
     apply_additional_costs(state, controller, &additional_costs);
+    // "Discard N at random" (CR 701.8d) — the engine, not the player,
+    // picks the cards, so it's paid here rather than via an enumerated
+    // AdditionalCostPayment. legal_actions already gated on hand size.
+    if discard_random > 0 {
+        state.discard_at_random(controller, discard_random);
+    }
 
     if is_mana_ability {
         // CR 605.3a — mana abilities resolve immediately without

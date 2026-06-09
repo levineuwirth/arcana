@@ -2099,13 +2099,20 @@ fn enumerate_activation_actions(
             let discard_choices = enumerate_cost_discards(
                 state, ability, player, id);
             if discard_choices.is_empty() { continue; }
+            // "Discard N at random" gates on hand size but is NOT enumerated
+            // (the cards are chosen by the engine RNG in apply, so no
+            // per-card fan-out and no baked payment). Skip if too few cards.
+            if ability.cost.discard_random > 0 {
+                let hand = state.objects.objects_in_zone(Zone::Hand(player)).count();
+                if hand < ability.cost.discard_random as usize { continue; }
+            }
 
             for plan in &plans {
                 for targets in &target_selections {
                     for sac in &sac_choices {
                         for disc in &discard_choices {
                             let mut costs = additional.clone();
-                            if let Some(s) = sac {
+                            for s in sac {
                                 costs.push(
                                     crate::actions::AdditionalCostPayment::Sacrifice(*s));
                             }
@@ -2130,25 +2137,31 @@ fn enumerate_activation_actions(
 }
 
 /// Candidate permanents the activator can sacrifice to pay a
-/// `sacrifice_other` cost. Returns `vec![None]` (one no-op choice)
-/// when the ability has no such cost, so the enumeration loop runs
-/// exactly once; an empty `Vec` means the cost exists but nothing
-/// satisfies it (ability not activatable). The source object is
-/// always excluded.
+/// `sacrifice_other` cost. Each inner `Vec` is one complete payment (the
+/// permanents to sacrifice for that activation). Returns `vec![vec![]]`
+/// (one no-op payment) when the ability has no such cost, so the
+/// enumeration loop runs exactly once; an empty outer `Vec` means the
+/// cost exists but can't be satisfied (ability not activatable). The
+/// source object is always excluded. `sacrifice_other_count` (default 1)
+/// gives one payment per N-permanent combination — mirrors
+/// [`enumerate_cost_discards`].
 fn enumerate_cost_sacrifices(
     state: &GameState,
     ability: &crate::registry::ActivatedAbilityDef,
     player: crate::types::PlayerId,
     source: ObjectId,
-) -> Vec<Option<ObjectId>> {
+) -> Vec<Vec<ObjectId>> {
     let Some(filter) = ability.cost.sacrifice_other.as_ref() else {
-        return vec![None];
+        return vec![vec![]];
     };
-    state.objects.objects_in_zone(Zone::Battlefield)
+    let candidates: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == player && o.id != source)
         .filter(|o| filter.matches(o, state, player))
-        .map(|o| Some(o.id))
-        .collect()
+        .map(|o| o.id)
+        .collect();
+    let n = ability.cost.sacrifice_other_count.max(1) as usize;
+    if candidates.len() < n { return Vec::new(); }
+    combinations(&candidates, n)
 }
 
 /// Card-sets the activator can discard to pay the discard cost. Each
@@ -3408,6 +3421,96 @@ mod tests {
                 matches!(c, crate::actions::AdditionalCostPayment::Discard(_))).count();
             assert_eq!(n_discard, 2, "each activation discards exactly two cards");
         }
+    }
+
+    #[test]
+    fn sacrifice_two_enumerates_one_action_per_pair() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::targets::ObjectFilter;
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Sacrifice Two Stub");
+        let cid = reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Sacrifice two creatures: ...".into(),
+                    cost: ActivationCost {
+                        sacrifice_other: Some(ObjectFilter {
+                            types: Some(TypeLine::CREATURE.into()),
+                            ..ObjectFilter::default()
+                        }),
+                        sacrifice_other_count: 2,
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        );
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        // Three OTHER creatures → C(3,2) = 3 two-permanent sacrifices.
+        put(&mut s, 0, Zone::Battlefield, creature_chars(2,2));
+        put(&mut s, 0, Zone::Battlefield, creature_chars(3,3));
+        put(&mut s, 0, Zone::Battlefield, creature_chars(4,4));
+
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert_eq!(acts.len(), 3, "one activation per 2-creature combination (source excluded)");
+        for a in &acts {
+            let Action::ActivateAbility { additional_costs, .. } = a else { unreachable!() };
+            let n = additional_costs.iter().filter(|c|
+                matches!(c, crate::actions::AdditionalCostPayment::Sacrifice(_))).count();
+            assert_eq!(n, 2, "each activation sacrifices exactly two permanents");
+        }
+    }
+
+    #[test]
+    fn discard_random_offers_single_activation_gated_on_hand() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Discard Random Stub");
+        let cid = reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Discard a card at random: ...".into(),
+                    cost: ActivationCost { discard_random: 1, ..ActivationCost::default() },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        );
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+        let n_acts = |s: &GameState| legal_actions(s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .count();
+        // Empty hand → not activatable.
+        assert_eq!(n_acts(&s), 0, "no random-discard activation with an empty hand");
+        // Cards in hand → exactly ONE activation, NO baked Discard payment
+        // (the card is chosen by the engine RNG in apply, not enumerated).
+        put(&mut s, 0, Zone::Hand(0), creature_chars(2,2));
+        put(&mut s, 0, Zone::Hand(0), creature_chars(3,3));
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        assert_eq!(acts.len(), 1, "random discard is one activation, not one-per-card");
+        let Action::ActivateAbility { additional_costs, .. } = &acts[0] else { unreachable!() };
+        assert!(additional_costs.iter().all(|c|
+            !matches!(c, crate::actions::AdditionalCostPayment::Discard(_))),
+            "no specific card baked into the action — chosen at random in apply");
     }
 
     #[test]

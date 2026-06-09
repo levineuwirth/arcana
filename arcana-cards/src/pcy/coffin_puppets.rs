@@ -1,8 +1,10 @@
 //! Coffin Puppets — `{3}{B}{B}` 3/3 Creature — Zombie.
 //! `Sacrifice two lands: Return this card from your graveyard to the battlefield. Activate
 //!  only during your upkeep and only if you control a Swamp.`
-//! GAP: "sacrifice two lands" as cost — no ActivationCost field for sacrificing multiple lands.
-//! GAP: "return from graveyard" via ActivationZone::Graveyard + ReturnFromGraveyardToBattlefield.
+//! "Sacrifice two lands" cost modeled via `sacrifice_other` (land filter) +
+//! `sacrifice_other_count: 2`.
+//! GAP: "only during your upkeep and only if you control a Swamp" timing/
+//! condition not enforced.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -34,9 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Sacrifice two lands: Return this card from your graveyard to the battlefield. Activate only during your upkeep and only if you control a Swamp.".into(),
                 cost: ActivationCost {
+                    sacrifice_other: Some(arcana_core::targets::ObjectFilter {
+                        types: Some(TypeLine::LAND.into()),
+                        ..Default::default()
+                    }),
+                    sacrifice_other_count: 2,
                     ..ActivationCost::default()
                 },
-                // GAP: "sacrifice two lands" not in ActivationCost
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,

@@ -1054,6 +1054,22 @@ pub struct ActivationCost {
     /// [`Self::discard_other`]; an empty hand still pays the cost
     /// (discarding zero cards).
     pub discard_hand: bool,
+    /// Number of permanents to sacrifice for the [`Self::sacrifice_other`]
+    /// cost. `0` or `1` means one permanent (back-compat default); `N > 1`
+    /// expresses "sacrifice N [filtered]" — legal-action enumeration emits
+    /// one activation per N-permanent combination of matching controlled
+    /// permanents (excluding the source). Ignored when `sacrifice_other`
+    /// is `None`. Mirrors [`Self::discard_other_count`].
+    pub sacrifice_other_count: u32,
+    /// "Discard N cards at random: …" (CR 701.8d). Unlike
+    /// [`Self::discard_other`] (a CHOSEN discard, enumerated one action
+    /// per candidate), the discarded cards are selected by the engine RNG
+    /// at activation time — the player has no choice. So legal-action
+    /// enumeration offers a SINGLE activation, gated on the hand holding
+    /// at least `N` cards, and the random selection + discard happens in
+    /// `apply_activate_ability` (like the tap / sacrifice-self / life
+    /// costs, not via an `AdditionalCostPayment`). `0` = no such cost.
+    pub discard_random: u32,
 }
 
 impl ActivationCost {

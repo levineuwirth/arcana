@@ -849,6 +849,31 @@ impl GameState {
         self.emit(GameEvent::LibraryShuffled { player });
     }
 
+    /// CR 701.8d — discard `n` cards chosen AT RANDOM from `player`'s hand,
+    /// using the engine's seeded RNG (and advancing the seed so repeated
+    /// random discards differ). Discards fewer than `n` only when the hand
+    /// is smaller. Each card routes through [`Self::discard_object`]
+    /// (Madness-aware). Returns the discarded ids. Used by the
+    /// "Discard a card at random:" activation cost
+    /// ([`crate::registry::ActivationCost::discard_random`]).
+    pub fn discard_at_random(&mut self, player: PlayerId, n: u32) -> Vec<ObjectId> {
+        use rand::seq::SliceRandom;
+        use rand::SeedableRng;
+        let mut ids: Vec<ObjectId> = self.objects
+            .objects_in_zone(Zone::Hand(player)).map(|o| o.id).collect();
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(
+            self.rng_seed.wrapping_add(0x9E37_79B9).wrapping_add(player as u64));
+        self.rng_seed = self.rng_seed
+            .wrapping_add(1)
+            .wrapping_mul(self.turn.turn_number.max(1) as u64);
+        ids.shuffle(&mut rng);
+        ids.truncate((n as usize).min(ids.len()));
+        for id in &ids {
+            self.discard_object(player, *id, crate::events::MoveCause::Cost);
+        }
+        ids
+    }
+
     // --- events -------------------------------------------------------------
 
     /// Append an event to the log. The trigger matcher picks events up from
@@ -1052,6 +1077,36 @@ mod tests {
     #[should_panic(expected = "at least one player")]
     fn new_with_zero_players_panics() {
         let _ = GameState::new(0, 0);
+    }
+
+    // --- discard_at_random ---------------------------------------------------
+
+    #[test]
+    fn discard_at_random_moves_cards_from_hand_to_graveyard() {
+        use crate::objects::{Characteristics, GameObject};
+        use crate::types::TypeLine;
+        let mut s = GameState::new(2, 7);
+        for _ in 0..3 {
+            let id = s.allocate_object_id();
+            let chars = Characteristics {
+                types: TypeLine::CREATURE.into(),
+                ..Default::default()
+            };
+            s.objects.insert(GameObject::new(id, 0, Zone::Hand(0), 1, chars));
+        }
+        assert_eq!(s.objects.count_in_zone(Zone::Hand(0)), 3);
+
+        // Discards exactly N, moving them hand→graveyard.
+        let discarded = s.discard_at_random(0, 2);
+        assert_eq!(discarded.len(), 2);
+        assert_eq!(s.objects.count_in_zone(Zone::Hand(0)), 1);
+        assert_eq!(s.objects.count_in_zone(Zone::Graveyard(0)), 2);
+
+        // Asking for more than remain discards only what's there (no panic).
+        let rest = s.discard_at_random(0, 5);
+        assert_eq!(rest.len(), 1);
+        assert_eq!(s.objects.count_in_zone(Zone::Hand(0)), 0);
+        assert_eq!(s.objects.count_in_zone(Zone::Graveyard(0)), 3);
     }
 
     // --- player access -------------------------------------------------------

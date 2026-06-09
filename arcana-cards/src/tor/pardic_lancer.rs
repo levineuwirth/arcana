@@ -1,8 +1,7 @@
 //! Pardic Lancer — `{4}{R}` 3/2 red Human Barbarian. "Discard a card at random:
 //! This creature gets +1/+0 and gains first strike until end of turn."
 //!
-//! GAP: "Discard a card at random" activation cost not expressible via
-//! ActivationCost.
+//! "Discard a card at random" cost modeled via `discard_random: 1`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -36,7 +35,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Discard a card at random: This creature gets +1/+0 and gains first strike until end of turn.".into(),
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    discard_random: 1,
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -53,7 +55,6 @@ fn pump_with_first_strike(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Discard a card at random" activation cost not expressible.
     vec![Effect::Pump {
         target: ctx.source,
         power: 1,
