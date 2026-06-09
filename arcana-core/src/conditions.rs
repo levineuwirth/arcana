@@ -143,10 +143,99 @@ pub fn hand_empty(state: &GameState, you: PlayerId) -> bool {
     crate::script::hand_size(state, you) == 0
 }
 
-/// "if there are N or more cards in your graveyard" (threshold/delirium
-/// counts use a filtered graveyard — see [`crate::script::graveyard_matching`]).
+/// "if there are N or more cards in your graveyard" (threshold).
 pub fn graveyard_at_least(state: &GameState, you: PlayerId, n: u32) -> bool {
     crate::script::graveyard_size(state, you) >= n
+}
+
+/// "if there are N or more [filter] cards in your graveyard" — the
+/// filtered sibling of [`graveyard_at_least`] ("three or more creature
+/// cards", "three or more instant and/or sorcery cards", "six or more
+/// permanent cards"). Build the filter from the card types the clause
+/// names; a "permanent card" is any of artifact/creature/enchantment/
+/// land/planeswalker/battle, expressed with `with_types_any`.
+pub fn graveyard_matching_at_least(
+    state: &GameState,
+    you: PlayerId,
+    filter: &ObjectFilter,
+    n: u32,
+) -> bool {
+    crate::script::graveyard_matching(state, filter, you, you) >= n
+}
+
+/// "if there is a [filter] card in your graveyard" (one or more).
+pub fn graveyard_has(state: &GameState, you: PlayerId, filter: &ObjectFilter) -> bool {
+    graveyard_matching_at_least(state, you, filter, 1)
+}
+
+/// "if there are N or more cards with subtype `subtype` in your
+/// graveyard" — resolves the name via the registry interner (the
+/// graveyard sibling of [`you_control_subtype_at_least`]; `false` for a
+/// never-interned name). For "an Elf card", "a Lesson card", "a Desert
+/// card in your graveyard".
+pub fn graveyard_subtype_at_least(
+    state: &GameState,
+    reg: &CardRegistry,
+    you: PlayerId,
+    subtype: &str,
+    n: u32,
+) -> bool {
+    match reg.interner().lookup(subtype) {
+        Some(sym) => crate::script::graveyard_matching(
+            state,
+            &ObjectFilter::new().with_subtype_sym(sym),
+            you,
+            you,
+        ) >= n,
+        None => false,
+    }
+}
+
+/// "if there is a [subtype] card in your graveyard" — see
+/// [`graveyard_subtype_at_least`].
+pub fn graveyard_has_subtype(
+    state: &GameState,
+    reg: &CardRegistry,
+    you: PlayerId,
+    subtype: &str,
+) -> bool {
+    graveyard_subtype_at_least(state, reg, you, subtype, 1)
+}
+
+/// CR 702.84 — the number of distinct CARD TYPES among cards in your
+/// graveyard (artifact, battle, creature, enchantment, instant, kindred,
+/// land, planeswalker, sorcery). The raw count behind [`delirium`].
+pub fn graveyard_card_type_count(state: &GameState, you: PlayerId) -> u32 {
+    use crate::types::TypeLine;
+    const CARD_TYPES: u16 = TypeLine::CREATURE
+        | TypeLine::INSTANT
+        | TypeLine::SORCERY
+        | TypeLine::ENCHANTMENT
+        | TypeLine::ARTIFACT
+        | TypeLine::LAND
+        | TypeLine::PLANESWALKER
+        | TypeLine::KINDRED
+        | TypeLine::BATTLE;
+    if !valid(state, you) {
+        return 0;
+    }
+    let union = state
+        .objects
+        .objects_in_zone(Zone::Graveyard(you))
+        .fold(0u16, |acc, o| acc | o.characteristics.types.0);
+    (union & CARD_TYPES).count_ones()
+}
+
+/// "if there are four or more card types among cards in your graveyard"
+/// (delirium).
+pub fn delirium(state: &GameState, you: PlayerId) -> bool {
+    graveyard_card_type_count(state, you) >= 4
+}
+
+/// "if an opponent has N or more cards in their graveyard" — true if ANY
+/// player other than `you` meets the threshold.
+pub fn an_opponent_graveyard_at_least(state: &GameState, you: PlayerId, n: u32) -> bool {
+    (0..state.num_players()).any(|p| p != you && crate::script::graveyard_size(state, p) >= n)
 }
 
 /// "if [this permanent] has a [kind] counter on it" (≥1). Uses the
@@ -321,5 +410,47 @@ mod tests {
         assert!(!you_control_subtype_at_least(&s, &reg, 1, "Gate", 2));
         // A never-interned subtype can't be on any permanent → false, no panic.
         assert!(!you_control_subtype(&s, &reg, 0, "Sliver"));
+    }
+
+    #[test]
+    fn graveyard_filter_delirium_and_opponent_predicates() {
+        use crate::objects::GameObject;
+        use crate::types::{SubtypeSet, TypeLine};
+        let mut reg = CardRegistry::new();
+        let elf = reg.interner_mut().intern("Elf");
+        let mut s = GameState::new(2, 0);
+        let put_gy = |s: &mut GameState, owner: PlayerId, types: TypeLine, subs: SubtypeSet| {
+            let id = s.allocate_object_id();
+            let chars = Characteristics { types, subtypes: subs, ..Default::default() };
+            let mut o = GameObject::new(id, owner, Zone::Graveyard(owner), 0, chars);
+            o.controller = owner;
+            s.objects.insert(o);
+        };
+        let none = SubtypeSet::default();
+        let mut elf_sub = SubtypeSet::default();
+        elf_sub.0.insert(elf);
+        // Your graveyard: 3 creature cards (one an Elf), 1 instant, 1 land.
+        put_gy(&mut s, 0, TypeLine::CREATURE.into(), elf_sub);
+        put_gy(&mut s, 0, TypeLine::CREATURE.into(), none.clone());
+        put_gy(&mut s, 0, TypeLine::CREATURE.into(), none.clone());
+        put_gy(&mut s, 0, TypeLine::INSTANT.into(), none.clone());
+        put_gy(&mut s, 0, TypeLine::LAND.into(), none.clone());
+        let creatures = ObjectFilter::new().with_types(TypeLine::CREATURE.into());
+        assert!(graveyard_matching_at_least(&s, 0, &creatures, 3));
+        assert!(!graveyard_matching_at_least(&s, 0, &creatures, 4));
+        assert!(graveyard_has(&s, 0, &creatures));
+        // Subtype-in-graveyard via the interner.
+        assert!(graveyard_has_subtype(&s, &reg, 0, "Elf"));
+        assert!(!graveyard_has_subtype(&s, &reg, 0, "Goblin"));
+        // Delirium: creature + instant + land = 3 types → not yet.
+        assert_eq!(graveyard_card_type_count(&s, 0), 3);
+        assert!(!delirium(&s, 0));
+        put_gy(&mut s, 0, TypeLine::ENCHANTMENT.into(), none.clone());
+        assert!(delirium(&s, 0)); // four distinct card types now
+        // Opponent graveyard threshold.
+        assert!(!an_opponent_graveyard_at_least(&s, 0, 1));
+        put_gy(&mut s, 1, TypeLine::SORCERY.into(), none);
+        assert!(an_opponent_graveyard_at_least(&s, 0, 1));
+        assert!(!an_opponent_graveyard_at_least(&s, 0, 2));
     }
 }
