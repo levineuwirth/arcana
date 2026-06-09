@@ -1,8 +1,5 @@
 //! Sterling Keykeeper — `{1}{W}` 2/2 white Human Mercenary. "{2}, {T}: Tap
 //! target non-Mount creature."
-//!
-//! Note: "non-Mount" subtype filter not expressible with available filters;
-//! using generic creature target as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,13 +9,16 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sterling Keykeeper");
     let human = reg.interner_mut().intern("Human");
     let mercenary = reg.interner_mut().intern("Mercenary");
+    let mount = reg.interner_mut().intern("Mount");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(mercenary);
@@ -41,8 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     tap: true,
                     ..ActivationCost::default()
                 },
-                // GAP: no subtype-exclusion filter for "non-Mount"; using creature target.
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_subtype_sym(mount),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

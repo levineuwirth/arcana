@@ -5,10 +5,8 @@
 //!
 //! X is counted at resolution via `script::count_matching` with
 //! `ObjectFilter::creature().attacking_you_only()`. The combat-damage
-//! prevention is expressed with a source-filtered `PreventDamageFrom`.
-//! GAP: the prevention should exempt Spiders ("non-Spider creatures")
-//! — ObjectFilter has no without-subtype predicate; all creatures'
-//! combat damage is prevented.
+//! prevention is expressed with a source-filtered `PreventDamageFrom`
+//! whose filter exempts Spiders via `without_subtype_sym`.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -64,9 +62,9 @@ fn resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Eff
     let mut effects: Vec<Effect> = (0..x)
         .map(|_| Effect::CreateToken { controller: entry.controller, token: token.clone() })
         .collect();
-    // GAP: should be "non-Spider creatures" — no without-subtype predicate.
+    // Prevent all combat damage dealt by non-Spider creatures.
     effects.push(Effect::PreventDamageFrom {
-        source_filter: ObjectFilter::creature(),
+        source_filter: ObjectFilter::creature().without_subtype_sym(spider),
         target_filter: TargetFilter::Player,
         amount: None,
         duration: ReplacementDuration::EndOfTurn,

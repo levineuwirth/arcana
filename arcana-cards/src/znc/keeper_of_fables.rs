@@ -1,6 +1,7 @@
 //! Keeper of Fables — `{3}{G}{G}` 4/5 green Cat. "Whenever one or more
 //! non-Human creatures you control deal combat damage to a player, draw a
-//! card." DamageDealt trigger; draw a card.
+//! card." DamageDealt trigger (Human exclusion via `without_subtype_sym`);
+//! draw a card.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -17,6 +18,7 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Keeper of Fables");
     let cat = reg.interner_mut().intern("Cat");
+    let human = reg.interner_mut().intern("Human");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(cat);
     let chars = Characteristics {
@@ -36,7 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
                     source_filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                        .controlled_by(ControllerConstraint::You)
+                        .without_subtype_sym(human),
                     target_filter: TargetFilter::Player,
                     combat_only: true,
                 },
@@ -54,8 +57,5 @@ fn on_combat_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: filter should exclude Human creatures; ObjectFilter has no
-    // "without subtype" refinement. Fires for all friendly creatures hitting
-    // a player (over-broad).
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

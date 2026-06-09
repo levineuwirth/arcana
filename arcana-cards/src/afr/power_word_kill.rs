@@ -12,6 +12,10 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Power Word Kill");
+    let angel = reg.interner_mut().intern("Angel");
+    let demon = reg.interner_mut().intern("Demon");
+    let devil = reg.interner_mut().intern("Devil");
+    let dragon = reg.interner_mut().intern("Dragon");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{B}").expect("valid cost")),
@@ -23,9 +27,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target non-Angel, non-Demon, non-Devil, non-Dragon creature.".into(),
-                // GAP: ObjectFilter has no "without subtype" refinement; cannot restrict target to non-Angel/Demon/Devil/Dragon.
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .without_subtype_sym(angel)
+                            .without_subtype_sym(demon)
+                            .without_subtype_sym(devil)
+                            .without_subtype_sym(dragon),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

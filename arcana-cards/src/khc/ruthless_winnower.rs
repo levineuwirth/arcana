@@ -56,15 +56,17 @@ fn on_each_upkeep(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Each player sacrifices a non-Elf creature
-    let non_elf_filter = ObjectFilter::creature()
-        .without_types(TypeLine::LAND.into()); // best-effort: no "not subtype" ObjectFilter
-    // GAP: "non-Elf" subtype exclusion not in ObjectFilter API
+    // Each player sacrifices a non-Elf creature ("Elf" interned in
+    // register; on a failed lookup skip the exclusion).
+    let mut non_elf_filter = ObjectFilter::creature();
+    if let Some(elf) = reg.interner().lookup("Elf") {
+        non_elf_filter = non_elf_filter.without_subtype_sym(elf);
+    }
     let players = script::all_players(state);
     players.into_iter()
         .map(|p| Effect::Sacrifice {
             player: p,
-            filter: ObjectFilter::creature(),
+            filter: non_elf_filter.clone(),
             count: 1,
         })
         .collect()

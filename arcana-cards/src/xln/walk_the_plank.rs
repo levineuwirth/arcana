@@ -7,12 +7,14 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Walk the Plank");
-    let _merfolk = reg.interner_mut().intern("Merfolk");
+    let merfolk = reg.interner_mut().intern("Merfolk");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{B}{B}").expect("valid cost")),
@@ -23,10 +25,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target non-Merfolk creature.".into(),
-            // GAP: ObjectFilter has no subtype-exclusion predicate to
-            // express "non-Merfolk"; closest available is target
-            // creature.
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().without_subtype_sym(merfolk),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),

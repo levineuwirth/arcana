@@ -1,11 +1,7 @@
 //! Anowon, the Ruin Sage — `{3}{B}{B}` 4/3 black Legendary Vampire Shaman.
 //! "At the beginning of your upkeep, each player sacrifices a non-Vampire
-//! creature."
-//!
-//! GAP: ObjectFilter has no `.without_subtypes()` or `.without_subtype()`
-//! method; only `.with_subtypes_any()` (SUBTYPE OR) is available. The
-//! "non-Vampire creature" filter cannot be expressed, so the sacrifice
-//! filter is approximated with ObjectFilter::creature() (all creatures).
+//! creature." The non-Vampire sacrifice filter is expressed with
+//! `ObjectFilter::without_subtype_sym`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -59,16 +55,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn each_player_sacrifices_creature(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no .without_subtype() — cannot filter "non-Vampire
-    // creature"; using ObjectFilter::creature() as approximation (sacrifices
-    // any creature, including Vampires).
+    // Non-Vampire creature ("Vampire" interned in register; on a failed
+    // lookup skip the exclusion — never-interned subtype is on no object).
+    let mut non_vampire = ObjectFilter::creature();
+    if let Some(vampire) = reg.interner().lookup("Vampire") {
+        non_vampire = non_vampire.without_subtype_sym(vampire);
+    }
     let players = script::all_players(state);
     let effects: Vec<Effect> = players.into_iter().map(|p| {
         Effect::Sacrifice {
             player: p,
-            filter: ObjectFilter::creature(),
+            filter: non_vampire.clone(),
             count: 1,
         }
     }).collect();

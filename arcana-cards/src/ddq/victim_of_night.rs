@@ -1,6 +1,5 @@
 //! Victim of Night — `{B}{B}` instant. "Destroy target non-Vampire,
-//! non-Werewolf, non-Zombie creature." ObjectFilter has no "without
-//! subtype" refinement; GAP the exclusion.
+//! non-Werewolf, non-Zombie creature."
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -8,11 +7,16 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Victim of Night");
+    let vampire = reg.interner_mut().intern("Vampire");
+    let werewolf = reg.interner_mut().intern("Werewolf");
+    let zombie = reg.interner_mut().intern("Zombie");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{B}{B}").expect("valid cost")),
@@ -23,9 +27,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                // GAP: ObjectFilter has no subtype-exclusion refinement; cannot restrict to non-Vampire/Werewolf/Zombie.
                 text: "Destroy target non-Vampire, non-Werewolf, non-Zombie creature.".into(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .without_subtype_sym(vampire)
+                            .without_subtype_sym(werewolf)
+                            .without_subtype_sym(zombie),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),

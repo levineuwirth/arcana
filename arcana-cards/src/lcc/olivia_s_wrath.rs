@@ -41,13 +41,15 @@ fn resolve(
     let vampire_filter = script::subtype_filter(reg, "Vampire")
         .controlled_by(ControllerConstraint::You);
     let x = script::count_matching(state, &vampire_filter, entry.controller) as i32;
-    // 'Each non-Vampire creature' — enumerate all creatures and exclude
-    // Vampire subtype via the filter. GAP: 'non-Vampire' subtype-exclusion
-    // refinement isn't a builder, so we approximate by hitting every
-    // creature (Vampires included).
+    // 'Each non-Vampire creature' — subtype exclusion ("Vampire" interned
+    // in register; on a failed lookup skip the exclusion).
+    let mut non_vampire = ObjectFilter::creature();
+    if let Some(vampire) = reg.interner().lookup("Vampire") {
+        non_vampire = non_vampire.without_subtype_sym(vampire);
+    }
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature(),
+        &non_vampire,
         entry.controller,
     );
     vec![Effect::ForEach {

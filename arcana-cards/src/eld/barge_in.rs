@@ -1,8 +1,7 @@
 //! Barge In — `{R}` instant. "Target attacking creature gets +2/+2
 //! until end of turn. Each attacking non-Human creature gains trample
 //! until end of turn."
-//! GAP: "non-Human" — ObjectFilter has no subtype-exclusion builder;
-//! trample is granted to each attacking creature (Humans included).
+//! "non-Human" wired via ObjectFilter::without_subtype_sym.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -43,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
@@ -54,13 +53,12 @@ fn resolve(
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }];
-    // GAP: "non-Human" exclusion not expressible (no subtype-exclusion
-    // builder); granting trample to each attacking creature.
-    let attackers = script::ids_matching(
-        state,
-        &ObjectFilter::creature().attacking_only(),
-        entry.controller,
-    );
+    // "non-Human": exclude the Human subtype via without_subtype_sym.
+    let mut attacking_non_human = ObjectFilter::creature().attacking_only();
+    if let Some(human) = reg.interner().lookup("Human") {
+        attacking_non_human = attacking_non_human.without_subtype_sym(human);
+    }
+    let attackers = script::ids_matching(state, &attacking_non_human, entry.controller);
     for aid in attackers {
         effects.push(Effect::GrantKeyword {
             target: aid,

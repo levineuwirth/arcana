@@ -1,8 +1,9 @@
 //! Sage of the Falls — `{4}{U}` 2/5 blue Merfolk Wizard. "Whenever this creature
 //! or another non-Human creature you control enters, you may draw a card. If
 //! you do, discard a card." ZoneChange trigger on non-Human friendly creature
-//! ETB; loot (draw then discard). GAP: "you may draw" — optional draw not
-//! expressible; emit draw+discard unconditionally.
+//! ETB (the Human exclusion via `without_subtype_sym`; the Sage itself is a
+//! Merfolk so it matches); loot (draw then discard). GAP: "you may draw" —
+//! optional draw not expressible; emit draw+discard unconditionally.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -21,6 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sage of the Falls");
     let merfolk = reg.interner_mut().intern("Merfolk");
     let wizard = reg.interner_mut().intern("Wizard");
+    let human = reg.interner_mut().intern("Human");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(merfolk);
     subtypes.0.insert(wizard);
@@ -41,7 +43,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                        .controlled_by(ControllerConstraint::You)
+                        .without_subtype_sym(human),
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -60,8 +63,6 @@ fn on_creature_etb(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "you may draw a card" — optional; emit unconditionally.
-    // GAP: filter should exclude Human creatures; ObjectFilter has no
-    // "without subtype" refinement; trigger fires for all friendly creatures.
     vec![
         Effect::DrawCards { player: trig.controller, count: 1 },
         Effect::Discard {

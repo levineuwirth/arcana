@@ -1,6 +1,6 @@
 //! Tranquil Domain — `{1}{G}` instant. "Destroy all non-Aura
-//! enchantments." GAP: 'non-Aura' subtype filter (without_subtype)
-//! not in ObjectFilter refinements; destroy all enchantments.
+//! enchantments." The Aura exclusion is expressed with
+//! `ObjectFilter::without_subtype_sym`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -14,6 +14,7 @@ use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tranquil Domain");
+    let _aura = reg.interner_mut().intern("Aura");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{G}").expect("valid cost")),
@@ -35,14 +36,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: without_subtype('Aura') filter not in ObjectFilter refinements.
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
-        entry.controller,
-    );
+    // Non-Aura enchantments ("Aura" interned in register; on a failed
+    // lookup skip the exclusion).
+    let mut filter = ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into());
+    if let Some(aura) = reg.interner().lookup("Aura") {
+        filter = filter.without_subtype_sym(aura);
+    }
+    let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),

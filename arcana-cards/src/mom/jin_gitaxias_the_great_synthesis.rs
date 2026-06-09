@@ -16,9 +16,10 @@
 //!     GAP: "no maximum hand size" static continuous effect not expressible.
 //!     Draw count is DYNAMIC — script::hand_size used.
 //!   II — Return all non-Phyrexian creatures to their owners' hands.
-//!     GAP: "non-Phyrexian" subtype filter; modeled as returning all creatures without
-//!     Phyrexian subtype (using ObjectFilter::without_subtype — not available; GAP).
-//!     Modeled as returning all creatures (over-fires, returning Phyrexians too).
+//!     GAP: chapter not wired — the Saga chapter triggers (lore counters + I/II/III)
+//!     are not authored on this DFC at all (see back-face GAP below). The
+//!     "non-Phyrexian" exclusion itself is now expressible
+//!     (ObjectFilter::without_subtype_sym) once the chapter is wired.
 //!   III — You may cast any number of spells from your hand without paying their mana
 //!     costs. Exile this Saga, then return it to the battlefield (front face up).
 //!     GAP: "cast any number of spells for free" not expressible.

@@ -22,10 +22,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(turtle);
     // The target is "another target attacking non-Human creature" — the attacking
-    // restriction is wired via .attacking_only(); GAP: the non-Human subtype
-    // exclusion is not expressible (ObjectFilter has no "without subtype"
-    // refinement).
-    let _ = human;
+    // restriction is wired via .attacking_only() and the non-Human subtype
+    // exclusion via .without_subtype_sym(human).
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{U}").expect("valid cost")),
@@ -46,8 +44,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    // GAP: "non-Human" subtype exclusion not expressible
-                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .attacking_only()
+                            .without_subtype_sym(human),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

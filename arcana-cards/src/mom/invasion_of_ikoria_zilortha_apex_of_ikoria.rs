@@ -10,8 +10,7 @@
 //! combat damage as though it weren't blocked.
 //!
 //! # GAPs
-//! - "non-Human" filter: `ObjectFilter` has no `.without_subtypes()` method; the
-//!   ETB tutor cannot restrict to non-Human. Searching for any creature instead.
+//! - "non-Human" ETB tutor filter wired via `ObjectFilter::without_subtype_sym`.
 //! - "mana value X or less" — X is the variable cost paid at cast time; X is not
 //!   accessible in the effect resolver. Searching for any creature (no CMC cap).
 //! - "Search your library and/or graveyard" — only library tutor is available.
@@ -89,14 +88,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_resolve(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: non-Human filter not available (no ObjectFilter::without_subtypes).
+    // "non-Human" wired via without_subtype_sym.
     // GAP: mana value X or less — X not accessible at resolve time.
     // GAP: AND/OR graveyard search — only library search is available.
+    let mut filter = ObjectFilter::creature();
+    if let Some(human) = reg.interner().lookup("Human") {
+        filter = filter.without_subtype_sym(human);
+    }
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
-        filter: ObjectFilter::creature(),
+        filter,
         tapped: false,
     }]
 }

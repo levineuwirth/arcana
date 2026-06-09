@@ -20,8 +20,7 @@
 //!   transform-all is not expressible (Transform takes a single target id). Incubate x5 modeled;
 //!   transform-all is a GAP.
 //! - Back face Chapter III: "Destroy all other permanents except artifacts, lands, Phyrexians"
-//!   — Phyrexian subtype filter used where available; "except Phyrexians" requires subtype exclusion
-//!   which is not directly modeled. Best-effort: destroy non-artifact, non-land permanents.
+//!   — wired: non-artifact, non-land, and `.without_subtype_sym(Phyrexian)`.
 //! - Back face Chapter III: "Exile this Saga, then return it front face up" — modeled as
 //!   Transform (back to front).
 //! - Back face's triggered abilities (Chapters) are authored via the CardDefinition and will be
@@ -205,12 +204,15 @@ fn chapter_ii(
 fn chapter_iii(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Destroy all other permanents except artifacts, lands, and Phyrexians.
-    // GAP: "except Phyrexians" subtype exclusion not expressible; excluding artifacts and lands only.
-    let filter = ObjectFilter::new()
+    // "except Phyrexians" wired via without_subtype_sym.
+    let mut filter = ObjectFilter::new()
         .without_types(TypeLine(TypeLine::ARTIFACT | TypeLine::LAND));
+    if let Some(phyrexian) = reg.interner().lookup("Phyrexian") {
+        filter = filter.without_subtype_sym(phyrexian);
+    }
     let ids = script::ids_matching(state, &filter, trig.controller);
     // Exclude self
     let mut effects: Vec<Effect> = ids

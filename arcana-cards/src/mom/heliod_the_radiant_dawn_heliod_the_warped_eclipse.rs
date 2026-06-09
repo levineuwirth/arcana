@@ -9,8 +9,6 @@
 //! Spells you cast cost {1} less for each card opponents drew this turn. (GAP: cost reduction not modeled)
 //!
 //! GAP: {U/P} hybrid/Phyrexian mana in activated ability cost — using {U} as approximation.
-//! GAP: "not a God" subtype exclusion on graveyard target — ObjectFilter has no without_subtypes;
-//!      using enchantment card filter only (may match God enchantment cards incorrectly).
 //! GAP: Back face static abilities (flash grant, cost reduction) not modeled.
 //! GAP: Back-face-only triggered/static abilities not modeled.
 
@@ -69,10 +67,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // ETB trigger: return target enchantment card from graveyard to hand
-    // GAP: "not a God" filter not expressible (no without_subtypes on ObjectFilter)
+    // ETB trigger: return target non-God enchantment card from graveyard to hand
     let enchantment_filter = ObjectFilter::new()
-        .with_types(TypeLine::ENCHANTMENT.into());
+        .with_types(TypeLine::ENCHANTMENT.into())
+        .without_subtype_sym(god_sub);
 
     reg.register(
         CardDefinition::new(name, chars)

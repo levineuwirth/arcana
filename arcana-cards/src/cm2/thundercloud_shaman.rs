@@ -55,16 +55,14 @@ fn on_etb(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<E
     if n == 0 {
         return Vec::new();
     }
-    // All non-Giant creatures on the battlefield
-    let non_giant_filter = ObjectFilter::creature().without_types(TypeLine::CREATURE.into());
-    // We want all creatures that are NOT Giants; use a custom approach:
-    // ids_matching finds all creatures; we deal damage to non-Giant creatures.
-    // Non-Giant means the creature doesn't have the Giant subtype — we can't
-    // filter by "lacks subtype" directly, so GAP the subtype-negation filter
-    // and use ForEach over all creatures as best-effort.
-    // GAP: ObjectFilter lacks a "without_subtypes" builder; dealing damage to
-    // all creatures instead of non-Giants only.
-    let targets = script::ids_matching(state, &ObjectFilter::creature(), trig.controller);
+    // All non-Giant creatures on the battlefield ("Giant" interned in
+    // register; on a failed lookup skip the exclusion — never-interned
+    // subtype is on no object).
+    let mut non_giant_filter = ObjectFilter::creature();
+    if let Some(giant) = reg.interner().lookup("Giant") {
+        non_giant_filter = non_giant_filter.without_subtype_sym(giant);
+    }
+    let targets = script::ids_matching(state, &non_giant_filter, trig.controller);
     vec![Effect::ForEach {
         targets,
         effect: Box::new(Effect::DealDamage {

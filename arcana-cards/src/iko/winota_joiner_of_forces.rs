@@ -22,10 +22,10 @@ use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Winota, Joiner of Forces");
-    let _human = reg.interner_mut().intern("Human");
+    let human = reg.interner_mut().intern("Human");
     let warrior = reg.interner_mut().intern("Warrior");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(_human);
+    subtypes.0.insert(human);
     subtypes.0.insert(warrior);
     let chars = Characteristics {
         name,
@@ -43,8 +43,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::CreatureAttacks {
+                    // "non-Human creature you control" — Human exclusion via
+                    // without_subtype_sym.
                     filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                        .controlled_by(ControllerConstraint::You)
+                        .without_subtype_sym(human),
                 },
                 intervening_if: None,
                 effect: attack_trigger,
@@ -60,7 +63,6 @@ fn attack_trigger(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: filter "non-Human" not available in trigger filter
     // GAP: "look at top 6, may put Human onto battlefield tapped+attacking, rest random bottom"
     let human_filter = script::subtype_filter(reg, "Human");
     vec![Effect::TutorToBattlefield {

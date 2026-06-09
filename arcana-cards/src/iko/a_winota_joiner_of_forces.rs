@@ -43,9 +43,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::CreatureAttacks {
+                    // "non-Human creature you control" — Human exclusion via
+                    // without_subtype_sym. (Previously this had
+                    // .without_types(CREATURE) on a creature() filter, which is
+                    // unsatisfiable — the trigger could never fire.)
                     filter: ObjectFilter::creature()
                         .controlled_by(ControllerConstraint::You)
-                        .without_types(TypeLine::CREATURE.into()), // GAP: "non-Human" requires subtype exclusion not available; using creature filter as best-effort
+                        .without_subtype_sym(human),
                 },
                 intervening_if: None,
                 effect: on_nonhuman_attacks,
@@ -59,17 +63,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn on_nonhuman_attacks(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "look at top 6, put Human creature from among them onto battlefield tapped and
     // attacking" is not in the engine effect catalog. Using TutorToBattlefield for a Human
     // creature as best-effort (loses top-6 restriction and attack-with-it constraint).
     // GAP: GrantKeyword(Indestructible) requires the just-created token id, not available
     // without a two-step delayed effect.
+    let mut filter = ObjectFilter::creature();
+    if let Some(human) = reg.interner().lookup("Human") {
+        filter = filter.with_subtype_sym(human);
+    }
     vec![
         Effect::TutorToBattlefield {
             player: trig.controller,
-            filter: ObjectFilter::creature(),
+            filter,
             tapped: true,
         },
     ]

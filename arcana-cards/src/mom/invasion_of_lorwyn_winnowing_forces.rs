@@ -8,9 +8,6 @@
 //! Power and toughness are each equal to the number of lands you control.
 //!
 //! GAPs:
-//! - "non-Elf" restriction on the target is not enforceable in TargetFilter
-//!   (no subtype-exclusion filter); we target any opponent creature and apply
-//!   the power check at resolution. The non-Elf restriction is a fidelity gap.
 //! - "power X or less, where X = lands you control" power cap is also applied
 //!   at resolution via script::power_of + script::count_matching.
 //! - Back face "P/T = number of lands you control" — dynamic static layer not
@@ -68,10 +65,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // ETB targets an opponent creature (non-Elf restriction is a GAP at
-    // targeting time; applied partially at resolution via power check).
+    // ETB targets an opponent non-Elf creature ("power X or less" gate is
+    // applied at resolution via power check).
     let etb_target = TargetRequirement {
-        filter: TargetFilter::Creature,
+        filter: TargetFilter::Permanent(
+            ObjectFilter::creature().without_subtype_sym(elf_sub),
+        ),
         count: TargetCount::Exactly(1),
         controller: Some(ControllerConstraint::Opponent),
     };
@@ -114,7 +113,5 @@ fn etb_resolve(
     if target_power > x as i32 {
         return Vec::new();
     }
-    // GAP: non-Elf check not enforced at targeting or resolution (no subtype
-    // exclusion available via script API for opponent's creatures).
     vec![Effect::DestroyPermanent { target: *id }]
 }

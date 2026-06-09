@@ -1,7 +1,5 @@
 //! Avacynian Priest — `{1}{W}` 1/2 white Human Cleric.
 //! "{1}, {T}: Tap target non-Human creature."
-//! GAP: "non-Human" filter — ObjectFilter has no "without subtype" method.
-//! Using target_creature() as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +9,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,8 +40,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     tap: true,
                     ..ActivationCost::default()
                 },
-                // GAP: "non-Human" filter not available; using target_creature().
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_subtype_sym(human),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
