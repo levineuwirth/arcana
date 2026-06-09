@@ -445,6 +445,10 @@ pub struct ObjectFilter {
     /// the AND-only [`Self::subtypes`] can't express the disjunction.
     /// An empty Vec matches no object.
     pub subtypes_any: Option<Vec<SmallString>>,
+    /// No subtype here may be on the object. "non-Human creature" =
+    /// one entry; Power Word Kill's "non-Angel, non-Demon, non-Devil,
+    /// non-Dragon creature" pushes four.
+    pub not_subtypes: Option<Vec<SmallString>>,
     /// Every supertype here must be set on the object (AND). Use the
     /// bit constants on [`SupertypeSet`]: `SupertypeSet::LEGENDARY`,
     /// `SupertypeSet::BASIC`, `SupertypeSet::SNOW`, `SupertypeSet::WORLD`.
@@ -583,6 +587,13 @@ impl ObjectFilter {
         self.subtypes_any = Some(syms);
         self
     }
+    /// Builder: exclude a subtype (AND if called repeatedly).
+    /// "non-Human creature" = `creature().without_subtype_sym(human)`;
+    /// chain for "non-Angel, non-Demon, non-Devil, non-Dragon".
+    pub fn without_subtype_sym(mut self, sym: SmallString) -> Self {
+        self.not_subtypes.get_or_insert_with(Vec::new).push(sym);
+        self
+    }
     /// Builder: require supertype bits (AND). "Legendary creature" =
     /// `creature().with_supertypes(SupertypeSet(SupertypeSet::LEGENDARY))`.
     pub fn with_supertypes(mut self, st: SupertypeSet) -> Self {
@@ -717,6 +728,12 @@ impl ObjectFilter {
         // Empty Vec matches no object (consistent with types_any=0). ---
         if let Some(any) = &self.subtypes_any {
             if !any.iter().any(|s| obj.characteristics.subtypes.contains(*s)) {
+                return false;
+            }
+        }
+        // --- subtype exclusion: none of these may be present ---
+        if let Some(excluded) = &self.not_subtypes {
+            if excluded.iter().any(|s| obj.characteristics.subtypes.contains(*s)) {
                 return false;
             }
         }
@@ -1400,6 +1417,50 @@ mod tests {
             .without_supertypes(SupertypeSet::new().with(SupertypeSet::LEGENDARY));
         assert!(!nonlegendary_only.matches(s.objects.get(legendary_id).unwrap(), &s, 0));
         assert!( nonlegendary_only.matches(s.objects.get(mundane_id).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_subtype_exclusion() {
+        let mut s = GameState::new(2, 0);
+        // SmallString ids are arbitrary in a bare test state; 7 = "Human",
+        // 9 = "Wizard" by fiat.
+        let human: SmallString = 7;
+        let wizard: SmallString = 9;
+        let mk = |state: &mut GameState, subs: &[SmallString]| -> ObjectId {
+            let id = state.allocate_object_id();
+            let mut st = SubtypeSet::default();
+            for s in subs { st.0.insert(*s); }
+            let chars = Characteristics {
+                types: TypeLine::CREATURE.into(),
+                subtypes: st,
+                ..Default::default()
+            };
+            state.objects.insert(GameObject::new(id, 0, Zone::Battlefield, 1, chars));
+            id
+        };
+        let human_wizard = mk(&mut s, &[human, wizard]);
+        let plain_wizard = mk(&mut s, &[wizard]);
+        let untyped      = mk(&mut s, &[]);
+
+        let non_human = ObjectFilter::creature().without_subtype_sym(human);
+        assert!(!non_human.matches(s.objects.get(human_wizard).unwrap(), &s, 0));
+        assert!( non_human.matches(s.objects.get(plain_wizard).unwrap(), &s, 0));
+        assert!( non_human.matches(s.objects.get(untyped).unwrap(),      &s, 0));
+
+        // Chained exclusions AND together (Power Word Kill shape).
+        let neither = ObjectFilter::creature()
+            .without_subtype_sym(human)
+            .without_subtype_sym(wizard);
+        assert!(!neither.matches(s.objects.get(plain_wizard).unwrap(), &s, 0));
+        assert!( neither.matches(s.objects.get(untyped).unwrap(),      &s, 0));
+
+        // Composes with a positive subtype requirement: "non-Human Wizard".
+        let nonhuman_wizard = ObjectFilter::creature()
+            .with_subtype_sym(wizard)
+            .without_subtype_sym(human);
+        assert!(!nonhuman_wizard.matches(s.objects.get(human_wizard).unwrap(), &s, 0));
+        assert!( nonhuman_wizard.matches(s.objects.get(plain_wizard).unwrap(), &s, 0));
+        assert!(!nonhuman_wizard.matches(s.objects.get(untyped).unwrap(),      &s, 0));
     }
 
     #[test]
