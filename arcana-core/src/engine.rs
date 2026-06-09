@@ -3017,6 +3017,10 @@ fn next_turn(state: &mut GameState) {
     // each PW's controller may activate exactly one loyalty ability
     // next turn.
     state.loyalty_activated_this_turn.clear();
+    // CR 603.7e — "this turn" delayed triggers that never fired lapse
+    // at the turn boundary ("when you next cast a creature spell this
+    // turn" with no such cast).
+    state.delayed_triggers.retain(|t| !t.expires_end_of_turn);
     // Phase A #6 — record where this turn's events start so per-turn
     // helpers (`script::*_this_turn`) only scan the live slice. Retain
     // the prior marker as last-turn's start so `script::*_last_turn`

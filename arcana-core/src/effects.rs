@@ -716,6 +716,51 @@ pub enum Effect {
         when: DelayedWhen,
         action: DelayedAction,
     },
+
+    /// "When you next cast a [kind] spell this turn, [rider]" — the
+    /// Saga-chapter family (Summon: Brynhildr / Fenrir / G.F. Cerberus,
+    /// Kumano Faces Kakkazan). Registers a one-shot end-of-turn-lapsing
+    /// [`DelayedTrigger`] on the matching cast; permanent-directed
+    /// riders (haste, +1/+1 counter) hop once more via
+    /// [`DelayedWhen::SelfResolvesToPermanent`] so they act on the
+    /// post-resolution battlefield object (CR 400.7 — new id), and
+    /// quietly lapse if the spell is countered.
+    NextCastThisTurn {
+        controller: PlayerId,
+        kind: NextCastKind,
+        rider: NextCastRider,
+    },
+}
+
+/// Spell shape for [`Effect::NextCastThisTurn`]. A small closed enum
+/// (not an `ObjectFilter`) so the effect stays `Copy + Serialize`.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum NextCastKind {
+    Creature,
+    InstantOrSorcery,
+    /// "instant or sorcery spell with mana value N or less" (Gadwick's
+    /// First Duel).
+    InstantOrSorceryMaxCmc(u32),
+    Noncreature,
+    Any,
+}
+
+/// What happens to the next matching cast for
+/// [`Effect::NextCastThisTurn`].
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum NextCastRider {
+    /// "it gains haste (until end of turn)" — granted when the spell
+    /// resolves into its battlefield permanent.
+    GainsHaste,
+    /// "that creature enters the battlefield with an additional +1/+1
+    /// counter" — added on entry (on-entry trigger approximation of
+    /// the enters-with replacement; same Phase-1 posture as the
+    /// pre-mill intervening-if gates).
+    EntersWithPlusOneCounter,
+    /// "copy it" (instant/sorcery riders).
+    Copy,
+    /// "copy it twice".
+    CopyTwice,
 }
 
 /// When a [`Effect::DelayedAction`] fires.
@@ -725,6 +770,13 @@ pub enum DelayedWhen {
     NextEndStep,
     /// "When that [object] dies."
     ThisDies,
+    /// When the scheduled STACK object resolves into a battlefield
+    /// permanent — matches the Stack→Battlefield `ZoneChange` of
+    /// `source` itself. The registered trigger lapses at end of turn
+    /// (a countered spell never resolves; its rider must not survive
+    /// into later turns). The action fns read the post-move id from
+    /// the firing event's `new_id`.
+    SelfResolvesToPermanent,
 }
 
 /// What a [`Effect::DelayedAction`] does to its `source` when it
@@ -747,6 +799,15 @@ pub enum DelayedAction {
     /// now + `DelayedAction::ReturnFromExileToBattlefield` (when
     /// `NextEndStep`) for the Cloudshift/Ghostway family.
     ReturnFromExileToBattlefield,
+    /// Grant haste until end of turn to the RESOLVED permanent (reads
+    /// the firing `ZoneChange`'s `new_id`; pair with
+    /// [`DelayedWhen::SelfResolvesToPermanent`]). "When you next cast
+    /// a creature spell this turn, it gains haste."
+    GrantHasteUntilEndOfTurn,
+    /// Put a +1/+1 counter on the RESOLVED permanent (same pairing).
+    /// "…that creature enters the battlefield with an additional
+    /// +1/+1 counter" — on-entry approximation of the replacement.
+    EnterWithPlusOneCounter,
 }
 
 // =============================================================================
@@ -1606,6 +1667,8 @@ impl Effect {
                         whose: crate::targets::ControllerConstraint::Any,
                     },
                     DelayedWhen::ThisDies => TriggerCondition::SelfDies,
+                    DelayedWhen::SelfResolvesToPermanent =>
+                        TriggerCondition::Custom(cond_self_zone_to_battlefield),
                 };
                 let effect_fn: crate::triggers::EffectFn = match action {
                     DelayedAction::Sacrifice => delayed_sacrifice,
@@ -1613,12 +1676,118 @@ impl Effect {
                     DelayedAction::ReturnToHand => delayed_return_hand,
                     DelayedAction::ReturnFromExileToBattlefield =>
                         delayed_return_exile_bf,
+                    DelayedAction::GrantHasteUntilEndOfTurn =>
+                        delayed_grant_haste_eot,
+                    DelayedAction::EnterWithPlusOneCounter =>
+                        delayed_enter_plus_one_counter,
                 };
-                state.register_delayed_trigger(DelayedTrigger::one_shot(
-                    *source, *controller, condition, effect_fn));
+                // A resolves-to-permanent watcher must lapse with the
+                // turn — a countered spell never resolves, and the
+                // rider it carries says "this turn".
+                let trig = if matches!(when, DelayedWhen::SelfResolvesToPermanent) {
+                    DelayedTrigger::one_shot_this_turn(
+                        *source, *controller, condition, effect_fn)
+                } else {
+                    DelayedTrigger::one_shot(
+                        *source, *controller, condition, effect_fn)
+                };
+                state.register_delayed_trigger(trig);
+            }
+
+            Effect::NextCastThisTurn { controller, kind, rider } => {
+                use crate::triggers::{DelayedTrigger, TriggerCondition};
+                let filter = match kind {
+                    NextCastKind::Creature =>
+                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                    NextCastKind::InstantOrSorcery =>
+                        ObjectFilter::new().with_types_any(
+                            TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+                    NextCastKind::InstantOrSorceryMaxCmc(n) =>
+                        ObjectFilter::new()
+                            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY))
+                            .with_max_cmc(*n),
+                    NextCastKind::Noncreature =>
+                        ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
+                    NextCastKind::Any => ObjectFilter::new(),
+                };
+                let condition = TriggerCondition::SpellCast {
+                    filter: Some(filter),
+                    caster: crate::targets::ControllerConstraint::Player(*controller),
+                };
+                let effect_fn: crate::triggers::EffectFn = match rider {
+                    NextCastRider::GainsHaste => next_cast_gains_haste,
+                    NextCastRider::EntersWithPlusOneCounter =>
+                        next_cast_enters_with_counter,
+                    NextCastRider::Copy => next_cast_copy,
+                    NextCastRider::CopyTwice => next_cast_copy_twice,
+                };
+                // source = NULL: the rider isn't tied to a permanent;
+                // the cast spell's id arrives in the firing event.
+                state.register_delayed_trigger(DelayedTrigger::one_shot_this_turn(
+                    crate::objects::NULL_OBJECT_ID, *controller, condition, effect_fn));
             }
         }
     }
+}
+
+/// [`DelayedWhen::SelfResolvesToPermanent`] — the scheduled stack
+/// object's own Stack→Battlefield move (CR 400.7: `object_id` is the
+/// pre-move id; the post-move id is in the event's `new_id`).
+fn cond_self_zone_to_battlefield(
+    ev: &crate::events::GameEvent, _s: &GameState, source: ObjectId,
+) -> bool {
+    matches!(ev, crate::events::GameEvent::ZoneChange {
+        object_id, to: crate::zones::Zone::Battlefield, ..
+    } if *object_id == source)
+}
+
+// Rider callbacks for [`Effect::NextCastThisTurn`]. Each fires on the
+// matching SpellCast; permanent-directed riders re-schedule onto the
+// spell's own resolution via DelayedWhen::SelfResolvesToPermanent.
+fn next_cast_gains_haste(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    let crate::events::GameEvent::SpellCast { object_id, controller, .. } =
+        &pt.trigger_event else { return Vec::new(); };
+    vec![Effect::DelayedAction {
+        source: *object_id,
+        controller: *controller,
+        when: DelayedWhen::SelfResolvesToPermanent,
+        action: DelayedAction::GrantHasteUntilEndOfTurn,
+    }]
+}
+fn next_cast_enters_with_counter(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    let crate::events::GameEvent::SpellCast { object_id, controller, .. } =
+        &pt.trigger_event else { return Vec::new(); };
+    vec![Effect::DelayedAction {
+        source: *object_id,
+        controller: *controller,
+        when: DelayedWhen::SelfResolvesToPermanent,
+        action: DelayedAction::EnterWithPlusOneCounter,
+    }]
+}
+fn next_cast_copy(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    let crate::events::GameEvent::SpellCast { object_id, .. } =
+        &pt.trigger_event else { return Vec::new(); };
+    vec![Effect::CopySpell { target: *object_id }]
+}
+fn next_cast_copy_twice(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    let crate::events::GameEvent::SpellCast { object_id, .. } =
+        &pt.trigger_event else { return Vec::new(); };
+    vec![
+        Effect::CopySpell { target: *object_id },
+        Effect::CopySpell { target: *object_id },
+    ]
 }
 
 // Fixed delayed-action callbacks for [`Effect::DelayedAction`]. Each
@@ -1664,6 +1833,34 @@ fn delayed_return_exile_bf(
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::ReturnFromExileToBattlefield { target: pt.source }]
+}
+// The SelfResolvesToPermanent pair act on the POST-MOVE id from the
+// firing ZoneChange (CR 400.7), not on `pt.source` (the stack id).
+fn delayed_grant_haste_eot(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    let crate::events::GameEvent::ZoneChange { new_id, .. } =
+        &pt.trigger_event else { return Vec::new(); };
+    vec![Effect::Pump {
+        target: *new_id,
+        power: 0,
+        toughness: 0,
+        duration: Duration::EndOfTurn,
+        keywords: vec![KeywordAbility::Haste],
+    }]
+}
+fn delayed_enter_plus_one_counter(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    let crate::events::GameEvent::ZoneChange { new_id, .. } =
+        &pt.trigger_event else { return Vec::new(); };
+    vec![Effect::AddCounters {
+        target: *new_id,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }
 
 // =============================================================================
@@ -6332,6 +6529,110 @@ mod tests {
         // hand id (that one got re-id'd away on announce).
         assert!(ids.iter().all(|id| *id != card));
         assert_ne!(ids[0], ids[1]);
+    }
+
+    #[test]
+    fn next_cast_this_turn_haste_rider_end_to_end() {
+        use crate::events::{GameEvent, MoveCause};
+        let reg = crate::registry::CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+
+        Effect::NextCastThisTurn {
+            controller: 0,
+            kind: NextCastKind::Creature,
+            rider: NextCastRider::GainsHaste,
+        }.execute(&mut s);
+        assert_eq!(s.delayed_triggers.len(), 1);
+        assert!(s.delayed_triggers[0].expires_end_of_turn);
+
+        // An opponent's creature cast does not fire it.
+        let theirs = put_creature(&mut s, 1, Zone::Stack, 2, 2);
+        let ev = GameEvent::SpellCast {
+            object_id: theirs, card_id: 0, controller: 1,
+            targets: TargetSelection::new(),
+        };
+        assert!(s.take_matching_delayed_triggers(&ev, &reg).is_empty());
+
+        // Your NONcreature cast does not fire it (kind filter).
+        let instant = put_instant(&mut s, 0, Zone::Stack);
+        let ev = GameEvent::SpellCast {
+            object_id: instant, card_id: 0, controller: 0,
+            targets: TargetSelection::new(),
+        };
+        assert!(s.take_matching_delayed_triggers(&ev, &reg).is_empty());
+
+        // Your creature cast fires it, once.
+        let spell = put_creature(&mut s, 0, Zone::Stack, 2, 2);
+        let ev = GameEvent::SpellCast {
+            object_id: spell, card_id: 0, controller: 0,
+            targets: TargetSelection::new(),
+        };
+        let fired = s.take_matching_delayed_triggers(&ev, &reg);
+        assert_eq!(fired.len(), 1);
+        assert!(s.delayed_triggers.is_empty(), "one-shot consumed");
+
+        // The rider schedules the resolves-to-permanent hop.
+        for e in next_cast_gains_haste(&s, &fired[0], &reg) { e.execute(&mut s); }
+        assert_eq!(s.delayed_triggers.len(), 1);
+        assert!(s.delayed_triggers[0].expires_end_of_turn,
+            "a countered spell's rider must lapse with the turn");
+
+        // An unrelated creature entering does NOT fire the hop.
+        let other_bf = put_creature(&mut s, 0, Zone::Battlefield, 1, 1);
+        let zc = GameEvent::ZoneChange {
+            object_id: 999, from: Zone::Hand(0), to: Zone::Battlefield,
+            new_id: other_bf, cause: MoveCause::SpellResolution,
+        };
+        assert!(s.take_matching_delayed_triggers(&zc, &reg).is_empty());
+
+        // The spell's own resolution fires it; haste lands on the
+        // POST-move battlefield id.
+        let bf = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let zc = GameEvent::ZoneChange {
+            object_id: spell, from: Zone::Stack, to: Zone::Battlefield,
+            new_id: bf, cause: MoveCause::SpellResolution,
+        };
+        let fired2 = s.take_matching_delayed_triggers(&zc, &reg);
+        assert_eq!(fired2.len(), 1);
+        for e in delayed_grant_haste_eot(&s, &fired2[0], &reg) { e.execute(&mut s); }
+        assert!(s.has_keyword(bf, &KeywordAbility::Haste));
+        assert!(!s.has_keyword(other_bf, &KeywordAbility::Haste));
+
+        // Expiry: an unfired next-cast watcher lapses at the turn
+        // boundary (the engine hook's retain).
+        Effect::NextCastThisTurn {
+            controller: 0,
+            kind: NextCastKind::InstantOrSorcery,
+            rider: NextCastRider::Copy,
+        }.execute(&mut s);
+        assert_eq!(s.delayed_triggers.len(), 1);
+        s.delayed_triggers.retain(|t| !t.expires_end_of_turn);
+        assert!(s.delayed_triggers.is_empty());
+    }
+
+    #[test]
+    fn next_cast_copy_rider_copies_the_cast_spell() {
+        use crate::events::GameEvent;
+        let reg = crate::registry::CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        Effect::NextCastThisTurn {
+            controller: 0,
+            kind: NextCastKind::InstantOrSorcery,
+            rider: NextCastRider::Copy,
+        }.execute(&mut s);
+
+        // Cast a real instant so CopySpell has a live stack entry.
+        let card = put_instant(&mut s, 0, Zone::Hand(0));
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
+        let ev = GameEvent::SpellCast {
+            object_id: stack_id, card_id: 0, controller: 0,
+            targets: TargetSelection::new(),
+        };
+        let fired = s.take_matching_delayed_triggers(&ev, &reg);
+        assert_eq!(fired.len(), 1);
+        for e in next_cast_copy(&s, &fired[0], &reg) { e.execute(&mut s); }
+        assert_eq!(s.stack_size(), 2, "original + copy");
     }
 
     #[test]

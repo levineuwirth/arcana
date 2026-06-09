@@ -700,6 +700,10 @@ pub struct DelayedTrigger {
     /// Fire once and remove. Rare triggers ("at the beginning of each
     /// end step for the rest of the game") set this `false`.
     pub fire_once: bool,
+    /// "…this turn" duration: the trigger lapses (is removed without
+    /// firing) at the turn boundary if it hasn't fired. The engine's
+    /// turn-start hook retains only non-expiring delayed triggers.
+    pub expires_end_of_turn: bool,
 }
 
 impl DelayedTrigger {
@@ -714,6 +718,21 @@ impl DelayedTrigger {
             source, controller, condition, effect,
             intervening_if: None,
             fire_once: true,
+            expires_end_of_turn: false,
+        }
+    }
+
+    /// A one-shot delayed trigger that lapses at end of turn — "when
+    /// you next cast a creature spell THIS TURN, …" (CR 603.7e).
+    pub fn one_shot_this_turn(
+        source: ObjectId,
+        controller: PlayerId,
+        condition: TriggerCondition,
+        effect: EffectFn,
+    ) -> Self {
+        Self {
+            expires_end_of_turn: true,
+            ..Self::one_shot(source, controller, condition, effect)
         }
     }
 }
