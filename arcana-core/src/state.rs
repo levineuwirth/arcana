@@ -191,6 +191,13 @@ pub struct GameState {
     /// so a PW that leaves and re-enters the battlefield is a new
     /// entry for this set.
     pub loyalty_activated_this_turn: crate::collections::HashSet<ObjectId>,
+    /// CR 602.5d — (object, flat ability index) pairs whose "Activate
+    /// only once each turn" ability has been activated this turn
+    /// (`ActivationCost::once_per_turn`). Cleared at the turn boundary
+    /// beside [`Self::loyalty_activated_this_turn`]; keyed by live
+    /// `ObjectId`, so a zone round-trip re-ids the object and resets
+    /// the allowance (CR 400.7).
+    pub abilities_activated_this_turn: crate::collections::HashSet<(ObjectId, usize)>,
     /// `event_log` index recording where the current turn's events
     /// begin. Set on `TurnBegins` emission; consulted by per-turn
     /// `script::*_this_turn` helpers to scan only the live turn's
@@ -294,6 +301,7 @@ impl GameState {
             pending_choice_follow_up: None,
             lki: HashMap::default(),
             loyalty_activated_this_turn: crate::collections::HashSet::default(),
+            abilities_activated_this_turn: crate::collections::HashSet::default(),
             turn_event_log_start: 0,
             prev_turn_event_log_start: 0,
             day_night: crate::turn::DayNight::Neither,

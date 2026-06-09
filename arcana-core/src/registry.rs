@@ -1038,6 +1038,15 @@ pub struct ActivationCost {
     /// [`ActivationConditionFn`]; write it with the [`crate::conditions`]
     /// helpers.
     pub activation_condition: Option<ActivationConditionFn>,
+    /// CR 602.5d — "Activate only once each turn" (Boast and friends).
+    /// A pure legality gate like [`Self::activation_condition`]: the
+    /// legal-action enumerator filters the ability out once it has
+    /// been activated this turn (tracked per (object, ability index)
+    /// in `GameState::abilities_activated_this_turn`, cleared at the
+    /// turn boundary; a zone change re-ids the object per CR 400.7,
+    /// so leaving and re-entering resets the allowance — same
+    /// semantics as the loyalty ledger).
+    pub once_per_turn: bool,
     /// "Sacrifice a [filtered permanent]: …" where the sacrificed
     /// permanent is CHOSEN, not the ability's own source (CR 118.3 —
     /// an additional cost the activator pays by sacrificing one

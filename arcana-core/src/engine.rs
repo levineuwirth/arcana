@@ -970,7 +970,7 @@ fn apply_activate_ability(
     // sacrifice-self or discard-self moves the card before the
     // ability resolves (CR 400.7).
     let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice, life,
-         discard_random, effect_fn) = {
+         discard_random, once_per_turn, effect_fn) = {
         let Some(obj) = state.objects.get(source) else { return; };
         // Flat index covers registry-backed abilities first, then the
         // object's intrinsic abilities (commodity tokens). Snapshot the
@@ -988,6 +988,7 @@ fn apply_activate_ability(
             ability.cost.sacrifice,
             ability.cost.life,
             ability.cost.discard_random,
+            ability.cost.once_per_turn,
             ability.effect,
         )
     };
@@ -1091,6 +1092,11 @@ fn apply_activate_ability(
     // rejected activations don't burn the once-per-turn allowance.
     if is_loyalty_ability {
         state.loyalty_activated_this_turn.insert(source);
+    }
+    // CR 602.5d — "Activate only once each turn" ledger (Boast). Same
+    // placement rationale as the loyalty mark above.
+    if once_per_turn {
+        state.abilities_activated_this_turn.insert((source, ability_index));
     }
 
     state.priority.record_action();
@@ -3017,6 +3023,9 @@ fn next_turn(state: &mut GameState) {
     // each PW's controller may activate exactly one loyalty ability
     // next turn.
     state.loyalty_activated_this_turn.clear();
+    // CR 602.5d — the "activate only once each turn" ledger resets
+    // with the turn, like the loyalty ledger above.
+    state.abilities_activated_this_turn.clear();
     // CR 603.7e — "this turn" delayed triggers that never fired lapse
     // at the turn boundary ("when you next cast a creature spell this
     // turn" with no such cast).

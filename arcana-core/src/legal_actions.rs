@@ -2067,7 +2067,7 @@ fn enumerate_activation_actions(
             // is the source of truth.
             let _is_intrinsic = i >= reg_count;
             if !ability_is_activatable(
-                state, obj, ability, player, sorcery_speed_ok, registry,
+                state, obj, ability, i, player, sorcery_speed_ok, registry,
             ) {
                 continue;
             }
@@ -2247,6 +2247,7 @@ fn ability_is_activatable(
     state: &GameState,
     obj: &crate::objects::GameObject,
     ability: &crate::registry::ActivatedAbilityDef,
+    ability_index: usize,
     activator: crate::types::PlayerId,
     sorcery_speed_ok: bool,
     reg: &crate::registry::CardRegistry,
@@ -2306,6 +2307,14 @@ fn ability_is_activatable(
         if !cond(state, obj.id, activator, reg) {
             return false;
         }
+    }
+    // CR 602.5d — "Activate only once each turn" (Boast). The ledger
+    // is recorded by apply_activate_ability after costs clear; here we
+    // only gate legality.
+    if ability.cost.once_per_turn
+        && state.abilities_activated_this_turn.contains(&(obj.id, ability_index))
+    {
+        return false;
     }
     // Mana abilities can be activated at any time a player has
     // priority. Non-mana activated abilities default to sorcery
@@ -3217,6 +3226,52 @@ mod tests {
                     effect: |_, _, _| Vec::new(),
                 })
         )
+    }
+
+    #[test]
+    fn once_per_turn_gate_blocks_after_activation_and_resets() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Boast Stub");
+        let cid = reg.register(
+            CardDefinition::new(name, creature_chars(1, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Boast stub".into(),
+                    cost: ActivationCost {
+                        once_per_turn: true,
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                }),
+        );
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(1, 1), cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+
+        // Fresh turn: offered.
+        let actions = legal_actions(&s, &reg);
+        assert!(actions.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)));
+
+        // Already activated this turn (ledger entry): filtered out.
+        s.abilities_activated_this_turn.insert((obj, 0));
+        let actions = legal_actions(&s, &reg);
+        assert!(!actions.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)),
+            "once-per-turn ability must be illegal after activation");
+
+        // Turn boundary clears the ledger: offered again.
+        s.abilities_activated_this_turn.clear();
+        let actions = legal_actions(&s, &reg);
+        assert!(actions.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)));
     }
 
     #[test]
