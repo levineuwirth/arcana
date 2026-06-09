@@ -1,10 +1,7 @@
 //! Needle Storm — `{2}{G}` sorcery. "Needle Storm deals 4 damage to
 //! each creature with flying."
-//!
-//! No "with flying" ObjectFilter refinement exists; best-effort hits
-//! all creatures. The flying filter is GAP'd.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
@@ -35,8 +32,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "with flying" ObjectFilter refinement not available.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

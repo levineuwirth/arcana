@@ -1,9 +1,7 @@
 //! Ashen Firebeast — `{6}{R}{R}` 6/6 red Elemental Beast.
 //! "{1}{R}: This creature deals 1 damage to each creature without flying."
-//! GAP: "without flying" filter — ObjectFilter has no "without keyword" method.
-//! Using all creatures as approximation.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -57,8 +55,8 @@ fn damage_all_no_flying(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "without flying" filter not available; damaging all creatures.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), ctx.controller);
+    let filter = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
+    let ids = script::ids_matching(state, &filter, ctx.controller);
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

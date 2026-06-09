@@ -1,9 +1,7 @@
 //! Fire Ants — `{2}{R}` 2/1 red Insect.
 //! "{T}: This creature deals 1 damage to each other creature without flying."
-//! GAP: "without flying" — ObjectFilter has no "without keyword" method;
-//! using all creatures as approximation (will hit flying creatures too).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -52,8 +50,8 @@ fn damage_creatures_no_flying(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "without flying" — using all creatures as approximation.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), ctx.controller);
+    let filter = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
+    let ids = script::ids_matching(state, &filter, ctx.controller);
     let ids_excl_self: Vec<_> = ids.into_iter().filter(|&id| id != ctx.source).collect();
     vec![Effect::ForEach {
         targets: ids_excl_self,

@@ -7,7 +7,7 @@
 //!       not in OptionalPaymentKind v1; emitting only damage to all creatures
 //!       without sacrifice gate.)
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
@@ -113,10 +113,8 @@ fn chapter_i(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Damage to each creature without flying
-    // ObjectFilter has no "without keyword" filter — using creature() as best effort
-    // GAP: no .without_keyword() filter; affects all creatures
-    let filter = ObjectFilter::creature();
+    // Damage to each creature without flying (layer-aware keyword exclusion)
+    let filter = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
     let ids = script::ids_matching(state, &filter, trig.controller);
     ids.into_iter()
         .map(|id| Effect::DealDamage {

@@ -1,7 +1,7 @@
 //! Grapeshot Catapult — `{4}` 2/3 colorless Artifact Creature — Construct.
 //! "{T}: This creature deals 1 damage to target creature with flying."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -34,8 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{T}: This creature deals 1 damage to target creature with flying.".into(),
                 cost: ActivationCost::tap_only(),
                 target_requirements: vec![TargetRequirement {
-                    // GAP: ObjectFilter has no "has flying keyword" filter
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    // "target creature with flying" — enforced via keyword filter.
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

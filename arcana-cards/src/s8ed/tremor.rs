@@ -1,8 +1,7 @@
 //! Tremor — `{R}` sorcery. "Tremor deals 1 damage to each creature
-//! without flying." GAP: no without_keyword filter — falls back to
-//! all creatures.
+//! without flying."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
@@ -38,8 +37,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'without flying' filter not expressible.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let filter = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
+    let ids = script::ids_matching(state, &filter, entry.controller);
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

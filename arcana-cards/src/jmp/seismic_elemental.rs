@@ -2,10 +2,10 @@
 //! enters, creatures without flying can't block this turn."
 //!
 //! ETB trigger via `TriggerCondition::SelfEntersBattlefield`. The effect
-//! forbids blocking this turn on each creature on the battlefield via
+//! forbids blocking this turn on each creature without flying via
 //! `Effect::ForbidBlocking` over `script::ids_matching`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -53,9 +53,8 @@ fn forbid_nonfliers_blocking(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no "without flying" refinement, so this forbids
-    // blocking on ALL creatures rather than only those without flying.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), trig.controller);
+    let filter = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
+    let ids = script::ids_matching(state, &filter, trig.controller);
     ids.into_iter()
         .map(|id| Effect::ForbidBlocking {
             target: id,

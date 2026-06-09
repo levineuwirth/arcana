@@ -12,7 +12,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -44,9 +46,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     let adv_ability = SpellAbilityDef {
         text: "Destroy target creature with flying.".into(),
-        // GAP: ObjectFilter has no .with_keyword() filter for Flying;
-        // targeting any creature (over-inclusive)
-        target_requirements: vec![TargetRequirement::target_creature()],
+        // "target creature with flying" — enforced via keyword filter.
+        target_requirements: vec![TargetRequirement {
+            filter: TargetFilter::Permanent(
+                ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+            ),
+            count: TargetCount::Exactly(1),
+            controller: None,
+        }],
         modal: None,
         effect: adv_resolve,
     };

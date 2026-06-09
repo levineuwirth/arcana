@@ -1,9 +1,9 @@
 //! Viridian Scout — `{3}{G}` 1/2 Elf Warrior Scout.
 //! `{2}{G}, Sacrifice this creature: It deals 2 damage to target creature with flying.`
-//! GAP: targeting restriction "with flying" is not expressible via ObjectFilter (no keyword filter);
-//! the ability targets any creature instead.
+//! The flying restriction is enforced via
+//! `ObjectFilter::creature().with_keyword(KeywordAbility::Flying)`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -12,7 +12,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,8 +45,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     sacrifice: true,
                     ..ActivationCost::default()
                 },
-                // GAP: flying restriction not expressible; targets any creature
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

@@ -2,10 +2,10 @@
 //! with flying." Color disjunction (blue OR black) + flying-keyword
 //! filter combine awkwardly: `with_colors(blue|black)` matches
 //! creatures that have ANY of those colors (the ColorSet OR), which
-//! is the intended semantics. The 'with flying' filter is not in the
-//! ObjectFilter primitive set — GAP that constraint.
+//! is the intended semantics. The 'with flying' restriction is
+//! enforced via the ObjectFilter keyword filter.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -25,7 +25,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::SORCERY.into(),
         ..Default::default()
     };
-    // GAP: 'with flying' keyword filter on target — no ObjectFilter primitive.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
@@ -33,7 +32,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()
-                            .with_colors(ColorSet::blue() | ColorSet::black()),
+                            .with_colors(ColorSet::blue() | ColorSet::black())
+                            .with_keyword(KeywordAbility::Flying),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,

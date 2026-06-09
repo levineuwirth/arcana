@@ -1,9 +1,9 @@
 //! Celestial Enforcer — `{2}{W}` 2/3 white Human Cleric.
 //! "{1}{W}, {T}: Tap target creature. Activate only if you control a creature with flying."
-//! GAP: "Activate only if you control a creature with flying" — activation precondition
-//! based on board state is not expressible via ActivationCost fields; omitted.
+//! "Activate only if you control a creature with flying" modeled via
+//! `activation_condition` + `conditions::you_control_a` (creature with Flying).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -11,7 +11,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,6 +38,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{W}").unwrap(),
                     tap: true,
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::you_control_a(
+                            s,
+                            you,
+                            &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                        )
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement::target_creature()],

@@ -1,8 +1,9 @@
 //! Hunting Kavu — `{1}{R}{G}` 2/3 Kavu.
 //! `{1}{R}{G}, {T}: Exile this creature and target creature without flying that's attacking you.`
-//! GAP: "without flying that's attacking you" filter — ObjectFilter has no "currently attacking you" predicate; using creature filter instead.
+//! GAP: "that's attacking you" — ObjectFilter has no "currently attacking you"
+//! predicate; only the without-flying half of the restriction is enforced.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -11,7 +12,7 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{
     CardId, ColorSet, PtValue, SubtypeSet, TypeLine,
@@ -42,9 +43,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     sacrifice: true,
                     ..ActivationCost::default()
                 },
-                // GAP: "without flying that's attacking you" — no ObjectFilter predicate for "currently attacking you"; using generic creature target
+                // GAP: "that's attacking you" — no ObjectFilter predicate for
+                // "currently attacking you"; only without-flying is enforced.
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().without_keyword(KeywordAbility::Flying),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

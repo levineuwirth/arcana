@@ -1,11 +1,7 @@
 //! Squall — `{2}{G}` sorcery. "Squall deals 2 damage to each creature with
 //! flying."
-//!
-//! 'With flying' filter on ObjectFilter isn't catalogued (keyword-aware
-//! filter not in builders). Fall back to 'each creature'; GAP the flying
-//! restriction.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
@@ -41,9 +37,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'with flying' keyword filter on ObjectFilter — restriction relaxed to
-    // 'each creature'.
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

@@ -1,10 +1,13 @@
 //! Groundling Pouncer — `{1}{G/U}` 2/1 green/blue Faerie.
 //! "{G/U}: This creature gets +1/+3 and gains flying until end of turn.
 //! Activate only once each turn and only if an opponent controls a creature with flying."
-//! GAP: "only if an opponent controls a creature with flying" — activation precondition
-//! based on board state not expressible in ActivationCost.
+//! "only if an opponent controls a creature with flying" modeled via
+//! `activation_condition` + `conditions::an_opponent_controls_a` (creature with Flying).
+//! GAP: "Activate only once each turn" — per-turn activation limit not
+//! expressible in ActivationCost.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -33,11 +36,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "Activate only if an opponent controls a creature with flying"
-                // — board-state precondition not expressible in ActivationCost.
-                text: "{G/U}: This creature gets +1/+3 and gains flying until end of turn.".into(),
+                // GAP: "Activate only once each turn" — per-turn activation
+                // limit not expressible in ActivationCost.
+                text: "{G/U}: This creature gets +1/+3 and gains flying until end of turn. Activate only once each turn and only if an opponent controls a creature with flying.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{G/U}").unwrap(),
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::an_opponent_controls_a(
+                            s,
+                            you,
+                            &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                        )
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

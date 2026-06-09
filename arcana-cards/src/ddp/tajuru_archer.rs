@@ -3,7 +3,7 @@
 //! may have Tajuru Archer deal damage equal to the number of Allies you control to target
 //! creature with flying."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -53,8 +53,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    // GAP: "target creature with flying" — flying filter not in ObjectFilter
-                    filter: TargetFilter::Creature,
+                    // "target creature with flying" — enforced via keyword filter.
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                    ),
                     count: TargetCount::UpTo(1),
                     controller: None,
                 }],

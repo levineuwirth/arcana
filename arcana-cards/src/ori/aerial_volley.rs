@@ -2,19 +2,23 @@
 //! divided as you choose among one, two, or three target creatures
 //! with flying."
 //!
-//! Divided-as-you-choose damage and a "with flying" target predicate
-//! are not in catalog/script surface. Modeled as 1 damage to each of
-//! up to three target creatures; the flying restriction and division
-//! semantics are GAP'd.
+//! The flying restriction is enforced via
+//! `ObjectFilter::creature().with_keyword(KeywordAbility::Flying)`,
+//! and the division uses `Effect::DealDamageDivided` over up to three
+//! targets. (The player's exact division of the 3 damage is a
+//! documented fidelity gap; the engine spreads `total` across the
+//! chosen targets.)
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -29,11 +33,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Aerial Volley deals 3 damage divided as you choose among one, two, or three target creatures with flying.".into(),
-            target_requirements: vec![
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-                TargetRequirement::target_creature(),
-            ],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                ),
+                count: TargetCount::UpTo(3),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
@@ -41,16 +47,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "with flying" target refinement and divided-damage choice not in catalog.
-    let mut effects = Vec::new();
-    for t in &entry.targets.targets {
-        if let TargetChoice::Object(id) = t {
-            effects.push(Effect::DealDamage {
-                source: entry.source,
-                target: DamageTarget::Object(*id),
-                amount: 1,
-            });
-        }
+    let targets: Vec<DamageTarget> = entry
+        .targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(DamageTarget::Object(*id)),
+            _ => None,
+        })
+        .collect();
+    if targets.is_empty() {
+        return Vec::new();
     }
-    effects
+    vec![Effect::DealDamageDivided {
+        source: entry.source,
+        targets,
+        total: 3,
+    }]
 }

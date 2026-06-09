@@ -1,10 +1,11 @@
 //! Goblin Bird-Grabber — `{1}{R}` 2/1 red Goblin.
 //! "{R}: This creature gains flying until end of turn. Activate only if you
 //! control a creature with flying."
-//! GAP: activation precondition "only if you control a creature with flying"
-//! not expressible in ActivationCost; precondition is omitted.
+//! "Activate only if you control a creature with flying" modeled via
+//! `activation_condition` + `conditions::you_control_a` (creature with Flying).
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -37,6 +38,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{R}: This creature gains flying until end of turn. Activate only if you control a creature with flying.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{R}").unwrap(),
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::you_control_a(
+                            s,
+                            you,
+                            &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                        )
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

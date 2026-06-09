@@ -1,14 +1,16 @@
 //! Ogre Gatecrasher — `{3}{R}` 3/3 red Ogre Rogue creature. "When this
 //! creature enters, destroy target creature with defender."
-//! GAP: Defender keyword filter is not available in ObjectFilter API;
-//! using generic creature target as closest approximation.
+//! The defender restriction is enforced via
+//! `ObjectFilter::creature().with_keyword(KeywordAbility::Defender)`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -42,9 +44,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: on_etb,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                // GAP: should target only creatures with Defender keyword;
-                // using generic creature target
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_keyword(KeywordAbility::Defender),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             }),
     )
 }

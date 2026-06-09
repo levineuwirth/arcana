@@ -1,17 +1,20 @@
 //! Martyr of Ashes — `{R}` 1/1 Human Shaman.
 //! `{2}, Reveal X red cards from your hand, Sacrifice this creature:` This
 //! creature deals X damage to each creature without flying.
-//! GAP: "reveal X red cards from your hand" as activation cost and X-damage
-//! to each creature without flying not expressible.
+//! GAP: "reveal X red cards from your hand" as activation cost not
+//! expressible, so `x_value` is never set and the damage stays at 0.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -52,12 +55,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn x_damage_grounders(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "reveal X red cards from hand" as cost and "X damage to each
-    // creature without flying" — X from hand reveal and flying filter for
-    // ForEach target not expressible.
-    Vec::new()
+    // GAP: "reveal X red cards from hand" as cost not expressible, so
+    // ctx.x_value is never populated and X stays 0.
+    let amount = ctx.x_value.unwrap_or(0);
+    if amount == 0 {
+        return Vec::new();
+    }
+    let filter = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
+    script::ids_matching(state, &filter, ctx.controller)
+        .into_iter()
+        .map(|id| Effect::DealDamage {
+            source: ctx.source,
+            target: DamageTarget::Object(id),
+            amount,
+        })
+        .collect()
 }

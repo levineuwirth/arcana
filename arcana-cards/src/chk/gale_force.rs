@@ -1,7 +1,7 @@
 //! Gale Force — `{4}{G}` sorcery. "Gale Force deals 5 damage to each creature
 //! with flying."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -37,11 +37,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ObjectFilter has no .with_keyword(Flying) builder; we cannot
-    //      filter by keyword via the available script helpers.
-    // Best-effort: deal 5 to each creature on the battlefield.
-    // GAP: filter creatures with flying only
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+        entry.controller,
+    );
     ids.into_iter().map(|id| Effect::DealDamage {
         source: entry.source,
         target: DamageTarget::Object(id),

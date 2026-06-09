@@ -1,7 +1,7 @@
 //! Wave Elemental — `{2}{U}{U}` 2/3 Elemental.
 //! `{U}, {T}, Sacrifice this creature: Tap up to three target creatures without flying.`
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -39,9 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::creature().without_types(TypeLine::CREATURE.into()),
-                        // GAP: "without flying" not filterable via ObjectFilter (no without_keyword method)
-                        // Using creature filter without flying restriction
+                        ObjectFilter::creature().without_keyword(KeywordAbility::Flying),
                     ),
                     count: TargetCount::UpTo(3),
                     controller: None,

@@ -64,7 +64,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()
-                            .controlled_by(ControllerConstraint::You),
+                            .controlled_by(ControllerConstraint::You)
+                            .without_keyword(KeywordAbility::Flying),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -81,7 +82,9 @@ fn hippogriff_attacks(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "target attacking creature without flying" — attack-state + without-flying filter not available
+    // GAP: "target attacking creature" — no ObjectFilter predicate for
+    // attacking state; without-flying is enforced, controlled-by-you is the
+    // best approximation of "attacking".
     vec![Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Flying, duration: Duration::EndOfTurn }]
 }
 

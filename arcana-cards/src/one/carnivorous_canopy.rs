@@ -2,9 +2,9 @@
 //! enchantment, or creature with flying. If that permanent's mana
 //! value was 3 or less, proliferate."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, GameObject};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
@@ -25,17 +25,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target artifact, enchantment, or creature with flying. If that permanent's mana value was 3 or less, proliferate.".into(),
-            // Best-effort target shape — artifact/enchantment OR a
-            // flying creature combined into one filter is awkward,
-            // but with_types_any covers artifact/enchantment, and the
-            // KeywordAbility::Flying filtering for the creature arm
-            // is GAP'd (no keyword predicate on ObjectFilter).
+            // "artifact, enchantment, or creature with flying" — the
+            // type+keyword disjunction is expressed via the `custom`
+            // predicate (layer-aware flying check for the creature arm).
             target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::permanent().with_types_any(TypeLine(
+                filter: TargetFilter::Permanent(ObjectFilter {
+                    custom: Some(artifact_enchantment_or_flier),
+                    ..ObjectFilter::permanent().with_types_any(TypeLine(
                         TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::CREATURE,
-                    )),
-                ),
+                    ))
+                }),
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
@@ -43,6 +42,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             effect: resolve,
         }),
     )
+}
+
+fn artifact_enchantment_or_flier(obj: &GameObject, state: &GameState) -> bool {
+    let t = obj.characteristics.types.0;
+    if t & (TypeLine::ARTIFACT | TypeLine::ENCHANTMENT) != 0 {
+        return true;
+    }
+    t & TypeLine::CREATURE != 0 && state.has_keyword(obj.id, &KeywordAbility::Flying)
 }
 
 fn resolve(

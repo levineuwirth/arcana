@@ -1,7 +1,7 @@
 //! Scattershot Archer — `{G}` 1/2 green Elf Archer creature.
 //! "{T}: This creature deals 1 damage to each creature with flying."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -52,16 +52,7 @@ fn damage_each_flying_creature(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // ObjectFilter for creatures with flying — the engine checks the
-    // keyword set when evaluating the filter.
-    // GAP: ObjectFilter has no .with_keyword() refinement in the
-    // demonstrated API; we must GAP the "flying" filter and instead
-    // damage ALL creatures as the closest approximation.
-    // Using ForEach over all creatures as best-effort; the "flying only"
-    // restriction is the gap.
-    // GAP: no ObjectFilter::with_keyword(KeywordAbility::Flying) available;
-    // falling back to all creatures on the battlefield (over-broad).
-    let filter = ObjectFilter::creature();
+    let filter = ObjectFilter::creature().with_keyword(KeywordAbility::Flying);
     let ids = script::ids_matching(state, &filter, ctx.controller);
     ids.into_iter()
         .map(|id| Effect::DealDamage {

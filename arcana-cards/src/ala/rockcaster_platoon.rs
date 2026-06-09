@@ -1,8 +1,7 @@
 //! Rockcaster Platoon — `{5}{W}{W}` 5/7 Rhino Soldier.
 //! `{4}{G}: This creature deals 2 damage to each creature with flying and each player.`
-//! GAP: "each creature with flying" — ObjectFilter has no with_keyword filter; targeting all creatures.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -56,8 +55,11 @@ fn damage_flyers_and_players(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "creatures with flying" filter not available; targeting all creatures as best effort
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), ctx.controller);
+    let creature_ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+        ctx.controller,
+    );
     let mut effects: Vec<Effect> = creature_ids
         .into_iter()
         .map(|id| Effect::DealDamage {

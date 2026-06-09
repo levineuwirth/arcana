@@ -1,7 +1,7 @@
 //! Fell the Pheasant — `{1}{G}` instant. Deals 5 damage to target creature
 //! with flying. Create a Food token.
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -23,14 +23,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
-    // GAP: ObjectFilter has no "with_keyword(Flying)" — target restriction
-    // narrowed to creature only.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Fell the Pheasant deals 5 damage to target creature with flying. Create a Food token.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    // "target creature with flying" — enforced via keyword filter.
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                    ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],

@@ -1,10 +1,8 @@
 //! Hammerfist Giant — `{4}{R}{R}` 5/4 Giant Warrior.
 //! `{T}: Hammerfist Giant deals 4 damage to each creature without flying
 //! and each player.`
-//! GAP: ObjectFilter has no `.without_keywords(Flying)` refinement; the
-//! creature damage currently hits ALL creatures (including flyers).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -55,9 +53,8 @@ fn deal_4_to_nonflyers_and_players(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no ObjectFilter refinement to exclude flying creatures;
-    // this hits all creatures (including flyers) instead of only non-flyers.
-    let creature_ids = script::ids_matching(state, &ObjectFilter::creature(), ctx.controller);
+    let filter = ObjectFilter::creature().without_keyword(KeywordAbility::Flying);
+    let creature_ids = script::ids_matching(state, &filter, ctx.controller);
 
     let mut effects: Vec<Effect> = creature_ids
         .into_iter()

@@ -1,13 +1,14 @@
 //! Broken Wings — `{2}{G}` instant. "Destroy target artifact, enchantment, or
 //! creature with flying."
 //!
-//! Disjunction with a keyword-qualified third arm (creature WITH FLYING) isn't
-//! expressible as a single filter. Fall back to artifact-or-enchantment OR
-//! creature (i.e. permanent), GAP the flying restriction.
+//! The disjunction's keyword-qualified third arm (creature WITH FLYING) is
+//! enforced via the filter's `custom` predicate: artifacts and enchantments
+//! always qualify; an object that's only a creature must have flying
+//! (layer-aware via `GameState::has_keyword`).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, GameObject};
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
@@ -30,11 +31,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target artifact, enchantment, or creature with flying.".into(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().with_types_any(TypeLine(
+                    filter: TargetFilter::Permanent(ObjectFilter {
+                        custom: Some(artifact_enchantment_or_flier),
+                        ..ObjectFilter::permanent().with_types_any(TypeLine(
                             TypeLine::ARTIFACT | TypeLine::ENCHANTMENT | TypeLine::CREATURE,
-                        )),
-                    ),
+                        ))
+                    }),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -44,6 +46,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// Disjunction arms: artifact or enchantment (any), or creature with flying.
+fn artifact_enchantment_or_flier(obj: &GameObject, state: &GameState) -> bool {
+    let types = obj.characteristics.types.0;
+    if types & (TypeLine::ARTIFACT | TypeLine::ENCHANTMENT) != 0 {
+        return true;
+    }
+    types & TypeLine::CREATURE != 0
+        && state.has_keyword(obj.id, &KeywordAbility::Flying)
+}
+
 fn resolve(
     _state: &GameState,
     entry: &StackEntry,
@@ -51,7 +63,5 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'creature with flying' restriction on the creature branch — keyword-aware
-    // filter not in ObjectFilter.
     vec![Effect::DestroyPermanent { target: *id }]
 }

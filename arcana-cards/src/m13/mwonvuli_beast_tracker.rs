@@ -2,9 +2,9 @@
 //! Keywords: Reach, Hexproof (printed on card).
 //! "When this creature enters, search your library for a creature card with deathtouch,
 //! hexproof, reach, or trample and reveal it. Shuffle and put that card on top."
-//! GAP: keyword filter in TutorToHand/TutorToBattlefield — no ObjectFilter method to
-//! match cards by keyword (deathtouch/hexproof/reach/trample); using unfiltered creature
-//! search as approximation.
+//! Keyword disjunction modeled via `ObjectFilter::with_keywords_any` (library cards
+//! match by base characteristics, which is correct for a search).
+//! GAP: "put that card on top" — TutorToHand puts it in hand instead.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -55,11 +55,15 @@ fn etb_tutor_creature(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "with deathtouch, hexproof, reach, or trample" keyword filter not available
-    // in ObjectFilter — approximating with unfiltered creature search put on top of library
+    // GAP: "put that card on top" — TutorToHand puts the card in hand instead.
     vec![Effect::TutorToHand {
         player: trig.controller,
-        filter: ObjectFilter::creature(),
+        filter: ObjectFilter::creature().with_keywords_any(vec![
+            KeywordAbility::Deathtouch,
+            KeywordAbility::Hexproof,
+            KeywordAbility::Reach,
+            KeywordAbility::Trample,
+        ]),
         reveal: true,
     }]
 }

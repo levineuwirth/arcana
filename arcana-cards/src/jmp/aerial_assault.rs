@@ -44,15 +44,19 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // ObjectFilter has no .with_keyword in catalog; we approximate by counting
-    // creatures you control overall. The 'with flying' refinement isn't
-    // available, so we GAP that scaling and emit just the destroy.
-    let _ = KeywordAbility::Flying;
-    let _ = script::count_matching(
+    let flyers = script::count_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        &ObjectFilter::creature()
+            .with_keyword(KeywordAbility::Flying)
+            .controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    // GAP: no with_keyword filter for 'creatures you control with flying'
-    vec![Effect::DestroyPermanent { target: *id }]
+    let mut effects = vec![Effect::DestroyPermanent { target: *id }];
+    if flyers > 0 {
+        effects.push(Effect::GainLife {
+            player: entry.controller,
+            amount: flyers as u32,
+        });
+    }
+    effects
 }

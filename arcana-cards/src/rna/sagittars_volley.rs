@@ -48,14 +48,13 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let mut effects = vec![Effect::DestroyPermanent { target: *id }];
-    // Damage each opponent-controlled creature; GAP: no "with flying"
-    // ObjectFilter refinement.
     let opp_creatures = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        &ObjectFilter::creature()
+            .with_keyword(KeywordAbility::Flying)
+            .controlled_by(ControllerConstraint::Opponent),
         entry.controller,
     );
-    let _ = KeywordAbility::Flying; // marker that flying filtering is the gap.
     for cid in opp_creatures {
         if cid == *id { continue; }
         effects.push(Effect::DealDamage {

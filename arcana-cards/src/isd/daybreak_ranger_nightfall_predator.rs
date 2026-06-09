@@ -8,8 +8,6 @@
 //! {R}, {T}: This creature fights target creature.
 //! At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
 //!
-//! GAP: "{T}: 2 damage to target creature with flying" — ObjectFilter has no "has keyword flying"
-//!      restriction; targets any creature instead (flying restriction not enforced).
 //! GAP: "if no spells were cast last turn" condition not expressible; front upkeep transform
 //!      fires unconditionally.
 //! GAP: back-face activated ability ({R},{T}: fight target creature) not modeled
@@ -19,7 +17,7 @@
 //! GAP: day/night cycle not modeled.
 
 use arcana_core::conditions;
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -29,7 +27,10 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -84,11 +85,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front face: {T}: deals 2 damage to target creature (with flying — flying restriction GAP).
+            // Front face: {T}: deals 2 damage to target creature with flying
+            // (restriction enforced via keyword filter).
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: This creature deals 2 damage to target creature with flying.".into(),
                 cost: ActivationCost::tap_only(),
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
@@ -119,7 +127,6 @@ fn tap_deal_damage_flyer(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "with flying" restriction not enforced (ObjectFilter has no keyword filter).
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![Effect::DealDamage {

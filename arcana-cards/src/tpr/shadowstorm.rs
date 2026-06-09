@@ -1,8 +1,7 @@
 //! Shadowstorm — `{R}` sorcery. "Shadowstorm deals 2 damage to each
-//! creature with shadow." GAP: no with_keyword filter — fall back to
-//! all creatures (overshoots — flagged for review).
+//! creature with shadow."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
@@ -38,9 +37,11 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'with shadow' filter not in ObjectFilter; falling back to
-    // all creatures (this is wider than the printed effect).
-    let ids = script::ids_matching(state, &ObjectFilter::creature(), entry.controller);
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::creature().with_keyword(KeywordAbility::Shadow),
+        entry.controller,
+    );
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::DealDamage {

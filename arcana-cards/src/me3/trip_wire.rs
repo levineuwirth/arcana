@@ -1,14 +1,16 @@
 //! Trip Wire — `{2}{G}` sorcery. "Destroy target creature with
-//! horsemanship." ObjectFilter has no keyword-presence refinement —
-//! we use a creature target and GAP the horsemanship restriction.
+//! horsemanship." The horsemanship restriction is enforced via
+//! `ObjectFilter::creature().with_keyword(KeywordAbility::Horsemanship)`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,9 +26,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "Destroy target creature with horsemanship.".into(),
-                // GAP: ObjectFilter has no with_keyword refinement —
-                // falling back to any creature target.
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .with_keyword(KeywordAbility::Horsemanship),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 modal: None,
                 effect: resolve,
             }),
