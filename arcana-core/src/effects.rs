@@ -730,6 +730,32 @@ pub enum Effect {
         kind: NextCastKind,
         rider: NextCastRider,
     },
+
+    /// "Whenever you cast a [kind] spell this turn, [rider]" — the
+    /// REPEATING sibling of [`Self::NextCastThisTurn`] (Showdown of
+    /// the Skalds, Battle of Frost and Fire, Summon: Good King Mog
+    /// XII). Registers a delayed trigger with `fire_once: false` that
+    /// lapses at end of turn; fires on EVERY matching cast until then.
+    EachCastThisTurn {
+        controller: PlayerId,
+        kind: NextCastKind,
+        rider: EachCastRider,
+    },
+}
+
+/// Per-cast rider for [`Effect::EachCastThisTurn`]. Delayed triggers
+/// carry no target requirements, so the "target …" riders pick
+/// deterministically (lowest live id) — same punt as name-a-card.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum EachCastRider {
+    /// "put a +1/+1 counter on target creature you control" —
+    /// deterministic: your lowest-id battlefield creature.
+    PlusOneCounterOnYourCreature,
+    /// "draw two cards, then discard a card".
+    DrawTwoDiscardOne,
+    /// "create a token copy of a non-Saga token you control" —
+    /// deterministic: your lowest-id non-Saga battlefield token.
+    CopyANonSagaTokenYouControl,
 }
 
 /// Spell shape for [`Effect::NextCastThisTurn`]. A small closed enum
@@ -743,6 +769,32 @@ pub enum NextCastKind {
     InstantOrSorceryMaxCmc(u32),
     Noncreature,
     Any,
+    /// "spell with mana value N or greater" (Battle of Frost and
+    /// Fire's chapter III).
+    AnyMinCmc(u32),
+}
+
+impl NextCastKind {
+    /// The cast-spell filter this kind denotes (matched against the
+    /// spell's stack object by `TriggerCondition::SpellCast`).
+    pub fn to_filter(&self) -> ObjectFilter {
+        match self {
+            NextCastKind::Creature =>
+                ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+            NextCastKind::InstantOrSorcery =>
+                ObjectFilter::new().with_types_any(
+                    TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+            NextCastKind::InstantOrSorceryMaxCmc(n) =>
+                ObjectFilter::new()
+                    .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY))
+                    .with_max_cmc(*n),
+            NextCastKind::Noncreature =>
+                ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
+            NextCastKind::Any => ObjectFilter::new(),
+            NextCastKind::AnyMinCmc(n) =>
+                ObjectFilter::new().with_min_cmc(*n),
+        }
+    }
 }
 
 /// What happens to the next matching cast for
@@ -1696,22 +1748,8 @@ impl Effect {
 
             Effect::NextCastThisTurn { controller, kind, rider } => {
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
-                let filter = match kind {
-                    NextCastKind::Creature =>
-                        ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
-                    NextCastKind::InstantOrSorcery =>
-                        ObjectFilter::new().with_types_any(
-                            TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
-                    NextCastKind::InstantOrSorceryMaxCmc(n) =>
-                        ObjectFilter::new()
-                            .with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY))
-                            .with_max_cmc(*n),
-                    NextCastKind::Noncreature =>
-                        ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
-                    NextCastKind::Any => ObjectFilter::new(),
-                };
                 let condition = TriggerCondition::SpellCast {
-                    filter: Some(filter),
+                    filter: Some(kind.to_filter()),
                     caster: crate::targets::ControllerConstraint::Player(*controller),
                 };
                 let effect_fn: crate::triggers::EffectFn = match rider {
@@ -1725,6 +1763,29 @@ impl Effect {
                 // the cast spell's id arrives in the firing event.
                 state.register_delayed_trigger(DelayedTrigger::one_shot_this_turn(
                     crate::objects::NULL_OBJECT_ID, *controller, condition, effect_fn));
+            }
+
+            Effect::EachCastThisTurn { controller, kind, rider } => {
+                use crate::triggers::{DelayedTrigger, TriggerCondition};
+                let filter = kind.to_filter();
+                let condition = TriggerCondition::SpellCast {
+                    filter: Some(filter),
+                    caster: crate::targets::ControllerConstraint::Player(*controller),
+                };
+                let effect_fn: crate::triggers::EffectFn = match rider {
+                    EachCastRider::PlusOneCounterOnYourCreature =>
+                        each_cast_counter_your_creature,
+                    EachCastRider::DrawTwoDiscardOne =>
+                        each_cast_draw_two_discard_one,
+                    EachCastRider::CopyANonSagaTokenYouControl =>
+                        each_cast_copy_your_token,
+                };
+                state.register_delayed_trigger(DelayedTrigger {
+                    fire_once: false,
+                    ..DelayedTrigger::one_shot_this_turn(
+                        crate::objects::NULL_OBJECT_ID, *controller,
+                        condition, effect_fn)
+                });
             }
         }
     }
@@ -1788,6 +1849,54 @@ fn next_cast_copy_twice(
         Effect::CopySpell { target: *object_id },
         Effect::CopySpell { target: *object_id },
     ]
+}
+
+// Per-cast callbacks for [`Effect::EachCastThisTurn`]. Delayed
+// triggers carry no targets; the "target …" riders pick the lowest
+// live id deterministically (documented punt, same as name-a-card).
+fn each_cast_counter_your_creature(
+    s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    let pick = s.objects.objects_in_zone(crate::zones::Zone::Battlefield)
+        .filter(|o| o.controller == pt.controller && o.is_creature())
+        .map(|o| o.id)
+        .min();
+    match pick {
+        Some(target) => vec![Effect::AddCounters {
+            target, kind: CounterKind::PlusOnePlusOne, count: 1,
+        }],
+        None => Vec::new(),
+    }
+}
+fn each_cast_draw_two_discard_one(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![
+        Effect::DrawCards { player: pt.controller, count: 2 },
+        Effect::Discard {
+            player: pt.controller, count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        },
+    ]
+}
+fn each_cast_copy_your_token(
+    s: &GameState, pt: &crate::triggers::PendingTrigger,
+    r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    // "a non-Saga token you control" — Saga excluded via the interned
+    // subtype (if "Saga" was never interned, nothing carries it).
+    let saga = r.interner().lookup("Saga");
+    let pick = s.objects.objects_in_zone(crate::zones::Zone::Battlefield)
+        .filter(|o| o.controller == pt.controller && o.is_token)
+        .filter(|o| saga.is_none_or(|sym| !o.characteristics.subtypes.contains(sym)))
+        .map(|o| o.id)
+        .min();
+    match pick {
+        Some(target) => vec![Effect::CopyPermanent { target }],
+        None => Vec::new(),
+    }
 }
 
 // Fixed delayed-action callbacks for [`Effect::DelayedAction`]. Each
@@ -6606,6 +6715,46 @@ mod tests {
             rider: NextCastRider::Copy,
         }.execute(&mut s);
         assert_eq!(s.delayed_triggers.len(), 1);
+        s.delayed_triggers.retain(|t| !t.expires_end_of_turn);
+        assert!(s.delayed_triggers.is_empty());
+    }
+
+    #[test]
+    fn each_cast_this_turn_fires_repeatedly_and_expires() {
+        use crate::events::GameEvent;
+        let reg = crate::registry::CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        let mine = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+
+        Effect::EachCastThisTurn {
+            controller: 0,
+            kind: NextCastKind::Any,
+            rider: EachCastRider::PlusOneCounterOnYourCreature,
+        }.execute(&mut s);
+        assert_eq!(s.delayed_triggers.len(), 1);
+        assert!(!s.delayed_triggers[0].fire_once);
+        assert!(s.delayed_triggers[0].expires_end_of_turn);
+
+        // Two successive casts BOTH fire it — the trigger persists.
+        for _ in 0..2 {
+            let spell = put_instant(&mut s, 0, Zone::Stack);
+            let ev = GameEvent::SpellCast {
+                object_id: spell, card_id: 0, controller: 0,
+                targets: TargetSelection::new(),
+            };
+            let fired = s.take_matching_delayed_triggers(&ev, &reg);
+            assert_eq!(fired.len(), 1);
+            assert_eq!(s.delayed_triggers.len(), 1, "repeating trigger persists");
+            for e in each_cast_counter_your_creature(&s, &fired[0], &reg) {
+                e.execute(&mut s);
+            }
+        }
+        assert_eq!(
+            s.objects.get(mine).unwrap()
+                .count_counters(crate::types::CounterKind::PlusOnePlusOne),
+            2, "one counter per cast");
+
+        // Lapses at the turn boundary.
         s.delayed_triggers.retain(|t| !t.expires_end_of_turn);
         assert!(s.delayed_triggers.is_empty());
     }
