@@ -4,10 +4,10 @@
 //!     planeswalker. (GAP: no ObjectFilter for non-Giant; affects all creatures.)
 //! II — Scry 3.
 //! III — Whenever you cast a spell with mana value 5 or greater this turn,
-//!        draw two cards, then discard a card. (GAP: this-turn-only trigger
-//!        not expressible; emitting Vec::new().)
+//!        draw two cards, then discard a card. Wired via
+//!        `Effect::EachCastThisTurn { AnyMinCmc(5), DrawTwoDiscardOne }`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{EachCastRider, Effect, NextCastKind};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -78,7 +78,13 @@ fn chapter_ii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<E
     vec![Effect::Scry { player: trig.controller, count: 3 }]
 }
 
-fn chapter_iii(_s: &GameState, _trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
-    // GAP: "whenever you cast a spell mv ≥ 5 this turn" — this-turn-only trigger
-    Vec::new()
+fn chapter_iii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
+    // "Whenever you cast a spell with mana value 5 or greater this
+    // turn, draw two cards, then discard a card" — repeating, lapses
+    // at end of turn.
+    vec![Effect::EachCastThisTurn {
+        controller: trig.controller,
+        kind: NextCastKind::AnyMinCmc(5),
+        rider: EachCastRider::DrawTwoDiscardOne,
+    }]
 }

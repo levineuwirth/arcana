@@ -3,11 +3,11 @@
 //! I — Create two 1/2 white Moogle creature tokens with lifelink.
 //! II, III — Whenever you cast a noncreature spell this turn, create a token copy of a non-Saga token you control.
 //! IV — Put two +1/+1 counters on each other Moogle you control.
-//! GAP: Chapter II/III "whenever you cast a noncreature spell this turn" — delayed trigger for this-turn not in catalog.
-//! GAP: Chapter II/III "copy of a non-Saga token you control" — CopyPermanent targets a specific token; mass-copy-choose not in catalog.
+//! Chapter II/III wired via `Effect::EachCastThisTurn { Noncreature, CopyANonSagaTokenYouControl }`
+//! (the copied token is the deterministic lowest-id pick — delayed triggers carry no choices).
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{EachCastRider, Effect, KeywordAbility, NextCastKind, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -147,11 +147,18 @@ fn chapter_i(
 
 fn chapter_ii_iii(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "whenever you cast a noncreature spell this turn, create a copy of a non-Saga token" — not in catalog
-    Vec::new()
+    // "Whenever you cast a noncreature spell this turn, create a token
+    // copy of a non-Saga token you control" — repeating, lapses at end
+    // of turn. The copied token is the engine's deterministic pick
+    // (lowest-id non-Saga token you control).
+    vec![Effect::EachCastThisTurn {
+        controller: trig.controller,
+        kind: NextCastKind::Noncreature,
+        rider: EachCastRider::CopyANonSagaTokenYouControl,
+    }]
 }
 
 fn chapter_iv(

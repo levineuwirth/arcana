@@ -1,11 +1,13 @@
 //! Showdown of the Skalds — `{2}{R}{W}` red/white Enchantment — Saga.
 //! I — Exile the top four cards of your library. Until the end of your next turn, you may play those cards.
 //! II, III — Whenever you cast a spell this turn, put a +1/+1 counter on target creature you control.
+//! Chapter II/III wired via `Effect::EachCastThisTurn { Any, PlusOneCounterOnYourCreature }`
+//! (delayed triggers carry no targets — the counter goes to your lowest-id creature,
+//! the engine's documented deterministic pick).
 //! GAP: Chapter I "exile top four, play until end of next turn" — play-from-exile-with-expiry not in catalog.
-//! GAP: Chapter II/III "whenever you cast a spell this turn" — delayed this-turn cast trigger not in catalog.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{EachCastRider, Effect, NextCastKind};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -27,8 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_enters_with(EntersWithSpec::Counters { kind: CounterKind::Lore, count: 1 })
             .with_triggered_ability(TriggeredAbilityDef { id: 1, trigger_condition: TriggerCondition::PhaseBegins { phase: Phase::PreCombatMain, whose: ControllerConstraint::You }, intervening_if: None, effect: add_lore_counter, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
             .with_triggered_ability(TriggeredAbilityDef { id: 2, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(1) }, intervening_if: None, effect: chapter_i, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
-            .with_triggered_ability(TriggeredAbilityDef { id: 3, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(2) }, intervening_if: None, effect: chapter_gap, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
-            .with_triggered_ability(TriggeredAbilityDef { id: 4, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(3) }, intervening_if: None, effect: chapter_gap, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() }),
+            .with_triggered_ability(TriggeredAbilityDef { id: 3, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(2) }, intervening_if: None, effect: chapter_ii_iii, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() })
+            .with_triggered_ability(TriggeredAbilityDef { id: 4, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(3) }, intervening_if: None, effect: chapter_ii_iii, trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime, target_requirements: Vec::new() }),
     )
 }
 
@@ -41,7 +43,12 @@ fn chapter_i(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Ve
     Vec::new()
 }
 
-fn chapter_gap(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "whenever you cast a spell this turn, +1/+1 counter on target creature" — delayed this-turn trigger not in catalog
-    Vec::new()
+fn chapter_ii_iii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // "Whenever you cast a spell this turn, put a +1/+1 counter on
+    // target creature you control" — repeating, lapses at end of turn.
+    vec![Effect::EachCastThisTurn {
+        controller: trig.controller,
+        kind: NextCastKind::Any,
+        rider: EachCastRider::PlusOneCounterOnYourCreature,
+    }]
 }
