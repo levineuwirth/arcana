@@ -46,3 +46,4 @@ pub mod llanowar_cavalry;
 pub mod phyrexian_infiltrator;
 pub mod hunting_kavu;
 pub mod trench_wurm;
+pub mod tectonic_instability;

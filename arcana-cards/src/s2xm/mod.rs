@@ -48,3 +48,5 @@ pub mod orcish_vandal;
 pub mod fulminator_mage;
 pub mod heat_shimmer;
 pub mod kuldotha_flamefiend;
+pub mod mana_crypt;
+pub mod welding_jar;

@@ -120,3 +120,6 @@ pub mod suspicious_shambler;
 pub mod thrashing_brontodon;
 pub mod affectionate_indrik;
 pub mod undying_malice;
+pub mod azorius_guildgate;
+pub mod extravagant_replication;
+pub mod quick_draw_katana;

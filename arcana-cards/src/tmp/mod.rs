@@ -30,3 +30,4 @@ pub mod energizer;
 pub mod opportunist;
 pub mod rootwater_diver;
 pub mod wild_wurm;
+pub mod ghost_town;

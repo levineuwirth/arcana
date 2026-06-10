@@ -33,3 +33,4 @@ pub mod stone_haven_medic;
 pub mod cliffside_lookout;
 pub mod brilliant_spectrum;
 pub mod ugin_s_insight;
+pub mod slab_hammer;

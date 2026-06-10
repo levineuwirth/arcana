@@ -8,3 +8,4 @@ pub mod magus_of_the_mind;
 pub mod nin_the_pain_artist;
 pub mod serendib_sorcerer;
 pub mod havengul_lich;
+pub mod urborg_volcano;

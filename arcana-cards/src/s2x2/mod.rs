@@ -44,3 +44,4 @@ pub mod weathered_wayfarer;
 pub mod mistmeadow_witch;
 pub mod hero_of_the_games;
 pub mod dreamshaper_shaman;
+pub mod phyrexian_tyranny;

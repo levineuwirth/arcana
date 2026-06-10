@@ -68,3 +68,5 @@ pub mod jolly_gerbils;
 pub mod harnesser_of_storms;
 pub mod alania_s_pathmaker;
 pub mod alania_divergent_storm;
+pub mod sword_of_vengeance;
+pub mod short_bow;

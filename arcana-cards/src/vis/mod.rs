@@ -20,3 +20,4 @@ pub mod matopi_golem;
 pub mod song_of_blood;
 pub mod forbidden_ritual;
 pub mod goblin_swine_rider;
+pub mod undiscovered_paradise;

@@ -28,3 +28,4 @@ pub mod forcemage_advocate;
 pub mod tunneler_wurm;
 pub mod selfless_exorcist;
 pub mod anurid_brushhopper;
+pub mod telekinetic_bonds;

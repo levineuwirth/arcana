@@ -39,3 +39,4 @@ pub mod atarka_pummeler;
 pub mod sandsteppe_scavenger;
 pub mod dromoka_dunecaster;
 pub mod blood_chin_fanatic;
+pub mod silumgar_monument;

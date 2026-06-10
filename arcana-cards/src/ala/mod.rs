@@ -35,3 +35,5 @@ pub mod filigree_sages;
 pub mod dragon_s_herald;
 pub mod angel_s_herald;
 pub mod sacellum_godspeaker;
+pub mod mighty_emergence;
+pub mod minion_reflector;

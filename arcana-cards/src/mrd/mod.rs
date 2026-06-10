@@ -50,3 +50,4 @@ pub mod myr_mindservant;
 pub mod brown_ouphe;
 pub mod pewter_golem;
 pub mod arc_slogger;
+pub mod tower_of_murmurs;

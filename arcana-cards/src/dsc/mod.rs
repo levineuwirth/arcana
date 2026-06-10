@@ -23,3 +23,5 @@ pub mod kaervek_the_merciless;
 pub mod the_eldest_reborn;
 pub mod beanstalk_giant_fertile_footsteps;
 pub mod arachnogenesis;
+pub mod vault_of_whispers;
+pub mod underground_river;

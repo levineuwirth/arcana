@@ -78,3 +78,4 @@ pub mod delver_of_secrets_insectile_aberration;
 pub mod cryptolith_fragment_aurora_of_emrakul;
 pub mod second_harvest;
 pub mod huntmaster_of_the_fells_ravager_of_the_fells;
+pub mod cobbled_wings;

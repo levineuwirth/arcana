@@ -51,3 +51,5 @@ pub mod facet_reader;
 pub mod phase_dolphin;
 pub mod clash_of_titans;
 pub mod back_for_more;
+pub mod offspring_s_revenge;
+pub mod raugrin_triome;

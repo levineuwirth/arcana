@@ -39,3 +39,4 @@ pub mod sita_varma_masked_racer;
 pub mod pacesetter_paragon;
 pub mod stampeding_scurryfoot;
 pub mod quag_feast;
+pub mod count_on_luck;

@@ -58,3 +58,4 @@ pub mod evil_twin;
 pub mod silverchase_fox;
 pub mod blood_feud;
 pub mod flamewave_invoker;
+pub mod angelic_chorus;

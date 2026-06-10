@@ -600,6 +600,8 @@ pub mod cc2;
 
 pub mod sld;
 
+pub mod thp3;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

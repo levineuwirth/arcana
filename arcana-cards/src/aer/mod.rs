@@ -44,3 +44,4 @@ pub mod tezzeret_s_simulacrum;
 pub mod merchant_s_dockhand;
 pub mod verdant_automaton;
 pub mod restoration_specialist;
+pub mod pacification_array;

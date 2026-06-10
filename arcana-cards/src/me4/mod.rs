@@ -60,3 +60,5 @@ pub mod argivian_blacksmith;
 pub mod drowned;
 pub mod orcish_mechanics;
 pub mod mijae_djinn;
+pub mod tawnos_s_wand;
+pub mod celestial_sword;

@@ -27,3 +27,4 @@ pub mod drowned_rusalka;
 pub mod ostiary_thrull;
 pub mod starved_rusalka;
 pub mod cerebral_vortex;
+pub mod killer_instinct;

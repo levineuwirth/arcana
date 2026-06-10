@@ -42,3 +42,4 @@ pub mod magic_designer;
 pub mod impressive_rat;
 pub mod the_bear_force_pilot;
 pub mod devoted_sultai;
+pub mod a_town;

@@ -29,3 +29,4 @@ pub mod voltaic_construct;
 pub mod viridian_acolyte;
 pub mod goblin_archaeologist;
 pub mod steelshaper_apprentice;
+pub mod leonin_bola;

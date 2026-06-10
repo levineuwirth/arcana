@@ -4,3 +4,4 @@ pub mod biomantic_mastery;
 pub mod wistful_selkie;
 pub mod gigantoplasm;
 pub mod jace_s_archivist;
+pub mod simic_keyrune;

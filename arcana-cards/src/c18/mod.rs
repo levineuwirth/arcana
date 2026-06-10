@@ -4,3 +4,4 @@ pub mod tidings;
 pub mod predict;
 pub mod scute_mob;
 pub mod borderland_explorer;
+pub mod warped_landscape;

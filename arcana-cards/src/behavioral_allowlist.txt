@@ -29,7 +29,6 @@ Blacksmith's Talent
 Blightreaper Thallid
 Bloodline Keeper
 Bonded Herdbeast
-Bonesplitter
 Boon of Boseiju
 Burst of Energy
 Calamitous Cave-In
@@ -283,3 +282,6 @@ Wild Wurm
 Wyll of the Blade Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
+Avarice Totem
+Mana Crypt
+Tectonic Instability

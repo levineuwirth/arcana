@@ -29,3 +29,4 @@ pub mod murderous_rider_swift_end;
 pub mod spell_swindle;
 pub mod excise_the_imperfect;
 pub mod goblin_medics;
+pub mod gavony_township;

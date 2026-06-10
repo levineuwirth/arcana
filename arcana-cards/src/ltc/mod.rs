@@ -9,3 +9,4 @@ pub mod oath_of_eorl;
 pub mod song_of_e_rendil;
 pub mod in_the_darkness_bind_them;
 pub mod of_herbs_and_stewed_rabbit;
+pub mod nazg_l_battle_mace;

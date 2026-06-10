@@ -40,3 +40,5 @@ pub mod elvish_herder;
 pub mod carrion_beetles;
 pub mod argothian_elder;
 pub mod copper_gnomes;
+pub mod opal_archangel;
+pub mod hidden_ancients;

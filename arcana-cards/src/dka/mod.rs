@@ -24,3 +24,4 @@ pub mod hinterland_hermit_hinterland_scourge;
 pub mod ravenous_demon_archdemon_of_greed;
 pub mod afflicted_deserter_werewolf_ransacker;
 pub mod loyal_cathar_unhallowed_cathar;
+pub mod executioner_s_hood;

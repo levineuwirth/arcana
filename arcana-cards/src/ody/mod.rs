@@ -50,3 +50,5 @@ pub mod muscle_burst;
 pub mod mind_burst;
 pub mod aether_burst;
 pub mod flame_burst;
+pub mod skycloud_egg;
+pub mod cabal_pit;

@@ -45,3 +45,4 @@ pub mod deepwood_ghoul;
 pub mod patagia_golem;
 pub mod orcish_spy;
 pub mod shock_troops;
+pub mod noble_purpose;

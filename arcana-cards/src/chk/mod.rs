@@ -66,3 +66,4 @@ pub mod orochi_leafcaller;
 pub mod soilshaper;
 pub mod kami_of_fire_s_roar;
 pub mod cranial_extraction;
+pub mod no_dachi;

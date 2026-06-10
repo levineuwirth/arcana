@@ -6,3 +6,4 @@ pub mod hero_of_precinct_one;
 pub mod jedit_ojanen_mercenary;
 pub mod the_ever_changing_dane;
 pub mod stangg_echo_warrior;
+pub mod shizo_death_s_storehouse;

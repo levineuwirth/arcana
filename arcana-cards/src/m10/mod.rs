@@ -20,3 +20,4 @@ pub mod looming_shade;
 pub mod undead_slayer;
 pub mod acolyte_of_xathrid;
 pub mod goblin_artillery;
+pub mod gorgon_flail;

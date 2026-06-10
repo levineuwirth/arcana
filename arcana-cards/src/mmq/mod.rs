@@ -80,3 +80,5 @@ pub mod ramosian_commander;
 pub mod thrashing_wumpus;
 pub mod hired_giant;
 pub mod kris_mage;
+pub mod panacea;
+pub mod rishadan_pawnshop;

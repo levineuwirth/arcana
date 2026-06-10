@@ -62,3 +62,4 @@ pub mod stronghold_assassin;
 pub mod armor_sliver;
 pub mod sliver_queen;
 pub mod acidic_sliver;
+pub mod thalakos_lowlands;

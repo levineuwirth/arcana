@@ -85,3 +85,6 @@ pub mod ojer_axonil_deepest_might_temple_of_power;
 pub mod oteclan_landmark_oteclan_levitator;
 pub mod sunbird_standard_sunbird_effigy;
 pub mod jade_seedstones_jadeheart_attendant;
+pub mod echoing_deeps;
+pub mod swashbuckler_s_whip;
+pub mod sunfire_torch;

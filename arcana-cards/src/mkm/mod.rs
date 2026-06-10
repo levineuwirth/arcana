@@ -51,3 +51,4 @@ pub mod kellan_inquisitive_prodigy_tail_the_suspect;
 pub mod unscrupulous_agent;
 pub mod ill_timed_explosion;
 pub mod audience_with_trostani;
+pub mod raucous_theater;

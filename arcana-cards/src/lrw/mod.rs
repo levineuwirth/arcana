@@ -47,3 +47,4 @@ pub mod lowland_oaf;
 pub mod weed_strangle;
 pub mod kithkin_healer;
 pub mod flamekin_spitfire;
+pub mod wanderwine_hub;

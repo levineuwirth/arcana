@@ -33,3 +33,4 @@ pub mod disciple_of_the_old_ways;
 pub mod greenside_watcher;
 pub mod scorchwalker;
 pub mod coerced_confession;
+pub mod gruul_keyrune;

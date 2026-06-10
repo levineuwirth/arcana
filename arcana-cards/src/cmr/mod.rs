@@ -62,3 +62,5 @@ pub mod hans_eriksson;
 pub mod ancient_animus;
 pub mod perilous_myr;
 pub mod mnemonic_deluge;
+pub mod armory_of_iroas;
+pub mod amorphous_axe;

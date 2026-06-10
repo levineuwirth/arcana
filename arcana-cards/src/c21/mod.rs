@@ -18,3 +18,4 @@ pub mod audacious_reshapers;
 pub mod kaseto_orochi_archmage;
 pub mod digsite_engineer;
 pub mod terastodon;
+pub mod loxodon_warhammer;

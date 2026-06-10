@@ -45,3 +45,4 @@ pub mod fang_skulkin;
 pub mod patrol_signaler;
 pub mod groundling_pouncer;
 pub mod quillspike;
+pub mod leering_emblem;

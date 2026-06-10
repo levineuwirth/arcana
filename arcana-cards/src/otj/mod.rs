@@ -48,3 +48,4 @@ pub mod sterling_keykeeper;
 pub mod treasure_dredger;
 pub mod raucous_entertainer;
 pub mod kaervek_the_punisher;
+pub mod sandstorm_verge;

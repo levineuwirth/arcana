@@ -30,3 +30,4 @@ pub mod loxodon_anchorite;
 pub mod tyrranax;
 pub mod ouphe_vandals;
 pub mod viridian_scout;
+pub mod avarice_totem;
