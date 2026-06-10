@@ -1,13 +1,13 @@
 //! Battle-Scarred Goblin — `{1}{R}` 2/2 red Goblin Warrior.
 //! "Whenever this creature becomes blocked, it deals 1 damage to each creature blocking it."
-//! GAP: "each creature blocking it" — no accessor for the set of creatures blocking
-//! trig.source; using ids_matching for tapped creatures as structural approximation.
+//! "Each creature blocking it" is enumerated via `script::blockers_of`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -47,17 +47,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn deal_damage_to_blockers(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no accessor for "each creature blocking this creature" —
-    // script::ids_matching cannot filter for "blocking trig.source".
-    // Using trig.other_combatant() to get the first blocker only.
-    let Some(blocker_id) = trig.other_combatant() else { return Vec::new(); };
-    vec![Effect::DealDamage {
-        target: DamageTarget::Object(blocker_id),
-        amount: 1,
-        source: trig.source,
-    }]
+    script::blockers_of(state, trig.source)
+        .into_iter()
+        .map(|blocker_id| Effect::DealDamage {
+            target: DamageTarget::Object(blocker_id),
+            amount: 1,
+            source: trig.source,
+        })
+        .collect()
 }

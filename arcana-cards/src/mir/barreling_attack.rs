@@ -4,9 +4,11 @@
 //! it."
 //!
 //! The trample grant is expressible directly. The delayed
-//! "becomes-blocked" rider with a per-blocker dynamic pump is not
-//! expressible from a spell resolver (no delayed becomes-blocked
-//! trigger primitive in the catalog), so it is GAP-ed.
+//! "becomes-blocked" rider is not expressible from a spell resolver:
+//! the blockers do not exist at resolution (script::blockers_of would
+//! only see the current pairing), so what is missing is a delayed
+//! becomes-blocked trigger primitive whose resolver could then count
+//! blockers via script::blockers_of. GAP-ed until that exists.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -47,8 +49,8 @@ fn resolve(
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     // GAP: delayed "when that creature becomes blocked this turn, it gets
     // +1/+1 for each creature blocking it" — no delayed becomes-blocked
-    // trigger primitive with a per-blocker dynamic count is expressible
-    // from a spell resolver.
+    // trigger primitive exists; the per-blocker count (script::blockers_of)
+    // would have to run when that delayed trigger resolves, not here.
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Trample,

@@ -1,12 +1,16 @@
 //! Somberwald Vigilante — `{R}` 1/1 red Human Warrior.
 //! "Whenever this creature becomes blocked by a creature, this
 //! creature deals 1 damage to that creature."
+//! The trigger fires once per becomes-blocked event; "that creature"
+//! is recovered via `script::blockers_of` (covers every blocker, which
+//! matches the oracle's per-blocker trigger).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -47,16 +51,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn blocked_deal_damage(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // The blocking creature is accessible via trig.entering_object() or similar;
-    // no per-blocker accessor available — dealing damage to source as approximation.
-    // GAP: "that creature" (the blocker) id not accessible from PendingTrigger
-    vec![Effect::DealDamage {
-        target: DamageTarget::Object(trig.source),
-        amount: 1,
-        source: trig.source,
-    }]
+    // "that creature" — each creature blocking this one (the oracle text
+    // triggers once per blocker; the engine fires once, so hit them all).
+    script::blockers_of(state, trig.source)
+        .into_iter()
+        .map(|blocker| Effect::DealDamage {
+            target: DamageTarget::Object(blocker),
+            amount: 1,
+            source: trig.source,
+        })
+        .collect()
 }

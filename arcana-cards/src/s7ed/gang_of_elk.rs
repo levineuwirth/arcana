@@ -1,7 +1,8 @@
 //! Gang of Elk — `{5}{G}` 5/4 green Elk Beast.
 //! "Whenever this creature becomes blocked, it gets +2/+2 until end
 //! of turn for each creature blocking it."
-//! The pump amount scales with number of blockers (dynamic).
+//! The pump amount scales with the number of blockers, enumerated via
+//! `script::blockers_of`.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -10,7 +11,6 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -54,13 +54,8 @@ fn blocked_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // "for each creature blocking it" — use opponent creature count as approximation;
-    // GAP: no way to enumerate only creatures currently blocking this specific creature
-    let n = script::count_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-        trig.controller,
-    );
+    // "for each creature blocking it" — enumerate the actual blockers.
+    let n = script::blockers_of(state, trig.source).len();
     let pump = (n as i32) * 2;
     if pump == 0 {
         return Vec::new();

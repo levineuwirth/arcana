@@ -1,8 +1,8 @@
 //! Flowstone Salamander — `{3}{R}{R}` 3/4 red Salamander. "{R}: This creature
 //! deals 1 damage to target creature blocking it."
 //!
-//! GAP: no "target creature blocking this creature" filter; using generic
-//! creature target.
+//! "Target creature blocking it" is wired via
+//! `TargetFilter::CreatureBlockingSource` (source-relative pairing).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -13,7 +13,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -39,8 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     mana_cost: ManaCost::parse("{R}").unwrap(),
                     ..ActivationCost::default()
                 },
-                // GAP: no "creature blocking this" filter; using generic creature.
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::CreatureBlockingSource,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

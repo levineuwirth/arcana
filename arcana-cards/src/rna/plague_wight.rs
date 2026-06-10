@@ -1,12 +1,13 @@
 //! Plague Wight — `{1}{B}` 2/1 black Zombie.
 //! "Whenever this creature becomes blocked, each creature blocking it gets -1/-1 until end of turn."
-//! GAP: No accessor to get "all creatures blocking this" from SelfBecomesBlocked trigger.
+//! "Each creature blocking it" is enumerated via `script::blockers_of`.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -44,17 +45,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn weaken_blocker(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no accessor for "all creatures blocking this" — using trig.other_combatant() for the first blocker
-    let Some(other) = trig.other_combatant() else { return Vec::new(); };
-    vec![Effect::Pump {
-        target: other,
-        power: -1,
-        toughness: -1,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    script::blockers_of(state, trig.source)
+        .into_iter()
+        .map(|blocker| Effect::Pump {
+            target: blocker,
+            power: -1,
+            toughness: -1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        })
+        .collect()
 }

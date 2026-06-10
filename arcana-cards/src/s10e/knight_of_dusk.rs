@@ -1,8 +1,8 @@
 //! Knight of Dusk — `{1}{B}{B}` 2/2 black Human Knight.
 //! "{B}{B}: Destroy target creature blocking this creature."
 //!
-//! GAP: "Target creature blocking this creature" filter not available in TargetFilter.
-//! Using creature filter as approximation.
+//! "Target creature blocking this creature" is wired via
+//! `TargetFilter::CreatureBlockingSource` (source-relative pairing).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,8 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     mana_cost: ManaCost::parse("{B}{B}").unwrap(),
                     ..ActivationCost::default()
                 },
-                // GAP: "blocking this creature" filter not available; using any creature.
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::CreatureBlockingSource,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

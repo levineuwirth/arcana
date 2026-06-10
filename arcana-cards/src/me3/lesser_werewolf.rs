@@ -3,10 +3,13 @@
 //! turn and put a -0/-1 counter on target creature blocking or blocked by
 //! this creature. Activate only during the declare blockers step."
 //!
-//! GAP: "target creature blocking or blocked by this creature" — no
-//! TargetFilter for attacking/blocking status w.r.t. this creature.
+//! "Target creature blocking or blocked by this creature" is wired via
+//! `TargetFilter::CreatureBlockingOrBlockedBySource` (source-relative pairing).
 //! GAP: "-0/-1 counter" — CounterKind::MinusOneMinusOne would be used but
-//! the effect is "-0/-1" which is unusual.
+//! the effect is "-0/-1" which is unusual; the counter half is omitted.
+//! GAP: "If this creature's power is 1 or more" precondition and the
+//! "Activate only during the declare blockers step" timing window are
+//! not enforced.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -17,7 +20,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,7 +46,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     mana_cost: ManaCost::parse("{B}").unwrap(),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::CreatureBlockingOrBlockedBySource,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
@@ -59,7 +66,8 @@ fn pump_effect(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "target creature blocking or blocked by this creature" — targeting filter not supported.
+    // GAP: "-0/-1 counter" on the target not expressible (no -0/-1
+    // CounterKind with a P/T layer effect); only the self -1/-0 pump is emitted.
     vec![Effect::Pump {
         target: ctx.source,
         power: -1,

@@ -1,14 +1,17 @@
 //! Tolarian Entrancer — `{1}{U}` 1/1 blue Human Wizard.
 //! "Whenever this creature becomes blocked by a creature, gain control of that creature
 //! at end of combat."
-//! GAP: "at end of combat" — ChangeControl is permanent; no ChangeControlEndOfCombat
-//! variant exists. Using ChangeControl as best effort (grants permanent control rather
-//! than until-end-of-combat).
+//! "That creature" is recovered via `script::blockers_of` (every blocker —
+//! the oracle trigger fires once per blocking creature).
+//! GAP: "at end of combat" — ChangeControl is immediate and permanent; no
+//! end-of-combat-delayed control-change variant exists. Using ChangeControl
+//! at trigger resolution as best effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -48,17 +51,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn becomes_blocked_gain_control(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at end of combat" — using ChangeControl (permanent) as best effort;
-    // no ChangeControlEndOfCombat variant. Also GAP: "that creature" (the blocker)
-    // would need trig.other_combatant(), but SelfBecomesBlocked pairs with
-    // other_combatant for the (first) blocker.
-    let Some(id) = trig.other_combatant() else { return Vec::new(); };
-    vec![Effect::ChangeControl {
-        target: id,
-        new_controller: trig.controller,
-    }]
+    // GAP: "at end of combat" — using ChangeControl (immediate, permanent)
+    // as best effort; no end-of-combat-delayed control-change variant.
+    script::blockers_of(state, trig.source)
+        .into_iter()
+        .map(|blocker| Effect::ChangeControl {
+            target: blocker,
+            new_controller: trig.controller,
+        })
+        .collect()
 }

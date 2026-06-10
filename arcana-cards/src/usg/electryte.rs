@@ -1,7 +1,9 @@
 //! Electryte — `{3}{R}{R}` 3/3 red Trilobite Beast.
 //! "Whenever this creature deals combat damage to defending player,
 //! it deals damage equal to its power to each blocking creature."
-//! The damage amount equals this creature's power (dynamic).
+//! The damage amount equals this creature's power (dynamic). "Each
+//! blocking creature" (any blocker in this combat — Electryte itself
+//! was unblocked or trampled over) uses the combat-status filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -10,7 +12,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
+use arcana_core::targets::{ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -62,11 +64,10 @@ fn damage_to_blockers(
     if power == 0 {
         return Vec::new();
     }
-    // "each blocking creature" — use opponent creatures as approximation;
-    // GAP: no way to enumerate only creatures currently blocking this creature
+    // "each blocking creature" — every creature currently blocking in this combat.
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        &ObjectFilter::creature().blocking_only(),
         trig.controller,
     );
     ids.into_iter()

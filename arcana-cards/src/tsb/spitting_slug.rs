@@ -3,10 +3,9 @@
 //! {1}{G}. If you do, this creature gains first strike until end of
 //! turn. Otherwise, each creature blocking or blocked by this creature
 //! gains first strike until end of turn."
-//! GAP: "otherwise" branch (each blocking/blocked creature gets first
-//! strike) requires trig.other_combatant() for a single creature only;
-//! multi-blocker coverage and "otherwise" polarity of OptionalPayment
-//! not fully expressible.
+//! The "otherwise" branch enumerates the paired combatants via
+//! `script::blockers_of` + `script::attackers_blocked_by` and grants
+//! first strike to each through OptionalPayment's `else_effect`.
 
 use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -14,6 +13,7 @@ use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -51,14 +51,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn first_strike_choice(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "otherwise" branch not expressible with OptionalPayment
-    // (engine only has then/else_effect but "else" applies first
-    // strike to all blockers/attackers which requires multi-target
-    // enumeration); using "if you do, self gets first strike" only.
+    // "Otherwise, each creature blocking or blocked by this creature gains
+    // first strike" — both pairing directions, enumerated at resolution.
+    let mut others = script::blockers_of(state, trig.source);
+    others.extend(script::attackers_blocked_by(state, trig.source));
+    let else_grants: Vec<Effect> = others
+        .into_iter()
+        .map(|id| Effect::GrantKeyword {
+            target: id,
+            keyword: KeywordAbility::FirstStrike,
+            duration: Duration::EndOfTurn,
+        })
+        .collect();
     vec![Effect::OptionalPayment {
         chooser: trig.controller,
         cost: OptionalPaymentKind::Mana(ManaCost::parse("{1}{G}").expect("valid cost")),
@@ -67,6 +75,6 @@ fn first_strike_choice(
             keyword: KeywordAbility::FirstStrike,
             duration: Duration::EndOfTurn,
         }),
-        else_effect: None,
+        else_effect: Some(Box::new(Effect::Sequence(else_grants))),
     }]
 }
