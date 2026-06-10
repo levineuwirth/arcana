@@ -465,11 +465,24 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         // targets — plus the five basic land types (interned via the
         // registry) so "destroy all Mountains" / "X = Forests you
         // control" / land-subtype counts find referents.
+        // FIRST artifact TAPPED: selection_for picks the lowest matching
+        // id, so "untap target artifact" (Voltaic Key) must find a
+        // tapped one first; the second, untapped artifact keeps
+        // "if you control an artifact" + sacrifice referents honest.
+        let tapped_artifact = make_permanent(&mut state, p, TypeLine::ARTIFACT.into());
+        state.objects.get_mut(tapped_artifact).map(|o| o.tap());
         make_permanent(&mut state, p, TypeLine::ARTIFACT.into());
         make_permanent(&mut state, p, TypeLine::ENCHANTMENT.into());
         for basic in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
             make_basic_land(&mut state, reg, p, basic);
         }
+        // An UNTAPPED NONBASIC land AFTER the basics (higher id):
+        // "damage per nonbasic land" (Price of Progress) finds a
+        // referent, while every untap-land effect still first-picks a
+        // tapped basic and deltas. ("Tap target land" first-picks a
+        // tapped basic and no-ops — allowlisted residue; the untap
+        // class is an order of magnitude bigger.)
+        make_permanent(&mut state, p, TypeLine::LAND.into());
         // Stock library + graveyard with EVERY card type so type-tutors
         // ("search for an enchantment/artifact/planeswalker card") and
         // reanimation find matches — type-less dummies no-op them.
@@ -486,6 +499,7 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::ARTIFACT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::INSTANT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::SORCERY.into());
+        make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::ENCHANTMENT.into());
         let dead = make_tribal_creature(&mut state, p, Zone::Graveyard(p), &tribes);
         dead_ids[p as usize] = dead;
     }
@@ -638,11 +652,16 @@ fn make_basic_land(state: &mut GameState, reg: &CardRegistry, controller: Player
     let mut subtypes = crate::types::SubtypeSet::default();
     if let Some(s) = reg.interner().lookup(basic) { subtypes.0.insert(s); }
     let chars = Characteristics {
-        types: TypeLine::LAND.into(), subtypes, ..Default::default()
+        types: TypeLine::LAND.into(), subtypes,
+        supertypes: crate::types::SupertypeSet::new()
+            .with(crate::types::SupertypeSet::BASIC),
+        ..Default::default()
     };
     let mut obj = GameObject::new(id, controller, Zone::Battlefield, 0, chars);
     // Enter tapped so "untap target land / Forest" (mana dorks) shows a
-    // delta; creatures stay untapped for tap-target effects.
+    // delta; creatures stay untapped for tap-target effects. (One land
+    // per player is left UNTAPPED at the call site so "tap target
+    // land" — Rishadan Port — keeps a referent too.)
     obj.tap();
     state.objects.insert(obj);
     id

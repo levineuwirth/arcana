@@ -317,6 +317,17 @@ fn planeswalker_loyalty(obj: &crate::objects::GameObject) -> i32 {
 fn apply_legend_rule(state: &mut GameState) -> bool {
     use std::collections::BTreeMap;
 
+    // The legend rule posts an agent choice, and pending_choice is a
+    // single slot — if a RESOLVER's choice is already pending when this
+    // pass runs (a tutor that put a second same-name legendary onto the
+    // battlefield mid-sequence; found by the random-game harness),
+    // defer: the conflict is re-detected on the post-answer SBA pass.
+    // The rest of the SBA pass (deaths, losses, game result) must keep
+    // running, so the guard lives HERE, not at the pass entry.
+    if state.pending_choice.is_some() {
+        return false;
+    }
+
     // Canonical iteration: sort by (controller, name) so the group we
     // push is deterministic across runs.
     let mut groups: BTreeMap<(PlayerId, SmallString), Vec<ObjectId>> = BTreeMap::new();
@@ -942,6 +953,30 @@ mod tests {
         assert_eq!(s.objects.get(first).unwrap().zone, Zone::Battlefield);
         assert_eq!(s.objects.get(second).unwrap().zone, Zone::Battlefield);
         assert_eq!(s.objects.get(third).unwrap().zone, Zone::Battlefield);
+    }
+
+    #[test]
+    fn sba_pass_defers_while_a_choice_is_pending() {
+        use crate::actions::{ChoiceContext, ChoiceKind};
+        let mut s = GameState::new(2, 0);
+        let name = s.players[0].id as SmallString;
+        put_legendary_creature(&mut s, 0, name);
+        put_legendary_creature(&mut s, 0, name);
+        // A resolution choice is already pending (e.g. a tutor's pick)
+        // when SBAs run — the legend rule must NOT double-push into the
+        // single-slot pending_choice (found by the random-game harness).
+        // The rest of the pass still runs (deaths, losses, game result).
+        s.push_pending_choice(0, ChoiceContext::ResolvingStack(999),
+            ChoiceKind::YesNo { prompt: 0 });
+        apply_state_based_actions(&mut s);
+        // Still the ORIGINAL choice, not a legend-rule PickCards.
+        assert!(matches!(s.pending_choice.as_ref().unwrap().kind,
+            ChoiceKind::YesNo { .. }));
+        // Once the choice clears, the deferred legend rule fires.
+        s.pending_choice = None;
+        apply_state_based_actions(&mut s);
+        assert!(matches!(s.pending_choice.as_ref().unwrap().kind,
+            ChoiceKind::PickCards { .. }));
     }
 
     #[test]
