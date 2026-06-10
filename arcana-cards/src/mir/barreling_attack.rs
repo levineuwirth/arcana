@@ -3,22 +3,29 @@
 //! turn, it gets +1/+1 until end of turn for each creature blocking
 //! it."
 //!
-//! The trample grant is expressible directly. The delayed
-//! "becomes-blocked" rider is not expressible from a spell resolver:
-//! the blockers do not exist at resolution (script::blockers_of would
-//! only see the current pairing), so what is missing is a delayed
-//! becomes-blocked trigger primitive whose resolver could then count
-//! blockers via script::blockers_of. GAP-ed until that exists.
+//! The trample grant is expressible directly. The "becomes-blocked"
+//! rider is wired via [`Effect::GrantTriggeredAbility`]: the resolver
+//! grants the target a `SelfBecomesBlocked` triggered ability until end
+//! of turn whose effect pumps it +N/+N where N counts its blockers via
+//! `script::blockers_of` at trigger resolution. (A prior GAP claimed no
+//! delayed becomes-blocked primitive existed — stale since the granted-
+//! trigger primitive landed.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+    GRANTED_TRIGGER_ID_BASE,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Barreling Attack");
@@ -47,13 +54,46 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: delayed "when that creature becomes blocked this turn, it gets
-    // +1/+1 for each creature blocking it" — no delayed becomes-blocked
-    // trigger primitive exists; the per-blocker count (script::blockers_of)
-    // would have to run when that delayed trigger resolves, not here.
-    vec![Effect::GrantKeyword {
-        target: *id,
-        keyword: KeywordAbility::Trample,
+    // "When that creature becomes blocked this turn, it gets +1/+1 until
+    // end of turn for each creature blocking it" — granted triggered
+    // ability; the EndOfTurn grant duration carries the "this turn" rider.
+    let ability = TriggeredAbilityDef {
+        id: GRANTED_TRIGGER_ID_BASE + 1,
+        trigger_condition: TriggerCondition::SelfBecomesBlocked,
+        intervening_if: None,
+        effect: granted_blocked_pump,
+        trigger_zones: vec![Zone::Battlefield],
+        frequency: TriggerFrequency::EachTime,
+        target_requirements: Vec::new(),
+    };
+    vec![
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Trample,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantTriggeredAbility {
+            target: *id,
+            ability: Box::new(ability),
+            duration: Duration::EndOfTurn,
+        },
+    ]
+}
+
+fn granted_blocked_pump(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let n = script::blockers_of(state, trig.source).len() as i32;
+    if n == 0 {
+        return Vec::new();
+    }
+    vec![Effect::Pump {
+        target: trig.source,
+        power: n,
+        toughness: n,
         duration: Duration::EndOfTurn,
+        keywords: vec![],
     }]
 }

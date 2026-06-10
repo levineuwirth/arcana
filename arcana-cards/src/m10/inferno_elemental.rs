@@ -2,17 +2,20 @@
 //! creature blocks or becomes blocked by a creature, this creature deals
 //! 3 damage to that creature."
 //!
-//! GAP: trigger — no TriggerCondition variant for "blocks or becomes
-//! blocked by a creature". Using SelfAttacks as closest available; verify
-//! pipeline will flag.
+//! Wired with the bare `SelfBlocksOrBecomesBlocked` (a prior GAP claimed
+//! no such variant existed — stale). "That creature" is recovered via
+//! `script::blockers_of` + `script::attackers_blocked_by`; the two
+//! directions are mutually exclusive per event, so the union is exactly
+//! the paired creature(s), matching the oracle's per-creature trigger
+//! (mirrors som/engulfing_slagwurm).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,35 +42,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no variant for "blocks or becomes blocked by a creature"
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBlocksOrBecomesBlocked,
                 intervening_if: None,
                 effect: deal_3_to_blocking_creature,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: Vec::new(),
             }),
     )
 }
 
 fn deal_3_to_blocking_creature(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = trig.targets.targets.first() else {
-        return Vec::new();
-    };
-    let TargetChoice::Object(id) = target else {
-        return Vec::new();
-    };
-    vec![Effect::DealDamage {
-        target: DamageTarget::Object(*id),
-        amount: 3,
-        source: trig.source,
-    }]
+    // Per event only one direction is populated: blockers_of when this
+    // creature is the blocked attacker, attackers_blocked_by when it blocks.
+    let mut paired = script::blockers_of(state, trig.source);
+    paired.extend(script::attackers_blocked_by(state, trig.source));
+    paired
+        .into_iter()
+        .map(|id| Effect::DealDamage {
+            target: DamageTarget::Object(id),
+            amount: 3,
+            source: trig.source,
+        })
+        .collect()
 }

@@ -1,6 +1,6 @@
 //! Viashino Weaponsmith — `{3}{R}` 2/2 red Lizard.
 //! "Whenever this creature becomes blocked by a creature, this creature gets +2/+2 until end of turn."
-//! GAP: no "becomes blocked" TriggerCondition; SelfAttacks used as proxy.
+//! Wired with `SelfBecomesBlocked` (a prior GAP claimed no such variant existed — stale).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -34,8 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — no "becomes blocked" variant; SelfAttacks used as proxy
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
                 effect: blocked_pump,
                 trigger_zones: vec![Zone::Battlefield],

@@ -1,15 +1,16 @@
 //! Arrogant Bloodlord — `{1}{B}{B}` 4/4 black Vampire Knight creature.
 //! "Whenever this creature blocks or becomes blocked by a creature with power 1 or less,
 //! destroy this creature at end of combat."
-//! GAP: no trigger condition for "blocks or becomes blocked by creature with power 1 or less"
-//! specifically. Using SelfBecomesBlocked as closest match. The delayed end-of-combat
-//! destroy is approximated with DelayedAction (NextEndStep is closest available).
+//! Trigger wired with `SelfBlocksOrBecomesBlockedBy` + a max-power-1 creature filter.
+//! GAP: the delayed end-of-combat destroy is approximated with DelayedAction
+//! (NextEndStep is closest available).
 
 use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -38,9 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger condition should fire only when blocker/blocked creature has
-                // power 1 or less; SelfBecomesBlocked is the closest available.
-                trigger_condition: TriggerCondition::SelfBecomesBlocked,
+                // "blocks or becomes blocked by a creature with power 1 or less" —
+                // either direction; the paired creature(s) must include a power<=1 match.
+                trigger_condition: TriggerCondition::SelfBlocksOrBecomesBlockedBy {
+                    filter: ObjectFilter::creature().with_max_power(1),
+                },
                 intervening_if: None,
                 effect: blocked_schedule_destroy,
                 trigger_zones: vec![Zone::Battlefield],

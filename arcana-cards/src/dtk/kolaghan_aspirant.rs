@@ -1,14 +1,16 @@
 //! Kolaghan Aspirant — `{1}{R}` 2/1 red Human Warrior.
 //! "Whenever this creature becomes blocked by a creature, this creature deals
 //! 1 damage to that creature."
-//! GAP: trigger — no variant for "becomes blocked by a creature"; using
-//! SelfAttacks as closest approximation (combat trigger).
+//! Wired with the bare `SelfBecomesBlocked` (a prior GAP claimed no such
+//! variant existed — stale); "that creature" is each blocker via
+//! `script::blockers_of`, matching the oracle's per-blocker trigger.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -38,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                trigger_condition: TriggerCondition::SelfBecomesBlocked,
                 intervening_if: None,
                 effect: on_blocked,
                 trigger_zones: vec![Zone::Battlefield],
@@ -49,15 +51,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_blocked(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: trigger — "becomes blocked by a creature" not in catalog; fires on
-    // attack. Also GAP: no reference to the blocking creature's id.
-    vec![Effect::DealDamage {
-        target: DamageTarget::Object(trig.source),
-        amount: 1,
-        source: trig.source,
-    }]
+    // "that creature" — deal 1 to each declared blocker.
+    script::blockers_of(state, trig.source)
+        .into_iter()
+        .map(|id| Effect::DealDamage {
+            target: DamageTarget::Object(id),
+            amount: 1,
+            source: trig.source,
+        })
+        .collect()
 }

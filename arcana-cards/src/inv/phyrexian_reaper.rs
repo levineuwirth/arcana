@@ -1,14 +1,17 @@
 //! Phyrexian Reaper — `{4}{B}` 3/3 black Creature — Phyrexian Zombie.
 //! "Whenever this creature becomes blocked by a green creature, destroy that creature.
 //! It can't be regenerated."
-//! GAP: color filter on the blocking creature (green only) not checkable via trigger alone;
-//! SelfBecomesBlocked fires regardless of blocker color. "Can't be regenerated" modifier not modeled.
+//! Trigger wired with `SelfBecomesBlockedBy` + a green-creature filter; the effect
+//! destroys each green blocker (via `script::blockers_of`, re-filtered for green).
+//! GAP: "can't be regenerated" modifier not modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -36,7 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfBecomesBlocked,
+                // "becomes blocked by a green creature" — filtered form; fires
+                // only when at least one declared blocker is green.
+                trigger_condition: TriggerCondition::SelfBecomesBlockedBy {
+                    filter: ObjectFilter::creature().with_colors(ColorSet::green()),
+                },
                 intervening_if: None,
                 effect: blocked_destroy_blocker,
                 trigger_zones: vec![Zone::Battlefield],
@@ -47,13 +54,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn blocked_destroy_blocker(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: color filter (green) on the blocking creature not expressible without direct state access.
+    // "that creature" = the green blocker; destroy each green blocker
+    // (covers multi-block where only some blockers are green).
     // GAP: "can't be regenerated" modifier not modeled.
-    // Best-effort: destroy the other_combatant (the blocker) unconditionally.
-    let Some(id) = trig.other_combatant() else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: id }]
+    let green = ObjectFilter::creature().with_colors(ColorSet::green());
+    script::blockers_of(state, trig.source)
+        .into_iter()
+        .filter(|&id| {
+            state
+                .objects
+                .get(id)
+                .is_some_and(|o| green.matches(o, state, trig.controller))
+        })
+        .map(|id| Effect::DestroyPermanent { target: id })
+        .collect()
 }

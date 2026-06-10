@@ -2,9 +2,8 @@
 //! "Whenever this creature blocks or becomes blocked by one or more
 //! Orcs, this creature gets +0/+2 until end of turn."
 //!
-//! GAP: trigger condition "blocks or becomes blocked by one or more
-//! Orcs" — SelfBlocks and SelfBecomesBlocked have no subtype filter.
-//! Using SelfBlocks as closest match (cannot distinguish Orc filter).
+//! Wired with `SelfBlocksOrBecomesBlockedBy` and an Orc-subtype filter:
+//! fires only when the paired creature(s) include at least one Orc.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,6 +11,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -22,6 +22,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dwarven Soldier");
     let dwarf = reg.interner_mut().intern("Dwarf");
     let soldier = reg.interner_mut().intern("Soldier");
+    let orc = reg.interner_mut().intern("Orc");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(dwarf);
     subtypes.0.insert(soldier);
@@ -40,10 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "blocks or becomes blocked by one or more Orcs";
-                // no SelfBlocks/SelfBecomesBlocked filter for attacker subtype.
-                // Using SelfBlocks as closest match.
-                trigger_condition: TriggerCondition::SelfBlocks,
+                // "blocks or becomes blocked by one or more Orcs" — filtered
+                // either-direction form; the paired creature(s) must include an Orc.
+                trigger_condition: TriggerCondition::SelfBlocksOrBecomesBlockedBy {
+                    filter: ObjectFilter::creature().with_subtype_sym(orc),
+                },
                 intervening_if: None,
                 effect: on_blocks,
                 trigger_zones: vec![Zone::Battlefield],

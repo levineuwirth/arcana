@@ -2,8 +2,8 @@
 //! "Whenever this creature blocks or becomes blocked by one or more black creatures, this
 //! creature gets +2/+0 until end of turn."
 //!
-//! # GAP: trigger — "whenever this creature blocks or becomes blocked by black creatures" has
-//! no variant; using SelfAttacks as closest approximation.
+//! Wired with `SelfBlocksOrBecomesBlockedBy` and a black-creature filter
+//! (previously approximated with SelfAttacks, which over-fired on every attack).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -11,6 +11,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -39,8 +40,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "blocks or becomes blocked by black creatures" — no variant; using SelfAttacks.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // "blocks or becomes blocked by one or more black creatures" —
+                // the paired creature(s) must include a black creature.
+                trigger_condition: TriggerCondition::SelfBlocksOrBecomesBlockedBy {
+                    filter: ObjectFilter::creature().with_colors(ColorSet::black()),
+                },
                 intervening_if: None,
                 effect: combat_with_black_pump,
                 trigger_zones: vec![Zone::Battlefield],

@@ -8,6 +8,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -34,9 +35,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfBecomesBlocked,
-                // GAP: trigger only when blocked specifically by an artifact creature —
-                // SelfBecomesBlocked has no filter on the blocker type; fires on any block.
+                // "becomes blocked by an artifact creature" — filtered form;
+                // fires only when at least one declared blocker is an artifact creature.
+                trigger_condition: TriggerCondition::SelfBecomesBlockedBy {
+                    filter: ObjectFilter::new()
+                        .with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
+                },
                 intervening_if: None,
                 effect: blocked_by_artifact_pump,
                 trigger_zones: vec![Zone::Battlefield],
