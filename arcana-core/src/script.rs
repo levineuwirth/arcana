@@ -311,6 +311,27 @@ pub fn cards_discarded_this_turn(
         .count() as u32
 }
 
+/// Creatures currently blocking `attacker` (CR 509) — "each creature
+/// blocking it" sweeps (Battle-Scarred Goblin, Electryte, Gang of
+/// Elk). Empty outside combat or when unblocked. Declared order.
+pub fn blockers_of(state: &GameState, attacker: ObjectId) -> Vec<ObjectId> {
+    state.combat.as_ref()
+        .and_then(|c| c.attacker(attacker))
+        .map(|a| a.blocked_by.clone())
+        .unwrap_or_default()
+}
+
+/// Attackers that `blocker` is currently blocking — the inverse
+/// pairing ("each creature it's blocking"). Empty outside combat.
+pub fn attackers_blocked_by(state: &GameState, blocker: ObjectId) -> Vec<ObjectId> {
+    state.combat.as_ref()
+        .map(|c| c.blockers.iter()
+            .filter(|b| b.object_id == blocker)
+            .map(|b| b.blocking)
+            .collect())
+        .unwrap_or_default()
+}
+
 /// Did `id` attack this turn? Scans [`crate::events::GameEvent::CreatureAttacks`]
 /// for the live turn. The Boast gate ("activate only if this creature
 /// attacked this turn") — `id` is stable while the creature stays on

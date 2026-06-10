@@ -2289,7 +2289,7 @@ fn drain_one_queued_targeted_trigger(
     // CR 603.3d — if no legal target set exists, the ability simply
     // doesn't trigger: no stack entry, no ledger bump, no BecomesTarget.
     if crate::legal_actions::enumerate_target_selections(
-        &requirements, state, pt.controller).is_empty()
+        &requirements, state, pt.source, pt.controller).is_empty()
     {
         return false;
     }

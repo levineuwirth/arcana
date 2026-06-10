@@ -208,7 +208,8 @@ impl ReplacementCondition {
                     DamageTarget::Object(id) => TargetChoice::Object(*id),
                     DamageTarget::Player(p) => TargetChoice::Player(*p),
                 };
-                target_filter.matches(&target_choice, state, source_controller)
+                target_filter.matches(&target_choice, state,
+                    crate::objects::NULL_OBJECT_ID, source_controller)
             }
 
             (

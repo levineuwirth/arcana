@@ -404,10 +404,10 @@ impl TriggerCondition {
                         // filter Player-shape choice.
                         return target_filter.matches(
                             &crate::targets::TargetChoice::Player(*p),
-                            state, source_controller);
+                            state, source, source_controller);
                     }
                 });
-                target_filter.matches(&choice, state, source_controller)
+                target_filter.matches(&choice, state, source, source_controller)
             }
 
             StepBegins { step, whose } => {

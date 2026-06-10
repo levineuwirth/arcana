@@ -236,7 +236,7 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 let source_controller = state.objects.get(*source)
                     .map(|o| o.controller).unwrap_or(0);
                 for selection in
-                    enumerate_target_selections(reqs, state, source_controller)
+                    enumerate_target_selections(reqs, state, *source, source_controller)
                 {
                     out.push(Action::SubmitResolutionChoice {
                         id,
@@ -898,7 +898,7 @@ fn legal_priority_actions(
                 None => Vec::new(),
             };
             let target_selections =
-                enumerate_target_selections(&effective_reqs, state, player);
+                enumerate_target_selections(&effective_reqs, state, id, player);
             // Mode combo has a clause with no legal targets → skip.
             if target_selections.is_empty() { continue; }
 
@@ -1087,7 +1087,7 @@ fn legal_priority_actions(
             .and_then(|def| def.spell_ability.as_ref())
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        let target_selections = enumerate_target_selections(&reqs, state, id, player);
 
         for printed_fb_cost in flashback_costs {
             // TODO(delve-on-flashback): no card in current Standard has
@@ -1164,7 +1164,7 @@ fn legal_priority_actions(
             .and_then(|def| def.spell_ability.as_ref())
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        let target_selections = enumerate_target_selections(&reqs, state, id, player);
         if target_selections.is_empty() { continue; }
 
         let ctx = SpendContext::for_spell(
@@ -1230,7 +1230,7 @@ fn legal_priority_actions(
         let reqs: Vec<TargetRequirement> = back.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        let target_selections = enumerate_target_selections(&reqs, state, id, player);
         if target_selections.is_empty() { continue; }
 
         let ctx = SpendContext::for_spell(
@@ -1291,7 +1291,7 @@ fn legal_priority_actions(
         let reqs: Vec<TargetRequirement> = right.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        let target_selections = enumerate_target_selections(&reqs, state, id, player);
         if target_selections.is_empty() { continue; }
 
         let ctx = SpendContext::for_spell(
@@ -1358,7 +1358,7 @@ fn legal_priority_actions(
         let reqs: Vec<TargetRequirement> = face.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        let target_selections = enumerate_target_selections(&reqs, state, id, player);
         if target_selections.is_empty() { continue; }
 
         let ctx = SpendContext::for_spell(
@@ -1421,7 +1421,7 @@ fn legal_priority_actions(
             .and_then(|def| def.spell_ability.as_ref())
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        let target_selections = enumerate_target_selections(&reqs, state, id, player);
         if target_selections.is_empty() { continue; }
 
         let ctx = SpendContext::for_spell(
@@ -1485,7 +1485,7 @@ fn legal_priority_actions(
             .and_then(|def| def.spell_ability.as_ref())
             .map(|sa| sa.target_requirements.clone())
             .unwrap_or_default();
-        let target_selections = enumerate_target_selections(&reqs, state, player);
+        let target_selections = enumerate_target_selections(&reqs, state, id, player);
         if target_selections.is_empty() { continue; }
 
         let ctx = SpendContext::for_spell(
@@ -1549,6 +1549,7 @@ const MAX_TARGET_SELECTIONS: usize = 256;
 pub(crate) fn enumerate_target_selections(
     requirements: &[TargetRequirement],
     state: &GameState,
+    source: crate::objects::ObjectId,
     source_controller: PlayerId,
 ) -> Vec<TargetSelection> {
     if requirements.is_empty() {
@@ -1562,7 +1563,7 @@ pub(crate) fn enumerate_target_selections(
                 // Nothing to add.
             }
             crate::targets::TargetCount::Exactly(1) => {
-                let choices = req.filter.enumerate_legal(state, source_controller);
+                let choices = req.filter.enumerate_legal(state, source, source_controller);
                 let mut next = Vec::new();
                 // Bound the Cartesian product across single-target clauses:
                 // a k-target spell over an n-permanent board is otherwise
@@ -1574,7 +1575,7 @@ pub(crate) fn enumerate_target_selections(
                     for choice in &choices {
                         // Re-check the outer controller constraint —
                         // `enumerate_legal` doesn't apply it.
-                        if !req.matches_choice(choice, state, source_controller) {
+                        if !req.matches_choice(choice, state, source, source_controller) {
                             continue;
                         }
                         let mut extended = partial.clone();
@@ -2082,7 +2083,7 @@ fn enumerate_activation_actions(
             if plans.is_empty() { continue; }
 
             let target_selections = enumerate_target_selections(
-                &ability.target_requirements, state, player);
+                &ability.target_requirements, state, id, player);
             if target_selections.is_empty() { continue; }
 
             let additional = build_additional_costs(&ability.cost, id);
@@ -2629,13 +2630,13 @@ mod tests {
             put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1));
         }
         let tc = || TargetRequirement::target_creature();
-        let sels = enumerate_target_selections(&[tc(), tc()], &s, 0);
+        let sels = enumerate_target_selections(&[tc(), tc()], &s, crate::objects::NULL_OBJECT_ID, 0);
         assert!(!sels.is_empty(), "at least one selection");
         assert!(sels.len() <= MAX_TARGET_SELECTIONS,
             "target selections must be capped, got {}", sels.len());
         // A single-target clause over a 40-creature board is just 40 — well
         // under the cap, so it stays fully enumerated.
-        let one = enumerate_target_selections(&[tc()], &s, 0);
+        let one = enumerate_target_selections(&[tc()], &s, crate::objects::NULL_OBJECT_ID, 0);
         assert_eq!(one.len(), 40);
     }
 

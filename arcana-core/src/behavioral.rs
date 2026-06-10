@@ -744,7 +744,7 @@ fn legal_target(
             TargetChoice::Object(id),
             TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)),
         ] {
-            if req.matches_choice(&choice, state, 0) { return Some(choice); }
+            if req.matches_choice(&choice, state, stack_spell, 0) { return Some(choice); }
         }
     }
     // Opponent (player 1) FIRST: "target player loses N life" punishers
@@ -755,7 +755,7 @@ fn legal_target(
             TargetChoice::Player(p),
             TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)),
         ] {
-            if req.matches_choice(&choice, state, 0) { return Some(choice); }
+            if req.matches_choice(&choice, state, stack_spell, 0) { return Some(choice); }
         }
     }
     None

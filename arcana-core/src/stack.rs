@@ -652,7 +652,7 @@ impl GameState {
         let mut legality = Vec::with_capacity(chosen.len());
         for (i, choice) in chosen.iter().enumerate() {
             let legal = match requirements.get(i) {
-                Some(req) => req.matches_choice(choice, self, entry.controller),
+                Some(req) => req.matches_choice(choice, self, entry.source, entry.controller),
                 None => false,
             };
             legality.push(if legal { TargetLegality::Legal } else { TargetLegality::Illegal });
@@ -988,7 +988,7 @@ pub fn recheck_stack_entry_targets(
         };
         let single = TargetSelection { targets: vec![choice.clone()] };
         let legalities = validate_targets_on_resolution(
-            req, &single, state, entry.controller);
+            req, &single, state, entry.source, entry.controller);
         legalities.into_iter().next().unwrap_or(TargetLegality::Illegal)
     }).collect()
 }

@@ -133,6 +133,7 @@ impl TargetRequirement {
         &self,
         selection: &TargetSelection,
         state: &GameState,
+        source: ObjectId,
         source_controller: PlayerId,
         x_value: Option<u32>,
     ) -> bool {
@@ -140,7 +141,7 @@ impl TargetRequirement {
             return false;
         }
         selection.targets.iter().all(|c|
-            self.matches_choice(c, state, source_controller))
+            self.matches_choice(c, state, source, source_controller))
     }
 
     /// Legality of a single choice under this requirement (filter AND
@@ -150,9 +151,10 @@ impl TargetRequirement {
         &self,
         choice: &TargetChoice,
         state: &GameState,
+        source: ObjectId,
         source_controller: PlayerId,
     ) -> bool {
-        if !self.filter.matches(choice, state, source_controller) {
+        if !self.filter.matches(choice, state, source, source_controller) {
             return false;
         }
         if let Some(ctrl) = &self.controller {
@@ -248,7 +250,33 @@ pub enum TargetFilter {
     Spell(ObjectFilter),
     /// "Target card in [zone]" — e.g. target card in a graveyard.
     Card { zone: Zone, filter: ObjectFilter },
+    /// "Target creature blocking [this creature]" — source-relative
+    /// combat pairing (Knight of Dusk, Godo's Irregulars, Flowstone
+    /// Salamander). Read from [`GameState::combat`]'s blocker list
+    /// against the targeting ability's SOURCE; matches nothing outside
+    /// combat or when the source is unblocked.
+    CreatureBlockingSource,
+    /// "Target creature blocking or blocked by [this creature]"
+    /// (Lesser Werewolf): the candidate blocks the source OR the
+    /// source blocks the candidate.
+    CreatureBlockingOrBlockedBySource,
     Custom(fn(&GameObject, &GameState) -> bool),
+}
+
+/// Does the combat pairing for [`TargetFilter::CreatureBlockingSource`]
+/// / [`TargetFilter::CreatureBlockingOrBlockedBySource`] hold between
+/// `candidate` and `source`?
+fn blocking_pairing(
+    state: &GameState,
+    candidate: ObjectId,
+    source: ObjectId,
+    include_blocked_by: bool,
+) -> bool {
+    state.combat.as_ref().is_some_and(|c|
+        c.blockers.iter().any(|b|
+            (b.object_id == candidate && b.blocking == source)
+                || (include_blocked_by
+                    && b.object_id == source && b.blocking == candidate)))
 }
 
 impl TargetFilter {
@@ -256,10 +284,15 @@ impl TargetFilter {
     ///
     /// Pure filter check — does not consult any outer controller
     /// constraint (see [`TargetRequirement::matches_choice`] for that).
+    /// `source` is the targeting spell/ability's source object — the
+    /// referent of source-relative filters ("creature blocking THIS
+    /// creature"); pass [`crate::objects::NULL_OBJECT_ID`] when there
+    /// is no meaningful source (those filters then match nothing).
     pub fn matches(
         &self,
         choice: &TargetChoice,
         state: &GameState,
+        source: ObjectId,
         source_controller: PlayerId,
     ) -> bool {
         match (self, choice) {
@@ -314,6 +347,18 @@ impl TargetFilter {
                         && filter.matches(o, state, source_controller))
             }
 
+            // --- Source-relative combat pairings ---
+            (TargetFilter::CreatureBlockingSource, TargetChoice::Object(id)) => {
+                state.objects.get(*id).is_some_and(|o|
+                    o.zone.is_battlefield() && o.is_creature())
+                    && blocking_pairing(state, *id, source, false)
+            }
+            (TargetFilter::CreatureBlockingOrBlockedBySource, TargetChoice::Object(id)) => {
+                state.objects.get(*id).is_some_and(|o|
+                    o.zone.is_battlefield() && o.is_creature())
+                    && blocking_pairing(state, *id, source, true)
+            }
+
             // --- Custom closure ---
             (TargetFilter::Custom(f), TargetChoice::Object(id)) => {
                 state.objects.get(*id).is_some_and(|o| f(o, state))
@@ -335,6 +380,7 @@ impl TargetFilter {
     pub fn enumerate_legal<'a>(
         &'a self,
         state: &'a GameState,
+        source: ObjectId,
         source_controller: PlayerId,
     ) -> Vec<TargetChoice> {
         let mut out = Vec::new();
@@ -389,6 +435,16 @@ impl TargetFilter {
             TargetFilter::Card { zone, filter } => {
                 for o in state.objects.objects_in_zone_kind(zone.kind()) {
                     if filter.matches(o, state, source_controller) {
+                        out.push(TargetChoice::Object(o.id));
+                    }
+                }
+            }
+            TargetFilter::CreatureBlockingSource
+            | TargetFilter::CreatureBlockingOrBlockedBySource => {
+                let both = matches!(self,
+                    TargetFilter::CreatureBlockingOrBlockedBySource);
+                for o in state.objects.objects_in_zone(Zone::Battlefield) {
+                    if o.is_creature() && blocking_pairing(state, o.id, source, both) {
                         out.push(TargetChoice::Object(o.id));
                     }
                 }
@@ -977,10 +1033,11 @@ pub fn validate_targets_on_resolution(
     requirement: &TargetRequirement,
     selection: &TargetSelection,
     state: &GameState,
+    source: ObjectId,
     source_controller: PlayerId,
 ) -> Vec<TargetLegality> {
     selection.targets.iter().map(|c| {
-        if requirement.matches_choice(c, state, source_controller) {
+        if requirement.matches_choice(c, state, source, source_controller) {
             TargetLegality::Legal
         } else {
             TargetLegality::Illegal
@@ -993,9 +1050,10 @@ pub fn all_targets_still_legal(
     requirement: &TargetRequirement,
     selection: &TargetSelection,
     state: &GameState,
+    source: ObjectId,
     source_controller: PlayerId,
 ) -> bool {
-    validate_targets_on_resolution(requirement, selection, state, source_controller)
+    validate_targets_on_resolution(requirement, selection, state, source, source_controller)
         .iter()
         .all(|l| *l == TargetLegality::Legal)
 }
@@ -1008,12 +1066,13 @@ pub fn should_counter_due_to_illegal_targets(
     requirement: &TargetRequirement,
     selection: &TargetSelection,
     state: &GameState,
+    source: ObjectId,
     source_controller: PlayerId,
 ) -> bool {
     if selection.is_empty() {
         return false;
     }
-    validate_targets_on_resolution(requirement, selection, state, source_controller)
+    validate_targets_on_resolution(requirement, selection, state, source, source_controller)
         .iter()
         .all(|l| *l == TargetLegality::Illegal)
 }
@@ -1512,6 +1571,59 @@ mod tests {
     }
 
     #[test]
+    fn target_filter_blocking_pairing_variants() {
+        use crate::combat::{AttackerInfo, BlockerInfo, CombatState};
+        let mut s = GameState::new(2, 0);
+        // P0's `knight` attacks; P1 blocks with `blocker_a`. P1's
+        // `other_atk` attacks separately, blocked by P0's `mine`.
+        let knight    = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+        let blocker_a = put_creature(&mut s, 1, 1, Zone::Battlefield, 2, 2);
+        let other_atk = put_creature(&mut s, 1, 1, Zone::Battlefield, 2, 2);
+        let mine      = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+        let bystander = put_creature(&mut s, 1, 1, Zone::Battlefield, 2, 2);
+
+        let blocking = TargetFilter::CreatureBlockingSource;
+        let either   = TargetFilter::CreatureBlockingOrBlockedBySource;
+
+        // Outside combat: nothing pairs.
+        assert!(!blocking.matches(&TargetChoice::Object(blocker_a), &s, knight, 0));
+
+        let mut combat = CombatState::new();
+        combat.attackers.push(AttackerInfo {
+            object_id: knight, defending_player: 1,
+            defending_planeswalker: None,
+            blocked_by: vec![blocker_a], is_blocked: true,
+        });
+        combat.attackers.push(AttackerInfo {
+            object_id: other_atk, defending_player: 0,
+            defending_planeswalker: None,
+            blocked_by: vec![mine], is_blocked: true,
+        });
+        combat.blockers.push(BlockerInfo { object_id: blocker_a, blocking: knight });
+        combat.blockers.push(BlockerInfo { object_id: mine, blocking: other_atk });
+        s.combat = Some(combat);
+
+        // "Target creature blocking [knight]": only its own blocker.
+        assert!( blocking.matches(&TargetChoice::Object(blocker_a), &s, knight, 0));
+        assert!(!blocking.matches(&TargetChoice::Object(mine),      &s, knight, 0));
+        assert!(!blocking.matches(&TargetChoice::Object(bystander), &s, knight, 0));
+
+        // "Blocking or blocked by [mine]" (Lesser Werewolf on a blocker):
+        // the attacker it blocks qualifies; unrelated combatants don't.
+        assert!( either.matches(&TargetChoice::Object(other_atk), &s, mine, 0));
+        assert!(!either.matches(&TargetChoice::Object(knight),    &s, mine, 0));
+        assert!(!either.matches(&TargetChoice::Object(blocker_a), &s, mine, 0));
+
+        // enumerate_legal agrees with matches.
+        let found = blocking.enumerate_legal(&s, knight, 0);
+        assert_eq!(found, vec![TargetChoice::Object(blocker_a)]);
+
+        // Script accessors expose the same pairing.
+        assert_eq!(crate::script::blockers_of(&s, knight), vec![blocker_a]);
+        assert_eq!(crate::script::attackers_blocked_by(&s, mine), vec![other_atk]);
+    }
+
+    #[test]
     fn object_filter_combat_status_variants() {
         use crate::combat::{AttackerInfo, BlockerInfo, CombatState};
         let mut s = GameState::new(2, 0);
@@ -1590,26 +1702,26 @@ mod tests {
         let in_gy = put_creature(&mut s, 0, 0, Zone::Graveyard(0), 2, 2);
 
         let f = TargetFilter::Creature;
-        assert!( f.matches(&TargetChoice::Object(on_bf), &s, 0));
-        assert!(!f.matches(&TargetChoice::Object(in_gy), &s, 0));
+        assert!( f.matches(&TargetChoice::Object(on_bf), &s, crate::objects::NULL_OBJECT_ID, 0));
+        assert!(!f.matches(&TargetChoice::Object(in_gy), &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
     fn target_filter_creature_rejects_player_choice() {
         let s = GameState::new(2, 0);
         let f = TargetFilter::Creature;
-        assert!(!f.matches(&TargetChoice::Player(0), &s, 0));
+        assert!(!f.matches(&TargetChoice::Player(0), &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
     fn target_filter_player_rejects_out_of_range_or_dead() {
         let mut s = GameState::new(2, 0);
-        assert!(TargetFilter::Player.matches(&TargetChoice::Player(0), &s, 0));
+        assert!(TargetFilter::Player.matches(&TargetChoice::Player(0), &s, crate::objects::NULL_OBJECT_ID, 0));
 
         s.player_mut(1).has_lost = true;
-        assert!(!TargetFilter::Player.matches(&TargetChoice::Player(1), &s, 0));
+        assert!(!TargetFilter::Player.matches(&TargetChoice::Player(1), &s, crate::objects::NULL_OBJECT_ID, 0));
         // Out-of-range
-        assert!(!TargetFilter::Player.matches(&TargetChoice::Player(9), &s, 0));
+        assert!(!TargetFilter::Player.matches(&TargetChoice::Player(9), &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1619,9 +1731,9 @@ mod tests {
         let f = TargetFilter::CreatureOrPlayer;
 
         assert!(f.matches(&TargetChoice::ObjectOrPlayer(
-            ObjectOrPlayer::Object(c)), &s, 0));
+            ObjectOrPlayer::Object(c)), &s, crate::objects::NULL_OBJECT_ID, 0));
         assert!(f.matches(&TargetChoice::ObjectOrPlayer(
-            ObjectOrPlayer::Player(1)), &s, 0));
+            ObjectOrPlayer::Player(1)), &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1630,10 +1742,12 @@ mod tests {
         let pw = put_planeswalker(&mut s, 0);
 
         assert!(TargetFilter::AnyTarget.matches(
-            &TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(pw)), &s, 0));
+            &TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(pw)), &s,
+            crate::objects::NULL_OBJECT_ID, 0));
         // Creature-or-player rejects the bare planeswalker
         assert!(!TargetFilter::CreatureOrPlayer.matches(
-            &TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(pw)), &s, 0));
+            &TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(pw)), &s,
+            crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1643,8 +1757,8 @@ mod tests {
         let on_stack = put_sorcery(&mut s, 0, Zone::Stack);
 
         let f = TargetFilter::Spell(ObjectFilter::new());
-        assert!(!f.matches(&TargetChoice::Object(in_hand),  &s, 0));
-        assert!( f.matches(&TargetChoice::Object(on_stack), &s, 0));
+        assert!(!f.matches(&TargetChoice::Object(in_hand),  &s, crate::objects::NULL_OBJECT_ID, 0));
+        assert!( f.matches(&TargetChoice::Object(on_stack), &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1659,9 +1773,9 @@ mod tests {
             zone: Zone::Graveyard(0), // any owner thanks to same_kind
             filter: ObjectFilter::creature(),
         };
-        assert!( f.matches(&TargetChoice::Object(mine),   &s, 0));
-        assert!( f.matches(&TargetChoice::Object(theirs), &s, 0));
-        assert!(!f.matches(&TargetChoice::Object(on_bf),  &s, 0));
+        assert!( f.matches(&TargetChoice::Object(mine),   &s, crate::objects::NULL_OBJECT_ID, 0));
+        assert!( f.matches(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 0));
+        assert!(!f.matches(&TargetChoice::Object(on_bf),  &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     // --- TargetFilter.enumerate_legal ---------------------------------------
@@ -1673,7 +1787,7 @@ mod tests {
         put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
         put_creature(&mut s, 0, 0, Zone::Graveyard(0), 3, 3);
 
-        let legals = TargetFilter::Creature.enumerate_legal(&s, 0);
+        let legals = TargetFilter::Creature.enumerate_legal(&s, crate::objects::NULL_OBJECT_ID, 0);
         assert_eq!(legals.len(), 2);
     }
 
@@ -1681,7 +1795,7 @@ mod tests {
     fn enumerate_legal_players_excludes_dead() {
         let mut s = GameState::new(3, 0);
         s.player_mut(1).has_lost = true;
-        let legals = TargetFilter::Player.enumerate_legal(&s, 0);
+        let legals = TargetFilter::Player.enumerate_legal(&s, crate::objects::NULL_OBJECT_ID, 0);
         let ids: Vec<_> = legals.iter().filter_map(|c| c.player_id()).collect();
         assert_eq!(ids, vec![0, 2]);
     }
@@ -1704,10 +1818,10 @@ mod tests {
             .push(KeywordAbility::Ward(ManaCost::parse("{2}").unwrap()));
 
         let req = TargetRequirement::target_creature();
-        assert!(req.matches_choice(&TargetChoice::Object(theirs), &s, 0),
+        assert!(req.matches_choice(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 0),
             "Ward must not short-circuit targeting — spell can be cast, \
              Ward fires at resolution");
-        assert!(req.matches_choice(&TargetChoice::Object(theirs), &s, 1));
+        assert!(req.matches_choice(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 1));
     }
 
     #[test]
@@ -1720,9 +1834,9 @@ mod tests {
 
         let req = TargetRequirement::target_creature();
         // From player 0's spell (opponent): rejected.
-        assert!(!req.matches_choice(&TargetChoice::Object(theirs), &s, 0));
+        assert!(!req.matches_choice(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 0));
         // From the creature's own controller (player 1): still OK.
-        assert!(req.matches_choice(&TargetChoice::Object(theirs), &s, 1));
+        assert!(req.matches_choice(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 1));
     }
 
     #[test]
@@ -1737,8 +1851,8 @@ mod tests {
             count: TargetCount::Exactly(1),
             controller: Some(ControllerConstraint::You),
         };
-        assert!( req.matches_choice(&TargetChoice::Object(mine),   &s, 0));
-        assert!(!req.matches_choice(&TargetChoice::Object(theirs), &s, 0));
+        assert!( req.matches_choice(&TargetChoice::Object(mine),   &s, crate::objects::NULL_OBJECT_ID, 0));
+        assert!(!req.matches_choice(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1753,8 +1867,8 @@ mod tests {
             targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
         };
 
-        assert!(req.is_satisfied(&ok, &s, 0, None));
-        assert!(!req.is_satisfied(&wrong_count, &s, 0, None));
+        assert!(req.is_satisfied(&ok, &s, crate::objects::NULL_OBJECT_ID, 0, None));
+        assert!(!req.is_satisfied(&wrong_count, &s, crate::objects::NULL_OBJECT_ID, 0, None));
     }
 
     #[test]
@@ -1772,8 +1886,8 @@ mod tests {
         let sel = TargetSelection {
             targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
         };
-        assert!(req.is_satisfied(&sel, &s, 0, Some(2)));
-        assert!(!req.is_satisfied(&sel, &s, 0, Some(1)));
+        assert!(req.is_satisfied(&sel, &s, crate::objects::NULL_OBJECT_ID, 0, Some(2)));
+        assert!(!req.is_satisfied(&sel, &s, crate::objects::NULL_OBJECT_ID, 0, Some(1)));
     }
 
     // --- CR 608.2b: target recheck at resolution ----------------------------
@@ -1785,10 +1899,10 @@ mod tests {
         let req = TargetRequirement::target_creature();
         let sel = TargetSelection { targets: vec![TargetChoice::Object(c)] };
 
-        let legals = validate_targets_on_resolution(&req, &sel, &s, 0);
+        let legals = validate_targets_on_resolution(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0);
         assert_eq!(legals, vec![TargetLegality::Legal]);
-        assert!(all_targets_still_legal(&req, &sel, &s, 0));
-        assert!(!should_counter_due_to_illegal_targets(&req, &sel, &s, 0));
+        assert!(all_targets_still_legal(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0));
+        assert!(!should_counter_due_to_illegal_targets(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1804,9 +1918,9 @@ mod tests {
         // Move it to exile mid-resolution.
         s.objects.get_mut(c).unwrap().zone = Zone::Exile;
 
-        let legals = validate_targets_on_resolution(&req, &sel, &s, 0);
+        let legals = validate_targets_on_resolution(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0);
         assert_eq!(legals, vec![TargetLegality::Illegal]);
-        assert!(should_counter_due_to_illegal_targets(&req, &sel, &s, 0));
+        assert!(should_counter_due_to_illegal_targets(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1827,13 +1941,13 @@ mod tests {
 
         // Only `b` becomes illegal.
         s.objects.get_mut(b).unwrap().zone = Zone::Graveyard(0);
-        let legals = validate_targets_on_resolution(&req, &sel, &s, 0);
+        let legals = validate_targets_on_resolution(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0);
         assert_eq!(legals, vec![TargetLegality::Legal, TargetLegality::Illegal]);
 
         // With at least one legal target remaining, the spell resolves
         // (it only skips the illegal ones).
-        assert!(!all_targets_still_legal(&req, &sel, &s, 0));
-        assert!(!should_counter_due_to_illegal_targets(&req, &sel, &s, 0));
+        assert!(!all_targets_still_legal(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0));
+        assert!(!should_counter_due_to_illegal_targets(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     #[test]
@@ -1847,7 +1961,7 @@ mod tests {
             controller: None,
         };
         let empty = TargetSelection::new();
-        assert!(!should_counter_due_to_illegal_targets(&req, &empty, &s, 0));
+        assert!(!should_counter_due_to_illegal_targets(&req, &empty, &s, crate::objects::NULL_OBJECT_ID, 0));
     }
 
     // --- TargetChoice utility -----------------------------------------------
