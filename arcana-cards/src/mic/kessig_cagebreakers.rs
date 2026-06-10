@@ -2,9 +2,8 @@
 //! attacks, create a 2/2 green Wolf creature token that's tapped and attacking
 //! for each creature card in your graveyard."
 //!
-//! GAP: CreateToken does not support "enters tapped and attacking"; using
-//! ForEach with graveyard creature count, creating tokens without the
-//! tapped-attacking modifier.
+//! ForEach over the creature-card count in your graveyard; each token enters
+//! tapped and attacking (Effect::CreateTokenTappedAttacking).
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,7 @@ use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -57,7 +56,13 @@ fn on_attacks(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let n = script::graveyard_size(state, trig.controller);
+    // "for each creature card in your graveyard"
+    let n = script::graveyard_matching(
+        state,
+        &ObjectFilter::creature(),
+        trig.controller,
+        trig.controller,
+    );
     if n == 0 {
         return Vec::new();
     }
@@ -65,7 +70,6 @@ fn on_attacks(
         .expect("Wolf interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(wolf);
-    // GAP: CreateToken does not support "enters tapped and attacking".
     let token = TokenDefinition {
         name: wolf,
         colors: ColorSet::green(),
@@ -78,6 +82,9 @@ fn on_attacks(
     };
     vec![Effect::ForEach {
         targets: (0..n).map(|_| NULL_OBJECT_ID).collect(),
-        effect: Box::new(Effect::CreateToken { controller: trig.controller, token }),
+        effect: Box::new(Effect::CreateTokenTappedAttacking {
+            controller: trig.controller,
+            token,
+        }),
     }]
 }

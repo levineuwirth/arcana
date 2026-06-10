@@ -1,11 +1,11 @@
 //! Carefree Swinemaster — `{2}{G}` 1/4 green Gnome Ranger.
 //! "Whenever this creature attacks, you may pay {1}{G}. If you do, create a
 //! 2/2 green Boar creature token that's tapped and attacking."
-//! GAP: effect — conditional on paying mana is not in the Effect catalog;
-//! "tapped and attacking" token state not expressible (CreateToken doesn't
-//! set attacking). Emitting the token creation unconditionally as
-//! best-effort.
+//! Wired: Effect::OptionalPayment({1}{G}) wraps
+//! Effect::CreateTokenTappedAttacking — both halves of the ability are
+//! modeled.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -68,7 +68,13 @@ fn on_attacks(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: effect — conditional on paying {1}{G}; "tapped and attacking" state
-    // not expressible with CreateToken.
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Mana(ManaCost::parse("{1}{G}").expect("valid cost")),
+        then: Box::new(Effect::CreateTokenTappedAttacking {
+            controller: trig.controller,
+            token,
+        }),
+        else_effect: None,
+    }]
 }

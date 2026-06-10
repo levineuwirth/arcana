@@ -2,12 +2,15 @@
 //! "Whenever a non-Human creature you control attacks, look at the top six cards of your library.
 //! You may put a Human creature card from among them onto the battlefield tapped and attacking.
 //! It gains indestructible until end of turn. Put the rest on the bottom in a random order."
-//! GAP: "put onto battlefield tapped and attacking" + random bottom order not in catalog;
-//! using TutorToBattlefield as closest.
+//! The put half is wired: the trigger fn peeks the top six cards of the library at
+//! resolution and puts the first Human creature card found onto the battlefield tapped
+//! and attacking (Effect::PutOntoBattlefieldTappedAttacking).
+//! GAP: the "you may" choice is rendered as a deterministic first-match pick (always
+//! taken if present); the rest are NOT bottomed in random order (they stay on top);
+//! the indestructible grant is omitted (the put re-ids the card per CR 400.7, so the
+//! new battlefield id isn't visible to card code).
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
-use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -18,7 +21,6 @@ use arcana_core::triggers::{
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Winota, Joiner of Forces");
@@ -59,15 +61,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn attack_trigger(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "look at top 6, may put Human onto battlefield tapped+attacking, rest random bottom"
-    let human_filter = script::subtype_filter(reg, "Human");
-    vec![Effect::TutorToBattlefield {
-        player: trig.controller,
-        filter: human_filter,
-        tapped: true,
-    }]
+    // Look at the top six cards; put the first Human creature card found
+    // onto the battlefield tapped and attacking (deterministic pick — see
+    // module-doc GAP for the "you may" / rest-to-bottom / indestructible
+    // divergences).
+    let you = trig.controller;
+    if you >= state.num_players() {
+        return Vec::new();
+    }
+    let mut filter = ObjectFilter::creature();
+    if let Some(human) = reg.interner().lookup("Human") {
+        filter = filter.with_subtype_sym(human);
+    }
+    let chosen = state
+        .player(you)
+        .library_top_to_bottom
+        .iter()
+        .take(6)
+        .copied()
+        .find(|&id| {
+            state
+                .objects
+                .get(id)
+                .is_some_and(|o| filter.matches(o, state, you))
+        });
+    match chosen {
+        Some(id) => vec![Effect::PutOntoBattlefieldTappedAttacking {
+            target: id,
+            controller: you,
+        }],
+        None => Vec::new(),
+    }
 }

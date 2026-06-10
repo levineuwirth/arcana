@@ -1,8 +1,8 @@
 //! Goblin Traprunner — `{3}{R}` 4/2 red Creature — Goblin.
 //! "Whenever this creature attacks, flip three coins. For each flip you win,
 //! create a 1/1 red Goblin creature token that's tapped and attacking."
-//! GAP: tokens created by this effect are not marked tapped-and-attacking
-//! (the token entering tapped + attacking state is not modeled in CreateToken).
+//! Each won flip creates the token tapped and attacking
+//! (Effect::CreateTokenTappedAttacking).
 //! The three-coin flip is expressed as three sequential FlipCoin effects.
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -52,7 +52,7 @@ fn make_goblin_token(controller: arcana_core::types::PlayerId, reg: &CardRegistr
         .expect("Goblin interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
-    Effect::CreateToken {
+    Effect::CreateTokenTappedAttacking {
         controller,
         token: TokenDefinition {
             name: goblin,

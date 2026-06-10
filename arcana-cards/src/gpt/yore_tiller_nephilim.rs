@@ -1,8 +1,8 @@
 //! Yore-Tiller Nephilim — `{W}{U}{B}{R}` 2/2 white-blue-black-red Nephilim.
 //! "Whenever this creature attacks, return target creature card from
 //! your graveyard to the battlefield tapped and attacking."
-//! GAP: returning tapped and attacking — ReturnFromGraveyardToBattlefield
-//! doesn't support tapped/attacking modifier; emitting plain return.
+//! The targeted creature card returns tapped and attacking
+//! (Effect::PutOntoBattlefieldTappedAttacking).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -60,7 +60,8 @@ fn attack_reanimate(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "tapped and attacking" modifier on return — not supported by
-    // ReturnFromGraveyardToBattlefield
-    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
+    vec![Effect::PutOntoBattlefieldTappedAttacking {
+        target: *id,
+        controller: trig.controller,
+    }]
 }

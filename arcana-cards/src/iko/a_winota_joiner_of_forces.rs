@@ -3,12 +3,15 @@
 //! of your library. You may put a Human creature card from among them onto the battlefield
 //! tapped and attacking. It gains indestructible until end of turn. Put the rest on the
 //! bottom of your library in a random order."
-//! GAP: Looking at top 6 and selective-reveal-put-onto-battlefield-attacking is not in
-//! the engine effect catalog; using TutorToBattlefield(tapped:true) as best-effort
-//! (loses the "top 6 of library" restriction, gains indestructible, and attacks immediately).
+//! The put half is wired: the trigger fn peeks the top six cards of the library at
+//! resolution and puts the first Human creature card found onto the battlefield tapped
+//! and attacking (Effect::PutOntoBattlefieldTappedAttacking).
+//! GAP: the "you may" choice is rendered as a deterministic first-match pick (always
+//! taken if present); the rest are NOT bottomed in random order (they stay on top);
+//! the indestructible grant is omitted (the put re-ids the card per CR 400.7, so the
+//! new battlefield id isn't visible to card code).
 
-use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -61,24 +64,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_nonhuman_attacks(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "look at top 6, put Human creature from among them onto battlefield tapped and
-    // attacking" is not in the engine effect catalog. Using TutorToBattlefield for a Human
-    // creature as best-effort (loses top-6 restriction and attack-with-it constraint).
-    // GAP: GrantKeyword(Indestructible) requires the just-created token id, not available
-    // without a two-step delayed effect.
+    // Look at the top six cards; put the first Human creature card found
+    // onto the battlefield tapped and attacking (deterministic pick — see
+    // module-doc GAP for the "you may" / rest-to-bottom / indestructible
+    // divergences).
+    let you = trig.controller;
+    if you >= state.num_players() {
+        return Vec::new();
+    }
     let mut filter = ObjectFilter::creature();
     if let Some(human) = reg.interner().lookup("Human") {
         filter = filter.with_subtype_sym(human);
     }
-    vec![
-        Effect::TutorToBattlefield {
-            player: trig.controller,
-            filter,
-            tapped: true,
-        },
-    ]
+    let chosen = state
+        .player(you)
+        .library_top_to_bottom
+        .iter()
+        .take(6)
+        .copied()
+        .find(|&id| {
+            state
+                .objects
+                .get(id)
+                .is_some_and(|o| filter.matches(o, state, you))
+        });
+    match chosen {
+        Some(id) => vec![Effect::PutOntoBattlefieldTappedAttacking {
+            target: id,
+            controller: you,
+        }],
+        None => Vec::new(),
+    }
 }

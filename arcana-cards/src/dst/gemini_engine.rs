@@ -4,10 +4,17 @@
 //! equal to this creature's power and its toughness is equal to this
 //! creature's toughness. Sacrifice the token at end of combat."
 //!
+//! The Twin enters attacking via Effect::CreateTokenTappedAttacking
+//! (note: that variant also taps it; Gemini Engine's token is attacking
+//! but untapped on the real card — minor over-tap).
+//!
 //! GAP: token power/toughness equal to this creature's power/toughness
 //! — TokenDefinition requires fixed PtValue; dynamic P/T not supported.
-//! Also "token is attacking" initial state not supported in CreateToken.
-//! CreateTokenSacEot used for the sac-at-end-of-combat portion.
+//! GAP: "sacrifice the token at end of combat" — CreateTokenSacEot fuses
+//! creation+sac but can't express the attacking rider, and the new
+//! token's id isn't visible to card code for a separate delayed sac;
+//! chose the attacking half (with SacEot the token never attacked at
+//! all, a pure no-op) so the sac-at-end-of-combat half is now the GAP.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -54,7 +61,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn on_attacks(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
     // GAP: token P/T equal to this creature's P/T — dynamic P/T in
     // TokenDefinition not supported. Using fixed 3/4.
-    // GAP: token enters attacking — not supported in CreateTokenSacEot.
+    // GAP: sacrifice at end of combat — dropped in favor of the
+    // attacking rider (see module doc).
     let twin = reg
         .interner()
         .lookup("Twin")
@@ -75,5 +83,5 @@ fn on_attacks(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> 
         keywords: vec![],
         abilities: vec![],
     };
-    vec![Effect::CreateTokenSacEot { controller: trig.controller, token }]
+    vec![Effect::CreateTokenTappedAttacking { controller: trig.controller, token }]
 }

@@ -7,10 +7,8 @@
 //! Whenever this creature attacks, return target creature card with mana value 2
 //! or less from your graveyard to the battlefield tapped and attacking.
 //!
-//! GAP: Back face "return target creature card with mana value 2 or less from
-//!   your graveyard to the battlefield tapped and attacking" — the
-//!   ReturnFromGraveyardToBattlefield effect does not model entering tapped and
-//!   attacking; the "tapped and attacking" rider is omitted (card enters normally).
+//! Back-face attack trigger returns the targeted creature card tapped and
+//! attacking (Effect::PutOntoBattlefieldTappedAttacking).
 //! GAP: back-face-only triggered ability (attack trigger on Dauntless Avenger) not
 //!   modeled automatically. The attack trigger is authored here on the CardDefinition
 //!   but will fire on both faces (engine debt).
@@ -91,7 +89,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // Back face attack trigger: when this creature attacks, return a creature
             // card with mana value 2 or less from your graveyard to the battlefield.
             // GAP: engine lacks face-gating on triggered abilities; fires on both faces.
-            // GAP: "tapped and attacking" rider not modeled.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfAttacks,
@@ -121,8 +118,7 @@ fn creature_dies_transform(
 }
 
 /// Back face attack trigger: return a creature card with mv ≤ 2 from your
-/// graveyard to the battlefield.
-/// GAP: enters tapped and attacking not modeled.
+/// graveyard to the battlefield tapped and attacking.
 fn attack_reanimate(
     _state: &GameState,
     trig: &PendingTrigger,
@@ -134,5 +130,8 @@ fn attack_reanimate(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
+    vec![Effect::PutOntoBattlefieldTappedAttacking {
+        target: *id,
+        controller: trig.controller,
+    }]
 }

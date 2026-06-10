@@ -5,20 +5,20 @@
 //! into your hand. When you put a creature card onto the battlefield this way,
 //! it fights Hans Eriksson."
 //!
-//! GAP: The conditional reveal (creature → battlefield tapped+attacking,
-//! non-creature → hand) combined with a secondary fight trigger is not fully
-//! expressible. Effect::DigTopN handles the "look at top card, take it or
-//! not" shape but cannot conditionally deploy a creature to the battlefield
-//! tapped and attacking, nor trigger a fight on ETB. Emitting DigTopN
-//! (creature filter, hand destination) as a best-effort approximation;
-//! the attacking-and-fighting rider is omitted.
+//! Wired: the trigger fn peeks the top card of the library at resolution.
+//! If it's a creature card it's put onto the battlefield tapped and attacking
+//! (Effect::PutOntoBattlefieldTappedAttacking); otherwise it goes to hand
+//! (Effect::ReturnToHand). The reveal-then-route is mandatory on the card, so
+//! the deterministic peek is faithful.
+//! GAP: the reflexive "it fights Hans Eriksson" trigger is omitted — the put
+//! re-ids the card per CR 400.7, so the new battlefield id isn't visible to
+//! card code for a fight effect.
 
-use arcana_core::effects::{DigRest, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -58,20 +58,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn attacks_reveal_top(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: cannot conditionally put a creature onto the battlefield tapped
-    // and attacking, nor fire a fight sub-trigger on that ETB.
-    // Best-effort: dig the top card, take it if it's a creature, else bottom.
-    vec![Effect::DigTopN {
-        player: trig.controller,
-        count: 1,
-        filter: Some(ObjectFilter {
-            types: Some(TypeLine::CREATURE.into()),
-            ..ObjectFilter::default()
-        }),
-        rest: DigRest::BottomRandom,
-    }]
+    // Reveal the top card at resolution: creature → battlefield tapped and
+    // attacking; otherwise → hand. GAP: the "it fights Hans Eriksson"
+    // reflexive trigger is omitted (see module doc).
+    let you = trig.controller;
+    if you >= state.num_players() {
+        return Vec::new();
+    }
+    let Some(&top) = state.player(you).library_top_to_bottom.first() else {
+        return Vec::new();
+    };
+    let is_creature = state.objects.get(top).is_some_and(|o| o.is_creature());
+    if is_creature {
+        vec![Effect::PutOntoBattlefieldTappedAttacking {
+            target: top,
+            controller: you,
+        }]
+    } else {
+        vec![Effect::ReturnToHand { target: top }]
+    }
 }

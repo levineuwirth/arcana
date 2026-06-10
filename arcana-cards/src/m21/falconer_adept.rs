@@ -1,7 +1,7 @@
 //! Falconer Adept — `{3}{W}` 2/3 white Human Soldier. "Whenever this creature attacks,
 //! create a 1/1 white Bird creature token with flying that's tapped and attacking."
-//! SelfAttacks trigger; token enters tapped and attacking.
-//! GAP: CreateToken does not support "enters tapped and attacking"; token is created normally.
+//! SelfAttacks trigger; token enters tapped and attacking
+//! (Effect::CreateTokenTappedAttacking).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -65,6 +65,5 @@ fn on_attacks_create_bird(
         keywords: vec![KeywordAbility::Flying],
         abilities: vec![],
     };
-    // GAP: token enters "tapped and attacking" — not modeled by CreateToken
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+    vec![Effect::CreateTokenTappedAttacking { controller: trig.controller, token }]
 }

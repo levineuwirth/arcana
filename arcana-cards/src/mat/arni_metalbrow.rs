@@ -2,12 +2,17 @@
 //! Whenever a creature you control attacks or enters attacking, you may pay {1}{R}. If you do,
 //! you may put a creature card with mana value less than that creature's mana value from your
 //! hand onto the battlefield tapped and attacking.
-//! GAP: "put a creature card from hand onto battlefield tapped and attacking" with mana-value
-//! comparison vs. triggering creature — no Effect for ETB-attacking from hand with dynamic
-//! mana-value filter. OptionalPayment can wrap the payment but the inner effect is a GAP.
+//! Wired: OptionalPayment({1}{R}) wraps Effect::PutOntoBattlefieldTappedAttacking on a
+//! creature card from hand whose mana value is less than the attacking creature's (read
+//! from the CreatureAttacks trigger event at resolution).
+//! GAP: the "you may put" card choice is a deterministic pick (highest-mana-value
+//! eligible creature card in hand, taken whenever the mana is paid).
+//! GAP: the "enters attacking" half of the trigger condition ("attacks or enters
+//! tapped and attacking") is not modeled — only declared attacks fire it.
 
 use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
+use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -54,17 +59,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_attack(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Inner effect "put creature from hand onto battlefield tapped and attacking with
-    //      mana value < triggering creature" — no Effect variant for hand-to-battlefield
-    //      with tapped+attacking state and dynamic mana-value filter.
+    let you = trig.controller;
+    // Mana value of the attacking creature, from the trigger event.
+    let GameEvent::CreatureAttacks { attacker, .. } = trig.trigger_event else {
+        return Vec::new();
+    };
+    let Some(attacker_mv) = state
+        .objects
+        .get(attacker)
+        .map(|o| o.characteristics.mana_value())
+    else {
+        return Vec::new();
+    };
+    // GAP: "you may put" rendered as a deterministic pick — the
+    // highest-mana-value creature card in hand with mv < attacker's mv.
+    let chosen = state
+        .objects
+        .objects_in_zone(Zone::Hand(you))
+        .filter(|o| o.is_creature() && o.characteristics.mana_value() < attacker_mv)
+        .max_by_key(|o| (o.characteristics.mana_value(), std::cmp::Reverse(o.id)))
+        .map(|o| o.id);
+    let Some(card) = chosen else {
+        return Vec::new();
+    };
     vec![Effect::OptionalPayment {
-        chooser: trig.controller,
+        chooser: you,
         cost: OptionalPaymentKind::Mana(ManaCost::parse("{1}{R}").expect("valid cost")),
-        then: Box::new(Effect::Sequence(vec![])), // GAP: inner effect not expressible
+        then: Box::new(Effect::PutOntoBattlefieldTappedAttacking {
+            target: card,
+            controller: you,
+        }),
         else_effect: None,
     }]
 }

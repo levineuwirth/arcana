@@ -5,9 +5,16 @@
 //! attached to Stangg Twin. Sacrifice all tokens created this way at the
 //! beginning of the next end step."
 //!
-//! The Stangg Twin token is created on attack and sacrificed at the next end
-//! step (CreateTokenSacEot). GAP: "enters tapped and attacking" and the
-//! per-attached-Aura/Equipment copy-and-attach are not expressible.
+//! The Stangg Twin token is created on attack, entering tapped and attacking
+//! (Effect::CreateTokenTappedAttacking).
+//!
+//! GAP: "sacrifice all tokens created this way at the beginning of the next
+//! end step" — CreateTokenSacEot fuses creation+sac but can't express the
+//! tapped-and-attacking rider, and the new token's id isn't visible to card
+//! code for a separate delayed sac. Chose the attacking half (with SacEot the
+//! Twin never attacked at all, a pure no-op); the next-end-step sacrifice is
+//! now the GAP. The per-attached-Aura/Equipment copy-and-attach remains
+//! inexpressible.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -85,10 +92,10 @@ fn create_stangg_twin(
         keywords: vec![],
         abilities: vec![],
     };
-    // GAP: the Stangg Twin token should enter tapped and attacking, and for
-    // each Aura/Equipment attached to Stangg a copy should be created and
-    // attached to the Twin — neither the "enters tapped and attacking" rider
-    // nor the per-attachment copy-and-attach are expressible. The token is
-    // created and sacrificed at the next end step.
-    vec![Effect::CreateTokenSacEot { controller: trig.controller, token }]
+    // GAP: for each Aura/Equipment attached to Stangg a copy should be
+    // created and attached to the Twin — per-attachment copy-and-attach
+    // is not expressible.
+    // GAP: the next-end-step sacrifice of the Twin — dropped in favor of
+    // the tapped-and-attacking rider (see module doc).
+    vec![Effect::CreateTokenTappedAttacking { controller: trig.controller, token }]
 }
