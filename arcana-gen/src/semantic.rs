@@ -28,7 +28,19 @@
 fn shape_requires_effect(shape: Option<&str>) -> bool {
     matches!(
         shape,
-        Some("SingleEffectSpell") | Some("TriggeredAbilityCreature")
+        Some("SingleEffectSpell")
+            | Some("TriggeredAbilityCreature")
+            // Wave-1 shapes: each has rules text by construction.
+            // A mana ability counts — `Effect::AddMana` matches the
+            // `Effect::` scan, so a pure mana rock / mana land
+            // passes honestly. Statics pass via
+            // `Effect::InstallContinuousEffect`; Equipment has a
+            // dedicated `with_equip` carve-out in [`stub_reason`].
+            | Some("TriggeredEnchantment")
+            | Some("ActivatedArtifact")
+            | Some("UtilityLand")
+            | Some("Equipment")
+            | Some("StaticEnchantment")
     )
 }
 
@@ -98,6 +110,13 @@ pub fn stub_reason(shape: Option<&str>, source: &str) -> Option<String> {
         return None;
     }
     if clean.contains("Effect::") {
+        return None;
+    }
+    // Equipment whose only printed text is the equip line (or whose
+    // static is an honest GAP) is still a functional card through
+    // `with_equip` alone — the builder synthesizes the whole CR 702.6
+    // Equip activation, so no `Effect::` construction is required.
+    if shape == Some("Equipment") && clean.contains(".with_equip(") {
         return None;
     }
     Some(format!(
@@ -281,6 +300,43 @@ mod tests {
     fn comment_mentioning_effect_does_not_rescue_a_stub() {
         let src = "fn resolve() -> Vec<Effect> { /* Effect::Foo */ Vec::new() }";
         assert!(stub_reason(Some("TriggeredAbilityCreature"), src).is_some());
+    }
+
+    #[test]
+    fn wave1_shapes_require_effects() {
+        // A stub resolver on any Wave-1 shape is flagged …
+        for shape in ["TriggeredEnchantment", "ActivatedArtifact",
+                      "UtilityLand", "StaticEnchantment", "Equipment"] {
+            assert!(
+                stub_reason(Some(shape), STUB_SPELL).is_some(),
+                "{shape} stub must be flagged"
+            );
+        }
+        // … and a mana ability / continuous-effect install passes.
+        let mana_rock = r#"fn add_mana(_: &GameState, ctx: &ActivationContext, _: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::AddMana { player: ctx.controller, mana: vec![] }]
+        }"#;
+        assert!(stub_reason(Some("ActivatedArtifact"), mana_rock).is_none());
+        assert!(stub_reason(Some("UtilityLand"), mana_rock).is_none());
+        let anthem = r#"fn etb(_: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::InstallContinuousEffect { effect: ContinuousEffect::anthem(trig.source, trig.controller, 1, 1, Duration::WhileSourceOnBattlefield) }]
+        }"#;
+        assert!(stub_reason(Some("StaticEnchantment"), anthem).is_none());
+    }
+
+    #[test]
+    fn equipment_with_equip_alone_passes() {
+        // Pure "Equip {N}" Equipment (or an honest keyword-GAP) is
+        // functional via the with_equip builder — no Effect:: needed.
+        let src = r#"
+            // GAP: 'equipped creature has flying' — attached_pt covers P/T only
+            reg.register(CardDefinition::new(name, chars)
+                .with_equip(ManaCost::parse("{2}").expect("valid cost")))
+        "#;
+        assert!(stub_reason(Some("Equipment"), src).is_none());
+        // …but an Equipment source with NEITHER an Effect nor
+        // with_equip is a stub.
+        assert!(stub_reason(Some("Equipment"), "fn register() {}").is_some());
     }
 
     #[test]

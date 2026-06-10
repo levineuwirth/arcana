@@ -2556,6 +2556,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::leg::aisling_leprechaun::register(reg); n += 1;
     crate::leg::falling_star::register(reg); n += 1;
     crate::leg::blazing_effigy::register(reg); n += 1;
+    crate::leg::underworld_dreams::register(reg); n += 1;
     // --- som ---
     crate::som::alpha_tyrranax::register(reg); n += 1;
     crate::som::moriok_reaver::register(reg); n += 1;
@@ -3997,6 +3998,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rtr::nivmagus_elemental::register(reg); n += 1;
     crate::rtr::aquus_steed::register(reg); n += 1;
     crate::rtr::selesnya_sentry::register(reg); n += 1;
+    crate::rtr::rogue_s_passage::register(reg); n += 1;
+    crate::rtr::dimir_guildgate::register(reg); n += 1;
     // --- ema ---
     crate::ema::elite_vanguard::register(reg); n += 1;
     crate::ema::glacial_wall::register(reg); n += 1;
@@ -4998,6 +5001,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::wth::goblin_grenadiers::register(reg); n += 1;
     crate::wth::fungus_elemental::register(reg); n += 1;
     crate::wth::benalish_missionary::register(reg); n += 1;
+    crate::wth::mind_stone::register(reg); n += 1;
     // --- dmu ---
     crate::dmu::soaring_drake::register(reg); n += 1;
     crate::dmu::barkweave_crusher::register(reg); n += 1;

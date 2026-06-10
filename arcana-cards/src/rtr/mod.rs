@@ -40,3 +40,5 @@ pub mod centaur_s_herald;
 pub mod nivmagus_elemental;
 pub mod aquus_steed;
 pub mod selesnya_sentry;
+pub mod rogue_s_passage;
+pub mod dimir_guildgate;

@@ -444,12 +444,23 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                         "saga" => "Saga",
                         "class" | "classenchantment" => "ClassEnchantment",
                         "battle" => "Battle",
+                        "triggered-enchantment" | "triggeredenchantment" => {
+                            "TriggeredEnchantment"
+                        }
+                        "artifact" | "activatedartifact" => "ActivatedArtifact",
+                        "land" | "utilityland" => "UtilityLand",
+                        "equipment" => "Equipment",
+                        "static-enchantment" | "staticenchantment" => {
+                            "StaticEnchantment"
+                        }
                         other => {
                             return Err(anyhow!(
                                 "--shapes: unknown shape '{other}' \
                                  (use vanilla, french-vanilla, spell, \
                                  triggered, activated, adventure, mdfc, \
-                                 saga, class, battle)"
+                                 saga, class, battle, \
+                                 triggered-enchantment, artifact, land, \
+                                 equipment, static-enchantment)"
                             ))
                         }
                     };
@@ -640,10 +651,14 @@ Subagent backend:
                                  french-vanilla) where Standard is too thin.
   --shapes <list>                Comma list restricting dumped prompts by
                                  shape: vanilla, french-vanilla, spell,
-                                 triggered. Cards routed elsewhere are
-                                 recorded but not emitted. Use
-                                 'vanilla,french-vanilla' for the safe
-                                 declarative class (no resolver bodies).
+                                 triggered, activated, adventure, mdfc,
+                                 saga, class, battle,
+                                 triggered-enchantment, artifact, land,
+                                 equipment, static-enchantment. Cards
+                                 routed elsewhere are recorded but not
+                                 emitted. Use 'vanilla,french-vanilla'
+                                 for the safe declarative class (no
+                                 resolver bodies).
 
 Outputs a compact summary to stdout and detailed per-(card, model)
 JSONL to the output path. JSONL rows are flushed per-line for

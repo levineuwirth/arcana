@@ -97,6 +97,19 @@ pub fn classify(card: &Card) -> Classification {
         return Classification::new(Tier::Four, "modal spell (choose one / choose two)");
     }
     if has_multiple_ability_lines(&text) {
+        // Wave-1 carve-out (catalog-breadth plan §2): lands, mana-rock
+        // artifacts, and Equipment are INHERENTLY two-line cards whose
+        // structure is still T3-simple — "{T}: Add {C}.\n{1}, {T},
+        // Sacrifice ~: Draw a card.", "~ enters tapped.\n{T}: Add {U}
+        // or {B}.", "Equipped creature gets +3/+0.\nEquip {1}". Without
+        // this they'd all land in T4 and be refused at the prompt
+        // gate, leaving the UtilityLand / ActivatedArtifact /
+        // Equipment shapes empty by construction. Strictly limited to
+        // exactly-two-line cards of those three card classes; 3+
+        // lines stay T4.
+        if let Some(reason) = simple_two_line_permanent(card, &text) {
+            return Classification::new(Tier::Three, reason);
+        }
         return Classification::new(Tier::Four, "multiple ability lines");
     }
 
@@ -112,6 +125,13 @@ pub fn classify(card: &Card) -> Classification {
     }
     if matches_single_effect_spell(card, &text) {
         return Classification::new(Tier::Two, "single-effect instant/sorcery");
+    }
+    if is_single_line_static_enchantment(card, &text) {
+        // Wave-1: anthem-class enchantments ("Creatures you control
+        // get +1/+1.") have no trigger/activation cue, so before this
+        // arm they fell through to the T5 triage bucket — refusing
+        // the StaticEnchantment shape by construction.
+        return Classification::new(Tier::Two, "single-line static enchantment");
     }
 
     Classification::new(
@@ -179,6 +199,73 @@ fn has_multiple_ability_lines(text: &str) -> bool {
     text.lines().filter(|l| !l.trim().is_empty()).count() >= 2
 }
 
+/// Equipment subtype check. Subtypes live after the `—` in the type
+/// line, so this deliberately scans the whole line (not `type_part`).
+pub(crate) fn is_equipment(c: &Card) -> bool {
+    c.is_artifact() && c.type_line.contains("Equipment")
+}
+
+/// Wave-1 two-line carve-out (see the call site in [`classify`]).
+/// `Some(rationale)` if `c` is one of the three structurally-simple
+/// two-line permanent classes; `None` keeps the T4 multi-line route.
+fn simple_two_line_permanent(c: &Card, text: &str) -> Option<&'static str> {
+    let stripped = strip_reminder_text(text);
+    let lines: Vec<String> = stripped
+        .lines()
+        .map(|l| l.trim().to_lowercase())
+        .filter(|l| !l.is_empty())
+        .collect();
+    if lines.len() != 2 {
+        return None;
+    }
+    // "{T}: Add {C}." / "{T}: Add {U} or {B}." — a printed mana ability.
+    let has_mana_line = lines.iter().any(|l| l.contains(": add {"));
+    // Both the legacy ("enters the battlefield tapped") and post-2024
+    // ("enters tapped") oracle wordings.
+    let has_enters_tapped = lines.iter().any(|l| l.contains("enters tapped") || l.contains("enters the battlefield tapped"));
+
+    if c.is_land() && !is_basic_land(c) {
+        // Tapland (enters-tapped + mana) or utility land (mana + one
+        // extra simple ability line).
+        if has_mana_line || has_enters_tapped {
+            return Some("nonbasic land: two ability lines incl. mana/tapland (Wave-1 carve-out)");
+        }
+        return None;
+    }
+    if c.is_artifact() && !c.is_creature() {
+        if is_equipment(c) {
+            // Equipment's printed shape is inherently two lines:
+            // "Equipped creature gets/has …" + "Equip {N}".
+            if lines.iter().any(|l| l.starts_with("equip")) {
+                return Some("Equipment: static + equip cost (Wave-1 carve-out)");
+            }
+            return None;
+        }
+        // Mana rock with a second activation (Mind Stone class).
+        if has_mana_line {
+            return Some("mana-rock artifact: two ability lines (Wave-1 carve-out)");
+        }
+    }
+    None
+}
+
+/// Wave-1 StaticEnchantment cue: a non-Aura, non-creature enchantment
+/// whose stripped text is exactly one line. By gate order, any
+/// trigger / activation / modal text already routed at T3/T4, so the
+/// remaining single line is a static continuous ability (anthem,
+/// "creatures you control have flying", cost modifiers, …).
+fn is_single_line_static_enchantment(c: &Card, text: &str) -> bool {
+    if !c.is_enchantment() || c.is_creature() {
+        return false;
+    }
+    // Auras stay out of Wave 1 — the engine has no resolution attach.
+    if c.type_line.contains("Aura") {
+        return false;
+    }
+    let stripped = strip_reminder_text(text);
+    stripped.lines().filter(|l| !l.trim().is_empty()).count() == 1
+}
+
 pub(crate) fn has_triggered_ability(text: &str) -> bool {
     let stripped = strip_reminder_text(text);
     // Iterate per-line: MTG separates ability paragraphs with `\n`,
@@ -203,7 +290,7 @@ pub(crate) fn has_triggered_ability(text: &str) -> bool {
 /// or is a short sacrifice / discard / pay-life clause. Reminder
 /// text in parens is stripped first so "Equip {1} (…)" doesn't
 /// look like two abilities.
-fn has_activated_ability(text: &str) -> bool {
+pub(crate) fn has_activated_ability(text: &str) -> bool {
     let stripped = strip_reminder_text(text);
     for line in stripped.lines() {
         let Some(colon) = line.find(": ") else { continue };
@@ -542,13 +629,110 @@ mod tests {
 
     #[test]
     fn t4_multiple_ability_lines() {
+        // Three-plus ability lines still route T4 — the Wave-1
+        // two-line carve-out is strictly two lines.
+        let c = mk_card(|c| {
+            c.name = "Sword of Stuff".into();
+            c.type_line = "Artifact — Equipment".into();
+            c.oracle_text = Some(
+                "Equipped creature gets +2/+2.\nWhenever equipped creature deals combat damage to a player, draw a card.\nEquip {2}".into());
+            c.keywords = vec!["Equip".into()];
+        });
+        assert_eq!(classify(&c).tier, Tier::Four);
+    }
+
+    // --- Wave-1 two-line carve-out ----------------------------------
+
+    #[test]
+    fn equipment_two_lines_routes_t3() {
+        // Previously T4 ("multiple ability lines") — Equipment is
+        // inherently two-line and now stays in automated scope.
         let c = mk_card(|c| {
             c.name = "Bonesplitter".into();
             c.type_line = "Artifact — Equipment".into();
             c.oracle_text = Some("Equipped creature gets +3/+0.\nEquip {1}".into());
             c.keywords = vec!["Equip".into()];
         });
+        let cls = classify(&c);
+        assert_eq!(cls.tier, Tier::Three, "rationale={}", cls.rationale);
+    }
+
+    #[test]
+    fn mana_rock_two_lines_routes_t3() {
+        let c = mk_card(|c| {
+            c.name = "Mind Stone".into();
+            c.type_line = "Artifact".into();
+            c.oracle_text = Some(
+                "{T}: Add {C}.\n{1}, {T}, Sacrifice Mind Stone: Draw a card.".into());
+        });
+        let cls = classify(&c);
+        assert_eq!(cls.tier, Tier::Three, "rationale={}", cls.rationale);
+    }
+
+    #[test]
+    fn tapland_two_lines_routes_t3() {
+        let c = mk_card(|c| {
+            c.name = "Dimir Guildgate".into();
+            c.type_line = "Land — Gate".into();
+            c.oracle_text =
+                Some("Dimir Guildgate enters tapped.\n{T}: Add {U} or {B}.".into());
+            c.mana_cost = None;
+        });
+        let cls = classify(&c);
+        assert_eq!(cls.tier, Tier::Three, "rationale={}", cls.rationale);
+    }
+
+    #[test]
+    fn utility_land_two_lines_routes_t3() {
+        let c = mk_card(|c| {
+            c.name = "Rogue's Passage".into();
+            c.type_line = "Land".into();
+            c.oracle_text = Some(
+                "{T}: Add {C}.\n{4}, {T}: Target creature can't be blocked this turn.".into());
+            c.mana_cost = None;
+        });
+        let cls = classify(&c);
+        assert_eq!(cls.tier, Tier::Three, "rationale={}", cls.rationale);
+    }
+
+    #[test]
+    fn two_line_non_mana_artifact_stays_t4() {
+        // The carve-out needs a mana line (rock) or equip line — an
+        // arbitrary two-ability artifact is still T4.
+        let c = mk_card(|c| {
+            c.name = "Puzzle Box".into();
+            c.type_line = "Artifact".into();
+            c.oracle_text = Some(
+                "{3}, {T}: Each player draws a card.\n{5}, {T}: Each player discards a card.".into());
+        });
         assert_eq!(classify(&c).tier, Tier::Four);
+    }
+
+    // --- Wave-1 static enchantment ----------------------------------
+
+    #[test]
+    fn t2_single_line_static_enchantment() {
+        let c = mk_card(|c| {
+            c.name = "Glorious Anthem".into();
+            c.type_line = "Enchantment".into();
+            c.oracle_text = Some("Creatures you control get +1/+1.".into());
+        });
+        let cls = classify(&c);
+        assert_eq!(cls.tier, Tier::Two, "rationale={}", cls.rationale);
+        assert!(cls.rationale.contains("static enchantment"));
+    }
+
+    #[test]
+    fn aura_is_not_a_static_enchantment() {
+        // Single-line Auras (rare, but defensive) must not take the
+        // static-enchantment route — the engine lacks resolution
+        // attach, so the prompt gate refuses them by type.
+        let c = mk_card(|c| {
+            c.name = "Mysterious Aura".into();
+            c.type_line = "Enchantment — Aura".into();
+            c.oracle_text = Some("Enchanted creature gets +2/+2.".into());
+        });
+        assert_eq!(classify(&c).tier, Tier::Five);
     }
 
     // --- T5 --------------------------------------------------------

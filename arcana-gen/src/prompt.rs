@@ -97,6 +97,30 @@ pub enum PromptShape {
     /// counters; attackers attack the battle's controller. Layout
     /// "battle".
     Battle,
+    /// Wave-1: non-Aura, non-Saga/Class enchantment whose printed
+    /// text is triggered abilities ("Whenever a player casts a
+    /// spell, …", "At the beginning of your upkeep, …"). Wired
+    /// exactly like a triggered creature minus the P/T.
+    TriggeredEnchantment,
+    /// Wave-1: non-creature, non-Equipment artifact whose text is
+    /// activated abilities — mana rocks ("{T}: Add {C}"), utility
+    /// activations ("{2}, {T}: …") — optionally plus a triggered
+    /// ability.
+    ActivatedArtifact,
+    /// Wave-1: nonbasic land — mana abilities (with color choices as
+    /// one mana ability per color), enters-tapped, and at most one
+    /// extra simple activated ability. `mana_cost: None` by
+    /// construction.
+    UtilityLand,
+    /// Wave-1: artifact — Equipment. `with_equip(cost)` synthesizes
+    /// the CR 702.6 Equip activation; the "equipped creature gets
+    /// +P/+T" static installs via an ETB-triggered
+    /// `ContinuousEffect::attached_pt` (Bonesplitter pattern).
+    Equipment,
+    /// Wave-1: enchantment whose text is a single static continuous
+    /// effect (anthems, "creatures you control have flying") —
+    /// the Glorious Anthem ETB-install pattern.
+    StaticEnchantment,
 }
 
 /// Why a (card, tier) combination is not currently renderable. The
@@ -212,6 +236,11 @@ fn user_for_shape(card: &Card, shape: PromptShape) -> String {
         PromptShape::Saga => user_saga(card),
         PromptShape::ClassEnchantment => user_class_enchantment(card),
         PromptShape::Battle => user_battle(card),
+        PromptShape::TriggeredEnchantment => user_triggered_enchantment(card),
+        PromptShape::ActivatedArtifact => user_activated_artifact(card),
+        PromptShape::UtilityLand => user_utility_land(card),
+        PromptShape::Equipment => user_equipment(card),
+        PromptShape::StaticEnchantment => user_static_enchantment(card),
     }
 }
 
@@ -260,6 +289,52 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
     // still route to their proper prompts.
     if matches!(tier, Tier::Four | Tier::Five) {
         return Err(Unsupported::TierOutOfScope(tier));
+    }
+    // ---- Wave-1 permanent-type routing (catalog breadth plan §2) ----
+    // Card-TYPE dispatch comes before the per-tier creature/spell
+    // routing below, so enchantments, non-creature artifacts, and
+    // nonbasic lands reach their own few-shot packs instead of the
+    // legacy "non-creature" refusals. Runs only for T1–T3 cards —
+    // T4/T5 were refused just above (multi-line cards stay out of
+    // Wave 1, except the two-line land / mana-rock / Equipment
+    // carve-out the classifier now routes to T3).
+    let text = card.effective_oracle_text();
+    if card.is_enchantment() && !card.is_creature() && !card.is_land() {
+        // Auras: `is_aura` + the attachment SBA exist in the engine,
+        // but nothing attaches the Aura on spell resolution — they
+        // stay refused until the Wave-2 engine task lands.
+        if card.type_line.contains("Aura") {
+            return Err(Unsupported::NoFewShotForShape {
+                tier,
+                detail: "aura (no resolution attach yet)",
+            });
+        }
+        if crate::classifier::has_triggered_ability(&text) {
+            return Ok(PromptShape::TriggeredEnchantment);
+        }
+        if crate::classifier::has_activated_ability(&text) {
+            // Activated-ability enchantments (e.g. shrines with
+            // "{cost}: …") have no Wave-1 pack — neither the
+            // triggered nor the static pack would anchor them.
+            return Err(Unsupported::NoFewShotForShape {
+                tier,
+                detail: "enchantment with activated ability (no pack yet)",
+            });
+        }
+        return Ok(PromptShape::StaticEnchantment);
+    }
+    if card.is_artifact() && !card.is_creature() && !card.is_land() {
+        if crate::classifier::is_equipment(card) {
+            return Ok(PromptShape::Equipment);
+        }
+        return Ok(PromptShape::ActivatedArtifact);
+    }
+    // Nonbasic lands only — basic lands classify T1 and keep the
+    // hand-written-helper refusal in the Tier::One arm below.
+    if card.is_land()
+        && !crate::scryfall::type_part(&card.type_line).contains("Basic")
+    {
+        return Ok(PromptShape::UtilityLand);
     }
     match tier {
         Tier::One => {
@@ -445,6 +520,19 @@ const FS_PREORDAIN: &str =
     include_str!("../../arcana-cards/src/m11/preordain.rs");
 const FS_SERVO_EXHIBITION: &str =
     include_str!("../../arcana-cards/src/aer/servo_exhibition.rs");
+// Wave-1 seed exemplars (catalog breadth plan §2).
+const FS_UNDERWORLD_DREAMS: &str =
+    include_str!("../../arcana-cards/src/leg/underworld_dreams.rs");
+const FS_MIND_STONE: &str =
+    include_str!("../../arcana-cards/src/wth/mind_stone.rs");
+const FS_ROGUES_PASSAGE: &str =
+    include_str!("../../arcana-cards/src/rtr/rogue_s_passage.rs");
+const FS_DIMIR_GUILDGATE: &str =
+    include_str!("../../arcana-cards/src/rtr/dimir_guildgate.rs");
+const FS_GLORIOUS_ANTHEM: &str =
+    include_str!("../../arcana-cards/src/po2/glorious_anthem.rs");
+const FS_BONESPLITTER: &str =
+    include_str!("../../arcana-cards/src/mrd/bonesplitter.rs");
 
 // =============================================================================
 // shared target-card spec block
@@ -1375,6 +1463,217 @@ Generate the Rust source. Output only the file contents.",
     )
 }
 
+/// Per-card prompt block for TriggeredEnchantment (Wave 1). A
+/// non-Aura enchantment whose printed text is triggered abilities —
+/// structurally identical to a triggered creature minus the P/T.
+fn user_triggered_enchantment(card: &Card) -> String {
+    format!(
+        "Generate an ENCHANTMENT WITH TRIGGERED ABILITIES — a non-Aura enchantment `CardDefinition` carrying one `TriggeredAbilityDef` per trigger clause, plus a free `effect` fn (referenced as a fn pointer) for each. An enchantment's triggered ability is wired EXACTLY like a creature's (same `TriggeredAbilityDef`, same effect-fn signature) — only the characteristics differ: `types: TypeLine::ENCHANTMENT.into()` and NO power/toughness.
+
+REFERENCE — Underworld Dreams ({{B}}{{B}}{{B}} enchantment, 'Whenever an opponent draws a card, ~ deals 1 damage to them' — the enchantment bones + a `CardDrawn` trigger. NOTE: this hand-written seed reads the drawing player off `trig.trigger_event`; in YOUR file prefer the typed `trig.*` accessors and NEVER invent a `GameEvent` variant — if no accessor fits, for 'that player' on an opponent-constrained trigger use `script::opponents(state, trig.controller).first().copied()` as the documented 2-player read):
+```rust
+{FS_UNDERWORLD_DREAMS}
+```
+
+REFERENCE — Glorious Anthem ({{1}}{{W}} enchantment, 'Creatures you control get +1/+1' — shows the ETB-install `ContinuousEffect` idiom. Use it ONLY when one line of the target's text is a static anthem alongside the trigger; a pure-trigger enchantment doesn't need it):
+```rust
+{FS_GLORIOUS_ANTHEM}
+```
+
+{trigcat}
+
+{paccess}
+
+BINDING — your effect fn's signature is `fn(_: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect>` (see the references). The EFFECT CATALOG and CARD SCRIPTING sections below are shared with the other generators; YOUR binding is `trig` — it carries `trig.controller` (the enchantment's controller — use for 'you'), `trig.source` (this enchantment's `ObjectId`), `trig.targets` (declared targets), and the typed accessors listed just above.
+
+{cat}
+
+WORKED EFFECT FN — the trigger effect fn combining the catalog and the script prelude:
+```rust
+{worked}
+```
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference cards (those are for code structure only). Transcribe verbatim, never infer from the card's name:
+- `mana_cost`: the spec's `Mana cost` string EXACTLY into `ManaCost::parse(\"…\")`.
+- `colors`: exactly the colored pips of that cost (combine with `|`); never add a color the cost lacks.
+- `types`: exactly the spec's `Type line` (Enchantment → `TypeLine::ENCHANTMENT.into()`). Enchantments have NO power/toughness — leave both to `..Default::default()`.
+- subtypes: any words after the `—` in the type line are interned subtypes (`let s = reg.interner_mut().intern(\"…\");` then insert into a `SubtypeSet`). Most plain enchantments have none.
+
+Then build ONE `TriggeredAbilityDef` per trigger clause (ids 1, 2, … in printed order) whose `trigger_condition` matches the oracle's trigger and whose `effect` fn returns the `Effect`s for what follows it. If an effect genuinely cannot be expressed with any catalog variant, the effect fn returns `Vec::new()` with a `// GAP: <what is missing>` comment — never invent an `Effect` / `TriggerCondition` / `GameEvent` variant or a field not shown. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        trigcat = TRIGGER_CONDITION_CATALOG,
+        paccess = TRIGGER_PENDING_ACCESSORS,
+        cat = effect_catalog("trig"),
+        worked = WORKED_TRIGGER_FN,
+        FS_UNDERWORLD_DREAMS = FS_UNDERWORLD_DREAMS,
+        FS_GLORIOUS_ANTHEM = FS_GLORIOUS_ANTHEM,
+    )
+}
+
+/// Per-card prompt block for ActivatedArtifact (Wave 1). A
+/// non-creature, non-Equipment artifact whose text is activated
+/// abilities (mana rocks, utility activations), optionally plus a
+/// triggered ability.
+fn user_activated_artifact(card: &Card) -> String {
+    format!(
+        "Generate a NON-CREATURE ARTIFACT WITH ACTIVATED ABILITIES — a `CardDefinition` carrying one `ActivatedAbilityDef` per activated clause (plus a `TriggeredAbilityDef` if the text also has a trigger), each with a free `effect` fn referenced as a fn pointer. An artifact's abilities are wired EXACTLY like a creature's — only the characteristics differ: `types: TypeLine::ARTIFACT.into()`, usually `colors: ColorSet::new()` (colorless), and NO power/toughness.
+
+REFERENCE — Mind Stone ({{1}} artifact, '{{T}}: Add {{C}}.' + '{{1}}, {{T}}, Sacrifice Mind Stone: Draw a card.' — the mana-rock archetype: a tap-only `is_mana_ability: true` colorless-mana ability CHAINED with a second utility activation whose cost combines mana + tap + sacrifice on one `ActivationCost`):
+```rust
+{FS_MIND_STONE}
+```
+
+{actcost}
+
+ACTIVATED EFFECT FN BINDING — your effect fn's signature is `fn(_: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect>`. `ctx` carries `ctx.controller` (the activator), `ctx.source` (this artifact's `ObjectId`), `ctx.targets` (the declared targets — read via `ctx.targets.targets.first()` + a `TargetChoice` match), `ctx.x_value: Option<u32>` (for X-cost activations), and `ctx.card_id`. Targets are read EXACTLY the same way as the spell program.
+
+MANA ROCKS — '{{T}}: Add {{C}}' / 'Add {{G}}' etc. is a mana ability: `cost: ActivationCost::tap_only()`, `is_mana_ability: true`, effect `Effect::AddMana {{ player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Colorless, ctx.source)] }}` (one `ManaUnit::plain(color, ctx.source)` per pip — `{{C}}{{C}}` is two units). For 'Add one mana of any color' or 'Add {{U}} or {{B}}': author ONE mana ability PER color, each `{{T}}: Add {{X}}.` — choosing which ability to activate IS the color choice (for any-color, five abilities, one per WUBRG color).
+
+IF THE TEXT ALSO HAS A TRIGGERED ABILITY (\"Whenever …\", \"At the beginning of …\"), add a `TriggeredAbilityDef` exactly as the trigger catalog below describes — its effect fn binding is `trig: &PendingTrigger` (NOT `ctx`); chain `.with_triggered_ability(…)` alongside the `.with_activated_ability(…)` calls.
+
+{trigcat}
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference cards (those are for code structure only). Transcribe verbatim:
+- `mana_cost`: exactly the spec's `Mana cost` string into `ManaCost::parse(\"…\")`.
+- `colors`: exactly the colored pips of that cost — most artifacts have none → `ColorSet::new()`; never add a color the cost lacks.
+- `types`: exactly the spec's `Type line` (Artifact → `TypeLine::ARTIFACT.into()`). NO power/toughness — leave both to `..Default::default()`.
+- subtypes: any words after the `—` are interned subtypes inserted into a `SubtypeSet`.
+
+Then build ONE `ActivatedAbilityDef` per activated clause (cost per the ACTIVATION COST CATALOG; `is_mana_ability: true` ONLY for pure add-mana abilities) and, if present, the triggered ability. If an effect genuinely cannot be expressed with any catalog variant, the effect fn returns `Vec::new()` with a `// GAP: <what is missing>` comment — never invent an `Effect` / `ActivationCost` field. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        actcost = ACTIVATION_COST_CATALOG,
+        trigcat = TRIGGER_CONDITION_CATALOG,
+        cat = effect_catalog("ctx"),
+        FS_MIND_STONE = FS_MIND_STONE,
+    )
+}
+
+/// Per-card prompt block for UtilityLand (Wave 1). A nonbasic land:
+/// mana abilities (color choices = one ability per color),
+/// enters-tapped, at most one extra simple activated ability.
+fn user_utility_land(card: &Card) -> String {
+    format!(
+        "Generate a NONBASIC LAND — a `CardDefinition` whose characteristics have `mana_cost: None`, `colors: ColorSet::new()`, `types: TypeLine::LAND.into()`, and whose abilities are `ActivatedAbilityDef`s exactly like a creature's. Lands are PLAYED, not cast — there is NO `SpellAbilityDef` and NO mana cost; the engine's land-drop path keys purely on the LAND type.
+
+REFERENCE — Rogue's Passage (land, '{{T}}: Add {{C}}.' + '{{4}}, {{T}}: Target creature can't be blocked this turn.' — the utility-land archetype: a colorless mana ability chained with one targeted utility activation):
+```rust
+{FS_ROGUES_PASSAGE}
+```
+
+REFERENCE — Dimir Guildgate (land — Gate, 'enters tapped' + '{{T}}: Add {{U}} or {{B}}.' — the tapland archetype: `EntersWithSpec::Tapped` plus a two-color mana CHOICE modeled as TWO separate mana abilities, one per color):
+```rust
+{FS_DIMIR_GUILDGATE}
+```
+
+LAND RULES — apply these exactly:
+- '[This land] enters the battlefield tapped.' / 'enters tapped.' → chain `.with_enters_with(EntersWithSpec::Tapped)` (import `EntersWithSpec` from `arcana_core::registry`). Do NOT author a trigger for it.
+- '{{T}}: Add {{G}}.' → one mana ability (`ActivationCost::tap_only()`, `is_mana_ability: true`, `Effect::AddMana` with `ManaUnit::plain(ManaColor::Green, ctx.source)`).
+- '{{T}}: Add {{U}} or {{B}}.' → TWO mana abilities, '{{T}}: Add {{U}}.' and '{{T}}: Add {{B}}.' — choosing which to activate IS the color choice (the Dimir Guildgate reference). 'Add one mana of any color' → FIVE mana abilities, one per WUBRG color.
+- '{{T}}: Add {{C}}{{C}}.' → ONE ability whose effect has two `ManaUnit::plain(ManaColor::Colorless, ctx.source)` entries in the `mana` vec.
+- Conditional / restricted mana ('Spend this mana only to cast creature spells', '~ doesn't untap', 'Add {{B}} for each Swamp') — spend restrictions are NOT expressible: emit the plain mana ability and add `// GAP: <restriction>`.
+- One extra utility activation (the Rogue's Passage shape) is wired per the ACTIVATION COST CATALOG below, `is_mana_ability: false`.
+
+{actcost}
+
+ACTIVATED EFFECT FN BINDING — your effect fn's signature is `fn(_: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect>`. `ctx` carries `ctx.controller`, `ctx.source` (this land's `ObjectId`), `ctx.targets` (read via `ctx.targets.targets.first()` + a `TargetChoice` match), and `ctx.x_value`.
+
+{cat}
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference cards (those are for code structure only). Transcribe verbatim:
+- LANDS HAVE NO MANA COST: the spec has no `Mana cost` line — set `mana_cost: None` and `colors: ColorSet::new()`. (A land is colorless regardless of what colors of mana it produces.)
+- `types`: exactly the spec's `Type line` (`TypeLine::LAND.into()`; a 'Legendary Land' adds `supertypes: SupertypeSet(SupertypeSet::LEGENDARY)`). NO power/toughness.
+- subtypes: words after the `—` (Gate, Desert, Cave, Lair, …) are interned and inserted into a `SubtypeSet`. Basic-land TYPE words (Plains/Island/Swamp/Mountain/Forest) on a nonbasic land are subtypes too — intern them the same way.
+
+Then wire each printed line per the LAND RULES above. If an effect genuinely cannot be expressed with any catalog variant, the effect fn returns `Vec::new()` with a `// GAP: <what is missing>` comment — never invent an `Effect` / `ActivationCost` field / `EntersWithSpec` variant. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        actcost = ACTIVATION_COST_CATALOG,
+        cat = effect_catalog("ctx"),
+        FS_ROGUES_PASSAGE = FS_ROGUES_PASSAGE,
+        FS_DIMIR_GUILDGATE = FS_DIMIR_GUILDGATE,
+    )
+}
+
+/// Per-card prompt block for Equipment (Wave 1). `with_equip(cost)`
+/// + the ETB-installed `ContinuousEffect::attached_pt` static.
+fn user_equipment(card: &Card) -> String {
+    format!(
+        "Generate an EQUIPMENT ARTIFACT (CR 702.6) — an artifact — Equipment `CardDefinition` built from exactly two pieces:
+1. `.with_equip(ManaCost::parse(\"{{N}}\").expect(\"valid cost\"))` — synthesizes the canonical 'Equip {{N}}' activated ability (sorcery speed, target creature you control, attach on resolution). NEVER author the Equip activation by hand; the builder is the only path that wires attachment correctly.
+2. The 'Equipped creature gets +P/+T' static: an ETB `TriggeredAbilityDef` whose effect installs `ContinuousEffect::attached_pt(trig.source, P, T, Duration::WhileSourceOnBattlefield)` via `Effect::InstallContinuousEffect`. The layer system dereferences the Equipment's `attached_to` dynamically, so the pump follows every re-equip and expires when the Equipment leaves.
+
+REFERENCE — Bonesplitter ({{1}} artifact — Equipment, 'Equipped creature gets +2/+0. Equip {{1}}' — the COMPLETE pattern; your file should mirror it with only the numbers / cost changed):
+```rust
+{FS_BONESPLITTER}
+```
+
+EXPRESSIBLE vs GAP — the Equipment static surface is deliberately narrow:
+- 'Equipped creature gets +P/+T.' → `ContinuousEffect::attached_pt(trig.source, P, T, Duration::WhileSourceOnBattlefield)`. Negative values are fine ('gets -1/-0' → `attached_pt(trig.source, -1, 0, …)`).
+- 'Equipped creature gets +P/+T and has [keyword].' → install the `attached_pt` for the P/T part AND add `// GAP: 'equipped creature has <keyword>' — attached_pt covers P/T only (no attached keyword grant yet)` for the keyword half. Do NOT use `ContinuousEffect::grant_keyword` (it takes a fixed target id, not the dynamic attached creature) and do NOT invent an attached-keyword builder.
+- 'Equipped creature has [keyword]' ONLY (no P/T) → install nothing; the ETB effect fn returns `Vec::new()` with the same GAP comment. Still emit `.with_equip(…)` — the Equip half is always real.
+- Triggered riders ('Whenever equipped creature deals combat damage …') → author the `TriggeredAbilityDef` normally if its condition exists in the trigger catalog of the engine; otherwise GAP it.
+- Equip cost: exactly the printed 'Equip {{N}}' mana cost. ('Equip — Sacrifice a creature' and other non-mana equip costs are NOT expressible — GAP the whole equip line and do not call `with_equip`.)
+
+IMPORTS — mirror the reference exactly: `ContinuousEffect`, `Duration` from `arcana_core::layers`; `Effect` from `arcana_core::effects`; the trigger types from `arcana_core::triggers`.
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference card. Transcribe verbatim:
+- `mana_cost`: exactly the spec's `Mana cost` string into `ManaCost::parse(\"…\")`.
+- `colors`: exactly the colored pips of that cost — most Equipment is colorless → `ColorSet::new()`.
+- `types`: `TypeLine::ARTIFACT.into()`; subtypes: intern \"Equipment\" (plus any other listed subtype) into a `SubtypeSet`. NO power/toughness.
+
+Then `.with_equip(<printed equip cost>)` + the ETB install trigger per the rules above. If the static genuinely cannot be expressed, the effect fn returns `Vec::new()` with a `// GAP: <what is missing>` comment — never invent a `ContinuousEffect` builder or an `Effect` variant. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        FS_BONESPLITTER = FS_BONESPLITTER,
+    )
+}
+
+/// Per-card prompt block for StaticEnchantment (Wave 1). The
+/// Glorious Anthem ETB-install pattern for a single static
+/// continuous effect.
+fn user_static_enchantment(card: &Card) -> String {
+    format!(
+        "Generate a STATIC ENCHANTMENT — an enchantment whose single line of text is a static continuous ability ('Creatures you control get +1/+1', 'Creatures you control have flying'). The engine models this as an ETB-installed `ContinuousEffect` with `Duration::WhileSourceOnBattlefield`: a `TriggeredAbilityDef` on `TriggerCondition::SelfEntersBattlefield` whose effect fn returns ONE `Effect::InstallContinuousEffect`. The layer-cleanup pipeline auto-expires the effect when the enchantment leaves the battlefield, so the install is behaviorally identical to a true static for any permanent that doesn't blink.
+
+REFERENCE — Glorious Anthem ({{1}}{{W}} enchantment, 'Creatures you control get +1/+1' — the COMPLETE pattern; your file should mirror it with only the builder swapped):
+```rust
+{FS_GLORIOUS_ANTHEM}
+```
+
+CONTINUOUS-EFFECT BUILDERS — the complete Wave-1 static surface. Each is constructed inside the ETB effect fn and wrapped in `Effect::InstallContinuousEffect {{ effect: <builder> }}`. Import `ContinuousEffect`, `Duration` from `arcana_core::layers`.
+- 'Creatures you control get +P/+T.' → `ContinuousEffect::anthem(trig.source, trig.controller, P, T, Duration::WhileSourceOnBattlefield)`. Negative statics ('Creatures your opponents control get -1/-0') are NOT this builder — GAP them (anthem is controller-scoped, positive or negative P/T values but only for YOUR creatures; an opponent-scoped anthem is not expressible).
+- 'Creatures you control have [keyword].' → `ContinuousEffect::keyword_anthem(trig.source, trig.controller, KeywordAbility::Flying, Duration::WhileSourceOnBattlefield)` — any `KeywordAbility` unit variant from the system-prompt list. For 'have [kw1] and [kw2]' return TWO `Effect::InstallContinuousEffect` values in the vec.
+- 'Creatures you control get +P/+T and have [keyword].' → return BOTH installs (one `anthem`, one `keyword_anthem`) in the same vec.
+- FILTERED lords ('Goblins you control get +1/+1', 'White creatures you control…') are NOT expressible — `anthem` / `keyword_anthem` cover ALL creatures you control, no filter parameter. Emit `Vec::new()` with `// GAP: filtered anthem (subtype/color-scoped lord) not expressible — anthem builders are unfiltered` rather than over-applying to everything.
+- Any other static ('Spells cost {{1}} more', 'Players can't gain life', replacement/prevention statics, '…can't attack you unless…') is NOT expressible in Wave 1 — the effect fn returns `Vec::new()` with a `// GAP: <which static is missing>` comment. The bones (name/cost/colors/types) are still valuable; emit them faithfully.
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference card. Transcribe verbatim, never infer from the card's name:
+- `mana_cost`: exactly the spec's `Mana cost` string into `ManaCost::parse(\"…\")`.
+- `colors`: exactly the colored pips of that cost (combine with `|`); never add a color the cost lacks.
+- `types`: exactly the spec's `Type line` (Enchantment → `TypeLine::ENCHANTMENT.into()`). NO power/toughness.
+- subtypes: any words after the `—` are interned subtypes in a `SubtypeSet`; most plain enchantments have none.
+
+Then the ETB trigger (`id: 1`, `TriggerCondition::SelfEntersBattlefield`, `intervening_if: None`, `trigger_zones: vec![Zone::Battlefield]`, `frequency: TriggerFrequency::EachTime`, `target_requirements: Vec::new()`) whose effect fn installs the matching builder(s). Never invent a `ContinuousEffect` builder, an `Effect` variant, or a filter parameter that the builders above don't show. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        FS_GLORIOUS_ANTHEM = FS_GLORIOUS_ANTHEM,
+    )
+}
+
 // =============================================================================
 // tests
 // =============================================================================
@@ -1473,18 +1772,16 @@ mod tests {
     }
 
     #[test]
-    fn t2_artifact_returns_no_few_shot_for_shape() {
+    fn t2_artifact_routes_to_activated_artifact() {
+        // Wave 1: non-creature artifacts route to the
+        // ActivatedArtifact pack instead of the legacy refusal.
         let c = mk_card(|c| {
             c.name = "Mystery Artifact".into();
             c.type_line = "Artifact".into();
             c.oracle_text = Some("Some static ability.".into());
         });
-        match render_prompt(&c, Tier::Two).unwrap_err() {
-            Unsupported::NoFewShotForShape { tier, .. } => {
-                assert_eq!(tier, Tier::Two);
-            }
-            other => panic!("expected NoFewShotForShape, got {other:?}"),
-        }
+        let p = render_prompt(&c, Tier::Two).expect("artifact now renders");
+        assert_eq!(p.shape, PromptShape::ActivatedArtifact);
     }
 
     #[test]
@@ -1501,18 +1798,19 @@ mod tests {
     }
 
     #[test]
-    fn t3_non_creature_returns_no_few_shot_for_shape() {
+    fn t3_activated_artifact_routes_to_activated_artifact() {
+        // Wave 1: was NoFewShotForShape("non-creature permanent").
         let c = mk_card(|c| {
             c.name = "Icy Manipulator".into();
             c.type_line = "Artifact".into();
             c.oracle_text = Some("{1}, {T}: Tap target permanent.".into());
         });
-        match render_prompt(&c, Tier::Three).unwrap_err() {
-            Unsupported::NoFewShotForShape { tier, .. } => {
-                assert_eq!(tier, Tier::Three);
-            }
-            other => panic!("expected NoFewShotForShape, got {other:?}"),
-        }
+        let p = render_prompt(&c, Tier::Three).expect("artifact now renders");
+        assert_eq!(p.shape, PromptShape::ActivatedArtifact);
+        assert!(p.user.contains("Mind Stone"), "Mind Stone few-shot");
+        assert!(p.user.contains("ACTIVATION COST CATALOG"));
+        assert!(p.user.contains("TRIGGER CONDITION CATALOG"));
+        assert!(!p.user.contains("{BINDING}"), "BINDING marker substituted");
     }
 
     #[test]
@@ -1868,6 +2166,302 @@ mod tests {
             p.user.contains("When Cleaver Titan enters"),
             "front-face text must surface in the prompt"
         );
+    }
+
+    // --- Wave-1 shapes ----------------------------------------------
+
+    #[test]
+    fn triggered_enchantment_routes_and_renders() {
+        let c = mk_card(|c| {
+            c.name = "Nightmare Visions".into();
+            c.mana_cost = Some("{2}{B}".into());
+            c.type_line = "Enchantment".into();
+            c.oracle_text = Some(
+                "At the beginning of your upkeep, each opponent loses 1 life.".into(),
+            );
+            c.colors = vec!["B".into()];
+        });
+        let p = render_prompt(&c, Tier::Three).expect("triggered enchantment renders");
+        assert_eq!(p.shape, PromptShape::TriggeredEnchantment);
+        assert!(p.user.contains("Underworld Dreams"), "seed few-shot embedded");
+        assert!(p.user.contains("Glorious Anthem"), "anthem reference embedded");
+        assert!(p.user.contains("TRIGGER CONDITION CATALOG"));
+        assert!(p.user.contains("ENGINE EFFECT CATALOG"));
+        assert!(p.user.contains("Nightmare Visions"), "target card in spec");
+        assert!(p.user.contains("each opponent loses 1 life"), "oracle in spec");
+        assert!(!p.user.contains("{BINDING}"), "BINDING marker substituted");
+    }
+
+    #[test]
+    fn activated_artifact_routes_and_renders() {
+        let c = mk_card(|c| {
+            c.name = "Hedron Battery".into();
+            c.mana_cost = Some("{2}".into());
+            c.type_line = "Artifact".into();
+            c.oracle_text = Some(
+                "{T}: Add {C}.\n{3}, {T}, Sacrifice Hedron Battery: Draw two cards.".into(),
+            );
+        });
+        // The two-line mana-rock carve-out classifies this T3.
+        assert_eq!(
+            crate::classifier::classify(&c).tier,
+            Tier::Three,
+            "mana rock classifies T3 via the Wave-1 carve-out"
+        );
+        let p = render_prompt(&c, Tier::Three).expect("mana rock renders");
+        assert_eq!(p.shape, PromptShape::ActivatedArtifact);
+        assert!(p.user.contains("Mind Stone"));
+        assert!(p.user.contains("ACTIVATION COST CATALOG"));
+        assert!(p.user.contains("Hedron Battery"));
+        assert!(!p.user.contains("{BINDING}"));
+    }
+
+    #[test]
+    fn utility_land_routes_and_renders() {
+        let c = mk_card(|c| {
+            c.name = "Shadowy Backstreet".into();
+            c.mana_cost = None;
+            c.type_line = "Land — Gate".into();
+            c.oracle_text = Some(
+                "Shadowy Backstreet enters tapped.\n{T}: Add {U} or {B}.".into(),
+            );
+        });
+        assert_eq!(
+            crate::classifier::classify(&c).tier,
+            Tier::Three,
+            "tapland classifies T3 via the Wave-1 carve-out"
+        );
+        let p = render_prompt(&c, Tier::Three).expect("land renders");
+        assert_eq!(p.shape, PromptShape::UtilityLand);
+        assert!(p.user.contains("Rogue's Passage"), "utility-land seed");
+        assert!(p.user.contains("Dimir Guildgate"), "tapland seed");
+        assert!(p.user.contains("EntersWithSpec::Tapped"));
+        assert!(p.user.contains("mana_cost: None"), "land bones taught");
+        assert!(p.user.contains("Shadowy Backstreet"));
+        assert!(!p.user.contains("{BINDING}"));
+    }
+
+    #[test]
+    fn equipment_routes_and_renders() {
+        let c = mk_card(|c| {
+            c.name = "Spiked Cleaver".into();
+            c.mana_cost = Some("{1}".into());
+            c.type_line = "Artifact — Equipment".into();
+            c.oracle_text =
+                Some("Equipped creature gets +2/+0.\nEquip {1}".into());
+            c.keywords = vec!["Equip".into()];
+        });
+        assert_eq!(
+            crate::classifier::classify(&c).tier,
+            Tier::Three,
+            "Equipment classifies T3 via the Wave-1 carve-out"
+        );
+        let p = render_prompt(&c, Tier::Three).expect("equipment renders");
+        assert_eq!(p.shape, PromptShape::Equipment);
+        assert!(p.user.contains("Bonesplitter"), "Bonesplitter few-shot");
+        assert!(p.user.contains("with_equip"));
+        assert!(p.user.contains("attached_pt"));
+        assert!(p.user.contains("Spiked Cleaver"));
+    }
+
+    #[test]
+    fn static_enchantment_routes_and_renders() {
+        let c = mk_card(|c| {
+            c.name = "Banner of Valor".into();
+            c.mana_cost = Some("{1}{W}".into());
+            c.type_line = "Enchantment".into();
+            c.oracle_text = Some("Creatures you control get +1/+1.".into());
+            c.colors = vec!["W".into()];
+        });
+        assert_eq!(
+            crate::classifier::classify(&c).tier,
+            Tier::Two,
+            "single-line static enchantment classifies T2"
+        );
+        let p = render_prompt(&c, Tier::Two).expect("static enchantment renders");
+        assert_eq!(p.shape, PromptShape::StaticEnchantment);
+        assert!(p.user.contains("Glorious Anthem"));
+        assert!(p.user.contains("InstallContinuousEffect"));
+        assert!(p.user.contains("keyword_anthem"));
+        assert!(p.user.contains("Banner of Valor"));
+    }
+
+    #[test]
+    fn aura_is_refused_with_precise_detail() {
+        // The engine lacks resolution-time Aura attach — Auras must
+        // not slip into any Wave-1 enchantment shape.
+        let c = mk_card(|c| {
+            c.name = "Arcane Binding".into();
+            c.mana_cost = Some("{1}{W}".into());
+            c.type_line = "Enchantment — Aura".into();
+            c.oracle_text =
+                Some("Enchanted creature gets +2/+2.".into());
+        });
+        match render_prompt(&c, Tier::Two).unwrap_err() {
+            Unsupported::NoFewShotForShape { detail, .. } => {
+                assert_eq!(detail, "aura (no resolution attach yet)");
+            }
+            other => panic!("expected NoFewShotForShape, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn activated_enchantment_is_refused() {
+        // Shrines / activated enchantments have no Wave-1 pack.
+        let c = mk_card(|c| {
+            c.name = "Strange Shrine".into();
+            c.type_line = "Enchantment — Shrine".into();
+            c.oracle_text =
+                Some("{2}, Sacrifice Strange Shrine: Draw a card.".into());
+        });
+        match render_prompt(&c, Tier::Three).unwrap_err() {
+            Unsupported::NoFewShotForShape { detail, .. } => {
+                assert!(detail.contains("activated"), "got detail {detail}");
+            }
+            other => panic!("expected NoFewShotForShape, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn basic_land_still_refused_not_utility_land() {
+        // The UtilityLand route must not swallow basic lands — they
+        // stay hand-written helpers.
+        let c = mk_card(|c| {
+            c.name = "Island".into();
+            c.type_line = "Basic Land — Island".into();
+            c.oracle_text = Some("({T}: Add {U}.)".into());
+            c.mana_cost = None;
+        });
+        assert_eq!(
+            render_prompt(&c, Tier::One).unwrap_err(),
+            Unsupported::BasicLand
+        );
+    }
+
+    #[test]
+    fn saga_layout_still_beats_wave1_enchantment_routing() {
+        // Saga/Class dispatch on layout BEFORE the Wave-1 type
+        // routing; an enchantment — Saga must not become a
+        // TriggeredEnchantment.
+        let c = mk_card(|c| {
+            c.name = "Epic Tale".into();
+            c.type_line = "Enchantment — Saga".into();
+            c.layout = "saga".into();
+            c.oracle_text = Some(
+                "I — Draw a card.\nII — Draw a card.\nIII — Discard your hand.".into(),
+            );
+        });
+        let p = render_prompt(&c, Tier::Three).expect("saga renders");
+        assert_eq!(p.shape, PromptShape::Saga);
+    }
+
+    /// Shape census over the live (cached) Scryfall oracle pool —
+    /// prints how many cards route to each PromptShape and each
+    /// Unsupported bucket. Ignored by default (needs the pool cache);
+    /// run with `cargo test -p arcana-gen --lib -- --ignored
+    /// --nocapture shape_census`.
+    #[test]
+    #[ignore]
+    fn shape_census_live_pool() {
+        use crate::scryfall::ScryfallPool;
+        use std::collections::BTreeMap;
+        let pool = ScryfallPool::load_default().expect("cached pool");
+        let mut shapes: BTreeMap<String, usize> = BTreeMap::new();
+        let mut refused: BTreeMap<String, usize> = BTreeMap::new();
+        for card in pool.iter() {
+            let tier = crate::classifier::classify(card).tier;
+            match select_shape(card, tier) {
+                Ok(s) => *shapes.entry(format!("{s:?}")).or_default() += 1,
+                Err(e) => *refused.entry(e.to_string()).or_default() += 1,
+            }
+        }
+        eprintln!("== shapes ==");
+        for (s, n) in &shapes {
+            eprintln!("  {s}: {n}");
+        }
+        eprintln!("== refused ==");
+        for (s, n) in &refused {
+            eprintln!("  {s}: {n}");
+        }
+    }
+
+    /// Dump one rendered prompt per Wave-1 shape for human
+    /// inspection. Ignored by default (writes outside the target
+    /// dir); run explicitly with:
+    /// `cargo test -p arcana-gen --lib -- --ignored dump_wave1`
+    #[test]
+    #[ignore]
+    fn dump_wave1_sample_prompts() {
+        let dir = std::path::Path::new("/tmp/wave1_prompts");
+        std::fs::create_dir_all(dir).expect("mkdir");
+        let cases: Vec<(&str, Card, Tier)> = vec![
+            (
+                "triggered_enchantment",
+                mk_card(|c| {
+                    c.name = "Underworld Dreams".into();
+                    c.mana_cost = Some("{B}{B}{B}".into());
+                    c.type_line = "Enchantment".into();
+                    c.oracle_text = Some(
+                        "Whenever an opponent draws a card, Underworld Dreams deals 1 damage to them.".into());
+                    c.colors = vec!["B".into()];
+                }),
+                Tier::Three,
+            ),
+            (
+                "activated_artifact",
+                mk_card(|c| {
+                    c.name = "Mind Stone".into();
+                    c.mana_cost = Some("{1}".into());
+                    c.type_line = "Artifact".into();
+                    c.oracle_text = Some(
+                        "{T}: Add {C}.\n{1}, {T}, Sacrifice Mind Stone: Draw a card.".into());
+                }),
+                Tier::Three,
+            ),
+            (
+                "utility_land",
+                mk_card(|c| {
+                    c.name = "Rogue's Passage".into();
+                    c.mana_cost = None;
+                    c.type_line = "Land".into();
+                    c.oracle_text = Some(
+                        "{T}: Add {C}.\n{4}, {T}: Target creature can't be blocked this turn.".into());
+                }),
+                Tier::Three,
+            ),
+            (
+                "equipment",
+                mk_card(|c| {
+                    c.name = "Bonesplitter".into();
+                    c.mana_cost = Some("{1}".into());
+                    c.type_line = "Artifact — Equipment".into();
+                    c.oracle_text =
+                        Some("Equipped creature gets +2/+0.\nEquip {1}".into());
+                    c.keywords = vec!["Equip".into()];
+                }),
+                Tier::Three,
+            ),
+            (
+                "static_enchantment",
+                mk_card(|c| {
+                    c.name = "Glorious Anthem".into();
+                    c.mana_cost = Some("{1}{W}".into());
+                    c.type_line = "Enchantment".into();
+                    c.oracle_text =
+                        Some("Creatures you control get +1/+1.".into());
+                    c.colors = vec!["W".into()];
+                }),
+                Tier::Two,
+            ),
+        ];
+        for (slug, card, tier) in cases {
+            let p = render_prompt(&card, tier).expect("renders");
+            let body = format!(
+                "=== SHAPE: {:?} ===\n\n=== SYSTEM ===\n{}\n\n=== USER ===\n{}\n",
+                p.shape, p.system, p.user,
+            );
+            std::fs::write(dir.join(format!("{slug}.txt")), body).expect("write");
+        }
     }
 
 }

@@ -30,3 +30,4 @@ pub mod rogue_elephant;
 pub mod goblin_grenadiers;
 pub mod fungus_elemental;
 pub mod benalish_missionary;
+pub mod mind_stone;
