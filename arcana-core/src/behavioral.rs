@@ -55,6 +55,12 @@ pub struct Snapshot {
     /// a control change — including a symmetric EXCHANGE (Spawnbroker)
     /// that leaves per-player counts unchanged — shows a delta.
     control_fingerprint: u64,
+    /// Attachment fingerprint: sum over attached objects of
+    /// (id+1)*(attached_to+2) — so Equip / Attach (which move
+    /// `attached_to` without changing any zone count) show a delta.
+    /// Without this every Equipment's equip activation read as a
+    /// silent no-op (the class that kept Bonesplitter allowlisted).
+    attachment_fingerprint: u64,
     total_damage: u32,
     tapped: usize,
     pending_choice: bool,
@@ -115,6 +121,10 @@ impl Snapshot {
             visible_faces: state.objects.iter().map(|o| o.visible_face as u32).sum(),
             control_fingerprint: state.objects.iter()
                 .map(|o| (o.id as u64 + 1) * (o.controller as u64 + 1)).sum(),
+            attachment_fingerprint: state.objects.iter()
+                .filter_map(|o| o.attached_to.map(|t|
+                    (o.id as u64 + 1) * (t as u64 + 2)))
+                .sum(),
             total_damage,
             tapped,
             pending_choice: state.pending_choice.is_some(),
