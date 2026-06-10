@@ -24,3 +24,5 @@ pub mod insatiable_souleater;
 pub mod pestilent_souleater;
 pub mod immolating_souleater;
 pub mod greenhilt_trainee;
+pub mod isolation_cell;
+pub mod soul_conduit;

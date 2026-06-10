@@ -16,3 +16,5 @@ pub mod corpse_harvester;
 pub mod shepherd_of_rot;
 pub mod helldozer;
 pub mod withered_wretch;
+pub mod skeleton_shard;
+pub mod nuisance_engine;

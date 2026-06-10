@@ -64,3 +64,5 @@ pub mod tribune_of_rot;
 pub mod undercover_butler;
 pub mod pit_fight;
 pub mod covetous_elegy;
+pub mod dimir_signet;
+pub mod gruul_signet;

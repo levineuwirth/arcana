@@ -41,3 +41,6 @@ pub mod devotee_of_strength;
 pub mod seer_of_the_last_tomorrow;
 pub mod avid_reclaimer;
 pub mod nissa_s_encouragement;
+pub mod survivors_encampment;
+pub mod dagger_of_the_worthy;
+pub mod visage_of_bolas;

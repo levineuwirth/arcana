@@ -23,3 +23,5 @@ pub mod city_of_death;
 pub mod karvanista_loyal_lupari_lupari_shield;
 pub mod fugitive_of_the_judoon;
 pub mod the_sea_devils;
+pub mod trenzalore_clocktower;
+pub mod ominous_cemetery;

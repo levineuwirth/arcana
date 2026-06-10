@@ -49,3 +49,8 @@ pub mod satyr_piper;
 pub mod mogis_s_marauder;
 pub mod reverent_hunter;
 pub mod boulderfall;
+pub mod prowler_s_helm;
+pub mod witches_eye;
+pub mod fleetfeather_sandals;
+pub mod nykthos_shrine_to_nyx;
+pub mod flamecast_wheel;

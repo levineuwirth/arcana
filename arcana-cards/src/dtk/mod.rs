@@ -40,3 +40,8 @@ pub mod sandsteppe_scavenger;
 pub mod dromoka_dunecaster;
 pub mod blood_chin_fanatic;
 pub mod silumgar_monument;
+pub mod dromoka_monument;
+pub mod tapestry_of_the_ages;
+pub mod atarka_monument;
+pub mod ojutai_monument;
+pub mod spidersilk_net;

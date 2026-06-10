@@ -58,3 +58,4 @@ pub mod the_legend_of_kyoshi_avatar_kyoshi;
 pub mod the_legend_of_roku_avatar_roku;
 pub mod the_rise_of_sozin_fire_lord_sozin;
 pub mod the_legend_of_yangchen_avatar_yangchen;
+pub mod trusty_boomerang;

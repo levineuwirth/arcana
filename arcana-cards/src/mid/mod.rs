@@ -77,3 +77,6 @@ pub mod tireless_hauler_dire_strain_brawler;
 pub mod overwhelmed_archivist_archive_haunt;
 pub mod jerren_corrupted_bishop_ormendahl_the_corrupter;
 pub mod enduring_angel_angelic_enforcer;
+pub mod silver_bolt;
+pub mod moonsilver_key;
+pub mod stuffed_bear;

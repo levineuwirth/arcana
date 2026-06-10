@@ -61,3 +61,4 @@ pub mod xu_ifit_osteoharmonist;
 pub mod kavaron_turbodrone;
 pub mod slagdrill_scrapper;
 pub mod starport_security;
+pub mod thaumaton_torpedo;

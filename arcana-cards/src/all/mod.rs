@@ -14,3 +14,4 @@ pub mod soldevi_heretic;
 pub mod soldevi_sentry;
 pub mod royal_herbalist;
 pub mod agent_of_stromgald;
+pub mod school_of_the_unseen;

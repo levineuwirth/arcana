@@ -100,3 +100,6 @@ pub mod frolicking_familiar_blow_off_steam;
 pub mod feral_encounter;
 pub mod lich_knights_conquest;
 pub mod curse_of_the_werefox;
+pub mod the_irencrag;
+pub mod collector_s_vault;
+pub mod glass_casket;

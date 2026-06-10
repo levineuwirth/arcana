@@ -24,3 +24,7 @@ pub mod artifact_mutation;
 pub mod aura_mutation;
 pub mod clone_legion;
 pub mod grixis_panorama;
+pub mod esper_panorama;
+pub mod bant_panorama;
+pub mod jund_panorama;
+pub mod naya_panorama;

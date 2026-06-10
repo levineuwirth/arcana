@@ -59,3 +59,7 @@ pub mod silverchase_fox;
 pub mod blood_feud;
 pub mod flamewave_invoker;
 pub mod angelic_chorus;
+pub mod genesis_chamber;
+pub mod tyrant_s_machine;
+pub mod mind_s_eye;
+pub mod sentinel_tower;

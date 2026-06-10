@@ -87,3 +87,6 @@ pub mod binding_geist_spectral_binding;
 pub mod dormant_grove_gnarled_grovestrider;
 pub mod a_brine_comber_a_brinebound_gift;
 pub mod reckless_impulse;
+pub mod bride_s_gown;
+pub mod groom_s_finery;
+pub mod ceremonial_knife;

@@ -45,3 +45,5 @@ pub mod merchant_s_dockhand;
 pub mod verdant_automaton;
 pub mod restoration_specialist;
 pub mod pacification_array;
+pub mod paradox_engine;
+pub mod servo_schematic;

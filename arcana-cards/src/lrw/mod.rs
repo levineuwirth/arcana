@@ -48,3 +48,8 @@ pub mod weed_strangle;
 pub mod kithkin_healer;
 pub mod flamekin_spitfire;
 pub mod wanderwine_hub;
+pub mod herbal_poultice;
+pub mod wanderer_s_twig;
+pub mod auntie_s_hovel;
+pub mod secluded_glen;
+pub mod gilt_leaf_palace;

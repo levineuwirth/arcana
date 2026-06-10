@@ -23,3 +23,4 @@ pub mod alpha_kavu;
 pub mod samite_elder;
 pub mod disciple_of_kangee;
 pub mod slingshot_goblin;
+pub mod meteor_crater;

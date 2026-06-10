@@ -35,3 +35,6 @@ pub mod arbor_elf;
 pub mod balduvian_horde;
 pub mod accumulated_knowledge;
 pub mod kindle;
+pub mod pendelhaven;
+pub mod rishadan_port;
+pub mod quicksand;

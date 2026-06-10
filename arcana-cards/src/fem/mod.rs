@@ -8,3 +8,7 @@ pub mod thrull_wizard;
 pub mod dwarven_armorer;
 pub mod homarid_shaman;
 pub mod svyelunite_priest;
+pub mod implements_of_sacrifice;
+pub mod conch_horn;
+pub mod draconian_cylix;
+pub mod delif_s_cone;

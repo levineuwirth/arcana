@@ -39,3 +39,6 @@ pub mod fickle_efreet;
 pub mod keldon_firebombers;
 pub mod troubled_healer;
 pub mod overburden;
+pub mod well_of_discovery;
+pub mod rhystic_cave;
+pub mod well_of_life;

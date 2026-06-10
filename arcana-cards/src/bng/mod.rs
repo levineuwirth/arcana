@@ -26,3 +26,5 @@ pub mod thassa_s_rebuff;
 pub mod sanguimancy;
 pub mod aspect_of_hydra;
 pub mod acolyte_s_reward;
+pub mod gorgon_s_head;
+pub mod siren_song_lyre;

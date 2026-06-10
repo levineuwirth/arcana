@@ -18,3 +18,5 @@ pub mod lys_alana_scarblade;
 pub mod wirewood_channeler;
 pub mod llanowar_tribe;
 pub mod evangel_of_heliod;
+pub mod foul_orchard;
+pub mod meandering_river;

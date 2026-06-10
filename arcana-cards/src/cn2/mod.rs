@@ -22,3 +22,6 @@ pub mod goblin_balloon_brigade;
 pub mod voyaging_satyr;
 pub mod opaline_unicorn;
 pub mod gang_of_devils;
+pub mod spy_kit;
+pub mod horn_of_greed;
+pub mod dread_statuary;

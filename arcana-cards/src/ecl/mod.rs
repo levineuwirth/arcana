@@ -68,3 +68,4 @@ pub mod retched_wretch;
 pub mod eclipsed_elf;
 pub mod eclipsed_flamekin;
 pub mod eclipsed_kithkin;
+pub mod mirrormind_crown;

@@ -17,3 +17,6 @@ pub mod wellwisher;
 pub mod blood_bairn;
 pub mod viridian_zealot;
 pub mod pathbreaker_ibex;
+pub mod crystal_vein;
+pub mod azorius_keyrune;
+pub mod surveyor_s_scope;

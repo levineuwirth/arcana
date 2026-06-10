@@ -42,3 +42,7 @@ pub mod cutthroat_centurion;
 pub mod kethek_crucible_goliath;
 pub mod ruthless_predation;
 pub mod razorverge_thicket;
+pub mod copperline_gorge;
+pub mod seachrome_coast;
+pub mod veil_of_assimilation;
+pub mod prosthetic_injector;

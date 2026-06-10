@@ -6,3 +6,6 @@ pub mod purge;
 pub mod symbiotic_elf;
 pub mod plaguemaw_beast;
 pub mod vedalken_certarch;
+pub mod viridian_claw;
+pub mod slagwurm_armor;
+pub mod coastal_tower;

@@ -29,3 +29,4 @@ pub mod gigantomancer;
 pub mod death_cultist;
 pub mod valakut_fireboar;
 pub mod explosive_revelation;
+pub mod ogre_s_cleaver;

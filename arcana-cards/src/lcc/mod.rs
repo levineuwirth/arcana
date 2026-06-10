@@ -33,3 +33,8 @@ pub mod tetzin_gnome_champion_the_golden_gear_colossus;
 pub mod ruinous_intrusion;
 pub mod clavile_o_first_of_the_blessed;
 pub mod altar_of_the_wretched_wretched_bonemass;
+pub mod desolate_lighthouse;
+pub mod crumbling_necropolis;
+pub mod geier_reach_sanitarium;
+pub mod nephalia_drownyard;
+pub mod blade_of_the_bloodchief;

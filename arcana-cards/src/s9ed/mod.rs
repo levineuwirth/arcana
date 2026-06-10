@@ -52,3 +52,7 @@ pub mod ley_druid;
 pub mod thought_courier;
 pub mod anaba_shaman;
 pub mod master_healer;
+pub mod disrupting_scepter;
+pub mod tanglebloom;
+pub mod aladdin_s_ring;
+pub mod jade_statue;

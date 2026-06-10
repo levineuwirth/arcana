@@ -44,3 +44,5 @@ pub mod riptide_chronologist;
 pub mod rummaging_wizard;
 pub mod krosan_groundshaker;
 pub mod leery_fogbeast;
+pub mod seaside_haven;
+pub mod unholy_grotto;

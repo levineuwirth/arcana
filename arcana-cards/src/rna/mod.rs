@@ -43,3 +43,6 @@ pub mod prime_speaker_vannifar;
 pub mod gyre_engineer;
 pub mod savage_smash;
 pub mod amplifire;
+pub mod screaming_shield;
+pub mod simic_locket;
+pub mod gruul_locket;

@@ -2,3 +2,5 @@
 pub mod makeshift_mannequin;
 pub mod metallurgeon;
 pub mod bog_witch;
+pub mod skullcage;
+pub mod unbender_tine;

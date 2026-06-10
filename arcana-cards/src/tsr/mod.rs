@@ -47,3 +47,7 @@ pub mod saltfield_recluse;
 pub mod amrou_scout;
 pub mod strength_in_numbers;
 pub mod prodigal_pyromancer;
+pub mod swarmyard;
+pub mod gemstone_caverns;
+pub mod urza_s_factory;
+pub mod flagstones_of_trokair;

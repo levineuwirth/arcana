@@ -14,3 +14,5 @@ pub mod facevaulter;
 pub mod hana_kami;
 pub mod test_of_faith;
 pub mod drag_down;
+pub mod runed_stalactite;
+pub mod paradise_mantle;

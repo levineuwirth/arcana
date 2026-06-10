@@ -28,3 +28,4 @@ pub mod ostiary_thrull;
 pub mod starved_rusalka;
 pub mod cerebral_vortex;
 pub mod killer_instinct;
+pub mod orzhova_the_church_of_deals;

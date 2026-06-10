@@ -34,3 +34,8 @@ pub mod cliffside_lookout;
 pub mod brilliant_spectrum;
 pub mod ugin_s_insight;
 pub mod slab_hammer;
+pub mod aligned_hedron_network;
+pub mod pathway_arrows;
+pub mod blighted_steppe;
+pub mod blighted_fen;
+pub mod sanctum_of_ugin;

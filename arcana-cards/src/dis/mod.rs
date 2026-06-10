@@ -19,3 +19,6 @@ pub mod rakdos_ickspitter;
 pub mod haazda_exonerator;
 pub mod brace_for_impact;
 pub mod stormscale_anarch;
+pub mod evolution_vat;
+pub mod magewright_s_stone;
+pub mod prahv_spires_of_order;

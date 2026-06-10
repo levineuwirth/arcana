@@ -21,3 +21,8 @@ pub mod goblin_mime;
 pub mod little_girl;
 pub mod eye_to_eye;
 pub mod bloodletter;
+pub mod mana_screw;
+pub mod city_of_ass;
+pub mod rod_of_spanking;
+pub mod r_d_s_secret_lair;
+pub mod mox_lotus;

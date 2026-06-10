@@ -47,3 +47,6 @@ pub mod erstwhile_trooper;
 pub mod undercity_necrolisk;
 pub mod mausoleum_secrets;
 pub mod unmoored_ego;
+pub mod selesnya_locket;
+pub mod guildmages_forum;
+pub mod golgari_locket;

@@ -11,3 +11,4 @@ pub mod skirk_ridge_exhumer;
 pub mod goldmeadow_lookout;
 pub mod samite_censer_bearer;
 pub mod putrid_cyclops;
+pub mod veilstone_amulet;

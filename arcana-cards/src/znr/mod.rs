@@ -55,3 +55,4 @@ pub mod cleric_of_chill_depths;
 pub mod grotag_night_runner;
 pub mod drana_s_silencer;
 pub mod rockslide_sorcerer;
+pub mod a_base_camp;

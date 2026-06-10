@@ -64,3 +64,4 @@ pub mod shore_keeper;
 pub mod skittering_heartstopper;
 pub mod burning_sun_s_avatar;
 pub mod pounce;
+pub mod hierophant_s_chalice;

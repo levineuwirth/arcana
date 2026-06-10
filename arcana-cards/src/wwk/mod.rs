@@ -23,3 +23,5 @@ pub mod agadeem_occultist;
 pub mod harabaz_druid;
 pub mod walking_atlas;
 pub mod tuktuk_scrapper;
+pub mod razor_boomerang;
+pub mod amulet_of_vigor;

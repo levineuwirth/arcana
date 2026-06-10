@@ -24,3 +24,5 @@ pub mod aisling_leprechaun;
 pub mod falling_star;
 pub mod blazing_effigy;
 pub mod underworld_dreams;
+pub mod life_matrix;
+pub mod tolaria;

@@ -14,3 +14,5 @@ pub mod vault_75_middle_school;
 pub mod vault_101_birthday_party;
 pub mod james_wandering_dad_follow_him;
 pub mod vault_11_voter_s_dilemma;
+pub mod junktown;
+pub mod power_fist;

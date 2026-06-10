@@ -34,3 +34,8 @@ pub mod greenside_watcher;
 pub mod scorchwalker;
 pub mod coerced_confession;
 pub mod gruul_keyrune;
+pub mod razortip_whip;
+pub mod riot_gear;
+pub mod skyblinder_staff;
+pub mod boros_keyrune;
+pub mod orzhov_keyrune;

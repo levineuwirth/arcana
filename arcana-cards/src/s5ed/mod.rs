@@ -14,3 +14,6 @@ pub mod sorceress_queen;
 pub mod frozen_shade;
 pub mod initiates_of_the_ebon_hand;
 pub mod urza_s_avenger;
+pub mod helm_of_chatzuk;
+pub mod crown_of_the_ages;
+pub mod joven_s_tools;

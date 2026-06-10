@@ -42,3 +42,8 @@ pub mod argothian_elder;
 pub mod copper_gnomes;
 pub mod opal_archangel;
 pub mod hidden_ancients;
+pub mod whetstone;
+pub mod serra_s_sanctum;
+pub mod gaea_s_cradle;
+pub mod mishra_s_helix;
+pub mod thran_turbine;

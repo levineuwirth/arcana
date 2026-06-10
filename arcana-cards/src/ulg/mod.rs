@@ -14,3 +14,6 @@ pub mod viashino_heretic;
 pub mod walking_sponge;
 pub mod devout_harpist;
 pub mod last_ditch_effort;
+pub mod wheel_of_torture;
+pub mod iron_maiden;
+pub mod scrapheap;

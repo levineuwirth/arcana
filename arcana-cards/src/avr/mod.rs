@@ -36,3 +36,6 @@ pub mod crypt_creeper;
 pub mod narstad_scrapper;
 pub mod alchemist_s_apprentice;
 pub mod yew_spirit;
+pub mod tormentor_s_trident;
+pub mod scroll_of_griselbrand;
+pub mod vanguard_s_shield;

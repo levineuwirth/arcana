@@ -63,3 +63,6 @@ pub mod setessan_petitioner;
 pub mod reverent_hoplite;
 pub mod nylea_s_huntmaster;
 pub mod thassa_s_oracle;
+pub mod mirror_shield;
+pub mod bronze_sword;
+pub mod unknown_shores;

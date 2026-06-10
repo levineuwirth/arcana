@@ -8,3 +8,8 @@ pub mod doomed_necromancer;
 pub mod realm_cloaked_giant_cast_off;
 pub mod druid_of_purification;
 pub mod viridian_longbow;
+pub mod behemoth_sledge;
+pub mod colossus_hammer;
+pub mod desert;
+pub mod vitu_ghazi_the_city_tree;
+pub mod zhalfirin_void;

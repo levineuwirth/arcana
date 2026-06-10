@@ -29,3 +29,6 @@ pub mod gorilla_chieftain;
 pub mod storm_shaman;
 pub mod elder_druid;
 pub mod goblin_digging_team;
+pub mod jandor_s_saddlebags;
+pub mod pit_trap;
+pub mod soul_net;

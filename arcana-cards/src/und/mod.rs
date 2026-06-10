@@ -7,3 +7,4 @@ pub mod johnny_combo_player;
 pub mod flavor_judge;
 pub mod old_guard;
 pub mod timmy_power_gamer;
+pub mod underdome;

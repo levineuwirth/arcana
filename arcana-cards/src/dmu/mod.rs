@@ -42,3 +42,5 @@ pub mod gaea_s_might;
 pub mod tail_swipe;
 pub mod chaotic_transformation;
 pub mod slimefoot_s_survey;
+pub mod vanquisher_s_axe;
+pub mod inscribed_tablet;

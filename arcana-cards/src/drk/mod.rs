@@ -9,3 +9,4 @@ pub mod miracle_worker;
 pub mod niall_silvain;
 pub mod savaen_elves;
 pub mod whippoorwill;
+pub mod standing_stones;

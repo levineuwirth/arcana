@@ -25,3 +25,6 @@ pub mod master_of_diversion;
 pub mod stonehorn_chanter;
 pub mod brindle_boar;
 pub mod vampire_warlord;
+pub mod accorder_s_shield;
+pub mod vial_of_poison;
+pub mod rod_of_ruin;

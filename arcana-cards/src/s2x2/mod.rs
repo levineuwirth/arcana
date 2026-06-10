@@ -45,3 +45,7 @@ pub mod mistmeadow_witch;
 pub mod hero_of_the_games;
 pub mod dreamshaper_shaman;
 pub mod phyrexian_tyranny;
+pub mod phyrexian_altar;
+pub mod planar_bridge;
+pub mod pillar_of_the_paruns;
+pub mod livewire_lash;

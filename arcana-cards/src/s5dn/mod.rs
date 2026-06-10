@@ -31,3 +31,8 @@ pub mod tyrranax;
 pub mod ouphe_vandals;
 pub mod viridian_scout;
 pub mod avarice_totem;
+pub mod goblin_cannon;
+pub mod relic_barrier;
+pub mod conjurer_s_bauble;
+pub mod chimeric_coils;
+pub mod krark_clan_ironworks;

@@ -20,3 +20,4 @@ pub mod magus_of_the_mirror;
 pub mod heckling_fiends;
 pub mod grixis_illusionist;
 pub mod dimir_doppelganger;
+pub mod reito_lantern;

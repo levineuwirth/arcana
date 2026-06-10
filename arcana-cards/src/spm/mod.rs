@@ -36,3 +36,5 @@ pub mod eddie_brock_venom_lethal_protector;
 pub mod peter_parker_amazing_spider_man;
 pub mod norman_osborn_green_goblin;
 pub mod kapow;
+pub mod web_shooters;
+pub mod spider_suit;

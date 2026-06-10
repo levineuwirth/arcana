@@ -28,3 +28,5 @@ pub mod black_hole;
 pub mod now_you_see_me;
 pub mod captain_rex_nebula;
 pub mod ticking_mime_bomb;
+pub mod the_big_top;
+pub mod park_map;

@@ -58,3 +58,8 @@ pub mod sky_weaver;
 pub mod orcish_artillery;
 pub mod scoria_wurm;
 pub mod samite_healer;
+pub mod chimeric_staff;
+pub mod fountain_of_youth;
+pub mod the_hive;
+pub mod leonin_scimitar;
+pub mod citanul_flute;

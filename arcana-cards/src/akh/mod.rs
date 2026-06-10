@@ -40,3 +40,7 @@ pub mod scribe_of_the_mindful;
 pub mod merciless_javelineer;
 pub mod weaver_of_currents;
 pub mod grasping_dunes;
+pub mod sunscorched_desert;
+pub mod honed_khopesh;
+pub mod throne_of_the_god_pharaoh;
+pub mod cradle_of_the_accursed;

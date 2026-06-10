@@ -15,3 +15,5 @@ pub mod blightsoil_druid;
 pub mod emperor_crocodile;
 pub mod plague_witch;
 pub mod price_of_progress;
+pub mod emmessi_tome;
+pub mod wasteland;

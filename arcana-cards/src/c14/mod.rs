@@ -6,3 +6,5 @@ pub mod deploy_to_the_front;
 pub mod breaching_leviathan;
 pub mod magus_of_the_coffers;
 pub mod gift_of_estates;
+pub mod ur_golem_s_eye;
+pub mod tectonic_edge;

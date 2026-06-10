@@ -7,3 +7,7 @@ pub mod sylvok_explorer;
 pub mod slobad_goblin_tinkerer;
 pub mod parting_thoughts;
 pub mod entrapment_maneuver;
+pub mod keening_stone;
+pub mod temple_bell;
+pub mod homeward_path;
+pub mod howling_mine;

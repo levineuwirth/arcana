@@ -30,3 +30,8 @@ pub mod viridian_acolyte;
 pub mod goblin_archaeologist;
 pub mod steelshaper_apprentice;
 pub mod leonin_bola;
+pub mod heartseeker;
+pub mod geth_s_grimoire;
+pub mod thought_dissector;
+pub mod wirefly_hive;
+pub mod nemesis_mask;

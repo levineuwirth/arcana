@@ -40,3 +40,8 @@ pub mod pacesetter_paragon;
 pub mod stampeding_scurryfoot;
 pub mod quag_feast;
 pub mod count_on_luck;
+pub mod willowrush_verge;
+pub mod sunbillow_verge;
+pub mod bleachbone_verge;
+pub mod wastewood_verge;
+pub mod riverpyre_verge;

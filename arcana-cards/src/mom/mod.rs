@@ -102,3 +102,5 @@ pub mod invasion_of_ravnica_guildpact_paragon;
 pub mod wrenn_s_resolve;
 pub mod invasion_of_muraganda_primordial_plasm;
 pub mod invasion_of_pyrulea_gargantuan_slabhorn;
+pub mod kor_halberd;
+pub mod kitesail;

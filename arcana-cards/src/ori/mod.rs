@@ -39,3 +39,6 @@ pub mod jace_vryn_s_prodigy_jace_telepath_unbound;
 pub mod willbreaker;
 pub mod wild_instincts;
 pub mod chandra_fire_of_kaladesh_chandra_roaring_flame;
+pub mod jayemdae_tome;
+pub mod brawler_s_plate;
+pub mod veteran_s_sidearm;

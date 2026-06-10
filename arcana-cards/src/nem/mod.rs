@@ -35,3 +35,7 @@ pub mod lightbringer;
 pub mod stronghold_machinist;
 pub mod arc_mage;
 pub mod flowstone_surge;
+pub mod kill_switch;
+pub mod rath_s_edge;
+pub mod kor_haven;
+pub mod belbe_s_armor;

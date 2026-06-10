@@ -35,3 +35,5 @@ pub mod martyr_of_sands;
 pub mod wild_mongrel;
 pub mod prey_upon;
 pub mod rune_snag;
+pub mod ancient_tomb;
+pub mod karakas;

@@ -37,3 +37,6 @@ pub mod reckless_waif_merciless_predator;
 pub mod screeching_bat_stalking_vampire;
 pub mod tormented_pariah_rampaging_werewolf;
 pub mod instigator_gang_wildblood_pack;
+pub mod ghoulcaller_s_bell;
+pub mod stensia_bloodhall;
+pub mod graveyard_shovel;

@@ -49,3 +49,5 @@ pub mod herald_of_the_dreadhorde;
 pub mod lazotep_reaver;
 pub mod invade_the_city;
 pub mod the_elderspell;
+pub mod vivien_s_arkbow;
+pub mod emergence_zone;

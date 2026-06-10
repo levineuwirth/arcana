@@ -19,13 +19,10 @@ All Suns' Dawn
 Altar of the Wretched
 Ambitious Farmhand
 Armed Response
-Armory Automaton
-Auramancer
 Ayara, Widow of the Realm
 Bag Check
 Bane's Contingency
 Beguiler of Wills
-Blacksmith's Talent
 Blightreaper Thallid
 Bloodline Keeper
 Bonded Herdbeast
@@ -67,10 +64,8 @@ Divert Disaster
 Don't Make a Sound
 Donal, Herald of Wings
 Double Negative
-Dowsing Shaman
 Dread Slaver
 Drooling Ogre
-Dross Scorpion
 Dumb Ass
 Durable Coilbug
 Elder Druid
@@ -84,7 +79,6 @@ Evaporate
 Evasive Action
 Faerie Trickery
 Fickle Efreet
-Filigree Sages
 Flaccify
 Fold into Aether
 Force Spike
@@ -92,7 +86,6 @@ Frazzle
 Fuel for the Cause
 Fyndhorn Brownie
 Gates Ablaze
-Ghen, Arcanum Weaver
 Ghoulsteed
 Gnottvold Hermit
 Goblin Assassin
@@ -101,13 +94,11 @@ Greenside Watcher
 Grimlock, Dinobot Leader
 Groundskeeper
 Gruesome Menagerie
-Gulf Squid
 Gumdrop Poisoner
 Gustcloak Runner
 Gustcloak Sentinel
 Gwen Stacy
 Hajar, Loyal Bodyguard
-Halvar, God of Battle
 Hana Kami
 Harried Artisan
 Heir of Falkenrath
@@ -131,12 +122,10 @@ Jaded Response
 Jill, Shiva's Dominant
 Jin-Gitaxias
 Jungle Creeper
-Kazuul's Toll Collector
 Kessig Prowler
 Kindly Stranger
 Kindred Denial
 Kiora's Follower
-Kor Outfitter
 Kumano Faces Kakkazan
 Lapse of Certainty
 Lay Bare
@@ -160,7 +149,6 @@ Minamo's Meddling
 Mind Maggots
 Mindstatic
 Minor Misstep
-Monk Idealist
 Mystic Genesis
 Mystic Skull
 Nanoform Sentinel
@@ -176,7 +164,6 @@ No More Lies
 Ojer Axonil, Deepest Might
 Open the Vaults
 Oppressive Will
-Orc General
 Order of the Mirror
 Outwit
 Ovalchase Daredevil
@@ -222,11 +209,9 @@ Scuttling Sliver
 Second Guess
 Seeker of Skybreak
 Serene Heart
-Shagrat, Loot Bearer
 Shrill Howler
 Silkenfist Fighter
 Silkenfist Order
-Silt Crawler
 Simic Ragworm
 Skred
 Skyclave Aerialist
@@ -243,7 +228,6 @@ Spell Syphon
 Spelljack
 Steel Overseer
 Stensia Innkeeper
-Stoneshaker Shaman
 Superior Numbers
 Sygg, Wanderwine Wisdom
 Tale's End
@@ -253,7 +237,6 @@ Terra, Magical Adept
 Thassa's Rebuff
 The Akroan War
 The Legend of Yangchen
-The Many Deeds of Belzenlok
 The Modern Age
 Thing in the Ice
 Thistledown Players
@@ -261,8 +244,6 @@ Thoughtbind
 Thraben Gargoyle
 Tibalt's Trickery
 Ticking Mime Bomb
-Tolarian Entrancer
-Tragic Poet
 Trickster Mage
 Tunnel Rats
 Turn Aside
@@ -276,7 +257,6 @@ Vedalken Plotter
 Vildin-Pack Outcast
 Voidslime
 Voltaic Construct
-Voltaic Servant
 Warren Pilferers
 Wild Wurm
 Wyll of the Blade Pact
@@ -284,4 +264,28 @@ Ydwen Efreet
 Yomiji, Who Bars the Way
 Avarice Totem
 Mana Crypt
-Tectonic Instability
+Amulet of Vigor
+Auriok Transfixer
+Baldur's Gate
+Basilisk Gate
+Blinkmoth Well
+City of Traitors
+Cloudpost
+Drownyard Temple
+Floodwater Dam
+Glimmerpost
+Hyperion Blacksmith
+Jandor's Saddlebags
+Magewright's Stone
+Minamo, School at Water's Edge
+Mirror Universe
+Mishra's Helix
+Powerstone Shard
+Puppet Strings
+Relic Barrier
+Rishadan Port
+Skeleton Shard
+Touchstone
+Trampled Lotus
+Unbender Tine
+Wirewood Lodge

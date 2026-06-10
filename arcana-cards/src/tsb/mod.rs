@@ -16,3 +16,5 @@ pub mod sindbad;
 pub mod orcish_librarian;
 pub mod auratog;
 pub mod merfolk_assassin;
+pub mod claws_of_gix;
+pub mod war_barge;

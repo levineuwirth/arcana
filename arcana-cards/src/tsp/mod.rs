@@ -21,3 +21,4 @@ pub mod psionic_sliver;
 pub mod mindlash_sliver;
 pub mod dementia_sliver;
 pub mod viscid_lemures;
+pub mod thunder_totem;

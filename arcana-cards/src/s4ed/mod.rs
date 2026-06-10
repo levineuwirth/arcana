@@ -12,3 +12,5 @@ pub mod sisters_of_the_flame;
 pub mod hurr_jackal;
 pub mod ali_baba;
 pub mod psionic_entity;
+pub mod celestial_prism;
+pub mod conservator;

@@ -114,3 +114,7 @@ pub mod take_heart;
 pub mod flames_of_the_firebrand;
 pub mod seismic_elemental;
 pub mod cinder_elemental;
+pub mod marauder_s_axe;
+pub mod chromatic_sphere;
+pub mod scroll_of_avacyn;
+pub mod rogue_s_gloves;

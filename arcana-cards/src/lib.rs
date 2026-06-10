@@ -602,6 +602,12 @@ pub mod sld;
 
 pub mod thp3;
 
+pub mod big;
+
+pub mod ph20;
+
+pub mod pf25;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;
@@ -1022,6 +1028,16 @@ mod tests {
             let bias = seed % 2 == 1;
             let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 let (mut state, mut yld) = new_game(decks, reg, seed);
+                // Driver-side liveness: a random agent will spin forever on
+                // EV-neutral repeatable activations (Mana Screw's "{1}: flip
+                // a coin, win adds {C}{C}" is a recurrent random walk — legal
+                // Magic, but a human stops). Cap identical activations per
+                // turn and filter capped ones out of the pick; this is agent
+                // policy, not an engine-semantics change.
+                let mut spam: std::collections::HashMap<(arcana_core::objects::ObjectId, usize), u32> =
+                    Default::default();
+                let mut spam_turn: u32 = 0;
+                const SPAM_CAP: u32 = 30;
                 let mut min_life = i32::MAX;
                 let mut attacks: u64 = 0;
                 let mut max_obj = 0usize;
@@ -1058,8 +1074,29 @@ mod tests {
                             if legal_actions.is_empty() {
                                 return Err("stuck: no legal actions".to_string());
                             }
-                            let i = pick(&mut rng, &legal_actions, bias);
-                            let action = legal_actions[i].clone();
+                            if state.turn.turn_number != spam_turn {
+                                spam_turn = state.turn.turn_number;
+                                spam.clear();
+                            }
+                            let unspammy: Vec<arcana_core::actions::Action> = legal_actions
+                                .iter()
+                                .filter(|a| match a {
+                                    arcana_core::actions::Action::ActivateAbility {
+                                        source, ability_index, ..
+                                    } => spam.get(&(*source, *ability_index))
+                                        .is_none_or(|n| *n < SPAM_CAP),
+                                    _ => true,
+                                })
+                                .cloned()
+                                .collect();
+                            let pool = if unspammy.is_empty() { &legal_actions } else { &unspammy };
+                            let i = pick(&mut rng, pool, bias);
+                            let action = pool[i].clone();
+                            if let arcana_core::actions::Action::ActivateAbility {
+                                source, ability_index, ..
+                            } = &action {
+                                *spam.entry((*source, *ability_index)).or_insert(0) += 1;
+                            }
                             if matches!(&action,
                                 arcana_core::actions::Action::DeclareAttackers { attackers }
                                 if !attackers.is_empty()) {

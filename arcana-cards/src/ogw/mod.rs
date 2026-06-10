@@ -27,3 +27,6 @@ pub mod munda_s_vanguard;
 pub mod drana_s_chosen;
 pub mod ondu_war_cleric;
 pub mod chitinous_cloak;
+pub mod corrupted_crossroads;
+pub mod holdout_settlement;
+pub mod bone_saw;

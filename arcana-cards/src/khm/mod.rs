@@ -100,3 +100,8 @@ pub mod graven_lore;
 pub mod blizzard_brawl;
 pub mod tundra_fumarole;
 pub mod the_bloodsky_massacre;
+pub mod faceless_haven;
+pub mod raven_wings;
+pub mod cosmos_elixir;
+pub mod icebind_pillar;
+pub mod a_cosmos_elixir;

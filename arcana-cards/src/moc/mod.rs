@@ -30,3 +30,7 @@ pub mod spell_swindle;
 pub mod excise_the_imperfect;
 pub mod goblin_medics;
 pub mod gavony_township;
+pub mod ichor_elixir;
+pub mod orzhov_locket;
+pub mod fractured_powerstone;
+pub mod field_of_ruin;

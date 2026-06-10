@@ -3,3 +3,5 @@ pub mod seasoned_marshal;
 pub mod serrated_biskelion;
 pub mod synod_centurion;
 pub mod goldmeadow_harrier;
+pub mod trip_noose;
+pub mod daru_encampment;

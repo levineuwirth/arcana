@@ -16,3 +16,5 @@ pub mod nest_invader;
 pub mod dowsing_shaman;
 pub mod nullmage_advocate;
 pub mod last_stand;
+pub mod farsight_mask;
+pub mod skarrg_the_rage_pits;

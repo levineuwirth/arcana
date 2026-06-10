@@ -6,3 +6,4 @@ pub mod giant_slug;
 pub mod sentinel;
 pub mod shimian_night_stalker;
 pub mod goblin_artisans;
+pub mod runesword;

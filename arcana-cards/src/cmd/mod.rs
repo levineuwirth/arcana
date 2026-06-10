@@ -15,3 +15,4 @@ pub mod squallmonger;
 pub mod vedalken_plotter;
 pub mod spurnmage_advocate;
 pub mod death_mutation;
+pub mod acorn_catapult;

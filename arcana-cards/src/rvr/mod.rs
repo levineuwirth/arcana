@@ -41,3 +41,6 @@ pub mod gobhobbler_rats;
 pub mod plaguecrafter;
 pub mod selesnya_evangel;
 pub mod scorched_rusalka;
+pub mod voyager_staff;
+pub mod silent_dart;
+pub mod pariah_s_shield;

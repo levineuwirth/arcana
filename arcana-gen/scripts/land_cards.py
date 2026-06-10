@@ -101,7 +101,12 @@ RUST_KEYWORDS = {
 def mod_slug(slug: str) -> str:
     """`pub mod` identifier for a card slug — raw-escapes Rust
     keywords so the catalog still compiles (the `.rs` filename is
-    unchanged; `pub mod r#override;` resolves to `override.rs`)."""
+    unchanged; `pub mod r#override;` resolves to `override.rs`).
+    Digit-leading slugs ("+2 Mace" -> "2_mace") are not valid Rust
+    identifiers; prefix them (the .rs file must be renamed to match,
+    which land() does by writing to the prefixed name)."""
+    if slug and slug[0].isdigit():
+        slug = f"plus_{slug}"
     return f"r#{slug}" if slug in RUST_KEYWORDS else slug
 
 
@@ -240,7 +245,11 @@ def main() -> int:
     for r in passed:
         set_code, slug, name = r["set"], r["slug"], r["name"]
         src = cards_dir / f"{r['idx']:03d}_{slug}.rs"
-        dst = CARDS_SRC / mod_ident(set_code) / f"{slug}.rs"
+        # Keep the on-disk filename in lockstep with mod_slug's
+        # digit-prefix rule ("+2 Mace" -> plus_2_mace.rs); keyword
+        # raw-escapes (r#override) keep the unprefixed filename.
+        fname = f"plus_{slug}.rs" if slug and slug[0].isdigit() else f"{slug}.rs"
+        dst = CARDS_SRC / mod_ident(set_code) / fname
         rel_dst = dst.relative_to(REPO)
 
         prior = existing_names.get(name)

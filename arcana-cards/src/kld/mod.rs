@@ -61,3 +61,6 @@ pub mod paradoxical_outcome;
 pub mod madcap_experiment;
 pub mod sage_of_shaila_s_claim;
 pub mod lost_legacy;
+pub mod sequestered_stash;
+pub mod torch_gauntlet;
+pub mod whirlermaker;

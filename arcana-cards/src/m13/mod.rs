@@ -21,3 +21,5 @@ pub mod intrepid_hero;
 pub mod arms_dealer;
 pub mod void_stalker;
 pub mod goblin_battle_jester;
+pub mod sands_of_delirium;
+pub mod gem_of_becoming;

@@ -48,3 +48,8 @@ pub mod child_of_thorns;
 pub mod kyoki_sanity_s_eclipse;
 pub mod ire_of_kaminari;
 pub mod ogre_marauder;
+pub mod gods_eye_gate_to_the_reikai;
+pub mod shuriken;
+pub mod ornate_kanzashi;
+pub mod shuko;
+pub mod blinding_powder;

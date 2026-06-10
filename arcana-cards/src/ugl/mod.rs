@@ -11,3 +11,4 @@ pub mod goblin_bookie;
 pub mod jalum_grifter;
 pub mod clambassadors;
 pub mod chicken_egg;
+pub mod blacker_lotus;

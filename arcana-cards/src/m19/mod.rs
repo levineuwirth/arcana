@@ -50,3 +50,8 @@ pub mod dryad_greenseeker;
 pub mod ursine_champion;
 pub mod nicol_bolas_the_ravager_nicol_bolas_the_arisen;
 pub mod nightmare_s_thirst;
+pub mod millstone;
+pub mod timber_gorge;
+pub mod detection_tower;
+pub mod desecrated_tomb;
+pub mod explosive_apparatus;

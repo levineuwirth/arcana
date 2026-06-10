@@ -24,3 +24,4 @@ pub mod keeper_of_the_beasts;
 pub mod mogg_assassin;
 pub mod rootwater_alligator;
 pub mod mind_maggots;
+pub mod medicine_bag;

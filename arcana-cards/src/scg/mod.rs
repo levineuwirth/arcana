@@ -11,3 +11,4 @@ pub mod daru_spiritualist;
 pub mod consumptive_goo;
 pub mod bonethorn_valesk;
 pub mod goblin_psychopath;
+pub mod ark_of_blight;

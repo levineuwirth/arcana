@@ -15,3 +15,6 @@ pub mod pyretic_ritual;
 pub mod phantom_beast;
 pub mod cyclops_gladiator;
 pub mod mass_polymorph;
+pub mod warlord_s_axe;
+pub mod sorcerer_s_strongbox;
+pub mod voltaic_key;

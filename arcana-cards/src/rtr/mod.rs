@@ -42,3 +42,7 @@ pub mod aquus_steed;
 pub mod selesnya_sentry;
 pub mod rogue_s_passage;
 pub mod dimir_guildgate;
+pub mod golgari_keyrune;
+pub mod grove_of_the_guardian;
+pub mod selesnya_keyrune;
+pub mod rakdos_keyrune;

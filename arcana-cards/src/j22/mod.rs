@@ -6,3 +6,4 @@ pub mod ossuary_rats;
 pub mod dutiful_replicator;
 pub mod coalborn_entity;
 pub mod spectral_hunt_caller;
+pub mod infernal_idol;

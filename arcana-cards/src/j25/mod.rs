@@ -7,3 +7,4 @@ pub mod wriggling_grub;
 pub mod woodland_liege;
 pub mod spined_tyrranax;
 pub mod goblin_researcher;
+pub mod starnheim_memento;

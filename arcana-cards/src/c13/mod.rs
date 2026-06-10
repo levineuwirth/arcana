@@ -17,3 +17,7 @@ pub mod deepfire_elemental;
 pub mod mayael_the_anima;
 pub mod quagmire_druid;
 pub mod magus_of_the_arena;
+pub mod obelisk_of_jund;
+pub mod tower_of_fortunes;
+pub mod obelisk_of_esper;
+pub mod carnage_altar;

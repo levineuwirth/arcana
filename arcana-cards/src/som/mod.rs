@@ -40,3 +40,8 @@ pub mod vector_asp;
 pub mod iron_myr;
 pub mod myr_reservoir;
 pub mod echo_circlet;
+pub mod tower_of_calamities;
+pub mod barbed_battlegear;
+pub mod golem_s_heart;
+pub mod bladed_pinions;
+pub mod glimmerpost;

@@ -25,3 +25,6 @@ pub mod soldevi_sage;
 pub mod abyssal_hunter;
 pub mod ethereal_champion;
 pub mod goblin_recruiter;
+pub mod snake_basket;
+pub mod wand_of_denial;
+pub mod dragon_mask;

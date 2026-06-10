@@ -31,3 +31,4 @@ pub mod ruinous_minotaur;
 pub mod greenweaver_druid;
 pub mod kalitas_bloodchief_of_ghet;
 pub mod sea_gate_loremaster;
+pub mod trusty_machete;

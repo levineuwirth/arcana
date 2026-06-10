@@ -12,3 +12,8 @@ pub mod bone_rattler;
 pub mod sliv_mizzet_hivemind;
 pub mod lightning_colt;
 pub mod wrath_of_sod;
+pub mod noxious_bayou;
+pub mod aggressive_crag;
+pub mod enchanted_prairie;
+pub mod waste_land;
+pub mod taiga_stadium;

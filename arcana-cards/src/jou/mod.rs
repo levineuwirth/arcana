@@ -30,3 +30,5 @@ pub mod brain_maggot;
 pub mod akroan_mastiff;
 pub mod dakra_mystic;
 pub mod nessian_game_warden;
+pub mod chariot_of_victory;
+pub mod mana_confluence;

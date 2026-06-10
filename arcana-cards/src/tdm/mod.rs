@@ -66,3 +66,5 @@ pub mod purging_stormbrood_absorb_essence;
 pub mod traveling_botanist;
 pub mod riling_dawnbreaker_signaling_roar;
 pub mod twinmaw_stormbrood_charring_bite;
+pub mod nomad_outpost;
+pub mod mox_jasper;

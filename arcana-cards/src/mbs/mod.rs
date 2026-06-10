@@ -33,3 +33,7 @@ pub mod vedalken_anatomist;
 pub mod dross_ripper;
 pub mod tangle_hulk;
 pub mod blisterstick_shaman;
+pub mod inkmoth_nexus;
+pub mod decimator_web;
+pub mod silverskin_armor;
+pub mod magnetic_mine;

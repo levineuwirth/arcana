@@ -45,3 +45,6 @@ pub mod twisted_justice;
 pub mod induce_paranoia;
 pub mod caregiver;
 pub mod spawnbroker;
+pub mod duskmantle_house_of_shadow;
+pub mod cyclopean_snare;
+pub mod peregrine_mask;

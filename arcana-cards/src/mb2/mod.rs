@@ -12,3 +12,7 @@ pub mod keeper_of_the_crown_coronation_of_the_wilds;
 pub mod night_of_the_flying_merfolk;
 pub mod toofer_keeper_of_the_full_grip;
 pub mod plant_a_sapling_fully_grown_treefolk;
+pub mod mox_poison;
+pub mod glade_of_the_pump_spells;
+pub mod omenpath_to_naya;
+pub mod temur_elevator;

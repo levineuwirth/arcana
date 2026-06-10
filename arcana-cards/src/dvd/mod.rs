@@ -5,3 +5,5 @@ pub mod venerable_monk;
 pub mod overeager_apprentice;
 pub mod souldrinker;
 pub mod icatian_priest;
+pub mod demon_s_horn;
+pub mod angel_s_feather;
