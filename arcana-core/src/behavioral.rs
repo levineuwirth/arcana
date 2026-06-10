@@ -303,6 +303,15 @@ fn synth_event(
         TC::SelfBecomesBlocked => GE::CreatureBlocked { attacker: source, blockers: vec![other] },
         TC::SelfBlocks => GE::CreatureBlocks { blocker: source, attacker: other },
         TC::SelfBlocksOrBecomesBlocked => GE::CreatureBlocks { blocker: source, attacker: other },
+        // Filtered forms: same event shapes with `other` as the paired
+        // creature — `other` is the omni-tribal seed, so subtype
+        // filters (Orc) match; color/type/power filters may not, in
+        // which case the condition verdict reports no-fire (same
+        // posture as other filter-bearing conditions).
+        TC::SelfBecomesBlockedBy { .. } =>
+            GE::CreatureBlocked { attacker: source, blockers: vec![other] },
+        TC::SelfBlocksOrBecomesBlockedBy { .. } =>
+            GE::CreatureBlocks { blocker: source, attacker: other },
         TC::SelfBecomesTapped => GE::Tapped { object_id: source },
         TC::SelfSpecializes => GE::Specialized { object_id: source },
         TC::SelfBecomesTarget { caster } => GE::BecomesTarget {
@@ -560,7 +569,7 @@ fn tribal_subtypes(reg: &CardRegistry) -> crate::types::SubtypeSet {
         "Dwarf", "Faerie", "Kithkin", "Giant", "Saproling", "Zubera",
         "Ninja", "Snake", "Wolf", "Cat", "Bird", "Demon", "Druid", "Shaman",
         "Myr", "Construct", "Golem", "Spider", "Treefolk", "Wall", "Insect",
-        "Samurai", "Minotaur", "Skeleton", "Fungus", "Horror", "Pirate",
+        "Samurai", "Minotaur", "Skeleton", "Fungus", "Horror", "Pirate", "Orc",
     ];
     let mut s = crate::types::SubtypeSet::default();
     for n in NAMES {

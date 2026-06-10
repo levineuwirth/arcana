@@ -255,6 +255,18 @@ pub enum TriggerCondition {
     /// where source is the attacker. The OTHER creature in the
     /// combat event is reachable from [`PendingTrigger::other_combatant`].
     SelfBlocksOrBecomesBlocked,
+    /// "Whenever ~ becomes blocked by [a creature matching filter]" —
+    /// the FILTERED form (Tel-Jilad Wolf "by an artifact creature",
+    /// Phyrexian Reaper "by a green creature"). Fires when at least
+    /// one declared blocker matches; the full blocker set is
+    /// recoverable in the effect via [`crate::script::blockers_of`].
+    SelfBecomesBlockedBy { filter: ObjectFilter },
+    /// "Whenever ~ blocks or becomes blocked by [filter]" — the
+    /// filtered form of [`Self::SelfBlocksOrBecomesBlocked`] (Dwarven
+    /// Soldier "one or more Orcs", Serra Inquisitors "black
+    /// creatures", Arrogant Bloodlord "power 1 or less"). The paired
+    /// creature(s) on the other side must include a filter match.
+    SelfBlocksOrBecomesBlockedBy { filter: ObjectFilter },
     /// "Whenever ~ becomes tapped". Matches [`GameEvent::Tapped`]
     /// on this source.
     SelfBecomesTapped,
@@ -350,6 +362,21 @@ impl TriggerCondition {
             SelfBlocksOrBecomesBlocked => match event {
                 GameEvent::CreatureBlocks { blocker, .. } => *blocker == source,
                 GameEvent::CreatureBlocked { attacker, .. } => *attacker == source,
+                _ => false,
+            },
+
+            SelfBecomesBlockedBy { filter } => matches!(event,
+                GameEvent::CreatureBlocked { attacker, blockers }
+                    if *attacker == source && blockers.iter().any(|b|
+                        match_filter_on(state, *b, filter, source_controller))),
+
+            SelfBlocksOrBecomesBlockedBy { filter } => match event {
+                GameEvent::CreatureBlocks { blocker, attacker } =>
+                    *blocker == source
+                        && match_filter_on(state, *attacker, filter, source_controller),
+                GameEvent::CreatureBlocked { attacker, blockers } =>
+                    *attacker == source && blockers.iter().any(|b|
+                        match_filter_on(state, *b, filter, source_controller)),
                 _ => false,
             },
 
@@ -888,6 +915,53 @@ mod tests {
     }
 
     // --- TriggerCondition::matches ------------------------------------------
+
+    #[test]
+    fn filtered_becomes_blocked_conditions_check_the_paired_creature() {
+        let mut s = GameState::new(2, 0);
+        let me = put_creature(&mut s, 0, Zone::Battlefield);
+        // An artifact-creature blocker and a plain-creature blocker.
+        let artifact_blocker = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars();
+            chars.types = crate::types::TypeLine(
+                crate::types::TypeLine::CREATURE | crate::types::TypeLine::ARTIFACT).into();
+            let mut obj = GameObject::new(id, 1, Zone::Battlefield, 1, chars);
+            obj.controller = 1;
+            s.objects.insert(obj);
+            id
+        };
+        let plain_blocker = put_creature(&mut s, 1, Zone::Battlefield);
+
+        let by_artifact = TriggerCondition::SelfBecomesBlockedBy {
+            filter: ObjectFilter::new().with_types(
+                crate::types::TypeLine::ARTIFACT.into()),
+        };
+        // Blocked by the plain creature only: no match.
+        let ev = GameEvent::CreatureBlocked {
+            attacker: me, blockers: vec![plain_blocker] };
+        assert!(!by_artifact.matches(&ev, me, 0, &s));
+        // Blocked by both — at least one matches: fires.
+        let ev = GameEvent::CreatureBlocked {
+            attacker: me, blockers: vec![plain_blocker, artifact_blocker] };
+        assert!(by_artifact.matches(&ev, me, 0, &s));
+        // Someone ELSE blocked by an artifact: not this source.
+        let ev = GameEvent::CreatureBlocked {
+            attacker: plain_blocker, blockers: vec![artifact_blocker] };
+        assert!(!by_artifact.matches(&ev, me, 0, &s));
+
+        // Either-direction form: as a blocker, the ATTACKER is checked.
+        let either = TriggerCondition::SelfBlocksOrBecomesBlockedBy {
+            filter: ObjectFilter::new().with_types(
+                crate::types::TypeLine::ARTIFACT.into()),
+        };
+        let ev = GameEvent::CreatureBlocks {
+            blocker: me, attacker: artifact_blocker };
+        assert!(either.matches(&ev, me, 0, &s));
+        let ev = GameEvent::CreatureBlocks {
+            blocker: me, attacker: plain_blocker };
+        assert!(!either.matches(&ev, me, 0, &s));
+    }
 
     #[test]
     fn self_enters_battlefield_matches_on_own_etb() {
