@@ -220,6 +220,21 @@ pub enum Effect {
     /// on the SBA tick after it hits the graveyard) and consistent
     /// with `DelayedAction::Sacrifice`.
     CreateTokenSacEot { controller: PlayerId, token: TokenDefinition },
+    /// Like [`Self::CreateToken`] but the token enters TAPPED AND
+    /// ATTACKING (Falconer Adept, Kessig Cagebreakers, Goblin
+    /// Traprunner — riders on attack triggers). CR 508.3a — a creature
+    /// put onto the battlefield attacking was never DECLARED as an
+    /// attacker, so no attack triggers fire and entering tapped this
+    /// way fires no becomes-tapped triggers. The attacking half only
+    /// applies while combat is active (the trigger guarantees it);
+    /// outside combat the token just enters tapped.
+    CreateTokenTappedAttacking { controller: PlayerId, token: TokenDefinition },
+    /// Move `target` (from hand / library / graveyard — wherever it
+    /// is) onto the battlefield TAPPED AND ATTACKING under
+    /// `controller` (Winota, Arni Metalbrow, Hans Eriksson, Yore-
+    /// Tiller Nephilim). Same CR 508.3a posture as
+    /// [`Self::CreateTokenTappedAttacking`].
+    PutOntoBattlefieldTappedAttacking { target: ObjectId, controller: PlayerId },
     /// Create a commodity artifact token with its canonical activated
     /// ability already wired (Treasure, Clue, Food, Powerstone — and
     /// Incubator's bare entity, sans its transform activation which
@@ -1187,6 +1202,22 @@ impl Effect {
             // --- tokens / copies -----------------------------------------
             Effect::CreateToken { controller, token } => {
                 create_token(state, *controller, token);
+            }
+            Effect::CreateTokenTappedAttacking { controller, token } => {
+                if let Some(new_id) = create_token(state, *controller, token) {
+                    enter_tapped_attacking(state, new_id, *controller);
+                }
+            }
+            Effect::PutOntoBattlefieldTappedAttacking { target, controller } => {
+                if state.objects.get(*target).is_none() { return; }
+                if let Some(new_id) = state.move_object_to_zone(
+                    *target, Zone::Battlefield, MoveCause::AbilityResolution)
+                {
+                    if let Some(obj) = state.objects.get_mut(new_id) {
+                        obj.controller = *controller;
+                    }
+                    enter_tapped_attacking(state, new_id, *controller);
+                }
             }
             Effect::CreateTokenSacEot { controller, token } => {
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
@@ -2644,6 +2675,38 @@ fn discard_cards(
                 },
             );
         }
+    }
+}
+
+/// "enters the battlefield tapped and attacking" — tap silently
+/// (CR 613.10c-adjacent: entering tapped is not "becomes tapped", so
+/// no Tapped event / trigger) and, if combat is active, declare the
+/// object as an attacker WITHOUT a CreatureAttacks event (CR 508.3a —
+/// it was never declared, so attack triggers don't fire). The defender
+/// is the one the controller's existing attackers are already
+/// attacking (these riders fire on attack triggers), falling back to
+/// the lowest-id opponent.
+fn enter_tapped_attacking(state: &mut GameState, id: ObjectId, controller: PlayerId) {
+    if let Some(obj) = state.objects.get_mut(id) {
+        obj.status.tapped = true;
+    }
+    let defending_player = state.combat.as_ref().and_then(|c| {
+        c.attackers.iter()
+            .filter(|a| state.objects.get(a.object_id)
+                .is_some_and(|o| o.controller == controller))
+            .map(|a| a.defending_player)
+            .next()
+    }).unwrap_or_else(|| {
+        (0..state.num_players()).find(|p| *p != controller).unwrap_or(0)
+    });
+    if let Some(combat) = state.combat.as_mut() {
+        combat.attackers.push(crate::combat::AttackerInfo {
+            object_id: id,
+            defending_player,
+            defending_planeswalker: None,
+            blocked_by: Vec::new(),
+            is_blocked: false,
+        });
     }
 }
 
@@ -6717,6 +6780,57 @@ mod tests {
         assert_eq!(s.delayed_triggers.len(), 1);
         s.delayed_triggers.retain(|t| !t.expires_end_of_turn);
         assert!(s.delayed_triggers.is_empty());
+    }
+
+    #[test]
+    fn tapped_attacking_riders_join_the_live_combat() {
+        use crate::combat::{AttackerInfo, CombatState, DefendingEntity};
+        let mut s = GameState::new(2, 0);
+        // An attack by P0 against P1 is underway.
+        let attacker = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
+        let mut combat = CombatState::new();
+        combat.attackers.push(AttackerInfo {
+            object_id: attacker, defending_player: 1,
+            defending_planeswalker: None,
+            blocked_by: Vec::new(), is_blocked: false,
+        });
+        s.combat = Some(combat);
+        let events_before = s.event_log.len();
+
+        // Token enters tapped and attacking the same defender.
+        let token = TokenDefinition {
+            name: 0,
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            subtypes: SubtypeSet::new(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![],
+            abilities: vec![],
+        };
+        Effect::CreateTokenTappedAttacking { controller: 0, token }
+            .execute(&mut s);
+        let tok_id = s.objects.iter()
+            .filter(|o| o.zone.is_battlefield() && o.is_token)
+            .map(|o| o.id).max().unwrap();
+        assert!(s.objects.get(tok_id).unwrap().is_tapped());
+        let c = s.combat.as_ref().unwrap();
+        assert!(c.is_attacker(tok_id));
+        assert_eq!(c.attacker(tok_id).unwrap().defending_player, 1);
+        // CR 508.3a — never declared: no CreatureAttacks event fired.
+        assert!(!s.event_log[events_before..].iter().any(|e| matches!(e,
+            crate::events::GameEvent::CreatureAttacks { attacker: a, .. }
+                if *a == tok_id)));
+
+        // A card put from hand enters tapped and attacking with a NEW id.
+        let in_hand = put_creature(&mut s, 0, Zone::Hand(0), 3, 3);
+        Effect::PutOntoBattlefieldTappedAttacking { target: in_hand, controller: 0 }
+            .execute(&mut s);
+        assert!(s.objects.get(in_hand).is_none(), "re-id'd on zone change");
+        let moved = s.objects.objects_in_zone(Zone::Battlefield)
+            .map(|o| o.id).max().unwrap();
+        assert!(s.objects.get(moved).unwrap().is_tapped());
+        assert!(s.combat.as_ref().unwrap().is_attacker(moved));
     }
 
     #[test]
