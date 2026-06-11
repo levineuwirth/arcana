@@ -2100,6 +2100,9 @@ fn enumerate_activation_actions(
             let discard_choices = enumerate_cost_discards(
                 state, ability, player, id);
             if discard_choices.is_empty() { continue; }
+            let tap_choices = enumerate_cost_taps(
+                state, ability, player, id);
+            if tap_choices.is_empty() { continue; }
             // "Discard N at random" gates on hand size but is NOT enumerated
             // (the cards are chosen by the engine RNG in apply, so no
             // per-card fan-out and no baked payment). Skip if too few cards.
@@ -2112,22 +2115,29 @@ fn enumerate_activation_actions(
                 for targets in &target_selections {
                     for sac in &sac_choices {
                         for disc in &discard_choices {
-                            let mut costs = additional.clone();
-                            for s in sac {
-                                costs.push(
-                                    crate::actions::AdditionalCostPayment::Sacrifice(*s));
+                            for taps in &tap_choices {
+                                let mut costs = additional.clone();
+                                for s in sac {
+                                    costs.push(
+                                        crate::actions::AdditionalCostPayment::Sacrifice(*s));
+                                }
+                                for d in disc {
+                                    costs.push(
+                                        crate::actions::AdditionalCostPayment::Discard(*d));
+                                }
+                                if !taps.is_empty() {
+                                    costs.push(
+                                        crate::actions::AdditionalCostPayment::TapCreatures(
+                                            taps.clone()));
+                                }
+                                out.push(Action::ActivateAbility {
+                                    source: id,
+                                    ability_index: i,
+                                    targets: targets.clone(),
+                                    mana_payment: plan.clone(),
+                                    additional_costs: costs,
+                                });
                             }
-                            for d in disc {
-                                costs.push(
-                                    crate::actions::AdditionalCostPayment::Discard(*d));
-                            }
-                            out.push(Action::ActivateAbility {
-                                source: id,
-                                ability_index: i,
-                                targets: targets.clone(),
-                                mana_payment: plan.clone(),
-                                additional_costs: costs,
-                            });
                         }
                     }
                 }
@@ -2161,6 +2171,29 @@ fn enumerate_cost_sacrifices(
         .map(|o| o.id)
         .collect();
     let n = ability.cost.sacrifice_other_count.max(1) as usize;
+    if candidates.len() < n { return Vec::new(); }
+    combinations(&candidates, n)
+}
+
+/// Untapped permanents the activator can tap to pay a `tap_other`
+/// cost. Same contract as [`enumerate_cost_sacrifices`]:
+/// `vec![vec![]]` = no such cost; empty outer Vec = cost exists but
+/// unpayable; the source is always excluded.
+fn enumerate_cost_taps(
+    state: &GameState,
+    ability: &crate::registry::ActivatedAbilityDef,
+    player: crate::types::PlayerId,
+    source: ObjectId,
+) -> Vec<Vec<ObjectId>> {
+    let Some(filter) = ability.cost.tap_other.as_ref() else {
+        return vec![vec![]];
+    };
+    let candidates: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.controller == player && o.id != source && !o.is_tapped())
+        .filter(|o| filter.matches(o, state, player))
+        .map(|o| o.id)
+        .collect();
+    let n = ability.cost.tap_other_count.max(1) as usize;
     if candidates.len() < n { return Vec::new(); }
     combinations(&candidates, n)
 }
@@ -3399,6 +3432,69 @@ mod tests {
                     effect: |_, _, _| Vec::new(),
                 })
         )
+    }
+
+    /// `{T}, Tap an untapped creature you control: ...` (Springleaf
+    /// Drum) — the tap cost is a chosen OTHER untapped creature.
+    fn register_tap_another_creature_stub(reg: &mut CardRegistry) -> CardId {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::targets::ObjectFilter;
+        let name = reg.interner_mut().intern("Springleaf Stub");
+        reg.register(
+            CardDefinition::new(name, creature_chars(0, 1))
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "{T}, Tap an untapped creature you control: ...".into(),
+                    cost: ActivationCost {
+                        tap: true,
+                        tap_other: Some(ObjectFilter {
+                            types: Some(TypeLine::CREATURE.into()),
+                            ..ObjectFilter::default()
+                        }),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: true,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                })
+        )
+    }
+
+    #[test]
+    fn tap_other_enumerates_untapped_candidates_and_gates_on_none() {
+        use crate::actions::AdditionalCostPayment;
+        let mut reg = CardRegistry::new();
+        let cid = register_tap_another_creature_stub(&mut reg);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let src = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(0,1), cid);
+        s.objects.get_mut(src).unwrap().status.summoning_sick = false;
+
+        // No other creature -> cost unpayable -> not offered.
+        assert!(!legal_actions(&s, &reg).iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == src)));
+
+        // One untapped + one tapped creature -> exactly the untapped
+        // one is enumerated as the payment.
+        let untapped = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(2, 2), cid);
+        let tapped = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(2, 2), cid);
+        s.objects.get_mut(tapped).unwrap().tap();
+        let actions: Vec<_> = legal_actions(&s, &reg).into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == src))
+            .collect();
+        // The two non-source creatures are themselves copies of the stub
+        // card; only the SOURCE's activation is filtered here, and only
+        // the untapped candidate can pay (the others' own activations
+        // need their own other-untapped candidates).
+        assert_eq!(actions.len(), 1, "one payment per untapped candidate");
+        let Action::ActivateAbility { additional_costs, .. } = &actions[0] else {
+            unreachable!()
+        };
+        assert!(additional_costs.iter().any(|c| matches!(c,
+            AdditionalCostPayment::TapCreatures(ids) if ids == &vec![untapped])));
     }
 
     #[test]

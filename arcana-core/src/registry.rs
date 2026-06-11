@@ -1066,6 +1066,19 @@ pub struct ActivationCost {
     /// source is rare on an activated ability and over-excluding the
     /// source is the safe, almost-always-correct choice).
     pub sacrifice_other: Option<crate::targets::ObjectFilter>,
+    /// "Tap an untapped [filtered permanent] you control: …" — tap one
+    /// (or `tap_other_count`) chosen untapped permanent(s) as an
+    /// additional cost (CR 118.3; Springleaf Drum, Holdout
+    /// Settlement). Same enumeration/exclusion conventions as
+    /// [`Self::sacrifice_other`]: one activation per matching untapped
+    /// permanent the activator controls, source always excluded;
+    /// payment rides as
+    /// [`crate::actions::AdditionalCostPayment::TapCreatures`].
+    pub tap_other: Option<crate::targets::ObjectFilter>,
+    /// How many permanents [`Self::tap_other`] taps (default 0 means 1
+    /// when `tap_other` is set — same convention as
+    /// `sacrifice_other_count`).
+    pub tap_other_count: u32,
     /// "Discard a [filtered card]: …" — discard one chosen card from
     /// the activator's hand as an additional cost (CR 118.3). Distinct
     /// from [`Self::discard_self`] (cycling, which discards the source

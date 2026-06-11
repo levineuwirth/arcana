@@ -245,6 +245,23 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build an "equipped/enchanted creature has [keyword]" effect —
+    /// the keyword sibling of [`Self::attached_pt`]: whatever creature
+    /// `source` is currently attached to gains the keyword (Layer 6).
+    /// Inert while unattached; pair with
+    /// [`Duration::WhileSourceOnBattlefield`].
+    pub fn attached_keyword(source: ObjectId, keyword: KeywordAbility,
+                            duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureGainsKeyword { keyword },
+        }
+    }
+
     /// Build a "target can't attack" effect (Pacifism-style).
     pub fn cant_attack(source: ObjectId, target: ObjectId,
                        duration: Duration) -> Self {
@@ -376,6 +393,10 @@ pub enum ContinuousEffectKind {
     /// [`Duration::WhileSourceOnBattlefield`] the effect auto-
     /// expires when the Equipment leaves play.
     AttachedCreatureGetsPt { power: i32, toughness: i32 },
+    /// "Equipped/enchanted creature has [keyword]" — the Layer-6
+    /// sibling of [`Self::AttachedCreatureGetsPt`]; follows
+    /// `source.attached_to` dynamically, inert while unattached.
+    AttachedCreatureGainsKeyword { keyword: KeywordAbility },
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
@@ -411,7 +432,8 @@ impl ContinuousEffectKind {
                     && o.zone.is_battlefield()
                     && o.controller == *controller)
             }
-            Self::AttachedCreatureGetsPt { .. } => {
+            Self::AttachedCreatureGetsPt { .. }
+            | Self::AttachedCreatureGainsKeyword { .. } => {
                 state.objects.get(source)
                     .and_then(|src| src.attached_to)
                     == Some(object_id)
@@ -439,7 +461,8 @@ impl ContinuousEffectKind {
                 chars.toughness = Some(PtValue::Fixed(*toughness));
             }
             Self::GrantKeywordTarget { keyword, .. }
-            | Self::GrantKeywordToController { keyword, .. } => {
+            | Self::GrantKeywordToController { keyword, .. }
+            | Self::AttachedCreatureGainsKeyword { keyword } => {
                 if !chars.keywords.contains(keyword) {
                     chars.keywords.push(keyword.clone());
                 }
@@ -1071,6 +1094,28 @@ mod tests {
     }
 
     // --- Keyword grants (Layer 6) -----------------------------------------
+
+    #[test]
+    fn attached_keyword_follows_the_attachment() {
+        let mut s = GameState::new(2, 0);
+        let equipment = put_creature(&mut s, 0, 1, 1); // stands in for the Equipment
+        let bearer_a = put_creature(&mut s, 0, 2, 2);
+        let bearer_b = put_creature(&mut s, 0, 2, 2);
+        s.add_continuous_effect(ContinuousEffect::attached_keyword(
+            equipment, KeywordAbility::Vigilance,
+            Duration::WhileSourceOnBattlefield,
+        ));
+        // Unattached: inert.
+        assert!(!s.has_keyword(bearer_a, &KeywordAbility::Vigilance));
+        // Attach to A: A has it, B doesn't.
+        s.objects.get_mut(equipment).unwrap().attached_to = Some(bearer_a);
+        assert!( s.has_keyword(bearer_a, &KeywordAbility::Vigilance));
+        assert!(!s.has_keyword(bearer_b, &KeywordAbility::Vigilance));
+        // Move to B: follows dynamically.
+        s.objects.get_mut(equipment).unwrap().attached_to = Some(bearer_b);
+        assert!(!s.has_keyword(bearer_a, &KeywordAbility::Vigilance));
+        assert!( s.has_keyword(bearer_b, &KeywordAbility::Vigilance));
+    }
 
     #[test]
     fn grant_keyword_target_folds_into_effective_keywords() {
