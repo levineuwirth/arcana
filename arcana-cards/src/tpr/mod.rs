@@ -75,3 +75,5 @@ pub mod vec_townships;
 pub mod cinder_marsh;
 pub mod volrath_s_stronghold;
 pub mod maze_of_shadows;
+pub mod spellshock;
+pub mod pandemonium;

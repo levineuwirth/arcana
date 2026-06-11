@@ -8,3 +8,7 @@ pub mod skyshroud_archer;
 pub mod mogg_bombers;
 pub mod bullwhip;
 pub mod portcullis;
+pub mod awakening;
+pub mod bottomless_pit;
+pub mod contemplation;
+pub mod mortuary;

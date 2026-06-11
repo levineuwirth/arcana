@@ -68,3 +68,6 @@ pub mod riling_dawnbreaker_signaling_roar;
 pub mod twinmaw_stormbrood_charring_bite;
 pub mod nomad_outpost;
 pub mod mox_jasper;
+pub mod stillness_in_motion;
+pub mod smile_at_death;
+pub mod stormplain_detainment;

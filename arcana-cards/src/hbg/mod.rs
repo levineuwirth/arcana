@@ -59,3 +59,4 @@ pub mod gate_to_tumbledown;
 pub mod gate_of_the_black_dragon;
 pub mod a_navigation_orb;
 pub mod gate_to_seatower;
+pub mod a_sigil_of_myrkul;

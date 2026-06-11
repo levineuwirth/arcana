@@ -84,3 +84,4 @@ pub mod great_hall_of_the_citadel;
 pub mod shire_terrace;
 pub mod doors_of_durin;
 pub mod ent_draught_basin;
+pub mod march_from_the_black_gate;

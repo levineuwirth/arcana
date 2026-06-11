@@ -31,3 +31,5 @@ pub mod kraken_s_eye;
 pub mod greatsword;
 pub mod kite_shield;
 pub mod throne_of_empires;
+pub mod jace_s_erasure;
+pub mod worldslayer;

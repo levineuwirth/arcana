@@ -44,3 +44,4 @@ pub mod sunscorched_desert;
 pub mod honed_khopesh;
 pub mod throne_of_the_god_pharaoh;
 pub mod cradle_of_the_accursed;
+pub mod hazoret_s_favor;

@@ -11,3 +11,4 @@ pub mod keening_stone;
 pub mod temple_bell;
 pub mod homeward_path;
 pub mod howling_mine;
+pub mod evolutionary_escalation;

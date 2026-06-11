@@ -54,3 +54,5 @@ pub mod cabal_coffers;
 pub mod marsh_flats;
 pub mod verdant_catacombs;
 pub mod vectis_gloves;
+pub mod feast_of_sanity;
+pub mod fae_offering;

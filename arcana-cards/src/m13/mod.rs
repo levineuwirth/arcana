@@ -23,3 +23,5 @@ pub mod void_stalker;
 pub mod goblin_battle_jester;
 pub mod sands_of_delirium;
 pub mod gem_of_becoming;
+pub mod touch_of_the_eternal;
+pub mod blood_reckoning;

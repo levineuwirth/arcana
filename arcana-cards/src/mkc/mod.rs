@@ -31,3 +31,6 @@ pub mod talisman_of_dominance;
 pub mod game_trail;
 pub mod talisman_of_curiosity;
 pub mod hostile_desert;
+pub mod smuggler_s_share;
+pub mod search_the_premises;
+pub mod duelist_s_heritage;

@@ -72,3 +72,6 @@ pub mod encroaching_wastes;
 pub mod woodland_stream;
 pub mod mask_of_avacyn;
 pub mod seer_s_lantern;
+pub mod first_response;
+pub mod mask_of_memory;
+pub mod furnace_celebration;

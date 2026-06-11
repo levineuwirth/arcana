@@ -44,3 +44,5 @@ pub mod scorched_rusalka;
 pub mod voyager_staff;
 pub mod silent_dart;
 pub mod pariah_s_shield;
+pub mod illusionist_s_bracers;
+pub mod guardian_project;

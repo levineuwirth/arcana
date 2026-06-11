@@ -18,3 +18,5 @@ pub mod mass_polymorph;
 pub mod warlord_s_axe;
 pub mod sorcerer_s_strongbox;
 pub mod voltaic_key;
+pub mod liliana_s_caress;
+pub mod dark_tutelage;

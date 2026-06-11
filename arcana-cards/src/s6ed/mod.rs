@@ -28,3 +28,6 @@ pub mod goblin_recruiter;
 pub mod snake_basket;
 pub mod wand_of_denial;
 pub mod dragon_mask;
+pub mod warmth;
+pub mod insight;
+pub mod serenity;

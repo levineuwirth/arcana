@@ -46,3 +46,6 @@ pub mod krosan_groundshaker;
 pub mod leery_fogbeast;
 pub mod seaside_haven;
 pub mod unholy_grotto;
+pub mod convalescent_care;
+pub mod death_match;
+pub mod aether_charge;

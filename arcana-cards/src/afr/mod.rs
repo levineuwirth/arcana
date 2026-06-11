@@ -74,3 +74,4 @@ pub mod trickster_s_talisman;
 pub mod portable_hole;
 pub mod plus_2_mace;
 pub mod treasure_vault;
+pub mod teleportation_circle;

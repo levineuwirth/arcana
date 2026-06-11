@@ -17,3 +17,5 @@ pub mod urza_s_avenger;
 pub mod helm_of_chatzuk;
 pub mod crown_of_the_ages;
 pub mod joven_s_tools;
+pub mod lifetap;
+pub mod soul_barrier;

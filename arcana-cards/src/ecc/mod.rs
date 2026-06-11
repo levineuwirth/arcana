@@ -30,3 +30,6 @@ pub mod riveteers_overlook;
 pub mod seaside_citadel;
 pub mod sheltered_thicket;
 pub mod nesting_grounds;
+pub mod cream_of_the_crop;
+pub mod blowfly_infestation;
+pub mod flourishing_defenses;

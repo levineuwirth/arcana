@@ -56,3 +56,7 @@ pub mod treva_s_ruins;
 pub mod icy_manipulator;
 pub mod terminal_moraine;
 pub mod dragon_blood;
+pub mod lightning_rift;
+pub mod umbilicus;
+pub mod oversold_cemetery;
+pub mod invigorating_boon;

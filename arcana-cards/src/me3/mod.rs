@@ -84,3 +84,5 @@ pub mod gauntlets_of_chaos;
 pub mod bone_flute;
 pub mod hammerheim;
 pub mod nova_pentacle;
+pub mod barl_s_cage;
+pub mod the_abyss;

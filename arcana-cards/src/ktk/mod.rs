@@ -49,3 +49,7 @@ pub mod abzan_banner;
 pub mod mardu_banner;
 pub mod altar_of_the_brood;
 pub mod sultai_banner;
+pub mod goblinslide;
+pub mod quiet_contemplation;
+pub mod sultai_ascendancy;
+pub mod suspension_field;

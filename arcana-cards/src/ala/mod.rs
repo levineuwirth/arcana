@@ -44,3 +44,4 @@ pub mod scourglass;
 pub mod protomatter_powder;
 pub mod courier_s_capsule;
 pub mod onyx_goblet;
+pub mod vicious_shadows;

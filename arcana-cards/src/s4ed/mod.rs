@@ -14,3 +14,4 @@ pub mod ali_baba;
 pub mod psionic_entity;
 pub mod celestial_prism;
 pub mod conservator;
+pub mod aladdin_s_lamp;

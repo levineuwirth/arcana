@@ -33,3 +33,4 @@ pub mod jungle_creeper;
 pub mod golden_guardian_gold_forge_garrison;
 pub mod hunt_the_weak;
 pub mod strider_harness;
+pub mod path_of_discovery;

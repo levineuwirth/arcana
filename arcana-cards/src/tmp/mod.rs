@@ -37,3 +37,5 @@ pub mod thumbscrews;
 pub mod squee_s_toy;
 pub mod mogg_cannon;
 pub mod echo_chamber;
+pub mod havoc;
+pub mod mirri_s_guile;

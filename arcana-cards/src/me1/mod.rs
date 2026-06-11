@@ -45,3 +45,5 @@ pub mod rainbow_vale;
 pub mod ashnod_s_transmogrant;
 pub mod shield_of_the_ages;
 pub mod serpent_generator;
+pub mod primal_order;
+pub mod urza_s_bauble;

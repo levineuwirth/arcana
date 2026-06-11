@@ -6,3 +6,7 @@ pub mod gigantoplasm;
 pub mod jace_s_archivist;
 pub mod simic_keyrune;
 pub mod orzhov_cluestone;
+pub mod grave_peril;
+pub mod karmic_justice;
+pub mod crystal_chimes;
+pub mod awaken_the_sky_tyrant;

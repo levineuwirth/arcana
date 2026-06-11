@@ -98,3 +98,5 @@ pub mod fabrication_foundry;
 pub mod orazca_puzzle_door;
 pub mod glowcap_lantern;
 pub mod mephitic_draught;
+pub mod deeproot_pilgrimage;
+pub mod might_of_the_ancestors;

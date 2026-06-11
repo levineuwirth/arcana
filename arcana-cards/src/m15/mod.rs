@@ -49,3 +49,5 @@ pub mod profane_memento;
 pub mod sacred_armory;
 pub mod staff_of_the_sun_magus;
 pub mod staff_of_the_wild_magus;
+pub mod might_makes_right;
+pub mod feast_on_the_fallen;

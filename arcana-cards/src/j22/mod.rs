@@ -7,3 +7,5 @@ pub mod dutiful_replicator;
 pub mod coalborn_entity;
 pub mod spectral_hunt_caller;
 pub mod infernal_idol;
+pub mod rhystic_study;
+pub mod daring_piracy;

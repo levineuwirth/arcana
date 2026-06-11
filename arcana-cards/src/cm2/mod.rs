@@ -19,3 +19,5 @@ pub mod ancient_amphitheater;
 pub mod liquimetal_coating;
 pub mod blasted_landscape;
 pub mod cauldron_of_souls;
+pub mod bred_for_the_hunt;
+pub mod memory_erosion;

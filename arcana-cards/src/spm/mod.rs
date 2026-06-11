@@ -38,3 +38,4 @@ pub mod norman_osborn_green_goblin;
 pub mod kapow;
 pub mod web_shooters;
 pub mod spider_suit;
+pub mod web_up;

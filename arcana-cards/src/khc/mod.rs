@@ -20,3 +20,4 @@ pub mod llanowar_tribe;
 pub mod evangel_of_heliod;
 pub mod foul_orchard;
 pub mod meandering_river;
+pub mod prowess_of_the_fair;

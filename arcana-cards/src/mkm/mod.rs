@@ -62,3 +62,6 @@ pub mod commercial_district;
 pub mod underground_mortuary;
 pub mod lush_portico;
 pub mod elegant_parlor;
+pub mod undergrowth_recon;
+pub mod chalk_outline;
+pub mod makeshift_binding;

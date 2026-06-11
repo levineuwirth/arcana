@@ -80,3 +80,5 @@ pub mod enduring_angel_angelic_enforcer;
 pub mod silver_bolt;
 pub mod moonsilver_key;
 pub mod stuffed_bear;
+pub mod borrowed_time;
+pub mod ominous_roost;

@@ -42,3 +42,4 @@ pub mod overburden;
 pub mod well_of_discovery;
 pub mod rhystic_cave;
 pub mod well_of_life;
+pub mod infernal_genesis;

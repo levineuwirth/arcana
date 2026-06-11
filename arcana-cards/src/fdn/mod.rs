@@ -143,3 +143,7 @@ pub mod orzhov_guildgate;
 pub mod expedition_map;
 pub mod fireshrieker;
 pub mod carnelian_orb_of_dragonkind;
+pub mod rite_of_the_dragoncaller;
+pub mod valkyrie_s_call;
+pub mod impact_tremors;
+pub mod phyrexian_arena;

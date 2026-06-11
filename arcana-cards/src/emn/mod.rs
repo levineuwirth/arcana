@@ -48,3 +48,6 @@ pub mod cultist_s_staff;
 pub mod cathar_s_shield;
 pub mod slayer_s_cleaver;
 pub mod nephalia_academy;
+pub mod campaign_of_vengeance;
+pub mod lunar_force;
+pub mod emrakul_s_influence;

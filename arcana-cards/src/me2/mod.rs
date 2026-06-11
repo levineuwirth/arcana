@@ -58,3 +58,4 @@ pub mod skull_catapult;
 pub mod whirling_catapult;
 pub mod aeolipile;
 pub mod barbed_sextant;
+pub mod inheritance;

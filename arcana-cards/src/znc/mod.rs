@@ -5,3 +5,4 @@ pub mod keeper_of_fables;
 pub mod waker_of_the_wilds;
 pub mod dimir_locket;
 pub mod submerged_boneyard;
+pub mod military_intelligence;

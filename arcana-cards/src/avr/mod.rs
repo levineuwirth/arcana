@@ -39,3 +39,7 @@ pub mod yew_spirit;
 pub mod tormentor_s_trident;
 pub mod scroll_of_griselbrand;
 pub mod vanguard_s_shield;
+pub mod gallows_at_willow_hill;
+pub mod demonic_rising;
+pub mod triumph_of_cruelty;
+pub mod triumph_of_ferocity;

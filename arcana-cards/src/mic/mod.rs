@@ -14,3 +14,6 @@ pub mod spark_reaper;
 pub mod avacyn_s_pilgrim;
 pub mod moorland_rescuer;
 pub mod ravenous_rotbelly;
+pub mod endless_ranks_of_the_dead;
+pub mod death_s_presence;
+pub mod open_the_graves;

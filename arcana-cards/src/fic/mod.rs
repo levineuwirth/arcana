@@ -17,3 +17,6 @@ pub mod hildibrand_manderville_gentleman_s_rise;
 pub mod protection_magic;
 pub mod judgment_of_alexander;
 pub mod conformer_shuriken;
+pub mod search_for_dagger;
+pub mod fishing_gear;
+pub mod summoner_s_sending;

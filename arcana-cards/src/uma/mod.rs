@@ -37,3 +37,6 @@ pub mod prey_upon;
 pub mod rune_snag;
 pub mod ancient_tomb;
 pub mod karakas;
+pub mod fecundity;
+pub mod sigil_of_the_new_dawn;
+pub mod raid_bombardment;

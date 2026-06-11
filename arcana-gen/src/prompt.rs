@@ -523,6 +523,10 @@ const FS_PREORDAIN: &str =
 const FS_SERVO_EXHIBITION: &str =
     include_str!("../../arcana-cards/src/aer/servo_exhibition.rs");
 // Wave-1 seed exemplars (catalog breadth plan §2).
+const FS_ANGELIC_CHORUS: &str =
+    include_str!("../../arcana-cards/src/bbd/angelic_chorus.rs");
+const FS_PHYREXIAN_TYRANNY: &str =
+    include_str!("../../arcana-cards/src/s2x2/phyrexian_tyranny.rs");
 const FS_UNDERWORLD_DREAMS: &str =
     include_str!("../../arcana-cards/src/leg/underworld_dreams.rs");
 const FS_MIND_STONE: &str =
@@ -1084,13 +1088,14 @@ Then build ONE `ActivatedAbilityDef` per activated clause in the oracle text. Th
 /// ActivatedAbilityCreature prompt. Mirrors the trigger / target
 /// catalogs in style — each line is a copy-pasteable construction
 /// keyed to a recognisable oracle phrasing.
-const ACTIVATION_COST_CATALOG: &str = r#"ACTIVATION COST CATALOG — `ActivatedAbilityDef.cost` is a `struct ActivationCost { mana_cost, tap, sacrifice, life, remove_self_counter, add_self_counter, discard_self, exile_self, min_self_counters, sacrifice_other, discard_other, discard_other_count, discard_hand }`. Build via struct literal with `..ActivationCost::default()` for unused fields. Map oracle costs to fields as follows:
+const ACTIVATION_COST_CATALOG: &str = r#"ACTIVATION COST CATALOG — `ActivatedAbilityDef.cost` is a `struct ActivationCost { mana_cost, tap, sacrifice, life, remove_self_counter, add_self_counter, discard_self, exile_self, min_self_counters, sacrifice_other, discard_other, discard_other_count, discard_hand, tap_other, tap_other_count }`. Build via struct literal with `..ActivationCost::default()` for unused fields. Map oracle costs to fields as follows:
 - `{T}: …` (tap alone) → `ActivationCost::tap_only()`.
 - `{N}: …` or `{R}: …` (mana only, no tap) → `ActivationCost { mana_cost: ManaCost::parse("{N}").unwrap(), ..ActivationCost::default() }`.
 - `{N}, {T}: …` (mana + tap) → `ActivationCost { mana_cost: ManaCost::parse("{N}").unwrap(), tap: true, ..ActivationCost::default() }`.
 - `Sacrifice ~: …` (sacrifice-self only) → `ActivationCost { sacrifice: true, ..ActivationCost::default() }`. The engine routes the sacrifice automatically as part of activation cost payment.
 - `{N}, Sacrifice ~: …` → mana_cost + sacrifice: true.
 - `Sacrifice another creature: …` / `Sacrifice an artifact: …` / `Sacrifice a [type]: …` (the sacrificed permanent is CHOSEN, NOT this card) → `ActivationCost { sacrifice_other: Some(ObjectFilter { types: Some(TypeLine::CREATURE.into()), ..ObjectFilter::default() }), ..ActivationCost::default() }`. Set the filter to what the cost requires (`TypeLine::ARTIFACT.into()` for "an artifact", a `subtypes` entry for "a Goblin"). The engine enumerates one activation per matching permanent you control and always excludes this card itself — so "Sacrifice another ~" and "Sacrifice a ~" both map here. Import `ObjectFilter` from `arcana_core::targets`. Do NOT use the bare `sacrifice: true` field for this — that one always sacrifices THIS card.
+- `Tap an untapped [type] you control: …` (Springleaf Drum, "tap two untapped Wizards you control") → `ActivationCost { tap_other: Some(ObjectFilter { types: Some(TypeLine::CREATURE.into()), ..ObjectFilter::default() }), ..ActivationCost::default() }` (add `tap_other_count: 2` for "two"). The engine enumerates one activation per matching UNTAPPED permanent you control (source excluded) and taps it as the cost — do NOT model this as an effect or GAP it.
 - `Discard a card: …` / `Discard a [type] card: …` (a chosen card from your hand, NOT this card) → `ActivationCost { discard_other: Some(ObjectFilter::default()), ..ActivationCost::default() }`. Use `ObjectFilter::default()` for "a card"; add a `types`/`subtypes` filter for "a creature card" etc. The engine enumerates one activation per matching hand card.
 - `Discard two cards: …` / `Discard N cards: …` → same as above plus `discard_other_count: 2` (or N): `ActivationCost { discard_other: Some(ObjectFilter::default()), discard_other_count: 2, ..ActivationCost::default() }`. The engine enumerates one activation per N-card combination; the ability is unactivatable with fewer than N matching cards in hand.
 - `Discard your hand: …` (discard ALL cards in hand) → `ActivationCost { discard_hand: true, ..ActivationCost::default() }`. Deterministic — every card is discarded (an empty hand still pays the cost).
@@ -1482,6 +1487,16 @@ REFERENCE — Glorious Anthem ({{1}}{{W}} enchantment, 'Creatures you control ge
 {FS_GLORIOUS_ANTHEM}
 ```
 
+REFERENCE — Angelic Chorus ({{3}}{{W}}{{W}} enchantment, 'Whenever a creature you control enters, you gain life equal to its toughness' — a FILTERED `ZoneChange` trigger over OTHER objects entering, plus a dynamic amount read at resolution via `trig.entering_object()` + `script::toughness_of`. Adopt this pattern for any 'whenever a [filtered permanent] enters/dies/...' enchantment trigger):
+```rust
+{FS_ANGELIC_CHORUS}
+```
+
+REFERENCE — Phyrexian Tyranny ({{U}}{{B}}{{R}} enchantment, 'Whenever a player draws a card, that player loses 2 life unless they pay {{2}}' — an any-player `CardDrawn` trigger where 'that player' is read off the firing `GameEvent::DrawCard`, wrapped in `Effect::OptionalPayment` with the unless-pays polarity. Adopt this for 'whenever a player/each player does X, that player...' triggers):
+```rust
+{FS_PHYREXIAN_TYRANNY}
+```
+
 {trigcat}
 
 {paccess}
@@ -1511,6 +1526,8 @@ Then build ONE `TriggeredAbilityDef` per trigger clause (ids 1, 2, … in printe
         cat = effect_catalog("trig"),
         worked = WORKED_TRIGGER_FN,
         FS_UNDERWORLD_DREAMS = FS_UNDERWORLD_DREAMS,
+        FS_ANGELIC_CHORUS = FS_ANGELIC_CHORUS,
+        FS_PHYREXIAN_TYRANNY = FS_PHYREXIAN_TYRANNY,
         FS_GLORIOUS_ANTHEM = FS_GLORIOUS_ANTHEM,
     )
 }
@@ -1621,7 +1638,7 @@ REFERENCE — Bonesplitter ({{1}} artifact — Equipment, 'Equipped creature get
 
 EXPRESSIBLE vs GAP — the Equipment static surface is deliberately narrow:
 - 'Equipped creature gets +P/+T.' → `ContinuousEffect::attached_pt(trig.source, P, T, Duration::WhileSourceOnBattlefield)`. Negative values are fine ('gets -1/-0' → `attached_pt(trig.source, -1, 0, …)`).
-- 'Equipped creature gets +P/+T and has [keyword].' → install the `attached_pt` for the P/T part AND add `// GAP: 'equipped creature has <keyword>' — attached_pt covers P/T only (no attached keyword grant yet)` for the keyword half. Do NOT use `ContinuousEffect::grant_keyword` (it takes a fixed target id, not the dynamic attached creature) and do NOT invent an attached-keyword builder.
+- 'Equipped creature gets +P/+T and has [keyword].' → install BOTH statics from the same ETB effect fn: `Effect::InstallContinuousEffect {{ effect: ContinuousEffect::attached_pt(trig.source, P, T, Duration::WhileSourceOnBattlefield) }}` and `Effect::InstallContinuousEffect {{ effect: ContinuousEffect::attached_keyword(trig.source, KeywordAbility::Flying, Duration::WhileSourceOnBattlefield) }}` (one per keyword for 'has flying and vigilance'). `attached_keyword` follows the attachment dynamically exactly like `attached_pt`. Do NOT use `ContinuousEffect::grant_keyword` (fixed target id). Only `KeywordAbility` variants demonstrated in this prompt are valid.
 - 'Equipped creature has [keyword]' ONLY (no P/T) → install nothing; the ETB effect fn returns `Vec::new()` with the same GAP comment. Still emit `.with_equip(…)` — the Equip half is always real.
 - Triggered riders ('Whenever equipped creature deals combat damage …') → author the `TriggeredAbilityDef` normally if its condition exists in the trigger catalog of the engine; otherwise GAP it.
 - Equip cost: exactly the printed 'Equip {{N}}' mana cost. ('Equip — Sacrifice a creature' and other non-mana equip costs are NOT expressible — GAP the whole equip line and do not call `with_equip`.)

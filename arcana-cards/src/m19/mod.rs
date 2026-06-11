@@ -55,3 +55,6 @@ pub mod timber_gorge;
 pub mod detection_tower;
 pub mod desecrated_tomb;
 pub mod explosive_apparatus;
+pub mod psychic_corrosion;
+pub mod ajani_s_welcome;
+pub mod hieromancer_s_cage;

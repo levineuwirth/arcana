@@ -48,3 +48,4 @@ pub mod ivory_tower;
 pub mod mox_emerald;
 pub mod mox_pearl;
 pub mod strip_mine;
+pub mod astral_slide;

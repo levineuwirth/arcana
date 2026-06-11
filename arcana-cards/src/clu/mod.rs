@@ -66,3 +66,4 @@ pub mod pit_fight;
 pub mod covetous_elegy;
 pub mod dimir_signet;
 pub mod gruul_signet;
+pub mod colossal_majesty;

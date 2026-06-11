@@ -6,3 +6,5 @@ pub mod slavering_nulls;
 pub mod dimir_cutpurse;
 pub mod morgue_toad;
 pub mod spitemare;
+pub mod ajani_s_mantra;
+pub mod searing_meditation;

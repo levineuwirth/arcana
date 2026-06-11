@@ -25,3 +25,5 @@ pub mod mogg_assassin;
 pub mod rootwater_alligator;
 pub mod mind_maggots;
 pub mod medicine_bag;
+pub mod onslaught;
+pub mod convalescence;

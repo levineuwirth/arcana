@@ -30,3 +30,5 @@ pub mod captain_rex_nebula;
 pub mod ticking_mime_bomb;
 pub mod the_big_top;
 pub mod park_map;
+pub mod done_for_the_day;
+pub mod killer_cosplay;

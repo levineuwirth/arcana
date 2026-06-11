@@ -69,3 +69,6 @@ pub mod eclipsed_elf;
 pub mod eclipsed_flamekin;
 pub mod eclipsed_kithkin;
 pub mod mirrormind_crown;
+pub mod springleaf_drum;
+pub mod liminal_hold;
+pub mod lasting_tarfire;

@@ -62,3 +62,7 @@ pub mod kavaron_turbodrone;
 pub mod slagdrill_scrapper;
 pub mod starport_security;
 pub mod thaumaton_torpedo;
+pub mod banishing_light;
+pub mod seam_rip;
+pub mod weapons_manufacturing;
+pub mod requiem_monolith;

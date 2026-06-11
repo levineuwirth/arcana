@@ -45,3 +45,5 @@ pub mod barbed_battlegear;
 pub mod golem_s_heart;
 pub mod bladed_pinions;
 pub mod glimmerpost;
+pub mod infiltration_lens;
+pub mod viridian_revel;

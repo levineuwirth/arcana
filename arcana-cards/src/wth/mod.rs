@@ -39,3 +39,4 @@ pub mod thran_forge;
 pub mod xanthic_statue;
 pub mod thran_tome;
 pub mod winding_canyons;
+pub mod dingus_staff;

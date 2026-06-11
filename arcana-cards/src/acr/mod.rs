@@ -15,3 +15,4 @@ pub mod fall_of_the_first_civilization;
 pub mod the_aesir_escape_valhalla;
 pub mod origin_of_the_hidden_ones;
 pub mod brotherhood_headquarters;
+pub mod rooftop_bypass;

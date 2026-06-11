@@ -62,3 +62,5 @@ pub mod savai_triome;
 pub mod zagoth_triome;
 pub mod indatha_triome;
 pub mod ketria_triome;
+pub mod reptilian_reflection;
+pub mod escape_protocol;

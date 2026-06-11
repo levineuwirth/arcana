@@ -105,3 +105,5 @@ pub mod raven_wings;
 pub mod cosmos_elixir;
 pub mod icebind_pillar;
 pub mod a_cosmos_elixir;
+pub mod in_search_of_greatness;
+pub mod dogged_pursuit;

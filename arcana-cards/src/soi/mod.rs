@@ -56,3 +56,6 @@ pub mod lambholt_pacifist_lambholt_butcher;
 pub mod autumnal_gloom_ancient_of_the_equinox;
 pub mod startled_awake_persistent_nightmare;
 pub mod murderer_s_axe;
+pub mod creeping_dread;
+pub mod trail_of_evidence;
+pub mod fevered_visions;

@@ -22,3 +22,4 @@ pub mod forbidden_ritual;
 pub mod goblin_swine_rider;
 pub mod undiscovered_paradise;
 pub mod griffin_canyon;
+pub mod lightning_cloud;

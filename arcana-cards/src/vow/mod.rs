@@ -90,3 +90,5 @@ pub mod reckless_impulse;
 pub mod bride_s_gown;
 pub mod groom_s_finery;
 pub mod ceremonial_knife;
+pub mod dying_to_serve;
+pub mod stensia_uprising;

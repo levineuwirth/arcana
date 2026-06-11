@@ -66,3 +66,6 @@ pub mod granite_shard;
 pub mod proteus_staff;
 pub mod tower_of_champions;
 pub mod tower_of_eons;
+pub mod tangleroot;
+pub mod dead_iron_sledge;
+pub mod necrogen_mists;

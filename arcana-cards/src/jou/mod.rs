@@ -32,3 +32,4 @@ pub mod dakra_mystic;
 pub mod nessian_game_warden;
 pub mod chariot_of_victory;
 pub mod mana_confluence;
+pub mod knowledge_and_power;

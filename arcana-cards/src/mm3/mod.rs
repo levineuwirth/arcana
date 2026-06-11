@@ -30,3 +30,4 @@ pub mod azure_mage;
 pub mod mystic_genesis;
 pub mod mudbutton_torchrunner;
 pub mod skirsdag_cultist;
+pub mod golgari_germination;

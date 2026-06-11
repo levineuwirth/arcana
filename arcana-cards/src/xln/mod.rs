@@ -65,3 +65,5 @@ pub mod skittering_heartstopper;
 pub mod burning_sun_s_avatar;
 pub mod pounce;
 pub mod hierophant_s_chalice;
+pub mod shapers_sanctuary;
+pub mod axis_of_mortality;

@@ -13,3 +13,7 @@ pub mod highland_lake;
 pub mod cinder_barrens;
 pub mod gargoyle_castle;
 pub mod izzet_locket;
+pub mod song_of_the_worldsoul;
+pub mod faith_of_the_devoted;
+pub mod growing_ranks;
+pub mod secrets_of_the_dead;

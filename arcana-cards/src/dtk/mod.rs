@@ -45,3 +45,5 @@ pub mod tapestry_of_the_ages;
 pub mod atarka_monument;
 pub mod ojutai_monument;
 pub mod spidersilk_net;
+pub mod sight_of_the_scalelords;
+pub mod silkwrap;

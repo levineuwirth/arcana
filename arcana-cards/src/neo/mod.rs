@@ -81,3 +81,4 @@ pub mod ninja_s_kunai;
 pub mod roadside_reliquary;
 pub mod boseiju_who_endures;
 pub mod moonsnare_prototype;
+pub mod tempered_in_solitude;

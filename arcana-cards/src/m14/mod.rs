@@ -28,3 +28,6 @@ pub mod vampire_warlord;
 pub mod accorder_s_shield;
 pub mod vial_of_poison;
 pub mod rod_of_ruin;
+pub mod into_the_wilds;
+pub mod dark_prophecy;
+pub mod oath_of_the_ancient_wood;

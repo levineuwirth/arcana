@@ -74,3 +74,6 @@ pub mod ziatora_s_proving_ground;
 pub mod a_jackhammer;
 pub mod brokers_hideout;
 pub mod jackhammer;
+pub mod riveteers_ascendancy;
+pub mod cabaretti_ascendancy;
+pub mod brokers_ascendancy;

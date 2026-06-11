@@ -53,3 +53,6 @@ pub mod sungrass_prairie;
 pub mod talisman_of_progress;
 pub mod fetid_pools;
 pub mod access_tunnel;
+pub mod whirlwind_of_thought;
+pub mod jaws_of_defeat;
+pub mod elemental_bond;

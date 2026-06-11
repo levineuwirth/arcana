@@ -54,3 +54,5 @@ pub mod deserted_temple;
 pub mod flooded_strand;
 pub mod phyrexian_tower;
 pub mod wooded_foothills;
+pub mod mindless_conscription;
+pub mod ripples_of_undeath;

@@ -20,3 +20,5 @@ pub mod birth_of_the_imperium;
 pub mod the_war_in_heaven;
 pub mod chaos_mutation;
 pub mod inquisitorial_rosette;
+pub mod bone_sabres;
+pub mod the_lost_and_the_damned;

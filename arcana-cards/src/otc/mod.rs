@@ -30,3 +30,4 @@ pub mod sunhome_fortress_of_the_legion;
 pub mod prismatic_lens;
 pub mod scattered_groves;
 pub mod dunes_of_the_dead;
+pub mod dream_thief_s_bandana;

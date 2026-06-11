@@ -53,3 +53,5 @@ pub mod shuriken;
 pub mod ornate_kanzashi;
 pub mod shuko;
 pub mod blinding_powder;
+pub mod lifegift;
+pub mod in_the_web_of_war;

@@ -49,3 +49,5 @@ pub mod phyrexian_altar;
 pub mod planar_bridge;
 pub mod pillar_of_the_paruns;
 pub mod livewire_lash;
+pub mod bounty_of_the_luxa;
+pub mod bitterblossom;

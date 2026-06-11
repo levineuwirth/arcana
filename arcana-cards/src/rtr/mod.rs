@@ -46,3 +46,7 @@ pub mod golgari_keyrune;
 pub mod grove_of_the_guardian;
 pub mod selesnya_keyrune;
 pub mod rakdos_keyrune;
+pub mod shrieking_affliction;
+pub mod pyroconvergence;
+pub mod conjured_currency;
+pub mod martial_law;

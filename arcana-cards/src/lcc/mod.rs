@@ -38,3 +38,5 @@ pub mod crumbling_necropolis;
 pub mod geier_reach_sanitarium;
 pub mod nephalia_drownyard;
 pub mod blade_of_the_bloodchief;
+pub mod deeproot_waters;
+pub mod exquisite_blood;

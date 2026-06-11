@@ -30,3 +30,5 @@ pub mod shimmering_grotto;
 pub mod moonglove_extract;
 pub mod kolaghan_monument;
 pub mod serum_powder;
+pub mod angelic_accord;
+pub mod skywise_teachings;

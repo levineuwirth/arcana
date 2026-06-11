@@ -21,3 +21,5 @@ pub mod obelisk_of_jund;
 pub mod tower_of_fortunes;
 pub mod obelisk_of_esper;
 pub mod carnage_altar;
+pub mod where_ancients_tread;
+pub mod foster;

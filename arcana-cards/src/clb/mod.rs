@@ -108,3 +108,8 @@ pub mod lapis_orb_of_dragonkind;
 pub mod stonespeaker_crystal;
 pub mod mutavault;
 pub mod fire_diamond;
+pub mod sigil_of_myrkul;
+pub mod goggles_of_night;
+pub mod greatsword_of_tyr;
+pub mod mystery_key;
+pub mod warstorm_surge;

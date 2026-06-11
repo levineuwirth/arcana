@@ -10,3 +10,6 @@ pub mod rakish_heir;
 pub mod stromkirk_condemned;
 pub mod moorland_haunt;
 pub mod azorius_locket;
+pub mod promise_of_bunrei;
+pub mod field_of_souls;
+pub mod haunted_library;

@@ -47,3 +47,6 @@ pub mod restoration_specialist;
 pub mod pacification_array;
 pub mod paradox_engine;
 pub mod servo_schematic;
+pub mod thopter_arrest;
+pub mod pia_s_revolution;
+pub mod consulate_crackdown;

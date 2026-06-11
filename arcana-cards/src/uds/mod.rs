@@ -27,3 +27,6 @@ pub mod cinder_seer;
 pub mod nightshade_seer;
 pub mod braidwood_sextant;
 pub mod braidwood_cup;
+pub mod lurking_jackals;
+pub mod aether_sting;
+pub mod carnival_of_souls;

@@ -61,3 +61,8 @@ pub mod centaur_garden;
 pub mod darkwater_egg;
 pub mod tarnished_citadel;
 pub mod mossfire_egg;
+pub mod burning_sands;
+pub mod standstill;
+pub mod unifying_theory;
+pub mod think_tank;
+pub mod pedantic_learning;

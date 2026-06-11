@@ -17,3 +17,4 @@ pub mod aggressive_crag;
 pub mod enchanted_prairie;
 pub mod waste_land;
 pub mod taiga_stadium;
+pub mod generated_horizons;

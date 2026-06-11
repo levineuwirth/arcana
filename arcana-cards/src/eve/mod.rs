@@ -46,3 +46,4 @@ pub mod patrol_signaler;
 pub mod groundling_pouncer;
 pub mod quillspike;
 pub mod leering_emblem;
+pub mod crumbling_ashes;

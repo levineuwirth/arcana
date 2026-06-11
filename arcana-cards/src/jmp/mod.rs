@@ -118,3 +118,5 @@ pub mod marauder_s_axe;
 pub mod chromatic_sphere;
 pub mod scroll_of_avacyn;
 pub mod rogue_s_gloves;
+pub mod lurking_predators;
+pub mod coastal_piracy;

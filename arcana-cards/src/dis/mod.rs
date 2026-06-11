@@ -22,3 +22,5 @@ pub mod stormscale_anarch;
 pub mod evolution_vat;
 pub mod magewright_s_stone;
 pub mod prahv_spires_of_order;
+pub mod pain_magnification;
+pub mod proper_burial;

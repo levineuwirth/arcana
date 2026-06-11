@@ -40,3 +40,6 @@ pub mod lapis_lazuli_talisman;
 pub mod nacre_talisman;
 pub mod aegis_of_the_meek;
 pub mod malachite_talisman;
+pub mod lim_d_l_s_hex;
+pub mod monsoon;
+pub mod chaos_moon;

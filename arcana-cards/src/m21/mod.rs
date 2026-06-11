@@ -74,3 +74,7 @@ pub mod keen_glidemaster;
 pub mod frantic_inventory;
 pub mod animal_sanctuary;
 pub mod short_sword;
+pub mod griffin_aerie;
+pub mod sanctum_of_calm_waters;
+pub mod sanctum_of_stone_fangs;
+pub mod sanctum_of_fruitful_harvest;

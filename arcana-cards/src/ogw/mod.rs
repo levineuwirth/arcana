@@ -30,3 +30,5 @@ pub mod chitinous_cloak;
 pub mod corrupted_crossroads;
 pub mod holdout_settlement;
 pub mod bone_saw;
+pub mod pyromancer_s_assault;
+pub mod isolation_zone;
