@@ -351,6 +351,21 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "target becomes [supertype] in addition" effect
+    /// (Layer 4, additive) — "becomes legendary".
+    pub fn add_supertypes(source: ObjectId, target: ObjectId,
+                          supertypes: crate::types::SupertypeSet,
+                          duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L4Type,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AddSupertypesTarget { target, supertypes },
+        }
+    }
+
     /// Build an "equipped creature is an artifact in addition to its
     /// other types" effect (Layer 4) — attached CARD-TYPE add
     /// (Silverskin Armor).
@@ -552,6 +567,13 @@ pub enum ContinuousEffectKind {
     /// its other types" (Vault 87's Mutant, Xu-Ifit's Skeleton): the
     /// targeted sibling of [`Self::AttachedCreatureAddSubtypes`].
     AddSubtypesTarget { target: ObjectId, subtypes: crate::types::SubtypeSet },
+    /// Layer 4 — "TARGET permanent becomes legendary in addition to
+    /// its other supertypes" (Origin of Spider-Man's chapter; the
+    /// supertype sibling of [`Self::AddSubtypesTarget`]). ADDITIVE.
+    AddSupertypesTarget {
+        target: ObjectId,
+        supertypes: crate::types::SupertypeSet,
+    },
     /// Layer 4 — "Equipped creature is an artifact in addition to its
     /// other types" (Silverskin Armor): attached CARD-TYPE add, the
     /// attached sibling of [`Self::AddType`].
@@ -606,6 +628,7 @@ impl ContinuousEffectKind {
             | Self::AddType { target, .. }
             | Self::RemoveKeywordTarget { target, .. }
             | Self::AddSubtypesTarget { target, .. }
+            | Self::AddSupertypesTarget { target, .. }
             | Self::SetColor { target, .. } => *target == object_id,
             Self::AnthemForController { controller, .. }
             | Self::GrantKeywordToController { controller, .. } => {
@@ -658,6 +681,10 @@ impl ContinuousEffectKind {
             }
             Self::AttachedCreatureAddTypes { types } => {
                 chars.types = crate::types::TypeLine(chars.types.0 | types.0);
+            }
+            Self::AddSupertypesTarget { supertypes, .. } => {
+                chars.supertypes = crate::types::SupertypeSet(
+                    chars.supertypes.0 | supertypes.0);
             }
             Self::AttachedCreatureEveryCreatureType => {
                 chars.every_creature_type = true;
@@ -1377,6 +1404,21 @@ mod tests {
         let chars = s.compute_characteristics(bearer).unwrap();
         assert!(chars.types.is_artifact());
         assert!(chars.types.is_creature()); // additive, not replacing
+    }
+
+    #[test]
+    fn targeted_supertype_add_is_additive() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.add_continuous_effect(ContinuousEffect::add_supertypes(
+            0, c,
+            crate::types::SupertypeSet::new()
+                .with(crate::types::SupertypeSet::LEGENDARY),
+            Duration::Permanent,
+        ));
+        let chars = s.compute_characteristics(c).unwrap();
+        assert!(chars.supertypes.0 & crate::types::SupertypeSet::LEGENDARY != 0);
+        assert!(chars.types.is_creature());
     }
 
     #[test]

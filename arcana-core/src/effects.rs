@@ -678,6 +678,21 @@ pub enum Effect {
         when: DelayedWhen,
         effect: crate::triggers::EffectFn,
     },
+    /// Schedule a FLOATING REPEATING trigger window: "until [end of
+    /// turn / your next turn], whenever [condition], [effect]"
+    /// (Don't Move's tap-destroyer, Tamiyo Meets the Story Circle's
+    /// attack-watcher, Nightmares and Daydreams' cast-watcher).
+    /// `condition` is any [`crate::triggers::TriggerCondition`];
+    /// `effect` a module-level effect fn; fires on EVERY match until
+    /// the window lapses. Contrast [`Self::ScheduleDelayedEffect`]
+    /// (one-shot, canned timing).
+    ScheduleFloatingTrigger {
+        source: ObjectId,
+        controller: PlayerId,
+        condition: crate::triggers::TriggerCondition,
+        effect: crate::triggers::EffectFn,
+        until: FloatingUntil,
+    },
     /// "Choose a player. That player [does X]" (Spectral Searchlight's
     /// mana grant, Hama's exile pick, chosen-opponent riders). Posts a
     /// [`crate::actions::ChoiceKind::PickPlayer`] for `chooser` over
@@ -903,6 +918,16 @@ pub enum NextCastRider {
     Copy,
     /// "copy it twice".
     CopyTwice,
+}
+
+/// How long a [`Effect::ScheduleFloatingTrigger`] window stays open.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FloatingUntil {
+    /// "Until end of turn, whenever …" — lapses at cleanup.
+    EndOfTurn,
+    /// "Until your next turn, whenever …" — lapses as the
+    /// scheduling controller's turn begins.
+    YourNextTurn,
 }
 
 /// When a [`Effect::DelayedAction`] fires.
@@ -1791,6 +1816,21 @@ impl Effect {
             }
             Effect::PutFromHandOntoBattlefieldTappedAttacking { player, filter } => {
                 push_put_from_hand_choice(state, *player, filter, true, true);
+            }
+            Effect::ScheduleFloatingTrigger {
+                source, controller, condition, effect, until,
+            } => {
+                use crate::triggers::DelayedTrigger;
+                let trig = match until {
+                    FloatingUntil::EndOfTurn =>
+                        DelayedTrigger::repeating_this_turn(
+                            *source, *controller, condition.clone(), *effect),
+                    FloatingUntil::YourNextTurn =>
+                        DelayedTrigger::repeating_until_turn_of(
+                            *source, *controller, condition.clone(), *effect,
+                            *controller),
+                };
+                state.register_delayed_trigger(trig);
             }
             Effect::ScheduleDelayedEffect { source, controller, when, effect } => {
                 use crate::triggers::{DelayedTrigger, TriggerCondition};

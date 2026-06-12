@@ -3103,6 +3103,9 @@ fn next_turn(state: &mut GameState) {
     // at the turn boundary ("when you next cast a creature spell this
     // turn" with no such cast).
     state.delayed_triggers.retain(|t| !t.expires_end_of_turn);
+    // "Until [player]'s next turn" floating windows lapse as that
+    // player's turn begins.
+    state.delayed_triggers.retain(|t| t.expires_at_turn_of != Some(next_ap));
     // Phase A #6 — record where this turn's events start so per-turn
     // helpers (`script::*_this_turn`) only scan the live slice. Retain
     // the prior marker as last-turn's start so `script::*_last_turn`
@@ -7388,6 +7391,48 @@ mod tests {
         run_sba_and_triggers(&mut state, &registry);
         assert_eq!(state.stack_size(), 1,
             "re-scan should not double-fire the same event");
+    }
+
+    #[test]
+    fn floating_window_repeats_then_lapses_at_scheduler_turn() {
+        use crate::triggers::{DelayedTrigger, TriggerCondition};
+        let registry = crate::registry::CardRegistry::new();
+        let mut state = GameState::new(2, 0);
+        fn note(
+            _s: &GameState, pt: &crate::triggers::PendingTrigger,
+            _r: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> {
+            vec![crate::effects::Effect::GainLife {
+                player: pt.controller, amount: 1 }]
+        }
+        // "Until player 0's next turn, whenever a permanent becomes
+        // tapped, …" — registered as a repeating window.
+        state.register_delayed_trigger(
+            DelayedTrigger::repeating_until_turn_of(
+                1, 0,
+                TriggerCondition::BecomesTapped {
+                    filter: crate::targets::ObjectFilter::default(),
+                },
+                note, 0));
+        // Two matching events: fires twice (repeating, not one-shot).
+        // The filter needs REAL objects to match against.
+        let before = state.player(0).life;
+        for _ in 0..2 {
+            let id = state.allocate_object_id();
+            state.objects.insert(GameObject::new(
+                id, 1, Zone::Battlefield, 0, creature_chars(2, 2)));
+            state.emit(GameEvent::Tapped { object_id: id });
+            run_sba_and_triggers(&mut state, &registry);
+            resolve_top_of_stack(&mut state, &registry);
+        }
+        assert_eq!(state.player(0).life, before + 2);
+        assert_eq!(state.delayed_triggers.len(), 1, "window persists");
+        // Player 1's turn begins: window survives. Player 0's: lapses.
+        next_turn(&mut state); // 0 -> 1
+        assert_eq!(state.delayed_triggers.len(), 1);
+        next_turn(&mut state); // 1 -> 0 (scheduler's turn)
+        assert_eq!(state.delayed_triggers.len(), 0,
+            "window lapses as the scheduler's turn begins");
     }
 
     #[test]

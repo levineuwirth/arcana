@@ -836,6 +836,11 @@ pub struct DelayedTrigger {
     /// firing) at the turn boundary if it hasn't fired. The engine's
     /// turn-start hook retains only non-expiring delayed triggers.
     pub expires_end_of_turn: bool,
+    /// "Until your next turn, whenever …" floating windows: the
+    /// trigger lapses when this player's turn BEGINS (engine
+    /// turn-start hook). Pair with `fire_once: false` for the
+    /// repeating form (Don't Move, Tamiyo Meets the Story Circle).
+    pub expires_at_turn_of: Option<PlayerId>,
 }
 
 impl DelayedTrigger {
@@ -851,6 +856,39 @@ impl DelayedTrigger {
             intervening_if: None,
             fire_once: true,
             expires_end_of_turn: false,
+            expires_at_turn_of: None,
+        }
+    }
+
+    /// A REPEATING floating trigger window — "until [player]'s next
+    /// turn, whenever [condition], [effect]". Fires every match until
+    /// that player's turn begins.
+    pub fn repeating_until_turn_of(
+        source: ObjectId,
+        controller: PlayerId,
+        condition: TriggerCondition,
+        effect: EffectFn,
+        player: PlayerId,
+    ) -> Self {
+        Self {
+            fire_once: false,
+            expires_at_turn_of: Some(player),
+            ..Self::one_shot(source, controller, condition, effect)
+        }
+    }
+
+    /// A REPEATING floating window that lapses at end of turn —
+    /// "until end of turn, whenever [condition], [effect]".
+    pub fn repeating_this_turn(
+        source: ObjectId,
+        controller: PlayerId,
+        condition: TriggerCondition,
+        effect: EffectFn,
+    ) -> Self {
+        Self {
+            fire_once: false,
+            expires_end_of_turn: true,
+            ..Self::one_shot(source, controller, condition, effect)
         }
     }
 
