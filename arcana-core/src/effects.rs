@@ -639,6 +639,28 @@ pub enum Effect {
         filter: ObjectFilter,
         tapped: bool,
     },
+    /// "You may put a [filter] card from your hand onto the
+    /// battlefield tapped and attacking" (Kaalia's kin, Ultra Magnus
+    /// riders). The pick mirrors [`Self::PutFromHandOntoBattlefield`];
+    /// the entry is the CR 508.3a fused path (silent tap, no
+    /// CreatureAttacks event, defender = existing attackers' target).
+    /// Outside combat the card enters tapped but does not attack.
+    PutFromHandOntoBattlefieldTappedAttacking {
+        player: PlayerId,
+        filter: ObjectFilter,
+    },
+    /// "Choose a player. That player [does X]" (Spectral Searchlight's
+    /// mana grant, Hama's exile pick, chosen-opponent riders). Posts a
+    /// [`crate::actions::ChoiceKind::PickPlayer`] for `chooser` over
+    /// living players (`opponents_only` excludes the chooser); the
+    /// follow-up substitutes the picked player into `then` via
+    /// [`Effect::for_player`] and executes it. Single-player games /
+    /// no candidates: silently no-ops.
+    ChoosePlayerThen {
+        chooser: PlayerId,
+        opponents_only: bool,
+        then: Box<Effect>,
+    },
     Sacrifice { player: PlayerId, filter: ObjectFilter, count: u32 },
     /// Pass 4.1 — Enlist (CR 702.151a). Posts the optional "tap a
     /// nonattacking creature you control without summoning sickness"
@@ -859,6 +881,12 @@ pub enum NextCastRider {
 pub enum DelayedWhen {
     /// "At the beginning of the next end step" (CR 514).
     NextEndStep,
+    /// "At the beginning of the next turn's upkeep" (Lodestone Bauble,
+    /// the next-upkeep rider family). Fires at the next upkeep that
+    /// begins, whoever's turn it is — each turn has exactly one
+    /// upkeep, so this IS the next turn's upkeep when scheduled
+    /// mid-turn.
+    NextUpkeep,
     /// "When that [object] dies."
     ThisDies,
     /// When the scheduled STACK object resolves into a battlefield
@@ -899,6 +927,11 @@ pub enum DelayedAction {
     /// "…that creature enters the battlefield with an additional
     /// +1/+1 counter" — on-entry approximation of the replacement.
     EnterWithPlusOneCounter,
+    /// The scheduled trigger's CONTROLLER draws a card. Schedule with
+    /// `controller` = "that player" ("that player draws a card at the
+    /// beginning of the next turn's upkeep" — Lodestone Bauble); pairs
+    /// naturally with [`DelayedWhen::NextUpkeep`].
+    ControllerDrawsCard,
 }
 
 // =============================================================================
@@ -935,6 +968,42 @@ impl Effect {
             | Effect::CantBeBlocked { target, .. }
             | Effect::Goad { target, .. } => *target = id,
             Effect::DealDamage { target, .. } => *target = DamageTarget::Object(id),
+            _ => {}
+        }
+        e
+    }
+
+    /// Player analog of [`Self::retargeted`]: clone this effect with
+    /// its acting PLAYER swapped to `p` — the substitution step for
+    /// [`Effect::ChoosePlayerThen`] ("choose a player; that player
+    /// …"). Recurses through `Sequence` so multi-effect riders work.
+    /// Variants without a player field pass through unchanged.
+    pub(crate) fn for_player(&self, p: PlayerId) -> Effect {
+        let mut e = self.clone();
+        match &mut e {
+            Effect::DrawCards { player, .. }
+            | Effect::Discard { player, .. }
+            | Effect::Mill { player, .. }
+            | Effect::Surveil { player, .. }
+            | Effect::Scry { player, .. }
+            | Effect::GainLife { player, .. }
+            | Effect::LoseLife { player, .. }
+            | Effect::GainEnergy { player, .. }
+            | Effect::SetLifeTotal { player, .. }
+            | Effect::AddMana { player, .. }
+            | Effect::Sacrifice { player, .. }
+            | Effect::Reanimate { player, .. }
+            | Effect::PutFromHandOntoBattlefield { player, .. }
+            | Effect::TutorToHand { player, .. }
+            | Effect::TutorToBattlefield { player, .. } => *player = p,
+            Effect::DealDamage { target, .. } => {
+                *target = DamageTarget::Player(p);
+            }
+            Effect::Sequence(effects) => {
+                for inner in effects.iter_mut() {
+                    *inner = inner.for_player(p);
+                }
+            }
             _ => {}
         }
         e
@@ -1685,7 +1754,30 @@ impl Effect {
                 push_reanimate_choice(state, *player, *from_zone, filter);
             }
             Effect::PutFromHandOntoBattlefield { player, filter, tapped } => {
-                push_put_from_hand_choice(state, *player, filter, *tapped);
+                push_put_from_hand_choice(state, *player, filter, *tapped, false);
+            }
+            Effect::PutFromHandOntoBattlefieldTappedAttacking { player, filter } => {
+                push_put_from_hand_choice(state, *player, filter, true, true);
+            }
+            Effect::ChoosePlayerThen { chooser, opponents_only, then } => {
+                if !valid_player(state, *chooser) { return; }
+                let candidates: Vec<PlayerId> = (0..state.num_players())
+                    .filter(|p| state.player(*p).is_alive())
+                    .filter(|p| !*opponents_only || p != chooser)
+                    .collect();
+                if candidates.is_empty() { return; }
+                let stack_entry = state.currently_resolving
+                    .expect("ChoosePlayerThen: no currently_resolving \
+                             stack entry");
+                state.pending_choice_follow_up = Some(
+                    crate::actions::ChoiceFollowUp::EffectForChosenPlayer {
+                        effect: (**then).clone(),
+                    });
+                state.push_pending_choice(
+                    *chooser,
+                    crate::actions::ChoiceContext::ResolvingStack(stack_entry),
+                    crate::actions::ChoiceKind::PickPlayer { candidates },
+                );
             }
             Effect::Sacrifice { player, filter, count } => {
                 push_sacrifice_choice(state, *player, filter, *count);
@@ -1792,6 +1884,10 @@ impl Effect {
                         step: crate::turn::Step::End,
                         whose: crate::targets::ControllerConstraint::Any,
                     },
+                    DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
+                        step: crate::turn::Step::Upkeep,
+                        whose: crate::targets::ControllerConstraint::Any,
+                    },
                     DelayedWhen::ThisDies => TriggerCondition::SelfDies,
                     DelayedWhen::SelfResolvesToPermanent =>
                         TriggerCondition::Custom(cond_self_zone_to_battlefield),
@@ -1806,6 +1902,8 @@ impl Effect {
                         delayed_grant_haste_eot,
                     DelayedAction::EnterWithPlusOneCounter =>
                         delayed_enter_plus_one_counter,
+                    DelayedAction::ControllerDrawsCard =>
+                        delayed_controller_draws,
                 };
                 // A resolves-to-permanent watcher must lapse with the
                 // turn — a countered spell never resolves, and the
@@ -2016,6 +2114,12 @@ fn delayed_return_exile_bf(
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::ReturnFromExileToBattlefield { target: pt.source }]
+}
+fn delayed_controller_draws(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DrawCards { player: pt.controller, count: 1 }]
 }
 // The SelfResolvesToPermanent pair act on the POST-MOVE id from the
 // firing ZoneChange (CR 400.7), not on `pt.source` (the stack id).
@@ -2729,7 +2833,7 @@ fn discard_cards(
 /// is the one the controller's existing attackers are already
 /// attacking (these riders fire on attack triggers), falling back to
 /// the lowest-id opponent.
-fn enter_tapped_attacking(state: &mut GameState, id: ObjectId, controller: PlayerId) {
+pub(crate) fn enter_tapped_attacking(state: &mut GameState, id: ObjectId, controller: PlayerId) {
     if let Some(obj) = state.objects.get_mut(id) {
         obj.status.tapped = true;
     }
@@ -3916,15 +4020,18 @@ fn push_tutor_to_battlefield_choice(
     );
 }
 
-/// Push a PickCards choice for [`Effect::PutFromHandOntoBattlefield`].
-/// Candidates are `player`'s own hand cards matching `filter`; the
-/// follow-up moves the pick onto the battlefield under `player`'s
-/// control (tapped per the flag). No prompt when nothing matches.
+/// Push a PickCards choice for [`Effect::PutFromHandOntoBattlefield`]
+/// and its tapped-and-attacking sibling. Candidates are `player`'s
+/// own hand cards matching `filter`; the follow-up moves the pick
+/// onto the battlefield under `player`'s control (tapped per the
+/// flag; `attacking` routes through the CR 508.3a fused entry). No
+/// prompt when nothing matches.
 fn push_put_from_hand_choice(
     state: &mut GameState,
     player: PlayerId,
     filter: &ObjectFilter,
     tapped: bool,
+    attacking: bool,
 ) {
     if !valid_player(state, player) { return; }
     let candidates = collect_matching_candidates(
@@ -3933,11 +4040,16 @@ fn push_put_from_hand_choice(
     let stack_entry = state.currently_resolving
         .expect("push_put_from_hand_choice: no currently_resolving \
                  stack entry");
-    state.pending_choice_follow_up = Some(
+    state.pending_choice_follow_up = Some(if attacking {
+        crate::actions::ChoiceFollowUp::MoveToBattlefieldAttacking {
+            controller: player,
+        }
+    } else {
         crate::actions::ChoiceFollowUp::MoveToBattlefield {
             controller: player, tapped,
             shuffle_library_owner: None,
-        });
+        }
+    });
     state.push_pending_choice(
         player,
         crate::actions::ChoiceContext::ResolvingStack(stack_entry),
@@ -5045,6 +5157,47 @@ mod tests {
         assert!(matches!(s.pending_choice_follow_up,
             Some(ChoiceFollowUp::MoveToBattlefield {
                 controller: 0, tapped: true, shuffle_library_owner: None })));
+    }
+
+    #[test]
+    fn choose_player_then_pushes_pick_player_with_the_rider() {
+        use crate::actions::{ChoiceFollowUp, ChoiceKind};
+        let mut s = GameState::new(2, 0);
+        s.currently_resolving = Some(999);
+        Effect::ChoosePlayerThen {
+            chooser: 0,
+            opponents_only: true,
+            then: Box::new(Effect::LoseLife { player: 99, amount: 2 }),
+        }.execute(&mut s);
+        let pc = s.pending_choice.as_ref().expect("should push PickPlayer");
+        assert_eq!(pc.choosing_player, 0);
+        match &pc.kind {
+            ChoiceKind::PickPlayer { candidates } =>
+                assert_eq!(candidates, &vec![1]),
+            other => panic!("expected PickPlayer, got {other:?}"),
+        }
+        // The rider travels in the follow-up; for_player substitutes.
+        let Some(ChoiceFollowUp::EffectForChosenPlayer { effect }) =
+            s.pending_choice_follow_up.take() else {
+                panic!("expected EffectForChosenPlayer follow-up");
+            };
+        assert!(matches!(effect.for_player(1),
+            Effect::LoseLife { player: 1, amount: 2 }));
+    }
+
+    #[test]
+    fn put_from_hand_attacking_uses_the_attacking_follow_up() {
+        use crate::actions::ChoiceFollowUp;
+        let mut s = GameState::new(2, 0);
+        let _mine = put_creature(&mut s, 0, Zone::Hand(0), 2, 2);
+        s.currently_resolving = Some(999);
+        Effect::PutFromHandOntoBattlefieldTappedAttacking {
+            player: 0,
+            filter: ObjectFilter::creature(),
+        }.execute(&mut s);
+        assert!(s.pending_choice.is_some());
+        assert!(matches!(s.pending_choice_follow_up,
+            Some(ChoiceFollowUp::MoveToBattlefieldAttacking { controller: 0 })));
     }
 
     #[test]

@@ -310,6 +310,12 @@ fn synth_event(
         TC::SelfAttacks => GE::CreatureAttacks {
             attacker: source, defending: crate::combat::DefendingEntity::Player(1 - controller) },
         TC::SelfAttacksUnblocked => GE::CreatureNotBlocked { attacker: source },
+        TC::SelfAttacksAlone => GE::AttacksDeclared {
+            attackers: vec![crate::combat::AttackerDeclaration {
+                attacker: source,
+                defending: crate::combat::DefendingEntity::Player(1 - controller),
+            }],
+        },
         TC::SelfBecomesBlocked => GE::CreatureBlocked { attacker: source, blockers: vec![other] },
         TC::SelfBlocks => GE::CreatureBlocks { blocker: source, attacker: other },
         TC::SelfBlocksOrBecomesBlocked => GE::CreatureBlocks { blocker: source, attacker: other },
@@ -327,6 +333,10 @@ fn synth_event(
         // tapped object, same posture as the other filtered forms.
         TC::BecomesTapped { .. } => GE::Tapped { object_id: other },
         TC::SelfSpecializes => GE::Specialized { object_id: source },
+        // The face gate reads live state (probe source's visible_face
+        // is 0), so to_face: Some(1) conditions report no-fire — same
+        // posture as other state-dependent filters.
+        TC::SelfTransforms { .. } => GE::Transformed { object_id: source },
         TC::SelfBecomesTarget { caster } => GE::BecomesTarget {
             target: source, source: stack_spell, controller: who(caster) },
         TC::SelfIsDealtDamage { combat_only } => GE::DamageDealt {

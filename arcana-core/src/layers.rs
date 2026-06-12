@@ -282,6 +282,72 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "target creature loses [keyword]" effect (Layer 6
+    /// removal). Within-layer timestamps settle removal-vs-grant
+    /// races (CR 613.7). Typically `Duration::EndOfTurn`.
+    pub fn remove_keyword(source: ObjectId, target: ObjectId,
+                          keyword: KeywordAbility,
+                          duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::RemoveKeywordTarget { target, keyword },
+        }
+    }
+
+    /// Build an "equipped creature loses [keyword]" effect — the
+    /// removal sibling of [`Self::attached_keyword`]; follows the
+    /// attachment, inert while unattached.
+    pub fn attached_loses_keyword(source: ObjectId, keyword: KeywordAbility,
+                                  duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureLosesKeyword { keyword },
+        }
+    }
+
+    /// Build an "equipped/enchanted creature is a [subtype] in
+    /// addition to its other types" effect (Layer 4, additive) —
+    /// follows the attachment like [`Self::attached_pt`]. Pair with
+    /// [`Duration::WhileSourceOnBattlefield`]. Subtype-reading
+    /// `ObjectFilter` predicates are layer-aware, so tribal counts
+    /// and lords see the granted subtype.
+    pub fn attached_subtypes(source: ObjectId,
+                             subtypes: crate::types::SubtypeSet,
+                             duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L4Type,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureAddSubtypes { subtypes },
+        }
+    }
+
+    /// Build an "… and is [color] in addition to its other colors"
+    /// effect (Layer 5, ADDITIVE — unlike `SetColor`). Follows the
+    /// attachment; pair with [`Duration::WhileSourceOnBattlefield`].
+    pub fn attached_colors(source: ObjectId,
+                           colors: crate::types::ColorSet,
+                           duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L5Color,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureAddColors { colors },
+        }
+    }
+
     /// Build a "target can't attack" effect (Pacifism-style).
     pub fn cant_attack(source: ObjectId, target: ObjectId,
                        duration: Duration) -> Self {
@@ -417,6 +483,27 @@ pub enum ContinuousEffectKind {
     /// sibling of [`Self::AttachedCreatureGetsPt`]; follows
     /// `source.attached_to` dynamically, inert while unattached.
     AttachedCreatureGainsKeyword { keyword: KeywordAbility },
+    /// Layer 6 — "Target creature loses [keyword] [until end of
+    /// turn]" (Radjan Spirit, Crash Landing prep, Cephalid Snitch's
+    /// protection strip). REMOVAL: within-layer timestamp order (CR
+    /// 613.7) decides against later grants — a grant installed after
+    /// this removal re-adds the keyword, one installed before stays
+    /// removed.
+    RemoveKeywordTarget { target: ObjectId, keyword: KeywordAbility },
+    /// Layer 6 — "Equipped creature loses [keyword]" (Colossus Hammer
+    /// "loses flying", Executioner's Hood kin). The removal sibling of
+    /// [`Self::AttachedCreatureGainsKeyword`]; follows `attached_to`.
+    AttachedCreatureLosesKeyword { keyword: KeywordAbility },
+    /// Layer 4 — "Equipped/enchanted creature is a [subtype] in
+    /// addition to its other types" (Raven Wings "is a Bird", Angelic
+    /// Armaments "is an Angel"). ADDITIVE; follows `attached_to` like
+    /// the other Attached* kinds. ("Is EVERY creature type" — Runed
+    /// Stalactite — is the changeling CDA, a separate subsystem.)
+    AttachedCreatureAddSubtypes { subtypes: crate::types::SubtypeSet },
+    /// Layer 5 — "… and is [color] in addition to its other colors"
+    /// (Angelic Armaments' white half). ADDITIVE — contrast
+    /// [`Self::SetColor`], which replaces per CR 613.3e.
+    AttachedCreatureAddColors { colors: crate::types::ColorSet },
     /// "Equipped/enchanted creature gets +X/+Y where X/Y depend on
     /// board state" (Blackblade Reforged "+1/+1 for each land you
     /// control", Empyrial Armor "+1/+1 for each card in your hand").
@@ -454,6 +541,7 @@ impl ContinuousEffectKind {
             | Self::CantBlock { target }
             | Self::LoseAllAbilities { target }
             | Self::AddType { target, .. }
+            | Self::RemoveKeywordTarget { target, .. }
             | Self::SetColor { target, .. } => *target == object_id,
             Self::AnthemForController { controller, .. }
             | Self::GrantKeywordToController { controller, .. } => {
@@ -464,7 +552,10 @@ impl ContinuousEffectKind {
             }
             Self::AttachedCreatureGetsPt { .. }
             | Self::AttachedCreatureGainsKeyword { .. }
-            | Self::AttachedCreatureGetsPtDynamic { .. } => {
+            | Self::AttachedCreatureGetsPtDynamic { .. }
+            | Self::AttachedCreatureAddSubtypes { .. }
+            | Self::AttachedCreatureAddColors { .. }
+            | Self::AttachedCreatureLosesKeyword { .. } => {
                 state.objects.get(source)
                     .and_then(|src| src.attached_to)
                     == Some(object_id)
@@ -494,6 +585,16 @@ impl ContinuousEffectKind {
             Self::AttachedCreatureGetsPtDynamic { compute } => {
                 let (power, toughness) = compute(state, source);
                 add_to_pt(chars, power, toughness);
+            }
+            Self::AttachedCreatureAddSubtypes { subtypes } => {
+                chars.subtypes.0.extend(subtypes.0.iter().copied());
+            }
+            Self::RemoveKeywordTarget { keyword, .. }
+            | Self::AttachedCreatureLosesKeyword { keyword } => {
+                chars.keywords.retain(|k| k != keyword);
+            }
+            Self::AttachedCreatureAddColors { colors } => {
+                chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
             }
             Self::SetPt { power, toughness, .. } => {
                 chars.power = Some(PtValue::Fixed(*power));
@@ -1154,6 +1255,75 @@ mod tests {
         s.objects.get_mut(equipment).unwrap().attached_to = Some(bearer_b);
         assert!(!s.has_keyword(bearer_a, &KeywordAbility::Vigilance));
         assert!( s.has_keyword(bearer_b, &KeywordAbility::Vigilance));
+    }
+
+    #[test]
+    fn keyword_removal_strips_base_and_races_grants_by_timestamp() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.objects.get_mut(c).unwrap().characteristics.keywords
+            .push(KeywordAbility::Flying);
+        assert!(s.has_keyword(c, &KeywordAbility::Flying));
+        // Removal strips the printed keyword.
+        s.add_continuous_effect(ContinuousEffect::remove_keyword(
+            0, c, KeywordAbility::Flying, Duration::EndOfTurn,
+        ));
+        assert!(!s.has_keyword(c, &KeywordAbility::Flying));
+        // A LATER grant out-timestamps the removal (CR 613.7).
+        s.add_continuous_effect(ContinuousEffect::grant_keyword(
+            0, c, KeywordAbility::Flying, Duration::EndOfTurn,
+        ));
+        assert!(s.has_keyword(c, &KeywordAbility::Flying));
+    }
+
+    #[test]
+    fn attached_loses_keyword_follows_attachment() {
+        let mut s = GameState::new(2, 0);
+        let hood = put_creature(&mut s, 0, 0, 0); // stands in for the Equipment
+        let bearer = put_creature(&mut s, 0, 2, 2);
+        s.objects.get_mut(bearer).unwrap().characteristics.keywords
+            .push(KeywordAbility::Flying);
+        s.add_continuous_effect(ContinuousEffect::attached_loses_keyword(
+            hood, KeywordAbility::Flying, Duration::WhileSourceOnBattlefield,
+        ));
+        // Unattached: inert.
+        assert!(s.has_keyword(bearer, &KeywordAbility::Flying));
+        // Attached: keyword stripped.
+        s.objects.get_mut(hood).unwrap().attached_to = Some(bearer);
+        assert!(!s.has_keyword(bearer, &KeywordAbility::Flying));
+    }
+
+    #[test]
+    fn attached_subtype_and_color_grants_follow_attachment() {
+        let mut s = GameState::new(2, 0);
+        let armaments = put_creature(&mut s, 0, 0, 0); // stands in for the Equipment
+        let bearer = put_creature(&mut s, 0, 2, 2);
+        let angel = {
+            // Intern via a throwaway interner-free path: build the set
+            // directly from a raw symbol id.
+            let mut set = crate::types::SubtypeSet::new();
+            set.0.insert(7);
+            set
+        };
+        s.add_continuous_effect(ContinuousEffect::attached_subtypes(
+            armaments, angel.clone(), Duration::WhileSourceOnBattlefield,
+        ));
+        s.add_continuous_effect(ContinuousEffect::attached_colors(
+            armaments, crate::types::ColorSet::white(),
+            Duration::WhileSourceOnBattlefield,
+        ));
+        // Unattached: inert.
+        let chars = s.compute_characteristics(bearer).unwrap();
+        assert!(!chars.subtypes.contains(7));
+        // Attached: bearer is an Angel and white, additively.
+        s.objects.get_mut(armaments).unwrap().attached_to = Some(bearer);
+        let chars = s.compute_characteristics(bearer).unwrap();
+        assert!(chars.subtypes.contains(7));
+        assert!(chars.colors.0 & crate::types::ColorSet::white().0 != 0);
+        // Layer-aware ObjectFilter sees the granted subtype.
+        let f = crate::targets::ObjectFilter::new().with_subtype_sym(7);
+        let obj = s.objects.get(bearer).unwrap();
+        assert!(f.matches(obj, &s, 0));
     }
 
     #[test]

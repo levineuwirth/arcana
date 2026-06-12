@@ -248,6 +248,21 @@ pub enum TargetFilter {
     AnyTarget,
     Permanent(ObjectFilter),
     Spell(ObjectFilter),
+    /// "Counter target activated ability" / "target activated or
+    /// triggered ability [from a noncreature source]" (Cursecatcher's
+    /// ability-level kin: Rimewind Cryomancer, Emerald Dragon, Tale's
+    /// End class). Ability STACK ENTRIES have no stack-zone
+    /// `GameObject`, so [`Self::Spell`] can't see them — this variant
+    /// matches `state.stack` entries by id instead. `activated` /
+    /// `triggered` select which kinds qualify; `source_filter` (when
+    /// set) is applied to the ability's SOURCE permanent ("from a
+    /// noncreature source"). `Effect::Counter` already handles
+    /// ability entries at resolution.
+    AbilityOnStack {
+        activated: bool,
+        triggered: bool,
+        source_filter: Option<ObjectFilter>,
+    },
     /// "Target card in [zone]" — e.g. target card in a graveyard.
     Card { zone: Zone, filter: ObjectFilter },
     /// "Target creature blocking [this creature]" — source-relative
@@ -340,6 +355,22 @@ impl TargetFilter {
                         && f.matches(o, state, source_controller))
             }
 
+            // --- Ability on the stack (entry id, not an object) ---
+            (TargetFilter::AbilityOnStack { activated, triggered, source_filter },
+             TargetChoice::Object(id)) => {
+                state.stack.iter().any(|e| e.id == *id
+                    && match &e.kind {
+                        crate::stack::StackEntryKind::ActivatedAbility { .. } =>
+                            *activated,
+                        crate::stack::StackEntryKind::TriggeredAbility { .. } =>
+                            *triggered,
+                        crate::stack::StackEntryKind::Spell { .. } => false,
+                    }
+                    && source_filter.as_ref().is_none_or(|f|
+                        state.objects.get(e.source).is_some_and(|o|
+                            f.matches(o, state, source_controller))))
+            }
+
             // --- Card in a specified zone kind ---
             (TargetFilter::Card { zone, filter }, TargetChoice::Object(id)) => {
                 state.objects.get(*id).is_some_and(|o|
@@ -429,6 +460,23 @@ impl TargetFilter {
                 for o in state.objects.objects_in_zone(Zone::Stack) {
                     if f.matches(o, state, source_controller) {
                         out.push(TargetChoice::Object(o.id));
+                    }
+                }
+            }
+            TargetFilter::AbilityOnStack { activated, triggered, source_filter } => {
+                for e in &state.stack {
+                    let kind_ok = match &e.kind {
+                        crate::stack::StackEntryKind::ActivatedAbility { .. } =>
+                            *activated,
+                        crate::stack::StackEntryKind::TriggeredAbility { .. } =>
+                            *triggered,
+                        crate::stack::StackEntryKind::Spell { .. } => false,
+                    };
+                    let src_ok = source_filter.as_ref().is_none_or(|f|
+                        state.objects.get(e.source).is_some_and(|o|
+                            f.matches(o, state, source_controller)));
+                    if kind_ok && src_ok {
+                        out.push(TargetChoice::Object(e.id));
                     }
                 }
             }
@@ -753,16 +801,25 @@ impl ObjectFilter {
             }
         }
 
-        // --- colors: all colors in the filter must be in the object ---
-        if let Some(required) = self.colors {
-            if (obj.characteristics.colors.0 & required.0) != required.0 {
-                return false;
+        // --- colors: layer-aware when the object is in the state
+        // (Layer-5 SetColor / AttachedCreatureAddColors count); base
+        // characteristics otherwise. ---
+        if self.colors.is_some() || self.not_colors.is_some() {
+            let colors = state.objects.get(obj.id)
+                .and_then(|_| state.compute_characteristics(obj.id))
+                .map(|c| c.colors)
+                .unwrap_or(obj.characteristics.colors);
+            // All colors in the filter must be in the object.
+            if let Some(required) = self.colors {
+                if (colors.0 & required.0) != required.0 {
+                    return false;
+                }
             }
-        }
-        // --- color exclusion: none of these colors may be present ---
-        if let Some(excluded) = self.not_colors {
-            if obj.characteristics.colors.0 & excluded.0 != 0 {
-                return false;
+            // Color exclusion: none of these colors may be present.
+            if let Some(excluded) = self.not_colors {
+                if colors.0 & excluded.0 != 0 {
+                    return false;
+                }
             }
         }
         // --- tap state ---
@@ -772,25 +829,38 @@ impl ObjectFilter {
             }
         }
 
-        // --- subtypes: all required subtypes must be present ---
-        if let Some(subs) = &self.subtypes {
-            for s in subs {
-                if !obj.characteristics.subtypes.contains(*s) {
+        // --- subtypes: layer-aware when the object is in the state
+        // (Layer-4 grants like AttachedCreatureAddSubtypes count for
+        // tribal filters); base characteristics otherwise. Computed
+        // once for all three predicate shapes. ---
+        if self.subtypes.is_some() || self.subtypes_any.is_some()
+            || self.not_subtypes.is_some()
+        {
+            let computed = state.objects.get(obj.id)
+                .and_then(|_| state.compute_characteristics(obj.id))
+                .map(|c| c.subtypes);
+            let subtypes = computed.as_ref()
+                .unwrap_or(&obj.characteristics.subtypes);
+            // All required subtypes must be present.
+            if let Some(subs) = &self.subtypes {
+                for s in subs {
+                    if !subtypes.contains(*s) {
+                        return false;
+                    }
+                }
+            }
+            // subtypes_any: at least one must be present (OR). Empty
+            // Vec matches no object (consistent with types_any=0).
+            if let Some(any) = &self.subtypes_any {
+                if !any.iter().any(|s| subtypes.contains(*s)) {
                     return false;
                 }
             }
-        }
-        // --- subtypes_any: at least one must be present (OR).
-        // Empty Vec matches no object (consistent with types_any=0). ---
-        if let Some(any) = &self.subtypes_any {
-            if !any.iter().any(|s| obj.characteristics.subtypes.contains(*s)) {
-                return false;
-            }
-        }
-        // --- subtype exclusion: none of these may be present ---
-        if let Some(excluded) = &self.not_subtypes {
-            if excluded.iter().any(|s| obj.characteristics.subtypes.contains(*s)) {
-                return false;
+            // Subtype exclusion: none of these may be present.
+            if let Some(excluded) = &self.not_subtypes {
+                if excluded.iter().any(|s| subtypes.contains(*s)) {
+                    return false;
+                }
             }
         }
         // --- supertypes: every required supertype bit must be set ---
@@ -1172,6 +1242,40 @@ mod tests {
     }
 
     // --- CmcCondition / PtCondition ------------------------------------------
+
+    #[test]
+    fn ability_on_stack_targets_ability_entries_only() {
+        let mut s = GameState::new(2, 0);
+        // A creature source on the battlefield + its activated ability
+        // on the stack (entry id distinct from any object).
+        let src = put_creature(&mut s, 1, 1, Zone::Battlefield, 2, 2);
+        let entry_id = s.allocate_object_id();
+        s.stack.push(crate::stack::StackEntry::new_activated_ability(
+            entry_id, src, 1, /*card_id=*/ 0, /*ability_id=*/ 0,
+            "test ability".into(), TargetSelection::new(), Vec::new(), None,
+        ));
+
+        let activated_only = TargetFilter::AbilityOnStack {
+            activated: true, triggered: false, source_filter: None,
+        };
+        let choice = TargetChoice::Object(entry_id);
+        assert!(activated_only.matches(&choice, &s, crate::objects::NULL_OBJECT_ID, 0));
+        // Triggered-only filter rejects an activated entry.
+        let triggered_only = TargetFilter::AbilityOnStack {
+            activated: false, triggered: true, source_filter: None,
+        };
+        assert!(!triggered_only.matches(&choice, &s, crate::objects::NULL_OBJECT_ID, 0));
+        // Source filter: "from a noncreature source" rejects it.
+        let noncreature_src = TargetFilter::AbilityOnStack {
+            activated: true, triggered: false,
+            source_filter: Some(ObjectFilter::new()
+                .without_types(TypeLine::CREATURE.into())),
+        };
+        assert!(!noncreature_src.matches(&choice, &s, crate::objects::NULL_OBJECT_ID, 0));
+        // Candidate enumeration finds the entry id.
+        let cands = activated_only.enumerate_legal(&s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(cands, vec![TargetChoice::Object(entry_id)]);
+    }
 
     #[test]
     fn cmc_condition_matches_each_variant() {

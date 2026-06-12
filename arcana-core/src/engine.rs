@@ -1218,6 +1218,27 @@ pub(crate) fn apply_resolution_choice(
             apply_choice_follow_up(state, follow_up, picked);
         }
 
+        // --- PickPlayer mid-resolution ("choose a player; that
+        // player …" — Effect::ChoosePlayerThen) -----------------------
+        (
+            ChoiceKind::PickPlayer { candidates },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::PickPlayer { picked },
+        ) => {
+            assert!(candidates.contains(picked),
+                "apply_resolution_choice: picked player not a candidate");
+            let follow_up = state.pending_choice_follow_up.take()
+                .expect("apply_resolution_choice: PickPlayer at \
+                         ResolvingStack context requires a \
+                         pending_choice_follow_up");
+            let crate::actions::ChoiceFollowUp::EffectForChosenPlayer { effect } = follow_up
+                else {
+                    panic!("apply_resolution_choice: PickPlayer follow-up \
+                            must be EffectForChosenPlayer");
+                };
+            effect.for_player(*picked).execute(state);
+        }
+
         // --- PickCards at SBA time: Legend rule (CR 704.5j) ----------
         (
             ChoiceKind::PickCards { candidates, min, max },
@@ -1693,6 +1714,29 @@ fn apply_choice_follow_up(
             }
             if let Some(p) = shuffle_library_owner {
                 state.shuffle_library(p);
+            }
+        }
+        // Consumed by the PickPlayer dispatch arm directly (it pairs
+        // with a player answer, not a card pick) — reaching it here
+        // means a PickCards prompt was wired with a player follow-up.
+        ChoiceFollowUp::EffectForChosenPlayer { .. } => {
+            panic!("apply_choice_follow_up: EffectForChosenPlayer pairs \
+                    with PickPlayer, not PickCards");
+        }
+        ChoiceFollowUp::MoveToBattlefieldAttacking { controller } => {
+            for id in chosen {
+                if let Some(obj) = state.objects.get_mut(*id) {
+                    obj.controller = controller;
+                }
+                let new_id = state.move_object_to_zone(
+                    *id, Zone::Battlefield, MoveCause::SpellResolution);
+                if let Some(bf_id) = new_id {
+                    if let Some(obj) = state.objects.get_mut(bf_id) {
+                        obj.controller = controller;
+                    }
+                    crate::effects::enter_tapped_attacking(
+                        state, bf_id, controller);
+                }
             }
         }
         ChoiceFollowUp::Sacrifice { player } => {

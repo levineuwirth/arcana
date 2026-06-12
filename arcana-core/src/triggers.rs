@@ -281,6 +281,14 @@ pub enum TriggerCondition {
     /// [`GameEvent::Specialized`] on this source (emitted by
     /// [`crate::effects::Effect::Specialize`]).
     SelfSpecializes,
+    /// CR 712 — "When this creature transforms [into <back-face
+    /// name>]" (Avacynian Missionaries / Lunarch Inquisitors,
+    /// werewolf flip riders). Matches [`GameEvent::Transformed`] on
+    /// this source; `to_face: Some(1)` = only when it flips INTO the
+    /// back face, `Some(0)` = back→front, `None` = either direction.
+    /// The face check reads `visible_face` from live state, which is
+    /// already flipped when the event fires.
+    SelfTransforms { to_face: Option<u8> },
     /// "Whenever ~ is dealt damage". `combat_only: true` restricts
     /// to CR 510.1c combat damage; `false` accepts any damage source.
     SelfIsDealtDamage { combat_only: bool },
@@ -289,6 +297,14 @@ pub enum TriggerCondition {
     /// source. The unblocked classification is settled by combat in
     /// the DeclareBlockers step.
     SelfAttacksUnblocked,
+    /// "Whenever ~ attacks alone" (CR 506.5 sole attacker — Yuan
+    /// Shao's Infantry, Tempered in Solitude, the non-keyword exalted
+    /// kin). Matches the batch [`GameEvent::AttacksDeclared`] whose
+    /// declaration list is exactly this source — the per-creature
+    /// `CreatureAttacks` event can't carry the alone-ness (it fires
+    /// before the full attacker set is recorded), but the batch event
+    /// is self-contained.
+    SelfAttacksAlone,
     /// "Whenever a creature enters the battlefield under your control".
     ZoneChange { filter: ObjectFilter, from: Option<Zone>, to: Zone },
     /// "Whenever you cast a spell" (optionally filtered).
@@ -398,6 +414,20 @@ impl TriggerCondition {
 
             SelfSpecializes => matches!(event,
                 GameEvent::Specialized { object_id } if *object_id == source),
+
+            SelfTransforms { to_face } => {
+                let GameEvent::Transformed { object_id } = event
+                    else { return false; };
+                *object_id == source
+                    && to_face.is_none_or(|f|
+                        state.objects.get(source)
+                            .is_some_and(|o| o.visible_face == f))
+            }
+
+            SelfAttacksAlone => matches!(event,
+                GameEvent::AttacksDeclared { attackers }
+                    if attackers.len() == 1
+                        && attackers[0].attacker == source),
 
             SelfIsDealtDamage { combat_only } => {
                 let GameEvent::DamageDealt { target, is_combat, .. } = event
@@ -1119,6 +1149,39 @@ mod tests {
         let ev = GameEvent::Tapped { object_id: 42 };
         assert!(TriggerCondition::SelfBecomesTapped.matches(&ev, 42, 0, &s));
         assert!(!TriggerCondition::SelfBecomesTapped.matches(&ev, 7, 0, &s));
+    }
+
+    #[test]
+    fn self_transforms_face_gate_reads_live_state() {
+        let mut s = GameState::new(2, 0);
+        let wolf = put_creature(&mut s, 0, Zone::Battlefield);
+        // Object just transformed and is now showing the back face.
+        s.objects.get_mut(wolf).unwrap().visible_face = 1;
+        let ev = GameEvent::Transformed { object_id: wolf };
+
+        let any_dir = TriggerCondition::SelfTransforms { to_face: None };
+        assert!( any_dir.matches(&ev, wolf, 0, &s));
+        assert!(!any_dir.matches(&ev, 999, 0, &s));
+        let into_back = TriggerCondition::SelfTransforms { to_face: Some(1) };
+        assert!(into_back.matches(&ev, wolf, 0, &s));
+        let into_front = TriggerCondition::SelfTransforms { to_face: Some(0) };
+        assert!(!into_front.matches(&ev, wolf, 0, &s));
+    }
+
+    #[test]
+    fn self_attacks_alone_requires_a_sole_attacker() {
+        use crate::combat::{AttackerDeclaration, DefendingEntity};
+        let s = GameState::new(2, 0);
+        let solo = GameEvent::AttacksDeclared { attackers: vec![
+            AttackerDeclaration { attacker: 7, defending: DefendingEntity::Player(1) },
+        ]};
+        assert!( TriggerCondition::SelfAttacksAlone.matches(&solo, 7, 0, &s));
+        assert!(!TriggerCondition::SelfAttacksAlone.matches(&solo, 8, 0, &s));
+        let pair = GameEvent::AttacksDeclared { attackers: vec![
+            AttackerDeclaration { attacker: 7, defending: DefendingEntity::Player(1) },
+            AttackerDeclaration { attacker: 8, defending: DefendingEntity::Player(1) },
+        ]};
+        assert!(!TriggerCondition::SelfAttacksAlone.matches(&pair, 7, 0, &s));
     }
 
     #[test]

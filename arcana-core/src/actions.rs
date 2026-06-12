@@ -673,6 +673,16 @@ pub enum ChoiceFollowUp {
         tapped: bool,
         shuffle_library_owner: Option<PlayerId>,
     },
+    /// Pair with [`ChoiceKind::PickPlayer`] pushed by
+    /// [`crate::effects::Effect::ChoosePlayerThen`]: substitute the
+    /// picked player into `effect` (via `Effect::for_player`) and
+    /// execute it.
+    EffectForChosenPlayer { effect: crate::effects::Effect },
+    /// Put the picked card onto the battlefield TAPPED AND ATTACKING
+    /// (CR 508.3a fused entry — silent tap, joins the live combat's
+    /// attacker list, no `CreatureAttacks` event). Pushed by
+    /// [`crate::effects::Effect::PutFromHandOntoBattlefieldTappedAttacking`].
+    MoveToBattlefieldAttacking { controller: PlayerId },
     /// Sacrifice each picked permanent (move to owner's graveyard,
     /// emit [`crate::events::GameEvent::Sacrifice`]).
     Sacrifice { player: PlayerId },

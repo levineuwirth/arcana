@@ -324,6 +324,24 @@ pub fn source_power_at_least(state: &GameState, source: ObjectId, n: i32) -> boo
     crate::script::power_of(state, source) >= n
 }
 
+/// "Activate only during your turn, before attackers are declared"
+/// (CR 602.5e timing window — the Portal/PTK tap-creature cycle, Loyal
+/// Retainers, Norwood Priestess). True while it is `you`r turn AND the
+/// turn has not yet reached the declare-attackers step: any beginning
+/// step, first main, or begin-combat qualifies; declare-attackers
+/// onward (and the post-combat phases) do not. Extra combat phases are
+/// treated like the first — once any declare-attackers step has begun,
+/// the window stays shut for the rest of the turn.
+pub fn your_turn_before_attackers(state: &GameState, you: PlayerId) -> bool {
+    use crate::turn::{Phase, Step};
+    if state.active_player() != you { return false; }
+    match state.turn.phase {
+        Phase::Beginning | Phase::PreCombatMain => true,
+        Phase::Combat => state.turn.step == Step::BeginCombat,
+        Phase::PostCombatMain | Phase::Ending => false,
+    }
+}
+
 /// "if [this permanent] has a [kind] counter on it" (≥1). Uses the
 /// ability's `source`, which is why intervening-if fns receive it.
 pub fn source_has_counter(state: &GameState, source: ObjectId, kind: CounterKind) -> bool {
@@ -391,6 +409,31 @@ mod tests {
             toughness: Some(PtValue::Fixed(t)),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn your_turn_before_attackers_window() {
+        use crate::turn::{Phase, Step};
+        let mut s = GameState::new(2, 0);
+        // Player 0's turn, upkeep: open for 0, shut for 1.
+        s.turn.phase = Phase::Beginning;
+        s.turn.step = Step::Upkeep;
+        assert!( your_turn_before_attackers(&s, 0));
+        assert!(!your_turn_before_attackers(&s, 1));
+        // First main: open.
+        s.turn.phase = Phase::PreCombatMain;
+        s.turn.step = Step::Main;
+        assert!(your_turn_before_attackers(&s, 0));
+        // Begin combat: still open (attackers not yet declared).
+        s.turn.phase = Phase::Combat;
+        s.turn.step = Step::BeginCombat;
+        assert!(your_turn_before_attackers(&s, 0));
+        // Declare attackers onward: shut.
+        s.turn.step = Step::DeclareAttackers;
+        assert!(!your_turn_before_attackers(&s, 0));
+        s.turn.phase = Phase::PostCombatMain;
+        s.turn.step = Step::Main;
+        assert!(!your_turn_before_attackers(&s, 0));
     }
 
     #[test]
