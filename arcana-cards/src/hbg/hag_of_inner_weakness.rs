@@ -1,8 +1,6 @@
 //! Hag of Inner Weakness — `{2}{B}` 2/2 black Creature — Hag Warlock.
 //! "At the beginning of your upkeep, target creature an opponent controls gets
 //! -2/-1 until your next turn."
-//! GAP: effect — "until your next turn" duration is not in the Duration enum
-//! (only EndOfTurn is available). Using Duration::EndOfTurn as approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -69,12 +67,11 @@ fn upkeep_weaken_opponent_creature(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "until your next turn" — using EndOfTurn as approximation.
     vec![Effect::Pump {
         target: *id,
         power: -2,
         toughness: -1,
-        duration: Duration::EndOfTurn,
+        duration: Duration::UntilYourNextTurn(trig.controller),
         keywords: vec![],
     }]
 }

@@ -6,14 +6,15 @@
 //!   counters on target artifact you control. If it isn't a creature, it becomes
 //!   a 0/0 Robot creature in addition to its other types.
 //!
-//! # GAP notes
-//! - Level 3 triggered ability: "If it isn't a creature, it becomes a 0/0 Robot
-//!   creature in addition to its other types" is a type-change / set-P/T effect
-//!   not expressible with available Effect variants. The AddCounters part is
-//!   modeled; the "becomes 0/0 Robot" part is GAP.
+//! Level 3 "If it isn't a creature, it becomes a 0/0 Robot creature in addition
+//! to its other types" — resolution-time creature check, then Effect::AddType
+//! (Creature) + Effect::SetBasePT 0/0 + a targeted Robot subtype-add continuous
+//! effect, all Duration::Permanent (the oracle text has no duration).
 
 use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
+use arcana_core::script;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
@@ -34,6 +35,7 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Does Machines");
     let class_sub = reg.interner_mut().intern("Class");
+    let _robot = reg.interner_mut().intern("Robot"); // looked up in begin_combat_counters
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(class_sub);
 
@@ -176,18 +178,42 @@ fn level_up_to_3(
 }
 
 fn begin_combat_counters(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "If it isn't a creature, it becomes a 0/0 Robot creature in addition
-    // to its other types" — type-change / set-P/T effect not in catalog.
-    vec![Effect::AddCounters {
+    let mut effects = vec![Effect::AddCounters {
         target: *id,
         kind: CounterKind::PlusOnePlusOne,
         count: 3,
-    }]
+    }];
+    // "If it isn't a creature, it becomes a 0/0 Robot creature in addition to
+    // its other types." — resolution-time check; Duration::Permanent (no
+    // stated duration).
+    let is_creature =
+        script::ids_matching(state, &ObjectFilter::creature(), trig.controller).contains(id);
+    if !is_creature {
+        let mut subs = SubtypeSet::default();
+        if let Some(robot) = reg.interner().lookup("Robot") {
+            subs.0.insert(robot);
+        }
+        effects.push(Effect::AddType {
+            target: *id,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::Permanent,
+        });
+        effects.push(Effect::SetBasePT {
+            target: *id,
+            power: 0,
+            toughness: 0,
+            duration: Duration::Permanent,
+        });
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::add_subtypes(trig.source, *id, subs, Duration::Permanent),
+        });
+    }
+    effects
 }

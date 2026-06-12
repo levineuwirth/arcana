@@ -4,12 +4,9 @@
 //! Front face — Sheoldred:
 //! Menace.
 //! When Sheoldred enters, each opponent sacrifices a nontoken creature or
-//! planeswalker of their choice.
-//! GAP: "sacrifice a nontoken creature or planeswalker of their choice" —
-//!   Sacrifice effect requires a filter; combining creature-or-planeswalker
-//!   (no single TargetFilter covers both) and "each opponent chooses" is
-//!   not fully expressible. Modeled as each opponent sacrifices a creature
-//!   (approximation — omits planeswalker option).
+//! planeswalker of their choice — one `Effect::ChooseNFromZone` per
+//!   opponent (chooser = that opponent, filter nontoken creature-or-
+//!   planeswalker they control via `with_types_any`, action Sacrifice).
 //! {4}{B}: Exile Sheoldred, then return it to the battlefield transformed
 //!   under its owner's control. Activate only as a sorcery and only if an
 //!   opponent has eight or more cards in their graveyard.
@@ -33,7 +30,7 @@
 //!   non-targeted from one graveyard; mass-reanimate not expressible.
 
 use arcana_core::conditions;
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{Effect, KeywordAbility, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
@@ -42,7 +39,7 @@ use arcana_core::registry::{
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -129,17 +126,26 @@ fn etb_sacrifice(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should trigger when Sheoldred specifically enters, not any creature.
-    // GAP: "each opponent sacrifices a nontoken creature or planeswalker of
-    // their choice" — Sacrifice takes a filter for nontoken creatures;
-    // planeswalker option and "opponent chooses which" not fully expressible.
-    // Modeled as each opponent sacrifices one nontoken creature.
-    let opponents = script::opponents(state, trig.controller);
-    let filter = ObjectFilter::creature().nontoken();
-    let effects: Vec<Effect> = opponents.into_iter().map(|opp| {
-        Effect::Sacrifice { player: opp, filter: filter.clone(), count: 1 }
-    }).collect();
-    vec![Effect::Sequence(effects)]
+    // "Each opponent sacrifices a nontoken creature or planeswalker of
+    // their choice" — one ChooseNFromZone per opponent; the controller
+    // constraint is evaluated from the CHOOSER's perspective, so each
+    // opponent picks among their own permanents. Separate top-level
+    // effects so each pending choice parks correctly.
+    let filter = ObjectFilter::permanent()
+        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+        .nontoken()
+        .controlled_by(ControllerConstraint::You);
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::ChooseNFromZone {
+            chooser: opp,
+            zone: Zone::Battlefield,
+            filter: filter.clone(),
+            min: 1,
+            max: 1,
+            action: PickAction::Sacrifice,
+        })
+        .collect()
 }
 
 fn activate_exile_transform(

@@ -1,8 +1,6 @@
 //! Erhnam Djinn — `{3}{G}` 4/5 green Djinn creature. "At the beginning of
 //! your upkeep, target non-Wall creature an opponent controls gains forestwalk
 //! until your next upkeep."
-//! GAP: "until your next upkeep" duration is not in the Duration catalog
-//! (only EndOfTurn is available); using EndOfTurn as closest approximation.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -66,10 +64,9 @@ fn on_upkeep(
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let forest = reg.interner().lookup("Forest").expect("Forest interned during register()");
-    // GAP: "until your next upkeep" duration is not in the catalog; using EndOfTurn
     vec![Effect::GrantKeyword {
         target: *id,
         keyword: KeywordAbility::Landwalk(forest),
-        duration: Duration::EndOfTurn,
+        duration: Duration::UntilNextUpkeepOf(trig.controller),
     }]
 }

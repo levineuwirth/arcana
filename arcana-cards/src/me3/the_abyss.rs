@@ -7,15 +7,12 @@
 //! surface (LEGENDARY / BASIC only) — registered as a plain
 //! enchantment; the World rule (CR 704.5m) is unmodeled anyway.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
-};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -43,32 +40,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             effect: drag_into_the_abyss,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
-            // GAP: "that player controls of their choice" — the target
-            // should be constrained to the active player's creatures and
-            // chosen by that player; neither is expressible, so this is
-            // a plain nonartifact-creature target chosen by the
-            // ability's controller.
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().without_types(TypeLine::ARTIFACT.into()),
-                ),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
+            target_requirements: Vec::new(),
         }),
     )
 }
 
-/// "…destroy target nonartifact creature … It can't be regenerated."
+/// "…destroy a nonartifact creature that player controls of their
+/// choice. It can't be regenerated."
 fn drag_into_the_abyss(
-    _state: &GameState,
-    trig: &PendingTrigger,
+    state: &GameState,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
-        return Vec::new();
-    };
-    // GAP: "It can't be regenerated" — DestroyPermanent has no
+    // The upkeep player ("that player") picks one of THEIR OWN
+    // nonartifact creatures to destroy — the filter's controller
+    // constraint is evaluated from the chooser's perspective.
+    let them = state.active_player();
+    // GAP: "It can't be regenerated" — the destruction path has no
     // no-regeneration rider.
-    vec![Effect::DestroyPermanent { target: *id }]
+    vec![Effect::ChooseNFromZone {
+        chooser: them,
+        zone: Zone::Battlefield,
+        filter: ObjectFilter::creature()
+            .without_types(TypeLine::ARTIFACT.into())
+            .controlled_by(ControllerConstraint::You),
+        min: 1,
+        max: 1,
+        action: PickAction::Destroy,
+    }]
 }

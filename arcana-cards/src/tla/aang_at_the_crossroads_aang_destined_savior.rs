@@ -13,15 +13,13 @@
 //! - ETB: "may put [creature MV ≤ 4] onto the battlefield" — RevealUntil models
 //!   "reveals until found, put on battlefield" but lacks the "may" (player choice
 //!   whether to put the found card on battlefield). Used as closest approximation.
-//! - Transform trigger: "at the beginning of the next upkeep" — DelayedWhen::NextUpkeep
-//!   not in engine; transform fires immediately when creature leaves instead.
 //! - ZoneChange trigger: "leaves battlefield" requires specifying destination zone;
 //!   approximated as going to graveyard (Zone::Graveyard(0) placeholder).
 //! - Back face "land creatures you control have vigilance" — back-face-only static not modeled.
 //! - Back face "earthbend 2" — Earthbend mechanic not in engine.
 //! - Back face triggered abilities not modeled (GAP: back-face-only triggered ability not modeled).
 
-use arcana_core::effects::{Effect, KeywordAbility, RevealDest, DigRest};
+use arcana_core::effects::{DelayedWhen, Effect, KeywordAbility, RevealDest, DigRest};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
@@ -94,8 +92,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
-            // When another creature you control leaves the battlefield, transform
-            // GAP: "at beginning of next upkeep" delay not modeled; transform fires immediately.
+            // When another creature you control leaves the battlefield,
+            // transform Aang at the beginning of the next upkeep
+            // (scheduled via ScheduleDelayedEffect).
             // GAP: "leaves battlefield" approximated as going to graveyard.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
@@ -135,5 +134,22 @@ fn transform_aang(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Transform { target: trig.source }]
+    // "transform Aang at the beginning of the next upkeep" — scheduled
+    // as a delayed effect; Aang's battlefield id is stable until then.
+    vec![Effect::ScheduleDelayedEffect {
+        source: trig.source,
+        controller: trig.controller,
+        when: DelayedWhen::NextUpkeep,
+        effect: delayed_transform_aang,
+    }]
+}
+
+/// Delayed transform: `pt.source` is Aang's battlefield id; no-op if
+/// he has left the battlefield by the upkeep.
+fn delayed_transform_aang(
+    _state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: pt.source }]
 }

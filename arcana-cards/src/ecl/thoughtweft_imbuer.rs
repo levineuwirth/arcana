@@ -1,8 +1,8 @@
 //! Thoughtweft Imbuer — `{3}{W}` 0/5 white Kithkin Advisor. "Whenever a creature you
 //! control attacks alone, it gets +X/+X until end of turn, where X is the number of
 //! Kithkin you control."
-//! GAP: "attacks alone" condition not in engine filter; using CreatureAttacks(You).
-//! Kithkin count via script::count_matching + subtype_filter.
+//! "Attacks alone" via TriggerCondition::AttacksAlone; the sole attacker is read
+//! via trig.lone_attacker(). Kithkin count via script::count_matching + subtype_filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -39,8 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "attacks alone" not in CreatureAttacks filter
-                trigger_condition: TriggerCondition::CreatureAttacks {
+                trigger_condition: TriggerCondition::AttacksAlone {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                 },
                 intervening_if: None,
@@ -65,10 +64,10 @@ fn on_attacks_pump(
     if n == 0 {
         return Vec::new();
     }
-    // GAP: we pump trig.source (self) instead of the attacking creature; no
-    // "triggering attacker id" accessor available
+    // "it gets +X/+X" — the sole attacker, read off the trigger event.
+    let Some(id) = trig.lone_attacker() else { return Vec::new(); };
     vec![Effect::Pump {
-        target: trig.source,
+        target: id,
         power: n,
         toughness: n,
         duration: Duration::EndOfTurn,

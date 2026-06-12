@@ -1,8 +1,8 @@
 //! Runed Stalactite — `{1}` artifact — Equipment.
 //! "Equipped creature gets +1/+1 and is every creature type. Equip {2}"
 //! The +1/+1 static is installed as an attached-pt continuous effect via an
-//! ETB trigger; the "is every creature type" (changeling-style type grant)
-//! half is not expressible with the attached-pt surface.
+//! ETB trigger; the "is every creature type" half via
+//! `attached_every_creature_type` (changeling-style Layer-4 grant).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -51,15 +51,21 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... is every creature type" — the
-    // attached_subtypes grant exists but enumerates a fixed SubtypeSet;
-    // the changeling-style "every creature type" CDA is not expressible.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "…and is every creature type" — changeling-style Layer-4 grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_every_creature_type(
+                trig.source,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

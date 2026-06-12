@@ -79,8 +79,8 @@ fn revenge_copy(
     };
     // GAP: "except it's 1/1" and "It gains haste until your next turn" —
     // the minted token's id is unknown at resolve time, so the P/T
-    // override and the haste grant (which also has no
-    // until-your-next-turn duration) cannot be applied. Copy is minted
+    // override and the haste grant cannot be applied (the
+    // until-your-next-turn duration itself exists). Copy is minted
     // before the exile since the exiled card is no longer addressable.
     vec![
         Effect::CopyPermanent { target: *id },

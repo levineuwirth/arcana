@@ -10,11 +10,11 @@
 //! target creature you control. Until your next turn, it gains indestructible.
 //! If that creature is legendary, draw a card.
 //!
-//! GAP: Indestructible keyword on back face is in characteristics. "Blessing of Light" includes
-//! "Until your next turn, it gains indestructible" — duration UntilYourNextTurn is not a supported
-//! Duration variant; modeled as EndOfTurn (fidelity gap). "If that creature is legendary, draw a
-//! card" — conditional draw based on a property of the targeted creature is not expressible via the
-//! Conditional variant without state access beyond script; GAP'd.
+//! GAP: Indestructible keyword on back face is in characteristics. "Blessing of Light" is a
+//! back-face-only triggered ability and is not wired (not auto-installed on transform); when it
+//! is, Duration::UntilYourNextTurn covers the indestructible grant. "If that creature is
+//! legendary, draw a card" — conditional draw based on a property of the targeted creature is
+//! not expressible via the Conditional variant without state access beyond script; GAP'd.
 //! "Activate only as a sorcery" — speed restriction not separately enforced (engine debt).
 //! "This ability triggers only once each turn" — TriggerFrequency::OncePerTurn used.
 //! Back-face-only triggered ability (Blessing of Light) not auto-installed on transform.

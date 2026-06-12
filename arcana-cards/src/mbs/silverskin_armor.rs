@@ -3,8 +3,8 @@
 //! Equip {2}"
 //!
 //! The +1/+1 static is installed via `ContinuousEffect::attached_pt`;
-//! the "is an artifact in addition to its other types" type grant is a
-//! documented gap (no attached type-add builder).
+//! the "is an artifact in addition to its other types" type grant via
+//! `ContinuousEffect::attached_types` (Layer 4, additive).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -51,16 +51,24 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "is an artifact in addition to its other types" — Artifact is
-    // a CARD type; attached_subtypes covers subtypes only and there is
-    // no attached card-type-add builder (Effect::AddType is targeted at
-    // install time and would not follow the attachment).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "…and is an artifact in addition to its other types" —
+        // attached card-type add (Layer 4, additive); follows the
+        // attachment.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_types(
+                trig.source,
+                TypeLine::ARTIFACT.into(),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

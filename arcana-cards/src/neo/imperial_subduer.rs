@@ -2,9 +2,8 @@
 //! "Whenever a Samurai or Warrior you control attacks alone, tap target
 //! creature you don't control."
 //!
-//! Alone-ness via TriggerCondition::SelfAttacksAlone (this creature's half).
-//! GAP: should also fire when another Samurai or Warrior you control attacks
-//! alone; target creature you don't control uses ControllerConstraint::Opponent.
+//! "Attacks alone" via TriggerCondition::AttacksAlone over Samurai-or-Warrior
+//! you control; target creature you don't control uses ControllerConstraint::Opponent.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,6 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Imperial Subduer");
     let human = reg.interner_mut().intern("Human");
     let samurai = reg.interner_mut().intern("Samurai");
+    let warrior = reg.interner_mut().intern("Warrior");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(samurai);
@@ -41,8 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // "Attacks alone" — sole declared attacker (CR 506.5).
-                trigger_condition: TriggerCondition::SelfAttacksAlone,
+                // "Attacks alone" — sole declared attacker (CR 506.5),
+                // watched over every Samurai or Warrior you control.
+                trigger_condition: TriggerCondition::AttacksAlone {
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You)
+                        .with_subtypes_any(vec![samurai, warrior]),
+                },
                 intervening_if: None,
                 effect: attacks_tap_target,
                 trigger_zones: vec![Zone::Battlefield],
@@ -65,7 +70,5 @@ fn attacks_tap_target(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "Samurai or Warrior you control" breadth not enforced; alone-ness
-    // handled by SelfAttacksAlone for this creature.
     vec![Effect::Tap { target: *id }]
 }

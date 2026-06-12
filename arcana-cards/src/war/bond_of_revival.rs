@@ -1,6 +1,9 @@
 //! Bond of Revival — `{4}{B}` sorcery. Return target creature card from
 //! your graveyard to the battlefield. It gains haste until your next
-//! turn. (Until-your-next-turn duration approximated to end of turn.)
+//! turn.
+//! GAP: the haste grant targets the graveyard id; the return re-ids the
+//! object on the zone move, so the grant may not stick (no
+//! return-with-keyword rider in the catalog).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -49,13 +52,14 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let id = *id;
-    // GAP: "until your next turn" duration not available; approximated to EndOfTurn.
+    // GAP: the return re-ids the object, so the haste grant on the
+    // graveyard id may miss (no return-with-keyword rider).
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: id },
         Effect::GrantKeyword {
             target: id,
             keyword: KeywordAbility::Haste,
-            duration: Duration::EndOfTurn,
+            duration: Duration::UntilYourNextTurn(entry.controller),
         },
     ]
 }

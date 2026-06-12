@@ -2,17 +2,20 @@
 //! "When this creature enters, each player sacrifices a creature or
 //! planeswalker of their choice. Each player who can't discards a card."
 //!
-//! GAP: "sacrifice creature or planeswalker of their choice; if can't, discard"
-//! — the planeswalker-or-creature disjunction and discard fallback are not
-//! expressible; emitting sacrifice-creature for each player only.
+//! "Each player sacrifices a creature or planeswalker of their choice" —
+//! one `Effect::ChooseNFromZone` per player (chooser = that player,
+//! creature-or-planeswalker via `with_types_any`, action Sacrifice).
+//! GAP: "Each player who can't discards a card" — the conditional discard
+//! fallback (fires only for players with no creature or planeswalker) is
+//! not expressible; the sacrifice half is wired, the fallback is omitted.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -55,14 +58,24 @@ fn etb_each_sac(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "or planeswalker of their choice; if can't discard" not expressible
-    let effects: Vec<Effect> = script::all_players(state)
+    // "Each player sacrifices a creature or planeswalker of their choice"
+    // — one ChooseNFromZone per player; the controller constraint is
+    // evaluated from the CHOOSER's perspective. Separate top-level
+    // effects so each pending choice parks correctly.
+    // GAP: "Each player who can't discards a card" — conditional discard
+    // fallback not expressible.
+    let filter = ObjectFilter::permanent()
+        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER))
+        .controlled_by(ControllerConstraint::You);
+    script::all_players(state)
         .into_iter()
-        .map(|p| Effect::Sacrifice {
-            player: p,
-            filter: ObjectFilter::creature(),
-            count: 1,
+        .map(|p| Effect::ChooseNFromZone {
+            chooser: p,
+            zone: Zone::Battlefield,
+            filter: filter.clone(),
+            min: 1,
+            max: 1,
+            action: PickAction::Sacrifice,
         })
-        .collect();
-    vec![Effect::Sequence(effects)]
+        .collect()
 }

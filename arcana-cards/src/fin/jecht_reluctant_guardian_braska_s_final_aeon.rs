@@ -11,26 +11,33 @@
 //! III — Ultimate Jecht Shot — Each opponent sacrifices two creatures of their choice.
 //! Menace
 //!
-//! GAP: Back-face-only Saga chapter mechanics not modeled (abilities live on CardDefinition, not
-//!      the face; Saga chapter triggers on back face would need a separate Saga engine path).
-//! GAP: "Each opponent sacrifices two creatures of their choice" — opponent-choice sacrifice
-//!      not expressible (Sacrifice effect uses controller-chooses only; whole chapter III GAP'd).
+//! Back-face Saga chapters wired as face-gated triggered abilities (CounterAdded chapter
+//! triggers + a face-gated lore-counter trigger, mirroring The Long Reach of Night):
+//! I/II — each opponent discards a card and you draw a card; III — each opponent
+//! sacrifices two creatures of their choice via `Effect::ChooseNFromZone` per opponent.
+//! GAP: "As this Saga enters … add a lore counter" — the transform is an in-place flip
+//!      (no re-entry), so no enters-with lore counter; chapter I fires at the next
+//!      precombat main (the "after your draw step" lore-add approximation).
 //! GAP: Transform trigger condition is "whenever Jecht deals combat damage to a player" —
 //!      approximated via TriggerCondition::DamageDealt with combat_only: true.
 //! GAP: "you may exile it, then return it transformed" — exile+return-transformed not a
 //!      single Effect variant; approximated as Effect::Transform.
 //! GAP: back face P/T not given in card spec (Saga+Creature hybrid — left unset).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::turn::Phase;
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -95,8 +102,116 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
-            // GAP: back-face-only Saga chapter triggered abilities not modeled.
+            // Back face: lore-counter progression ("after your draw step,
+            // add a lore counter" — approximated at precombat main, as in
+            // The Long Reach of Night).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::PhaseBegins {
+                    phase: Phase::PreCombatMain,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: add_lore_counter,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // I — Jecht Beam.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::CounterAdded {
+                    on: TriggerSelf::Source,
+                    kind: Some(CounterKind::Lore),
+                    chapter: Some(1),
+                },
+                intervening_if: None,
+                effect: jecht_beam,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // II — Jecht Beam (same as chapter I).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::CounterAdded {
+                    on: TriggerSelf::Source,
+                    kind: Some(CounterKind::Lore),
+                    chapter: Some(2),
+                },
+                intervening_if: None,
+                effect: jecht_beam,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // III — Ultimate Jecht Shot.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 5,
+                trigger_condition: TriggerCondition::CounterAdded {
+                    on: TriggerSelf::Source,
+                    kind: Some(CounterKind::Lore),
+                    chapter: Some(3),
+                },
+                intervening_if: None,
+                effect: ultimate_jecht_shot,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1)
+            .with_trigger_face_gate(4, 1)
+            .with_trigger_face_gate(5, 1),
     )
+}
+
+fn add_lore_counter(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddCounters {
+        target: trig.source,
+        kind: CounterKind::Lore,
+        count: 1,
+    }]
+}
+
+/// I, II — "Jecht Beam — Each opponent discards a card and you draw a card."
+fn jecht_beam(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::Discard {
+            player: opp,
+            count: 1,
+            choice: DiscardChoice::ControllerChooses,
+        })
+        .collect();
+    effects.push(Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    });
+    effects
+}
+
+/// III — "Ultimate Jecht Shot — Each opponent sacrifices two creatures of
+/// their choice." One ChooseNFromZone per opponent; the controller
+/// constraint is evaluated from the CHOOSER's perspective. Separate
+/// top-level effects so each pending choice parks correctly.
+fn ultimate_jecht_shot(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::ChooseNFromZone {
+            chooser: opp,
+            zone: Zone::Battlefield,
+            filter: filter.clone(),
+            min: 2,
+            max: 2,
+            action: PickAction::Sacrifice,
+        })
+        .collect()
 }
 
 fn jecht_damage_transform(

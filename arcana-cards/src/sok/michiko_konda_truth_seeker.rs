@@ -5,12 +5,12 @@
 //! GAP: trigger — "a source an opponent controls deals damage to you" maps
 //! closest to DamageDealt with source_filter controlled by Opponent and
 //! target_filter Player. Using that approximation.
-//! GAP: effect — "sacrifices a permanent of their choice" (opponent chooses
-//! which permanent to sacrifice) — Sacrifice effect uses ObjectFilter; there
-//! is no "controller chooses permanent" variant. Using permanent filter as
-//! best effort.
+//! "sacrifices a permanent of their choice" — `Effect::ChooseNFromZone`
+//! with chooser = that player, action Sacrifice, over a permanent they
+//! control (the filter's controller constraint is evaluated from the
+//! chooser's perspective).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -64,12 +64,16 @@ fn on_damage_sac_permanent(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "that player" (the opponent who controlled the source) sacrifices a permanent.
+    // "that player" (the opponent who controlled the source) sacrifices a
+    // permanent of their choice.
     // GAP: the triggering caster is an approximation for the opponent controller.
     let Some(p) = trig.triggering_caster() else { return Vec::new(); };
-    vec![Effect::Sacrifice {
-        player: p,
-        filter: ObjectFilter::new(),
-        count: 1,
+    vec![Effect::ChooseNFromZone {
+        chooser: p,
+        zone: Zone::Battlefield,
+        filter: ObjectFilter::permanent().controlled_by(ControllerConstraint::You),
+        min: 1,
+        max: 1,
+        action: PickAction::Sacrifice,
     }]
 }

@@ -1,7 +1,6 @@
 //! Sly Instigator — `{3}{U}` 2/4 blue Human Wizard.
 //! "{U}, {T}: Until your next turn, target creature an opponent controls can't be blocked.
 //! Goad that creature."
-//! GAP: "can't be blocked" — no Effect variant for granting unblockability. Emitting Goad only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -65,10 +64,15 @@ fn goad_target(
 ) -> Vec<Effect> {
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "can't be blocked until your next turn" — no unblockability effect variant.
-    vec![Effect::Goad {
-        target: *id,
-        goader: ctx.controller,
-        duration: Duration::EndOfTurn,
-    }]
+    vec![
+        Effect::CantBeBlocked {
+            target: *id,
+            duration: Duration::UntilYourNextTurn(ctx.controller),
+        },
+        Effect::Goad {
+            target: *id,
+            goader: ctx.controller,
+            duration: Duration::UntilYourNextTurn(ctx.controller),
+        },
+    ]
 }

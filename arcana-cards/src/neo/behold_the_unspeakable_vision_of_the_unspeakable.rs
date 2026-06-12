@@ -131,7 +131,6 @@ fn add_lore_counter(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegist
 }
 
 // I — Creatures you don't control get -2/-0 until your next turn.
-// GAP: "until your next turn" duration not expressible — using EndOfTurn as the closest duration.
 fn chapter_i(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
     let ids = script::ids_matching(state, &filter, trig.controller);
@@ -140,7 +139,7 @@ fn chapter_i(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> V
             target: id,
             power: -2,
             toughness: 0,
-            duration: Duration::EndOfTurn,
+            duration: Duration::UntilYourNextTurn(trig.controller),
             keywords: vec![],
         })
         .collect()

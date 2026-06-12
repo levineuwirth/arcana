@@ -3,7 +3,7 @@
 //! II — Each player discards a card.
 //! III — Return target creature card from your graveyard to the battlefield. Put a +1/+1 counter on it. It gains haste until your next turn.
 //! GAP: Chapter I "you may sacrifice a creature. When you do, deal 3 damage" — OptionalPayment with sacrifice cost not in catalog.
-//! GAP: Chapter III "gains haste until your next turn" — duration "until your next turn" not in Duration enum (only EndOfTurn, WhileSourceOnBattlefield).
+//! GAP: Chapter III — the return re-ids the object, so the follow-up counter and haste grant on the graveyard id may miss (no return-with-riders variant).
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
@@ -148,10 +148,11 @@ fn chapter_iii(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "gains haste until your next turn" — Duration::NextTurn not in Duration enum; using EndOfTurn as approximation
+    // GAP: the return re-ids the object, so the counter and haste grant
+    // on the graveyard id may miss (no return-with-riders variant).
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: *id },
         Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
-        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::EndOfTurn },
+        Effect::GrantKeyword { target: *id, keyword: KeywordAbility::Haste, duration: Duration::UntilYourNextTurn(trig.controller) },
     ]
 }

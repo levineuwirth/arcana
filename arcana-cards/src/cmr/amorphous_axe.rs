@@ -2,8 +2,8 @@
 //! +3/+0 and is every creature type. Equip {3}"
 //!
 //! The +3/+0 is installed via `attached_pt`; "is every creature
-//! type" (an attached changeling-style type grant) is a documented
-//! GAP.
+//! type" via `attached_every_creature_type` (changeling-style
+//! Layer-4 grant — tribal filters see every subtype).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -50,15 +50,21 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... is every creature type" — the
-    // attached_subtypes grant exists but enumerates a fixed SubtypeSet;
-    // the changeling-style "every creature type" CDA is not expressible.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            3,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                3,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "…and is every creature type" — changeling-style Layer-4 grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_every_creature_type(
+                trig.source,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

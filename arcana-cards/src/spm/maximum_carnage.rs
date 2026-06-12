@@ -1,8 +1,8 @@
 //! Maximum Carnage — `{4}{R}` Enchantment — Saga
 //!
 //! I — Until your next turn, each creature attacks each combat if able and attacks a player
-//!   other than you if able. (GAP: "attacks each combat if able" global effect not modeled;
-//!   using Goad on all creatures as best effort — Goad only redirects from goader, not full rule.)
+//!   other than you if able. (Goad on each creature until your next turn — CR 701.38's goad
+//!   text is exactly this clause, with the controller as goader.)
 //! II — Add {R}{R}{R}.
 //! III — This Saga deals 5 damage to each opponent.
 
@@ -113,9 +113,9 @@ fn chapter_i(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until your next turn, each creature attacks each combat if able and attacks a player
-    // other than you if able" — global forced-attack/redirect effect not modeled; Goad each
-    // creature as a best effort approximation
+    // Goad every creature until your next turn — CR 701.38's goad text
+    // ("attacks each combat if able and attacks a player other than you
+    // if able") is exactly the printed clause.
     let filter = ObjectFilter::creature();
     let ids = script::ids_matching(state, &filter, trig.controller);
     vec![Effect::ForEach {
@@ -123,7 +123,7 @@ fn chapter_i(
         effect: Box::new(Effect::Goad {
             target: arcana_core::objects::NULL_OBJECT_ID,
             goader: trig.controller,
-            duration: Duration::EndOfTurn,
+            duration: Duration::UntilYourNextTurn(trig.controller),
         }),
     }]
 }

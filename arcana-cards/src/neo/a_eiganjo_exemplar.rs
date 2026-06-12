@@ -1,7 +1,7 @@
 //! A-Eiganjo Exemplar — `{W}` 1/1 white Enchantment Creature Human Samurai.
 //! "Whenever a Samurai or Warrior you control attacks alone, it gets +1/+1 until end of turn."
-//! GAP: trigger — "attacks alone" not expressible in CreatureAttacks filter; using
-//! CreatureAttacks with controlled_by(You) as closest approximation.
+//! "Attacks alone" via TriggerCondition::AttacksAlone over Samurai-or-Warrior you
+//! control; the sole attacker is read via trig.lone_attacker().
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -20,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("A-Eiganjo Exemplar");
     let human = reg.interner_mut().intern("Human");
     let samurai = reg.interner_mut().intern("Samurai");
+    let warrior = reg.interner_mut().intern("Warrior");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(samurai);
@@ -38,10 +39,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "attacks alone" condition not expressible in CreatureAttacks filter
-                trigger_condition: TriggerCondition::CreatureAttacks {
+                trigger_condition: TriggerCondition::AttacksAlone {
                     filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::You),
+                        .controlled_by(ControllerConstraint::You)
+                        .with_subtypes_any(vec![samurai, warrior]),
                 },
                 intervening_if: None,
                 effect: pump_attacker,
@@ -57,9 +58,10 @@ fn pump_attacker(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // The triggering creature is implied by CreatureAttacks; pump the event source
+    // "it gets +1/+1" — the sole attacker, read off the trigger event.
+    let Some(id) = trig.lone_attacker() else { return Vec::new(); };
     vec![Effect::Pump {
-        target: trig.source,
+        target: id,
         power: 1,
         toughness: 1,
         duration: Duration::EndOfTurn,

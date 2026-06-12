@@ -11,11 +11,10 @@
 //! When this creature transforms into Avacyn, the Purifier, it deals 3 damage to each
 //! other creature and each opponent.
 //!
-//! GAP: "transform Archangel Avacyn at the beginning of the next upkeep" — the
-//!      delayed scheduling is approximated by transforming immediately when the
-//!      non-Angel creature dies.
+//! GAP: the dies-trigger should only fire for NON-ANGEL creatures; the Angel
+//!      subtype exclusion is not applied to the ZoneChange filter.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{DelayedWhen, Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
@@ -140,10 +139,28 @@ fn on_non_angel_dies(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: The trigger should only fire for non-Angel creatures; the Angel subtype
-    // exclusion is not filterable in TriggerCondition::ZoneChange.
-    // GAP: "at the beginning of the next upkeep" scheduling — emitting Transform
-    // immediately as a best-effort approximation.
-    vec![Effect::Transform { target: trig.source }]
+    // exclusion is not applied to the ZoneChange filter.
+    // "transform Archangel Avacyn at the beginning of the next upkeep" —
+    // scheduled as a delayed effect. Each death schedules its own
+    // transform, so multiple deaths flip her back and forth at that
+    // upkeep, matching the printed card's ruling.
+    vec![Effect::ScheduleDelayedEffect {
+        source: trig.source,
+        controller: trig.controller,
+        when: DelayedWhen::NextUpkeep,
+        effect: delayed_transform,
+    }]
+}
+
+/// "Transform Archangel Avacyn at the beginning of the next upkeep."
+/// `pt.source` is Avacyn's battlefield id (stable — she never changed
+/// zones); no-op if she has left the battlefield by then.
+fn delayed_transform(
+    _state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: pt.source }]
 }
 
 fn on_transform_purify(

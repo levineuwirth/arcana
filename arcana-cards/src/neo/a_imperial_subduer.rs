@@ -1,6 +1,8 @@
 //! A-Imperial Subduer — `{1}{W}` 3/1 Human Samurai. "Whenever a Samurai
 //! or Warrior you control attacks alone, tap target creature you don't
 //! control."
+//! "Attacks alone" via TriggerCondition::AttacksAlone over Samurai-or-Warrior
+//! you control.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -18,6 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("A-Imperial Subduer");
     let human = reg.interner_mut().intern("Human");
     let samurai = reg.interner_mut().intern("Samurai");
+    let warrior = reg.interner_mut().intern("Warrior");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(samurai);
@@ -36,12 +39,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "Samurai or Warrior attacks alone";
-                // CreatureAttacks cannot filter for "attacks alone".
-                // Using CreatureAttacks with Samurai-or-Warrior filter
-                // as closest approximation.
-                trigger_condition: TriggerCondition::CreatureAttacks {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                trigger_condition: TriggerCondition::AttacksAlone {
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You)
+                        .with_subtypes_any(vec![samurai, warrior]),
                 },
                 intervening_if: None,
                 effect: on_samurai_warrior_attacks_alone,

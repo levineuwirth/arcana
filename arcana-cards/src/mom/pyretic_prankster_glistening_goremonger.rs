@@ -8,14 +8,24 @@
 //! activated abilities with custom payment shapes not modeled; wired as a triggered
 //! ability (ZoneChange to battlefield) approximating ETB instead.
 //! GAP: "sorcery speed only" restriction on activated ability not modeled.
-//! GAP: back-face-only triggered ability (dies trigger) not modeled.
-//! GAP: "each opponent sacrifices an artifact or creature of their choice" — opponent
-//! choice targeting and artifact-or-creature filter not modeled.
+//! Back-face dies trigger: wired as `TriggerCondition::SelfDies` face-gated
+//! to the back face; "each opponent sacrifices an artifact or creature of
+//! their choice" is one `Effect::ChooseNFromZone` per opponent (chooser =
+//! that opponent, artifact-or-creature via `with_types_any`, action
+//! Sacrifice).
 
+use arcana_core::effects::{Effect, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::script;
+use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Pyretic Prankster");
@@ -59,8 +69,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // GAP: {3}{B/P} activated ability (transform, sorcery-speed) not modeled —
     // OptionalPaymentKind does not support hybrid-Phyrexian mana and activated
     // abilities with custom cost shapes are not in scope.
-    // GAP: back-face-only triggered ability (dies trigger: each opponent sacrifices
-    // an artifact or creature) not modeled.
 
-    reg.register(CardDefinition::new(name, chars).with_transform_back(back))
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_transform_back(back)
+            // Back face: "When this creature dies, each opponent sacrifices
+            // an artifact or creature of their choice."
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfDies,
+                intervening_if: None,
+                effect: dies_each_opponent_sacrifices,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 1),
+    )
+}
+
+/// Back face: "…each opponent sacrifices an artifact or creature of their
+/// choice." One ChooseNFromZone per opponent; the controller constraint is
+/// evaluated from the CHOOSER's perspective. Separate top-level effects so
+/// each pending choice parks correctly.
+fn dies_each_opponent_sacrifices(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types_any(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE))
+        .controlled_by(ControllerConstraint::You);
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::ChooseNFromZone {
+            chooser: opp,
+            zone: Zone::Battlefield,
+            filter: filter.clone(),
+            min: 1,
+            max: 1,
+            action: PickAction::Sacrifice,
+        })
+        .collect()
 }

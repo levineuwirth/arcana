@@ -2,7 +2,7 @@
 //! "When Casey Jones enters, draw three cards. At the beginning of your next upkeep,
 //! discard three cards at random."
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, DiscardChoice, Effect};
+use arcana_core::effects::{DelayedWhen, DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -50,12 +50,31 @@ fn etb_draw_then_discard(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // Draw 3, then schedule a discard-3 at next upkeep via a separate trigger.
-    // GAP: "at beginning of your next upkeep, discard three" — DelayedAction only supports
-    // Sacrifice/Exile/ReturnToHand/ReturnFromExileToBattlefield, not Discard.
-    // Emitting the draw; the delayed discard is approximated inline.
+    // Draw 3 now; schedule the random discard-3 as a delayed effect.
+    // GAP (narrow): printed timing is "YOUR next upkeep" —
+    // DelayedWhen::NextUpkeep fires at the next upkeep that begins,
+    // whoever's turn it is (may be an opponent's upkeep first).
     vec![
         Effect::DrawCards { player: trig.controller, count: 3 },
-        Effect::Discard { player: trig.controller, count: 3, choice: DiscardChoice::Random },
+        Effect::ScheduleDelayedEffect {
+            source: trig.source,
+            controller: trig.controller,
+            when: DelayedWhen::NextUpkeep,
+            effect: delayed_random_discard,
+        },
     ]
+}
+
+/// "At the beginning of your next upkeep, discard three cards at
+/// random." Runs even if Casey Jones has left play.
+fn delayed_random_discard(
+    _state: &GameState,
+    pt: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Discard {
+        player: pt.controller,
+        count: 3,
+        choice: DiscardChoice::Random,
+    }]
 }

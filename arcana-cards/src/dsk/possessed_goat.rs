@@ -1,8 +1,12 @@
 //! Possessed Goat — `{W}` 1/1 white Goat.
 //! `{3}, Discard a card: Put three +1/+1 counters on this creature and it becomes a black Demon in addition to its other colors and types. Activate only once.`
-//! GAP: ActivationCost has no "discard a card" cost field. "Becomes a Demon in addition to other types and colors" not modeled.
+//! The Demon subtype-add is a targeted continuous effect (ContinuousEffect::add_subtypes,
+//! Duration::Permanent).
+//! GAP: ActivationCost has no "discard a card" cost field. "Becomes black in addition
+//! to its other colors" not modeled (only the attached color-add exists).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -15,6 +19,7 @@ use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, Typ
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Possessed Goat");
     let goat = reg.interner_mut().intern("Goat");
+    let _demon = reg.interner_mut().intern("Demon"); // looked up in become_demon
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goat);
     let chars = Characteristics {
@@ -50,14 +55,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn become_demon(
     _state: &GameState,
     ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let mut subs = SubtypeSet::default();
+    if let Some(demon) = reg.interner().lookup("Demon") {
+        subs.0.insert(demon);
+    }
     vec![
         Effect::AddCounters {
             target: ctx.source,
             kind: CounterKind::PlusOnePlusOne,
             count: 3,
         },
-        // GAP: "becomes black Demon in addition to other types/colors" not modeled
+        // "…and it becomes a Demon in addition to its other types" —
+        // Duration::Permanent (no stated duration).
+        // GAP: "black in addition to its other colors" not modeled (no
+        // targeted color-add continuous effect).
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::add_subtypes(
+                ctx.source,
+                ctx.source,
+                subs,
+                Duration::Permanent,
+            ),
+        },
     ]
 }

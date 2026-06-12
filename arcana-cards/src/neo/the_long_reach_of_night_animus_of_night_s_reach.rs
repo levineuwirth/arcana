@@ -9,11 +9,11 @@
 //!   Whenever this creature attacks, it gets +X/+0 until end of turn, where X is the number
 //!   of creature cards in defending player's graveyard.
 //!
-//! GAP (chapters I/II): "Each opponent sacrifices a creature of their choice unless they
-//! discard a card" — this is a per-opponent choice between a sacrifice and a discard.
-//! OptionalPaymentKind only models Mana / Life (no Discard / Sacrifice gate), so the
-//! "unless they discard" branch cannot be expressed faithfully. Emitting Vec::new() for the
-//! chapter body rather than a wrong literal.
+//! Chapters I/II: "Each opponent sacrifices a creature of their choice" is wired as one
+//! `Effect::ChooseNFromZone` per opponent (chooser = that opponent, action Sacrifice).
+//! GAP (chapters I/II): "…unless they discard a card" — the per-opponent option to discard
+//! instead of sacrificing is not expressible (OptionalPaymentKind only models Mana / Life,
+//! no Discard gate); the sacrifice is wired as mandatory.
 //!
 //! GAP (chapter III): "Exile this Saga, then return it transformed under your control" — the
 //! engine has Effect::Transform (an in-place flip) but no exile-and-return-transformed
@@ -26,12 +26,13 @@
 //! available accessors here (no defender accessor on PendingTrigger), so the dynamic pump is
 //! emitted as Vec::new() rather than a wrong literal.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{Effect, KeywordAbility, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
@@ -159,14 +160,28 @@ fn add_lore_counter(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegist
 }
 
 fn chapter_sac_or_discard(
-    _state: &GameState,
-    _trig: &PendingTrigger,
+    state: &GameState,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each opponent sacrifices a creature of their choice unless they discard a card"
-    // — sacrifice-or-discard choice gate is not expressible (OptionalPaymentKind has only
-    // Mana / Life). Emitting a no-op rather than a wrong literal.
-    Vec::new()
+    // "Each opponent sacrifices a creature of their choice" — one
+    // ChooseNFromZone per opponent; the controller constraint is evaluated
+    // from the CHOOSER's perspective. Separate top-level effects so each
+    // pending choice parks correctly.
+    // GAP: "…unless they discard a card" — the discard-instead option is
+    // not expressible; the sacrifice is wired as mandatory.
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::ChooseNFromZone {
+            chooser: opp,
+            zone: Zone::Battlefield,
+            filter: filter.clone(),
+            min: 1,
+            max: 1,
+            action: PickAction::Sacrifice,
+        })
+        .collect()
 }
 
 fn chapter_transform(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

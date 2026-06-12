@@ -3,12 +3,13 @@
 //! II — Put a +1/+1 counter on target creature you control. It becomes a Mutant.
 //! III — Draw cards equal to the greatest power among Mutants you control.
 //! GAP: Chapter I "for as long as you control this Saga" duration not in catalog (only EndOfTurn/WhileSourceOnBattlefield); using ChangeControl (permanent).
-//! GAP: Chapter II "it becomes a Mutant in addition to its other types" — only the
-//! attached subtype grant exists; no targeted subtype-add continuous effect.
+//! Chapter II "it becomes a Mutant" via the targeted subtype-add continuous effect
+//! (ContinuousEffect::add_subtypes, Duration::Permanent).
 //! GAP: Chapter III "draw cards equal to greatest power among Mutants" — max-power-among-subtype query not in script API; emitting Vec::new().
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -24,6 +25,7 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Vault 87: Forced Evolution");
     let saga_sub = reg.interner_mut().intern("Saga");
+    let _mutant = reg.interner_mut().intern("Mutant"); // looked up in chapter_ii
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(saga_sub);
     let chars = Characteristics {
@@ -125,14 +127,22 @@ fn chapter_i(
 fn chapter_ii(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "it becomes a Mutant in addition to its other types" — only the
-    // ATTACHED subtype grant (attached_subtypes) exists; no TARGETED
-    // subtype-add continuous effect.
-    vec![Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
+    let mut subs = SubtypeSet::default();
+    if let Some(mutant) = reg.interner().lookup("Mutant") {
+        subs.0.insert(mutant);
+    }
+    // "It becomes a Mutant" — targeted subtype-add, Duration::Permanent
+    // (the oracle text has no duration).
+    vec![
+        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::add_subtypes(trig.source, *id, subs, Duration::Permanent),
+        },
+    ]
 }
 
 fn chapter_iii(

@@ -9,8 +9,6 @@
 //! GAP: Back face "enchant creature" aura attachment not modeled (back-face-only).
 //! GAP: Back face "enchanted creature gets -2/-0" continuous effect not modeled.
 //! GAP: Back face "if put into a graveyard, exile instead" replacement effect not modeled.
-//! GAP: "-2/-0 until your next turn" duration — EndOfTurn is used as approximation
-//!      (true "until your next turn" duration not available in Duration enum).
 //! GAP: back-face-only triggered abilities not auto-installed on transform.
 
 use arcana_core::effects::Effect;
@@ -90,12 +88,11 @@ fn binding_geist_attacks(_state: &GameState, trig: &PendingTrigger, _reg: &CardR
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: duration should be "until your next turn"; using EndOfTurn as approximation.
     vec![Effect::Pump {
         target: *id,
         power: -2,
         toughness: 0,
-        duration: Duration::EndOfTurn,
+        duration: Duration::UntilYourNextTurn(trig.controller),
         keywords: vec![],
     }]
 }

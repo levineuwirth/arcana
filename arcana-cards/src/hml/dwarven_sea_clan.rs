@@ -3,9 +3,12 @@
 //! This creature deals 2 damage to that creature at end of combat. Activate only before
 //! the end of combat step."
 //! GAP: "attacking or blocking" + "controller controls an Island" TargetFilter constraint
-//! not expressible; "deals damage at end of combat" (delayed damage) not in catalog.
+//! not expressible; "activate only before the end of combat step" timing window not enforced.
+//! GAP (narrow): "at end of combat" timing approximated as the next end STEP
+//! (DelayedWhen has no end-of-combat slot); same turn, slightly later.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedWhen, Effect};
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -13,7 +16,8 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::triggers::PendingTrigger;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -51,10 +55,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn delayed_damage_at_eoc(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "deals 2 damage at end of combat" — delayed damage scheduled for end-of-combat
-    // step is not expressible in the Effect catalog (DelayedAction does not support damage).
-    Vec::new()
+    let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // GAP (narrow): "at end of combat" approximated as the next end
+    // step (DelayedWhen has no end-of-combat slot). The chosen creature
+    // rides the `source` slot; the delayed fn no-ops if it left play.
+    vec![Effect::ScheduleDelayedEffect {
+        source: *id,
+        controller: ctx.controller,
+        when: DelayedWhen::NextEndStep,
+        effect: delayed_two_damage,
+    }]
+}
+
+/// "This creature deals 2 damage to that creature at end of combat."
+/// `pt.source` is the chosen creature.
+/// GAP (narrow): the Sea Clan's own id isn't carried by the scheduler
+/// (the chosen creature occupies the `source` slot), so damage
+/// attribution falls back to the damaged creature itself.
+fn delayed_two_damage(
+    state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    if state.objects.get(pt.source).is_none() {
+        return Vec::new();
+    }
+    vec![Effect::DealDamage {
+        source: pt.source,
+        target: DamageTarget::Object(pt.source),
+        amount: 2,
+    }]
 }

@@ -4,13 +4,12 @@
 //! you control becomes an 8/8 Robot Villain artifact creature in addition
 //! to its other types."
 //! The animation is the additive Layer-4 `Effect::AddType` (Creature)
-//! plus `Effect::SetBasePT` 8/8, both `Duration::Permanent` (the oracle
-//! text has no duration).
-//! GAP: "Robot Villain" — only the ATTACHED subtype grant
-//! (attached_subtypes) exists; no targeted subtype-add.
+//! plus `Effect::SetBasePT` 8/8 plus a targeted Robot+Villain
+//! subtype-add continuous effect (`ContinuousEffect::add_subtypes`),
+//! all `Duration::Permanent` (the oracle text has no duration).
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -28,6 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let human = reg.interner_mut().intern("Human");
     let scientist = reg.interner_mut().intern("Scientist");
     let villain = reg.interner_mut().intern("Villain");
+    let _robot = reg.interner_mut().intern("Robot"); // looked up in animate_artifact
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(scientist);
@@ -72,15 +72,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn animate_artifact(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // "becomes an 8/8 ... artifact creature in addition to its other
-    // types" — additive Layer-4 type overlay plus base P/T, permanent
-    // (the oracle text has no duration).
-    // GAP: "Robot Villain" — no targeted subtype-add (only the attached
-    // attached_subtypes grant exists).
+    // "becomes an 8/8 Robot Villain artifact creature in addition to
+    // its other types" — additive Layer-4 type overlay plus base P/T
+    // plus a targeted Robot+Villain subtype-add, all permanent (the
+    // oracle text has no duration).
+    let mut subs = SubtypeSet::default();
+    for sub in ["Robot", "Villain"] {
+        if let Some(s) = reg.interner().lookup(sub) {
+            subs.0.insert(s);
+        }
+    }
     vec![
         Effect::AddType {
             target: *id,
@@ -92,6 +97,9 @@ fn animate_artifact(
             power: 8,
             toughness: 8,
             duration: Duration::Permanent,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::add_subtypes(trig.source, *id, subs, Duration::Permanent),
         },
     ]
 }

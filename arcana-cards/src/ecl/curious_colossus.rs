@@ -2,15 +2,14 @@
 //! enters, each creature target opponent controls loses all abilities, becomes a
 //! Coward in addition to its other types, and has base power and toughness 1/1."
 //!
-//! "Loses all abilities" is `Effect::LoseAllAbilities` and the 1/1 base
-//! is `Effect::SetBasePT`, both `Duration::Permanent` (the oracle text
-//! has no duration).
-//! GAP: "becomes a Coward in addition to its other types" — only the
-//! ATTACHED subtype grant (attached_subtypes) exists; no targeted
-//! subtype-add.
+//! "Loses all abilities" is `Effect::LoseAllAbilities`, the 1/1 base
+//! is `Effect::SetBasePT`, and "becomes a Coward in addition to its
+//! other types" is a targeted subtype-add continuous effect
+//! (`ContinuousEffect::add_subtypes`), all `Duration::Permanent` (the
+//! oracle text has no duration).
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -27,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Curious Colossus");
     let giant = reg.interner_mut().intern("Giant");
     let warrior = reg.interner_mut().intern("Warrior");
+    let _coward = reg.interner_mut().intern("Coward"); // looked up in etb_mass_debuff
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(giant);
     subtypes.0.insert(warrior);
@@ -58,7 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_mass_debuff(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     use arcana_core::targets::TargetChoice;
     let Some(target) = trig.targets.targets.first() else {
@@ -74,14 +74,26 @@ fn etb_mass_debuff(
         &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         *opp,
     );
-    // GAP: "becomes a Coward in addition to its other types" — no
-    // targeted subtype-add (only the attached attached_subtypes grant).
+    let mut subs = SubtypeSet::default();
+    if let Some(coward) = reg.interner().lookup("Coward") {
+        subs.0.insert(coward);
+    }
+    let source = trig.source;
     ids.into_iter()
         .flat_map(|id| {
             [
                 Effect::LoseAllAbilities {
                     target: id,
                     duration: Duration::Permanent,
+                },
+                // "…becomes a Coward in addition to its other types"
+                Effect::InstallContinuousEffect {
+                    effect: ContinuousEffect::add_subtypes(
+                        source,
+                        id,
+                        subs.clone(),
+                        Duration::Permanent,
+                    ),
                 },
                 Effect::SetBasePT {
                     target: id,

@@ -1,7 +1,7 @@
 //! A-Akki Ronin — `{R}` 1/2 red Goblin Samurai. "Whenever a Samurai or Warrior you
 //! control attacks alone, you may put a card from your hand on the bottom of your
 //! library. If you do, draw a card."
-//! GAP: "attacks alone" filtered trigger not in engine catalog; using CreatureAttacks.
+//! "Attacks alone" via TriggerCondition::AttacksAlone over Samurai-or-Warrior you control.
 //! GAP: "put a card on bottom then draw" (looting variant) not directly in catalog;
 //! emitting discard + draw as approximation.
 
@@ -21,6 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("A-Akki Ronin");
     let goblin = reg.interner_mut().intern("Goblin");
     let samurai = reg.interner_mut().intern("Samurai");
+    let warrior = reg.interner_mut().intern("Warrior");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(samurai);
@@ -38,9 +39,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "attacks alone" not in CreatureAttacks filter
-                trigger_condition: TriggerCondition::CreatureAttacks {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                trigger_condition: TriggerCondition::AttacksAlone {
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You)
+                        .with_subtypes_any(vec![samurai, warrior]),
                 },
                 intervening_if: None,
                 effect: on_attacks_alone,

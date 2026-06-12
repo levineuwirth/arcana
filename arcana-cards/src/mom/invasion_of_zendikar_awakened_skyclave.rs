@@ -12,8 +12,8 @@
 //!   the up-to-two is a GAP (each tutors one; the player must find two separately).
 //!   Actually, emit two separate TutorToBattlefield calls with up-to-1 semantics as
 //!   best effort: the engine can't do "you may" on each individually.
-//! - Back-face static "it's a land in addition to its other types" — static type-adding
-//!   layer effect not in Effect catalog; GAP: omitted.
+//! - Back-face "it's a land in addition to its other types" — baked directly into the
+//!   registered back-face type line (CREATURE | LAND).
 //! - Back-face activated "{T}: Add one mana of any color" — activated ability on back face
 //!   not separately modeled (see MDFC/Transform back-face activated ability note).
 //! - defeat→cast-back-face not auto-wired (CR 310.11).
@@ -58,7 +58,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         characteristics: Characteristics {
             name: back_name,
             colors: ColorSet::green(),
-            types: TypeLine::CREATURE.into(),
+            // "…and is still a land": the always-on extra card type is
+            // baked directly into the back face's type line.
+            types: TypeLine(TypeLine::CREATURE | TypeLine::LAND),
             subtypes: back_subtypes,
             supertypes: SupertypeSet::default(),
             power: Some(PtValue::Fixed(4)),
@@ -72,7 +74,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
     // GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-    // GAP: back face "is a land in addition to its other types" — static type-adding not modeled.
     // GAP: back face "{T}: Add one mana of any color" — mana activated ability on back face not modeled.
 
     reg.register(

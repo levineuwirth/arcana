@@ -5,7 +5,9 @@
 //! III — Whenever a creature you control attacks alone this turn, put three
 //!        +1/+1 counters on it and gain trample, lifelink, and indestructible.
 //! GAP: Chapter II "when you do" follow-up on mill not expressible.
-//! GAP: Chapter III "attacks alone" condition for delayed trigger not expressible.
+//! GAP: Chapter III — TriggerCondition::AttacksAlone exists, but card-side delayed
+//! scheduling (Effect::ScheduleDelayedEffect) only takes DelayedWhen, so a repeating
+//! "whenever … attacks alone this turn" delayed trigger is not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -132,6 +134,8 @@ fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) ->
 }
 
 fn chapter_iii(_s: &GameState, _t: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
-    // GAP: "whenever a creature attacks alone this turn" delayed trigger not expressible
+    // GAP: TriggerCondition::AttacksAlone exists, but Effect::ScheduleDelayedEffect
+    // only takes a DelayedWhen — a repeating "whenever a creature you control attacks
+    // alone this turn" delayed trigger cannot be installed from a card effect fn.
     Vec::new()
 }

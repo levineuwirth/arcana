@@ -2,8 +2,10 @@
 //! "At the beginning of your upkeep, change Halfdane's base power and toughness
 //! to the power and toughness of target creature other than Halfdane until the
 //! end of your next upkeep."
-//! GAP: "until end of your next upkeep" duration not expressible; target creature's
-//! P/T lookup not available via PendingTrigger accessors for upkeep triggers.
+//! GAP: "until the END of your next upkeep" approximated by
+//! Duration::UntilNextUpkeepOf (expires as that upkeep begins — the refresh
+//! trigger fires in the same step, so only the in-upkeep window differs).
+//! GAP: "other than Halfdane" self-exclusion not expressible on the target filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -65,11 +67,12 @@ fn on_upkeep(
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let p = arcana_core::script::power_of(state, *id);
     let t = arcana_core::script::toughness_of(state, *id);
-    // GAP: "until end of your next upkeep" duration; using EndOfTurn as approximation.
+    // "until the end of your next upkeep" — UntilNextUpkeepOf expires as
+    // that upkeep begins; the refresh trigger fires in the same step.
     vec![Effect::SetBasePT {
         target: trig.source,
         power: p,
         toughness: t,
-        duration: Duration::EndOfTurn,
+        duration: Duration::UntilNextUpkeepOf(trig.controller),
     }]
 }

@@ -1,8 +1,9 @@
 //! Giant Slug — `{1}{B}` 1/1 Slug.
 //! `{5}: At the beginning of your next upkeep, choose a basic land type. This creature gains
 //! landwalk of the chosen type until the end of that turn.`
-//! GAP: "at the beginning of your next upkeep" — delayed upkeep trigger; no Effect variant
-//! for scheduling a delayed "choose and grant landwalk". Full effect not expressible.
+//! GAP: the delayed-upkeep window itself is now schedulable
+//! (Effect::ScheduleDelayedEffect), but "choose a basic land type" has no
+//! player-choice primitive to feed the landwalk grant — effect omitted.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -53,7 +54,8 @@ fn schedule_landwalk(
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "at the beginning of your next upkeep, choose a basic land type, gain landwalk
-    // until end of that turn" — no Effect for delayed-choice landwalk grant.
+    // GAP: the delayed window is schedulable (ScheduleDelayedEffect), but
+    // "choose a basic land type" has no player-choice primitive to feed
+    // the landwalk grant — effect omitted.
     Vec::new()
 }

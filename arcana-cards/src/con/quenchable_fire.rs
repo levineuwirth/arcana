@@ -4,7 +4,7 @@
 //! next upkeep step unless that player or that planeswalker's
 //! controller pays {U} before that step."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedWhen, Effect, OptionalPaymentKind};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -14,6 +14,7 @@ use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectOrPlayer, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
+use arcana_core::triggers::PendingTrigger;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -56,12 +57,78 @@ fn resolve(
             ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
         },
     };
-    // GAP: delayed-trigger-with-pay-to-prevent on "next upkeep" not
-    // expressible — DelayedAction doesn't have a damage variant and
-    // there's no "pay to fizzle" rider primitive.
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: dt,
-        amount: 3,
+    // The delayed "additional 3 unless {U} is paid" rider, scheduled
+    // for the next upkeep. The scheduled slots carry the target: for a
+    // player target, `controller` is that player; for a planeswalker
+    // target, `source` is the planeswalker's id (its controller is
+    // looked up when the trigger fires).
+    // GAP (narrow): printed timing is "YOUR next upkeep" and the {U}
+    // payment may be made "before that step" — modeled as a pay-{U}
+    // choice posted when the next upkeep (whoever's) begins.
+    let delayed = match dt {
+        DamageTarget::Player(p) => Effect::ScheduleDelayedEffect {
+            source: entry.source,
+            controller: p,
+            when: DelayedWhen::NextUpkeep,
+            effect: delayed_burn_player,
+        },
+        DamageTarget::Object(id) => Effect::ScheduleDelayedEffect {
+            source: id,
+            controller: entry.controller,
+            when: DelayedWhen::NextUpkeep,
+            effect: delayed_burn_object,
+        },
+    };
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: dt,
+            amount: 3,
+        },
+        delayed,
+    ]
+}
+
+/// Delayed rider, player target: at the next upkeep that player may
+/// pay {U}; if they don't, Quenchable Fire deals 3 more damage to
+/// them. `pt.controller` is the targeted player.
+fn delayed_burn_player(
+    _state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::OptionalPayment {
+        chooser: pt.controller,
+        cost: OptionalPaymentKind::Mana(ManaCost::parse("{U}").expect("valid cost")),
+        then: Box::new(Effect::Sequence(Vec::new())),
+        else_effect: Some(Box::new(Effect::DealDamage {
+            source: pt.source,
+            target: DamageTarget::Player(pt.controller),
+            amount: 3,
+        })),
+    }]
+}
+
+/// Delayed rider, planeswalker target: its current controller may pay
+/// {U}; otherwise 3 more damage. `pt.source` is the planeswalker —
+/// no-op if it has left the battlefield.
+fn delayed_burn_object(
+    state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(obj) = state.objects.get(pt.source) else { return Vec::new(); };
+    vec![Effect::OptionalPayment {
+        chooser: obj.controller,
+        cost: OptionalPaymentKind::Mana(ManaCost::parse("{U}").expect("valid cost")),
+        then: Box::new(Effect::Sequence(Vec::new())),
+        else_effect: Some(Box::new(Effect::DealDamage {
+            // GAP (narrow): the original spell's id isn't carried by the
+            // scheduler (the planeswalker occupies the `source` slot), so
+            // damage attribution falls back to the planeswalker itself.
+            source: pt.source,
+            target: DamageTarget::Object(pt.source),
+            amount: 3,
+        })),
     }]
 }

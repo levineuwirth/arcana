@@ -10,19 +10,20 @@
 //! At the beginning of your upkeep, enchanted permanent's controller sacrifices a nonland
 //! permanent of their choice, then that player loses 1 life.
 //!
-//! GAP: "sacrifice a nonland permanent of their choice" — the Sacrifice effect takes
-//! ObjectFilter::permanent().without_types(TypeLine::LAND.into()) but the chooser is the
-//! enchanted permanent's controller, not trig.controller. chooser-selection for Sacrifice
-//! is not expressible; emit the lose-life portion only and GAP the sacrifice.
-//! GAP: back-face-only triggered ability (upkeep trigger) not modeled on back face.
+//! Back-face upkeep trigger: wired face-gated to the back face; "enchanted permanent's
+//! controller sacrifices a nonland permanent of their choice" is `Effect::ChooseNFromZone`
+//! with chooser = the enchanted permanent's controller (read via `attached_to`), action
+//! Sacrifice, plus that player loses 1 life. No-op while the Aura is unattached.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, PickAction};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::state::GameState;
@@ -84,6 +85,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back face: "At the beginning of your upkeep, enchanted
+            // permanent's controller sacrifices a nonland permanent of
+            // their choice, then that player loses 1 life."
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: upkeep_strangle,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1),
     )
 }
 
@@ -98,5 +115,40 @@ fn on_dies(
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: trig.source },
         Effect::Transform { target: trig.source },
+    ]
+}
+
+/// Back face: "…enchanted permanent's controller sacrifices a nonland
+/// permanent of their choice, then that player loses 1 life." The chooser
+/// is the controller of whatever this Aura is attached to; the filter's
+/// controller constraint is evaluated from the CHOOSER's perspective.
+fn upkeep_strangle(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(p) = state
+        .objects
+        .get(trig.source)
+        .and_then(|o| o.attached_to)
+        .and_then(|host| state.objects.get(host))
+        .map(|host| host.controller)
+    else {
+        // Unattached (e.g. the dies-trigger's attach step is GAP'd) — no
+        // enchanted permanent, so no controller to act.
+        return Vec::new();
+    };
+    vec![
+        Effect::ChooseNFromZone {
+            chooser: p,
+            zone: Zone::Battlefield,
+            filter: ObjectFilter::permanent()
+                .without_types(TypeLine::LAND.into())
+                .controlled_by(ControllerConstraint::You),
+            min: 1,
+            max: 1,
+            action: PickAction::Sacrifice,
+        },
+        Effect::LoseLife { player: p, amount: 1 },
     ]
 }

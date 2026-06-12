@@ -2,11 +2,12 @@
 //! I — Create a 2/1 green Spider creature token with reach.
 //! II — Put a +1/+1 counter on target creature you control.
 //!   It becomes a legendary Spider Hero in addition to its other types.
-//!   (GAP: "becomes legendary Spider Hero in addition to its other types" type/supertype change not modeled)
+//!   (Spider+Hero via targeted subtype-add continuous effect, Duration::Permanent;
+//!   GAP: the "legendary" supertype add is not modeled — no supertype-add effect)
 //! III — Target creature you control gains double strike until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -25,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Origin of Spider-Man");
     let saga_sub = reg.interner_mut().intern("Saga");
     let _spider_sub = reg.interner_mut().intern("Spider"); // pre-intern for token use in chapter_i
+    let _hero_sub = reg.interner_mut().intern("Hero"); // pre-intern for chapter_ii subtype-add
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(saga_sub);
 
@@ -132,16 +134,28 @@ fn chapter_i(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> V
     }]
 }
 
-fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+fn chapter_ii(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "becomes a legendary Spider Hero in addition to its other types" — type/supertype
-    // addition not expressible as an Effect variant.
-    vec![Effect::AddCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    let mut subs = SubtypeSet::default();
+    for sub in ["Spider", "Hero"] {
+        if let Some(s) = reg.interner().lookup(sub) {
+            subs.0.insert(s);
+        }
+    }
+    // "It becomes a legendary Spider Hero in addition to its other types" —
+    // Spider+Hero via targeted subtype-add, Duration::Permanent.
+    // GAP: the "legendary" supertype add is not modeled (no supertype-add effect).
+    vec![
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::add_subtypes(trig.source, *id, subs, Duration::Permanent),
+        },
+    ]
 }
 
 fn chapter_iii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

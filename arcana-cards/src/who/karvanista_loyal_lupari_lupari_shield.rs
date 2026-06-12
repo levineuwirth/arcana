@@ -3,8 +3,6 @@
 //! "Whenever Karvanista attacks, put a +1/+1 counter on each Human you control."
 //! Adventure face "Lupari Shield" (`{1}{G}` Sorcery):
 //! "Humans you control gain indestructible until your next turn."
-//! GAP: "until your next turn" duration not in Duration catalog;
-//! best-effort grants until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -108,13 +106,12 @@ fn lupari_shield(
     let filter = script::subtype_filter(reg, "Human")
         .controlled_by(ControllerConstraint::You);
     let ids = script::ids_matching(state, &filter, entry.controller);
-    // GAP: "until your next turn" not in Duration; using EndOfTurn as placeholder
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::GrantKeyword {
             target: NULL_OBJECT_ID,
             keyword: KeywordAbility::Indestructible,
-            duration: Duration::EndOfTurn,
+            duration: Duration::UntilYourNextTurn(entry.controller),
         }),
     }]
 }
