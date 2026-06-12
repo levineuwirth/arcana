@@ -1,9 +1,8 @@
 //! Stoneshaker Shaman — `{2}{R}` 1/1 red Creature — Human Shaman.
 //! "At the beginning of each player's end step, that player sacrifices an
 //! untapped land of their choice."
-//! GAP: "that player sacrifices an untapped land" — Sacrifice effect uses
-//! ObjectFilter but no "that player" accessor (the triggering player); also
-//! untapped_only land filter. Using StepBegins/End/Any and best-effort.
+//! "That player" is the end-step owner — the active player while the
+//! trigger resolves (`state.active_player()`).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -53,15 +52,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_end_step_sacrifice_land(
-    _state: &GameState,
-    trig: &PendingTrigger,
+    state: &GameState,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that player" (the player whose end step it is) not accessible via
-    // trig; using trig.controller as approximation. Also "untapped land" filter
-    // for Sacrifice uses untapped_only() but no land-type filter.
+    // "That player" = whose end step it is = the active player.
+    let them = state.active_player();
     vec![Effect::Sacrifice {
-        player: trig.controller,
+        player: them,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()).untapped_only(),
         count: 1,
     }]

@@ -2,8 +2,9 @@
 //! "When this artifact enters, exile target nonland permanent an
 //! opponent controls until this artifact leaves the battlefield." and
 //! "{T}: Add {W}."
-//! The exile and the mana ability are wired; the "until this artifact
-//! leaves the battlefield" return rider is a documented GAP.
+//! The exile is wired via `Effect::ExileUntilSourceLeaves` — the engine
+//! returns the card when this artifact leaves the battlefield — plus the
+//! mana ability.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -73,10 +74,12 @@ fn etb_exile_target(
     let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "until this artifact leaves the battlefield" — the linked
-    // return of the exiled permanent when this artifact leaves is not
-    // expressible; the exile is permanent.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled card when this
+    // artifact leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }
 
 fn add_white_mana(

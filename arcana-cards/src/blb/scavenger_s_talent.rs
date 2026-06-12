@@ -5,8 +5,10 @@
 //! Level 3: "At the beginning of your end step, you may sacrifice 3 nonland
 //!           permanents. If you do, return a creature from your GY to the
 //!           battlefield with a finality counter on it."
-//! GAP: Level 3 "finality counter" not in CounterKind catalog.
-//! GAP: Level 3 "sacrifice 3 nonland permanents" conditional not expressible.
+//! GAP: Level 3 "you may sacrifice 3 nonland permanents; if you do, ..."
+//! optional-payment conditional not expressible (the finality counter
+//! itself WOULD be — `CounterKind::Named("finality")` riding
+//! `ReturnFromGraveyardWithCounters` — once the payment gate exists).
 
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaCost;
@@ -142,9 +144,11 @@ fn end_step_reanimate(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice 3 nonland permanents; if you do, reanimate with finality
-    // counter" — OptionalPayment doesn't support sacrifice-N; finality counter
-    // not in CounterKind
+    // GAP: "you may sacrifice 3 nonland permanents; if you do, reanimate
+    // with a finality counter" — OptionalPayment doesn't support
+    // sacrifice-N. The counter itself is expressible
+    // (Named("finality") via ReturnFromGraveyardWithCounters) once the
+    // payment gate exists.
     Vec::new()
 }
 

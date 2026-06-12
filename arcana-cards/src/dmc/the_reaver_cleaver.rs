@@ -2,12 +2,12 @@
 //! "Equipped creature gets +1/+1 and has trample and 'Whenever this
 //! creature deals combat damage to a player or planeswalker, create
 //! that many Treasure tokens.' Equip {3}." The +1/+1 static is
-//! installed via an ETB [`ContinuousEffect::attached_pt`]; the trample
-//! grant and the granted Treasure trigger are GAPs (no attached
-//! keyword / triggered-ability grant for the dynamic equipped
-//! creature).
+//! installed via an ETB [`ContinuousEffect::attached_pt`] and the
+//! trample grant via [`ContinuousEffect::attached_keyword`]; the
+//! granted Treasure trigger is a GAP (no attached triggered-ability
+//! grant for the dynamic equipped creature).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -49,9 +49,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 /// ETB trigger: install the layer-7c "equipped creature gets +1/+1"
-/// continuous effect anchored to this Equipment.
-// GAP: 'equipped creature has trample' — attached_pt covers P/T only
-// (no attached keyword grant yet)
+/// continuous effect and the "has trample" keyword grant, both anchored
+/// to this Equipment.
 // GAP: 'equipped creature has "Whenever this creature deals combat
 // damage to a player or planeswalker, create that many Treasure
 // tokens"' — no attached triggered-ability grant that follows the
@@ -61,12 +60,21 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Trample,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

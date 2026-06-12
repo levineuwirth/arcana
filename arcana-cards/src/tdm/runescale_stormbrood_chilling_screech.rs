@@ -4,9 +4,6 @@
 //! Adventure face "Chilling Screech" (`{1}{U}` Instant — Omen): Counter target
 //! spell with mana value 2 or less.
 //!
-//! GAP: "Counter target spell with mana value 2 or less" — there is no
-//! Effect::CounterSpell variant in the engine; the adventure resolves with
-//! Vec::new().
 //! GAP: "Whenever you cast a noncreature spell or a Dragon spell" trigger —
 //! TriggerCondition::SpellCast is not in the demonstrated API; omitted.
 
@@ -16,7 +13,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -80,10 +79,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn chilling_screech_resolve(
     _state: &GameState,
-    _entry: &StackEntry,
+    entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Effect::CounterSpell not in engine API; counter target spell with
-    // mana value 2 or less is not expressible.
-    Vec::new()
+    // Counter the targeted spell (mana value 2 or less, enforced by the filter).
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

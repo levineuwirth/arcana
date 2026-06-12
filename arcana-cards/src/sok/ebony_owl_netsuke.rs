@@ -1,17 +1,15 @@
 //! Ebony Owl Netsuke — `{2}` artifact (Saviors of Kamigawa, 2005).
 //! "At the beginning of each opponent's upkeep, if that player has seven
 //! or more cards in hand, this artifact deals 4 damage to that player."
-//! StepBegins(Upkeep, Opponent) trigger; "that player" is read as the
-//! opponent (exact in two-player games). The intervening-if gates on the
-//! UPKEEP player's hand, which the intervening-if signature (source +
-//! controller only) cannot reference — the check is performed in the
-//! effect body instead (resolution-time only; a documented timing
-//! fidelity gap).
+//! StepBegins(Upkeep, Opponent) trigger; "that player" is the upkeep
+//! owner — the active player while the trigger fires/resolves
+//! (`state.active_player()`). The intervening-if gates on that player's
+//! hand size.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -20,7 +18,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,11 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Opponent,
                 },
-                // GAP: intervening-if "if that player has seven or more
-                // cards in hand" gates on the upkeep player, which the
-                // intervening-if fn signature cannot reference; checked in
-                // the effect body instead.
-                intervening_if: None,
+                // "…if that player has seven or more cards in hand…" —
+                // "that player" is the upkeep owner (the active player).
+                intervening_if: Some(if_upkeep_player_full_hand),
                 effect: ping_full_hand,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -54,20 +50,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// "…if that player has seven or more cards in hand…"
+fn if_upkeep_player_full_hand(
+    s: &GameState,
+    _src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    script::hand_size(s, s.active_player()) >= 7
+}
+
 fn ping_full_hand(
     state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    let Some(&p) = opponents.first() else {
-        return Vec::new();
-    };
-    if script::hand_size(state, p) < 7 {
-        return Vec::new();
-    }
+    // "That player" = whose upkeep it is = the active player.
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(p),
+        target: DamageTarget::Player(state.active_player()),
         amount: 4,
         source: trig.source,
     }]

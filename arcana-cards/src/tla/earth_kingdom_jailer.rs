@@ -3,10 +3,8 @@
 //! enchantment an opponent controls with mana value 3 or greater until
 //! this creature leaves the battlefield."
 //!
-//! GAP: "until this creature leaves the battlefield" — conditional
-//! return on the exile not expressible with ExilePermanent alone;
-//! the delayed-return-when-source-dies pattern requires additional
-//! trigger infrastructure.
+//! Wired via Effect::ExileUntilSourceLeaves — the engine returns the
+//! exiled permanent when this creature leaves the battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -72,8 +70,10 @@ fn etb_exile_permanent(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "until this creature leaves the battlefield" — only the exile
-    // half is emitted; return-when-source-leaves requires additional
-    // trigger infrastructure not modeled here.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled permanent when this
+    // creature leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

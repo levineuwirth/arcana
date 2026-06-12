@@ -1,10 +1,10 @@
 //! Hard-Won Jitte — `{1}{R}` artifact — Equipment.
 //! "Equipped creature has double strike. Equip {2}."
-//! The Equip half is wired via `with_equip`; the keyword-only static
-//! ("has double strike") has no attached-keyword continuous effect yet,
-//! so the ETB install is an honest GAP.
+//! The Equip half is wired via `with_equip`; the double-strike half
+//! installs an `attached_keyword` continuous effect on ETB.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -43,12 +43,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// "Equipped creature has double strike." — keyword-only static.
+/// "Equipped creature has double strike." — attached keyword grant that
+/// follows the attachment dynamically.
 fn etb_install_static(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has double strike' — attached_pt covers P/T only (no attached keyword grant yet)
-    Vec::new()
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_keyword(
+            trig.source,
+            KeywordAbility::DoubleStrike,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

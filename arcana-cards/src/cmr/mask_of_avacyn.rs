@@ -1,12 +1,10 @@
 //! Mask of Avacyn — `{2}` artifact — Equipment.
 //! "Equipped creature gets +1/+2 and has hexproof. Equip {3}." The
 //! +1/+2 is a layer-7c `ContinuousEffect::attached_pt` installed by
-//! an ETB trigger; `with_equip` wires the canonical Equip activation.
-//!
-//! GAP: "equipped creature has hexproof" — attached_pt covers P/T
-//! only (no attached keyword grant yet).
+//! an ETB trigger; the hexproof grant is an `attached_keyword`
+//! sibling; `with_equip` wires the canonical Equip activation.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -46,20 +44,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// ETB trigger: install the "equipped creature gets +1/+2" layer.
-/// GAP: "equipped creature has hexproof" — attached_pt covers P/T
-/// only (no attached keyword grant yet).
+/// ETB trigger: install the "equipped creature gets +1/+2" layer plus
+/// the attached hexproof grant.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has hexproof" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Hexproof,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

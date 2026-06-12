@@ -3,10 +3,9 @@
 //! permanent an opponent controls until this enchantment leaves the
 //! battlefield. You gain 2 life."
 //!
-//! // GAP: the "until this enchantment leaves the battlefield" return
-//! // linkage (O-Ring exile) is not expressible — `DelayedAction`'s
-//! // `ThisDies` watches a known id, not the exiling source leaving; the
-//! // exile is permanent here.
+//! The exile is wired via `Effect::ExileUntilSourceLeaves` — the engine
+//! returns the card when this enchantment leaves the battlefield — plus
+//! the lifegain.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -64,9 +63,12 @@ fn hold_and_gain(
 ) -> Vec<Effect> {
     let mut effects = Vec::new();
     if let Some(TargetChoice::Object(id)) = trig.targets.targets.first() {
-        // GAP: "until this enchantment leaves the battlefield" return
-        // linkage not expressible — the exile is permanent.
-        effects.push(Effect::ExilePermanent { target: *id });
+        // O-Ring linkage: the engine returns the exiled card when this
+        // enchantment leaves the battlefield.
+        effects.push(Effect::ExileUntilSourceLeaves {
+            source: trig.source,
+            target: *id,
+        });
     }
     effects.push(Effect::GainLife {
         player: trig.controller,

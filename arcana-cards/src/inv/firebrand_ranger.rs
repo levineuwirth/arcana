@@ -1,8 +1,5 @@
 //! Firebrand Ranger — `{1}{R}` 2/1 red Human Soldier Ranger.
 //! "{G}, {T}: You may put a basic land card from your hand onto the battlefield."
-//!
-//! GAP: "Put a basic land card from your hand onto the battlefield" is not expressible via
-//! TutorToBattlefield (which searches the library). There is no Effect for playing from hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +9,8 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::targets::ObjectFilter;
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Firebrand Ranger");
@@ -55,9 +53,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn play_land_from_hand(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: No Effect for putting a card from hand onto the battlefield.
-    Vec::new()
+    // "You may put a basic land card from your hand onto the battlefield" —
+    // optional pick over the controller's hand.
+    vec![Effect::PutFromHandOntoBattlefield {
+        player: ctx.controller,
+        filter: ObjectFilter::new()
+            .with_types(TypeLine::LAND.into())
+            .with_supertypes(SupertypeSet::new().with(SupertypeSet::BASIC)),
+        tapped: false,
+    }]
 }

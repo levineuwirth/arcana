@@ -1,6 +1,6 @@
 //! Tranquilize — `{1}{U}` sorcery. "Tap target creature an opponent
-//! controls and put three stun counters on it." Stun counters aren't
-//! in CounterKind (only PlusOnePlusOne); we emit Tap and GAP stun.
+//! controls and put three stun counters on it." Tap plus three
+//! `CounterKind::Stun` counters.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +12,7 @@ use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
     TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tranquilize");
@@ -46,6 +46,12 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: stun counters not in CounterKind.
-    vec![Effect::Tap { target: *id }]
+    vec![
+        Effect::Tap { target: *id },
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::Stun,
+            count: 3,
+        },
+    ]
 }

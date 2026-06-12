@@ -3,9 +3,9 @@
 //! controls until this enchantment leaves the battlefield. You gain 2
 //! life."
 //!
-//! ETB-targeted exile plus the lifegain are wired; the "until this
-//! enchantment leaves the battlefield" return is a GAP — no primitive
-//! links an exiled card's return to another permanent leaving.
+//! ETB-targeted exile wired via `Effect::ExileUntilSourceLeaves` — the
+//! engine returns the card when this enchantment leaves the battlefield
+//! — plus the lifegain.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -66,11 +66,13 @@ fn exile_and_gain(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "until this enchantment leaves the battlefield" — no
-    // primitive returns the exiled card when this enchantment leaves,
-    // so the exile is permanent here.
+    // O-Ring linkage: the engine returns the exiled card when this
+    // enchantment leaves the battlefield.
     vec![
-        Effect::ExilePermanent { target: *id },
+        Effect::ExileUntilSourceLeaves {
+            source: trig.source,
+            target: *id,
+        },
         Effect::GainLife {
             player: trig.controller,
             amount: 2,

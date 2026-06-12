@@ -1,9 +1,9 @@
 //! Accorder's Shield — `{0}` artifact — Equipment.
 //! "Equipped creature gets +0/+3 and has vigilance. Equip `{3}`."
 //! The +0/+3 half installs an `attached_pt` continuous effect; the
-//! vigilance grant is a documented gap (no attached keyword grant yet).
+//! vigilance half installs an `attached_keyword` continuous effect.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -43,20 +43,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// ETB trigger: install the "+0/+3 to equipped creature" layer effect.
+/// ETB trigger: install the "+0/+3 to equipped creature" layer effect
+/// and the "equipped creature has vigilance" keyword grant.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has vigilance' — attached_pt covers P/T only
-    // (no attached keyword grant yet)
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            0,
-            3,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                0,
+                3,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Vigilance,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

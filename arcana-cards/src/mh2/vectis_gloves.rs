@@ -2,7 +2,8 @@
 //! "Equipped creature gets +2/+0 and has artifact landwalk. Equip {2}."
 //! The +2/+0 static is installed via an ETB
 //! [`ContinuousEffect::attached_pt`]; the artifact-landwalk grant is a
-//! GAP (no attached keyword grant, and nonbasic landwalk is unmodeled).
+//! GAP (attached keyword grants exist, but artifact landwalk is
+//! unmodeled — `KeywordAbility::Landwalk` carries land subtypes only).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -46,8 +47,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 /// ETB trigger: install the layer-7c "equipped creature gets +2/+0"
 /// continuous effect anchored to this Equipment.
-// GAP: 'equipped creature has artifact landwalk' — attached_pt covers
-// P/T only (no attached keyword grant yet; nonbasic landwalk unmodeled)
+// GAP: 'equipped creature has artifact landwalk' — attached keyword
+// grants exist, but artifact landwalk is unmodeled
+// (KeywordAbility::Landwalk carries land subtypes only).
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,

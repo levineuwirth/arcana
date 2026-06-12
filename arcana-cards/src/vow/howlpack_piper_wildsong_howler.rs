@@ -10,17 +10,22 @@
 //! Nightbound (GAP: day/night not modeled).
 //!
 //! GAP: "This spell can't be countered" is a static property, not expressible.
-//! GAP: "{1}{G}, {T}: put a creature card from your hand onto the battlefield"
-//! — no Effect::PutFromHandToBattlefield variant; omitted.
-//! GAP: "If it's a Wolf or Werewolf, untap this creature" conditional untap; omitted.
+//! GAP: "If it's a Wolf or Werewolf, untap this creature" — conditional untap
+//! keyed on the picked card; omitted.
 //! GAP: Daybound/Nightbound keywords not in engine keyword set.
 //! GAP: back-face-only triggered ability not modeled
 //! (Whenever this creature enters or transforms into Wildsong Howler, look at
 //! the top six cards... — ETB/transform-into trigger on back face only).
 
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
+use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,7 +46,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(2)),
         // GAP: Daybound keyword not in engine keyword set
         // GAP: "This spell can't be countered" static property not expressible
-        // GAP: {1}{G}, {T}: put creature from hand to battlefield — no API variant
         ..Default::default()
     };
 
@@ -71,6 +75,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
+            // Front face: "{1}{G}, {T}: You may put a creature card from your
+            // hand onto the battlefield. ... Activate only as a sorcery."
+            // GAP: "If it's a Wolf or Werewolf, untap this creature" rider omitted.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{1}{G}, {T}: You may put a creature card from your hand onto the battlefield. If it's a Wolf or Werewolf, untap this creature. Activate only as a sorcery.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{1}{G}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(0),
+                effect: put_creature_from_hand,
+            })
             .with_transform_back(back),
     )
+}
+
+fn put_creature_from_hand(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "You may put a creature card from your hand onto the battlefield" —
+    // optional pick over the controller's hand.
+    vec![Effect::PutFromHandOntoBattlefield {
+        player: ctx.controller,
+        filter: ObjectFilter::creature(),
+        tapped: false,
+    }]
 }

@@ -2,10 +2,11 @@
 //! "Equipped creature gets +0/+2 and has hexproof and \"Whenever a creature
 //! with deathtouch blocks or becomes blocked by this creature, destroy that
 //! creature.\" Equip {2}"
-//! The +0/+2 static installs via attached_pt; the hexproof grant and the
-//! granted triggered ability have no attached-ability surface (GAP).
+//! The +0/+2 static installs via attached_pt and the hexproof grant via
+//! attached_keyword; the granted triggered ability has no
+//! attached-ability surface (GAP).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -52,17 +53,26 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has hexproof" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
+    // "equipped creature gets +0/+2 and has hexproof" — attached P/T plus
+    // an attached keyword grant, both following the attachment.
     // GAP: granted triggered ability "Whenever a creature with deathtouch
     // blocks or becomes blocked by this creature, destroy that creature" —
     // no attached triggered-ability grant.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            0,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                0,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Hexproof,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

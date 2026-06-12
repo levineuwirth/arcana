@@ -1,10 +1,10 @@
 //! Leather Armor — `{1}` artifact — Equipment.
 //! "Equipped creature gets +0/+1 and has ward {1}." and "Equip {0}.
 //! Activate only once each turn." The +0/+1 is installed as an
-//! attached-PT continuous effect; the ward grant and the once-per-turn
-//! equip limit are GAPs.
+//! attached-PT continuous effect and the ward {1} grant as an
+//! attached-keyword sibling; the once-per-turn equip limit is a GAP.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -51,14 +51,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has ward {1}" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            0,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                0,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has ward {1}" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Ward(ManaCost::parse("{1}").expect("valid cost")),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

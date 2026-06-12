@@ -1,10 +1,10 @@
 //! Crystal Slipper — `{1}{R}` artifact — Equipment (Eldraine).
 //! "Equipped creature gets +1/+0 and has haste. Equip {1}."
 //!
-//! The +1/+0 half installs as attached P/T; the haste grant is not
-//! expressible on the attached creature (GAP noted).
+//! The +1/+0 half installs as attached P/T; the haste grant installs as
+//! an attached keyword continuous effect.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -49,14 +49,23 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... has haste" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    // "equipped creature gets +1/+0 and has haste" — attached P/T plus an
+    // attached keyword grant, both following the attachment dynamically.
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Haste,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

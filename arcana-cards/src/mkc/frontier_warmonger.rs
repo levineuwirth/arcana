@@ -1,24 +1,25 @@
 //! Frontier Warmonger — `{3}{R}` 4/4 red Creature — Human Warrior.
 //! "Whenever one or more creatures attack one of your opponents or a
 //! planeswalker they control, those creatures gain menace until end of turn."
-//! GAP: "attack one of your opponents or a planeswalker they control" filter
-//! and "those attacking creatures" as a dynamic set are not expressible;
-//! CreatureAttacks fires per-creature so using ForEach over all your
-//! attackers is an approximation. Using CreatureAttacks/Any as trigger.
+//! Wired via CreatureAttacks + trig.attacking_creature(): the trigger fires
+//! once per attacker, granting menace to THAT creature when it attacks an
+//! opponent or a planeswalker an opponent controls (per-creature firing of
+//! the batched "one or more" trigger; same end state).
 
+use arcana_core::combat::DefendingEntity;
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::events::GameEvent;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Frontier Warmonger");
@@ -41,10 +42,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "attack opponent/planeswalker" filter not expressible;
-                // using CreatureAttacks/Any as approximation
+                // Any creature attacking; the "one of your opponents or a
+                // planeswalker they control" defender check happens in the
+                // effect fn via the CreatureAttacks event.
                 trigger_condition: TriggerCondition::CreatureAttacks {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature(),
                 },
                 intervening_if: None,
                 effect: on_creature_attacks_grant_menace,
@@ -60,19 +62,28 @@ fn on_creature_attacks_grant_menace(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should target "those creatures" (the attackers); granting menace to
-    // all attacking creatures you control as approximation
-    let ids = script::ids_matching(
-        state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
-        trig.controller,
-    );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::GrantKeyword {
-            target: NULL_OBJECT_ID,
-            keyword: KeywordAbility::Menace,
-            duration: Duration::EndOfTurn,
-        }),
+    // Grant menace to THE attacking creature when it attacks an opponent
+    // or a planeswalker an opponent controls.
+    let Some(id) = trig.attacking_creature() else {
+        return Vec::new();
+    };
+    let GameEvent::CreatureAttacks { defending, .. } = &trig.trigger_event else {
+        return Vec::new();
+    };
+    let attacks_an_opponent = match defending {
+        DefendingEntity::Player(p) => *p != trig.controller,
+        DefendingEntity::Planeswalker(pw) => state
+            .objects
+            .get(*pw)
+            .is_some_and(|o| o.controller != trig.controller),
+        DefendingEntity::Battle(_) => false,
+    };
+    if !attacks_an_opponent {
+        return Vec::new();
+    }
+    vec![Effect::GrantKeyword {
+        target: id,
+        keyword: KeywordAbility::Menace,
+        duration: Duration::EndOfTurn,
     }]
 }

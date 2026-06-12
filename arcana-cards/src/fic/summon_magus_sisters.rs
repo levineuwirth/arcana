@@ -3,7 +3,7 @@
 //! "Combine Powers!" — put three +1/+1 counters on target creature;
 //! "Defense!" — put a shield counter on target creature, you gain 3 life;
 //! "Fight!" — this creature fights up to one target creature an opponent controls.
-//! GAP: shield counter (CounterKind::Shield not in catalog) modeled as +1/+1 counter proxy.
+//! "Defense!" uses the dedicated `CounterKind::Shield`.
 //! GAP: "choose one at random" dispatch not modeled — chapters emit one representative effect.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
@@ -132,7 +132,7 @@ fn chapter_i(
     ]
 }
 
-/// Chapter II — "Defense!" (random choice representative): +1/+1 counter proxy for shield, gain 3 life.
+/// Chapter II — "Defense!" (random choice representative): shield counter, gain 3 life.
 fn chapter_ii(
     _state: &GameState,
     trig: &PendingTrigger,
@@ -140,9 +140,8 @@ fn chapter_ii(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: shield counter not in CounterKind catalog; using +1/+1 as proxy
     vec![
-        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
+        Effect::AddCounters { target: *id, kind: CounterKind::Shield, count: 1 },
         Effect::GainLife { player: trig.controller, amount: 3 },
     ]
 }

@@ -2,10 +2,10 @@
 //! "Equipped creature gets +1/+0 and has flying. Equip {2}"
 //!
 //! The Equip activation is wired via `with_equip`; the +1/+0 static
-//! installs `ContinuousEffect::attached_pt`. The flying grant is a
-//! documented gap (no attached keyword grant yet).
+//! installs `ContinuousEffect::attached_pt` and the flying grant
+//! installs `ContinuousEffect::attached_keyword`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -50,14 +50,23 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has flying" — attached_pt covers P/T only
-    // (no attached keyword grant yet); only the +1/+0 half is installed.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    // "equipped creature gets +1/+0 and has flying" — attached P/T plus
+    // an attached keyword grant, both following the attachment.
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Flying,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

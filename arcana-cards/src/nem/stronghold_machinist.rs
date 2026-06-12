@@ -1,8 +1,5 @@
 //! Stronghold Machinist — `{2}{U}` 1/1 blue Human Spellshaper.
 //! "{U}{U}, {T}, Discard a card: Counter target noncreature spell."
-//! GAP: "Discard a card" (not self) is not an ActivationCost field;
-//! approximated as mana+tap only.
-//! GAP: "Counter target noncreature spell" — no Effect::CounterSpell variant.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,6 +9,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -34,14 +34,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: "Discard a card" (not self) — approximated as {U}{U}+tap only.
                 text: "{U}{U}, {T}, Discard a card: Counter target noncreature spell.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{U}{U}").unwrap(),
                     tap: true,
+                    discard_other: Some(ObjectFilter::default()),
                     ..ActivationCost::default()
                 },
-                target_requirements: Vec::new(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Spell(
+                        ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
@@ -54,9 +60,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_noncreature(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: No Effect::CounterSpell variant; cannot counter target noncreature spell.
-    Vec::new()
+    // Counter the targeted noncreature spell.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

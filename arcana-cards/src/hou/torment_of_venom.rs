@@ -1,8 +1,9 @@
 //! Torment of Venom — `{2}{B}{B}` instant. "Put three -1/-1 counters
 //! on target creature. Its controller loses 3 life unless they
 //! sacrifice another nonland permanent of their choice or discard a
-//! card." The unless-choice rider is not expressible; emit the
-//! counters and a flat 3 life loss as a best-effort.
+//! card." The -1/-1 counters are wired (`CounterKind::MinusOneMinusOne`);
+//! the unless-choice rider is not expressible — emit a flat 3 life
+//! loss as a best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -42,8 +43,14 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let ctrl = script::target_controller(state, *id, entry.controller);
-    // GAP: -1/-1 counters not in CounterKind catalog (only PlusOnePlusOne); using PlusOnePlusOne is wrong-signed, so omit the counter effect.
+    // GAP: "unless they sacrifice another nonland permanent or discard a
+    // card" — the unless-payment choice is not expressible; flat life loss.
     vec![
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::MinusOneMinusOne,
+            count: 3,
+        },
         Effect::LoseLife { player: ctrl, amount: 3 },
     ]
 }

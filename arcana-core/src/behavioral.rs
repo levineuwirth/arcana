@@ -496,7 +496,34 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         for k in kinds { lib.push(make_typed_card(&mut state, p, Zone::Library(p), k.into())); }
         lib.push(make_tribal_creature(&mut state, p, Zone::Library(p), &tribes));
         state.player_mut(p).library_top_to_bottom = lib;
-        for _ in 0..2 { make_card(&mut state, p, Zone::Hand(p)); }
+        // Hand: a GREEN ARTIFACT CREATURE and a BASIC LAND (not
+        // type-less dummies) so "put a [type] card from your hand
+        // onto the battlefield" effects find a candidate across the
+        // common filters (creature / artifact / colored creature /
+        // basic land). Exactly two cards — hand-SIZE reads (Iron
+        // Maiden, Wheel of Torture's 3-minus-hand) must not shift.
+        {
+            let id = state.allocate_object_id();
+            let chars = Characteristics {
+                types: crate::types::TypeLine(
+                    TypeLine::CREATURE | TypeLine::ARTIFACT).into(),
+                colors: crate::types::ColorSet::green(),
+                power: Some(crate::types::PtValue::Fixed(2)),
+                toughness: Some(crate::types::PtValue::Fixed(2)),
+                ..Default::default()
+            };
+            state.objects.insert(GameObject::new(id, p, Zone::Hand(p), 0, chars));
+        }
+        {
+            let id = state.allocate_object_id();
+            let chars = Characteristics {
+                types: TypeLine::LAND.into(),
+                supertypes: crate::types::SupertypeSet::new()
+                    .with(crate::types::SupertypeSet::BASIC),
+                ..Default::default()
+            };
+            state.objects.insert(GameObject::new(id, p, Zone::Hand(p), 0, chars));
+        }
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::CREATURE.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::LAND.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::ARTIFACT.into());
@@ -686,12 +713,6 @@ fn add_dummy_stack_spell(state: &mut GameState) -> ObjectId {
     let entry = StackEntry::new_spell(
         id, 1, 0, chars, TargetSelection::new(), Vec::new(), None);
     state.stack.push(entry);
-    id
-}
-
-fn make_card(state: &mut GameState, owner: PlayerId, zone: Zone) -> ObjectId {
-    let id = state.allocate_object_id();
-    state.objects.insert(GameObject::new(id, owner, zone, 0, Characteristics::default()));
     id
 }
 

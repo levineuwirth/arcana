@@ -4,8 +4,9 @@
 //! III — Return target creature or planeswalker card from your graveyard to the battlefield.
 //!   Put a +1/+1 counter or a loyalty counter on it.
 //! GAP: Chapter II "noncreature spells cost {2} more" — cost-modification continuous effect not in catalog.
-//! GAP: Chapter III "target creature or planeswalker card from graveyard" — no TargetFilter for creatures-or-planeswalkers in graveyards.
-//! GAP: Chapter III "put a +1/+1 counter or a loyalty counter" — loyalty counter not in CounterKind.
+//! Chapter III: creature-or-planeswalker graveyard filter via `with_types_any`;
+//! the counter (+1/+1 for creatures, loyalty for planeswalkers) rides the
+//! return via `ReturnFromGraveyardWithCounters`.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::Effect;
@@ -101,7 +102,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Card {
                         zone: Zone::Graveyard(0),
-                        filter: ObjectFilter::creature(),
+                        filter: ObjectFilter::permanent().with_types_any(
+                            TypeLine(TypeLine::CREATURE | TypeLine::PLANESWALKER),
+                        ),
                     },
                     count: TargetCount::Exactly(1),
                     controller: None,
@@ -139,15 +142,23 @@ fn chapter_ii(
 }
 
 fn chapter_iii(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "put a +1/+1 counter or a loyalty counter" — loyalty counter not in CounterKind
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
-    ]
+    // "+1/+1 counter or a loyalty counter": loyalty for planeswalkers,
+    // +1/+1 otherwise. The counter must ride the return — the zone move
+    // re-ids the object, so a follow-up AddCounters would miss.
+    let kind = if state
+        .objects
+        .get(*id)
+        .is_some_and(|o| o.characteristics.types.is_planeswalker())
+    {
+        CounterKind::Loyalty
+    } else {
+        CounterKind::PlusOnePlusOne
+    };
+    vec![Effect::ReturnFromGraveyardWithCounters { target: *id, kind, count: 1 }]
 }

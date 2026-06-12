@@ -4,14 +4,14 @@
 //!          rest on bottom in random order.
 //! III — Put up to two non-Saga permanent cards from your hand onto the
 //!       battlefield.
-//! GAP: "look at top 7, select one" not expressible. GAP: "put from hand to
-//! battlefield" not in Effect catalog.
+//! GAP: "look at top 7, select one" not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
@@ -117,10 +117,32 @@ fn chapter_i_ii(
 
 fn chapter_iii(
     _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put up to two non-Saga permanents from hand onto the battlefield"
-    // not in Effect catalog
-    Vec::new()
+    // III — "Put up to two non-Saga permanent cards from your hand onto the
+    // battlefield": two sequential optional picks (min 0 / max 1 each).
+    let mut filter = ObjectFilter::new().with_types_any(TypeLine(
+        TypeLine::CREATURE
+            | TypeLine::ENCHANTMENT
+            | TypeLine::ARTIFACT
+            | TypeLine::LAND
+            | TypeLine::PLANESWALKER
+            | TypeLine::BATTLE,
+    ));
+    if let Some(saga) = reg.interner().lookup("Saga") {
+        filter = filter.without_subtype_sym(saga);
+    }
+    vec![
+        Effect::PutFromHandOntoBattlefield {
+            player: trig.controller,
+            filter: filter.clone(),
+            tapped: false,
+        },
+        Effect::PutFromHandOntoBattlefield {
+            player: trig.controller,
+            filter,
+            tapped: false,
+        },
+    ]
 }

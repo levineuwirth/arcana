@@ -2,13 +2,13 @@
 //! "Whenever a creature attacks you or a planeswalker you control, that
 //! creature's controller mills two cards."
 //!
-//! GAP: trigger — "attacks you or a planeswalker you control" — no
-//! TriggerCondition variant for creatures attacking a specific player;
-//! using CreatureAttacks with Any controller as closest approximation.
-//! GAP: "that creature's controller" — no accessor to retrieve the
-//! controller of the attacking creature at trigger resolution.
+//! Wired via CreatureAttacks + trig.attacking_creature(): mills the
+//! attacker's controller, gated on the attack defending Riddlekeeper's
+//! controller or a planeswalker they control (read from the event).
 
+use arcana_core::combat::DefendingEntity;
 use arcana_core::effects::Effect;
+use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -40,9 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks you or planeswalker you control"
-                // not a supported condition; using CreatureAttacks Any as
-                // closest approximation.
+                // Opponents' creatures attacking; the "attacks you or a
+                // planeswalker you control" defender check happens in the
+                // effect fn via the CreatureAttacks event.
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
                 },
@@ -56,11 +56,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_creature_attacks(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that creature's controller mills" — attacker's controller
-    // not accessible; milling the trigger controller as best effort.
-    vec![Effect::Mill { player: trig.controller, count: 2 }]
+    // Mill THAT creature's controller, only when it attacks Riddlekeeper's
+    // controller or a planeswalker they control.
+    let Some(attacker) = trig.attacking_creature() else {
+        return Vec::new();
+    };
+    let GameEvent::CreatureAttacks { defending, .. } = &trig.trigger_event else {
+        return Vec::new();
+    };
+    let attacks_us = match defending {
+        DefendingEntity::Player(p) => *p == trig.controller,
+        DefendingEntity::Planeswalker(pw) => state
+            .objects
+            .get(*pw)
+            .is_some_and(|o| o.controller == trig.controller),
+        DefendingEntity::Battle(_) => false,
+    };
+    if !attacks_us {
+        return Vec::new();
+    }
+    let Some(miller) = state.objects.get(attacker).map(|o| o.controller) else {
+        return Vec::new();
+    };
+    vec![Effect::Mill { player: miller, count: 2 }]
 }

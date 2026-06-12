@@ -1,7 +1,5 @@
 //! Llanowar Scout — `{1}{G}` 1/3 green Elf Scout.
 //! "{T}: You may put a land card from your hand onto the battlefield."
-//! GAP: "put a land card from your hand onto the battlefield" is not a modeled
-//! Effect variant. TutorToBattlefield searches library, not hand.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,6 +9,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -48,11 +47,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn put_land_from_hand(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Put a land card from your hand onto the battlefield" is not modeled.
-    // No Effect variant handles playing a card from hand directly onto the battlefield
-    // by controller choice (non-targeted, from hand zone).
-    Vec::new()
+    // "You may put a land card from your hand onto the battlefield" —
+    // optional pick over the controller's hand.
+    vec![Effect::PutFromHandOntoBattlefield {
+        player: ctx.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: false,
+    }]
 }

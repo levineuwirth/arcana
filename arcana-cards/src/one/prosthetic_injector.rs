@@ -2,10 +2,10 @@
 //! "Equipped creature gets +0/+2 and has toxic 1. Equip {1}"
 //!
 //! The Equip activation is wired via `with_equip`; the +0/+2 static
-//! installs `ContinuousEffect::attached_pt`. The toxic-1 grant is a
-//! documented gap (no attached keyword grant yet).
+//! installs `ContinuousEffect::attached_pt` and the toxic 1 grant an
+//! `attached_keyword` sibling (Toxic is layer-aware in combat damage).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -50,14 +50,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has toxic 1" — attached_pt covers P/T only
-    // (no attached keyword grant yet); only the +0/+2 half is installed.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            0,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                0,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has toxic 1" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Toxic(1),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

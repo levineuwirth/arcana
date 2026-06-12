@@ -1,13 +1,12 @@
 //! Executioner's Hood — `{2}` artifact — Equipment (Dark Ascension,
 //! 2012). "Equipped creature has intimidate." and "Equip {2}".
 //!
-//! The Equip half is wired via `with_equip`. The static half is a
-//! keyword-only grant ("equipped creature has intimidate") with no P/T
-//! component — the Wave-1 Equipment surface covers only
-//! `ContinuousEffect::attached_pt`, so the keyword grant is a documented
-//! GAP (the ETB install returns nothing).
+//! The Equip half is wired via `with_equip`. The static half
+//! ("equipped creature has intimidate") installs an `attached_keyword`
+//! continuous effect on ETB.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -46,13 +45,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// ETB install for the Equipment's static line.
+/// ETB install for the Equipment's static line: "equipped creature has
+/// intimidate" as an attached keyword grant following the attachment.
 fn etb_install_static(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has intimidate' — attached_pt covers P/T
-    // only (no attached keyword grant yet).
-    Vec::new()
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_keyword(
+            trig.source,
+            KeywordAbility::Intimidate,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

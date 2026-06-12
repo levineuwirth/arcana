@@ -16,8 +16,8 @@
 //! - The ETB trigger fires on `SelfEntersBattlefield`; the "or transforms into
 //!   Brutal Cathar" half of the trigger has no transform-into trigger condition
 //!   in the engine — only the enters half is modeled.
-//! - "until this creature leaves the battlefield" exile duration is not in the
-//!   engine; emitting plain `Effect::ExilePermanent` as best-effort.
+//! - The exile is wired via `Effect::ExileUntilSourceLeaves` — the engine
+//!   returns the card when this creature leaves the battlefield.
 //! - "Ward—Pay 3 life" is a non-mana Ward cost, which is not expressible as
 //!   `KeywordAbility::Ward(ManaCost)`; omitted from the back face keywords.
 
@@ -108,6 +108,10 @@ fn etb_exile_creature(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "until this creature leaves the battlefield" duration not in engine
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled creature when this
+    // creature leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

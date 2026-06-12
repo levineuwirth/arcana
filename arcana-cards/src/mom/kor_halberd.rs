@@ -1,9 +1,9 @@
 //! Kor Halberd — `{W}` artifact — Equipment (Zendikar Rising).
 //! "Equipped creature gets +1/+1 and has vigilance. Equip {1}". The
-//! Equip builder plus an ETB-installed attached +1/+1 pump; the
-//! attached vigilance grant is not expressible and is a GAP.
+//! Equip builder plus an ETB-installed attached +1/+1 pump and an
+//! attached vigilance keyword grant.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -48,14 +48,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has vigilance" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has vigilance" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Vigilance,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

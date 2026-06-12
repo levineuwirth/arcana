@@ -1,8 +1,11 @@
 //! Perennation — `{3}{W}{B}{G}` sorcery. "Return target permanent
 //! card from your graveyard to the battlefield with a hexproof counter
-//! and an indestructible counter on it." Only +1/+1 counters supported;
-//! hexproof / indestructible counters are NOT in CounterKind; emit
-//! reanimate and GAP both counters.
+//! and an indestructible counter on it." The hexproof counter rides the
+//! return as `CounterKind::Named("hexproof")` via
+//! `ReturnFromGraveyardWithCounters`. GAP: that primitive carries a
+//! single counter kind, so the indestructible counter (and the keyword
+//! grants from both keyword counters) are not expressible — the zone
+//! move re-ids the object, blocking card-side follow-ups.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,11 +16,13 @@ use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Perennation");
+    // Interned for the effect fn's lookup of the named counter kind.
+    reg.interner_mut().intern("hexproof");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{W}{B}{G}").expect("valid cost")),
@@ -46,11 +51,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(
     _state: &GameState,
     entry: &StackEntry,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: hexproof / indestructible counters not in CounterKind (only PlusOnePlusOne supported).
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let _ = entry.controller;
-    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
+    let Some(kind) = reg.interner().lookup("hexproof").map(CounterKind::Named) else {
+        return vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }];
+    };
+    // GAP: ReturnFromGraveyardWithCounters carries one counter kind — the
+    // indestructible counter and both keyword grants (CR 122.1g) are not
+    // expressible (the zone move re-ids the object).
+    vec![Effect::ReturnFromGraveyardWithCounters {
+        target: *id,
+        kind,
+        count: 1,
+    }]
 }

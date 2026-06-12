@@ -3,10 +3,10 @@
 //!
 //! Implementation: `.with_equip({1})` wires the canonical Equip ability;
 //! an ETB trigger installs the dynamic "equipped creature gets +1/+1"
-//! layer via [`ContinuousEffect::attached_pt`]. The vigilance/reach half
-//! of the static is GAP'd — there is no attached keyword grant yet.
+//! layer via [`ContinuousEffect::attached_pt`] plus the vigilance and
+//! reach grants via [`ContinuousEffect::attached_keyword`].
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -55,14 +55,30 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has vigilance and reach" — attached_pt covers
-    // P/T only (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has vigilance" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Vigilance,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "… and reach" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Reach,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

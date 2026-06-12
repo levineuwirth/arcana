@@ -3,10 +3,10 @@
 //! "Equipped creature gets +1/+2 and has deathtouch. Equip {2}."
 //!
 //! The Hero supertype-like card type is not in TypeLine (GAP); the
-//! +1/+2 installs normally; the deathtouch grant on the attached
-//! creature is not expressible (GAP).
+//! +1/+2 installs normally; the deathtouch grant installs an
+//! `attached_keyword` sibling.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -53,14 +53,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... has deathtouch" — attached_pt covers P/T
-    // only (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature … has deathtouch" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Deathtouch,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

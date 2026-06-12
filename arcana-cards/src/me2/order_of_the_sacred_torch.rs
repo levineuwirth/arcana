@@ -1,6 +1,5 @@
 //! Order of the Sacred Torch — `{1}{W}{W}` 2/2 Human Knight.
 //! `{T}, Pay 1 life:` Counter target black spell.
-//! GAP: "counter target spell" — no Effect::CounterSpell variant.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +9,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -58,9 +59,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_black_spell(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "counter target black spell" — no Effect::CounterSpell variant.
-    Vec::new()
+    // Counter the targeted black spell.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

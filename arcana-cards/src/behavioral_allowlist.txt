@@ -80,7 +80,6 @@ Evasive Action
 Faerie Trickery
 Fickle Efreet
 Flaccify
-Fold into Aether
 Force Spike
 Frazzle
 Fuel for the Cause
@@ -146,13 +145,11 @@ Merchant of Many Hats
 Midnight Guard
 Mijae Djinn
 Minamo's Meddling
-Mind Maggots
 Mindstatic
 Minor Misstep
 Mystic Genesis
 Mystic Skull
 Nanoform Sentinel
-Nantuko Cultivator
 Negate
 Nether Spirit
 Neutralizing Blast

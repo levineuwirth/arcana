@@ -1,10 +1,10 @@
 //! Viridian Claw — `{2}` artifact — Equipment.
 //! "Equipped creature gets +1/+0 and has first strike. Equip {1}."
 //! The +1/+0 half is a layer-7c `attached_pt` continuous effect installed
-//! on ETB; the first-strike half is a documented gap (no attached keyword
-//! grant yet).
+//! on ETB; the first-strike half installs an `attached_keyword`
+//! continuous effect alongside it.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -44,20 +44,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// ETB trigger: install the "equipped creature gets +1/+0" layer effect.
+/// ETB trigger: install the "equipped creature gets +1/+0" layer effect
+/// and the "has first strike" keyword grant.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has first strike' — attached_pt covers P/T only
-    // (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::FirstStrike,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

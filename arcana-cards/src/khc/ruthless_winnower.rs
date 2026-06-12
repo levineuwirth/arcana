@@ -1,7 +1,7 @@
 //! Ruthless Winnower — `{3}{B}{B}` 4/4 black Elf Rogue. "At the beginning of each
 //! player's upkeep, that player sacrifices a non-Elf creature of their choice."
-//! StepBegins(Upkeep, Any); sacrifice non-Elf creature from active player.
-//! GAP: "that player" (upkeep player) not directly accessible; using all_players approach.
+//! StepBegins(Upkeep, Any); "that player" is the upkeep owner — the active
+//! player while the trigger resolves (`state.active_player()`).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,7 +15,6 @@ use arcana_core::triggers::{
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::script;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ruthless Winnower");
@@ -53,21 +52,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn on_each_upkeep(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Each player sacrifices a non-Elf creature ("Elf" interned in
-    // register; on a failed lookup skip the exclusion).
+    // "That player" = whose upkeep it is = the active player. The upkeep
+    // owner sacrifices a non-Elf creature ("Elf" interned in register; on
+    // a failed lookup skip the exclusion).
     let mut non_elf_filter = ObjectFilter::creature();
     if let Some(elf) = reg.interner().lookup("Elf") {
         non_elf_filter = non_elf_filter.without_subtype_sym(elf);
     }
-    let players = script::all_players(state);
-    players.into_iter()
-        .map(|p| Effect::Sacrifice {
-            player: p,
-            filter: non_elf_filter.clone(),
-            count: 1,
-        })
-        .collect()
+    vec![Effect::Sacrifice {
+        player: state.active_player(),
+        filter: non_elf_filter,
+        count: 1,
+    }]
 }

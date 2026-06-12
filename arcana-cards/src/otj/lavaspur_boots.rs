@@ -2,10 +2,9 @@
 //! Junction, 2024). "Equipped creature gets +1/+0 and has haste and
 //! ward {1}. Equip {1}."
 //! The +1/+0 static is installed via `ContinuousEffect::attached_pt`;
-//! the haste and ward {1} grants are documented GAPs (no
-//! attached-keyword grant).
+//! the haste and ward {1} grants install `attached_keyword` siblings.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -46,20 +45,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 /// ETB trigger: install the layer-7c "equipped creature gets +1/+0"
-/// continuous effect anchored to this Equipment.
+/// continuous effect anchored to this Equipment, plus the attached
+/// haste and ward {1} keyword grants.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has haste and ward {1}" — attached_pt
-    // covers P/T only (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has haste" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Haste,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "… and ward {1}" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Ward(ManaCost::parse("{1}").expect("valid cost")),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

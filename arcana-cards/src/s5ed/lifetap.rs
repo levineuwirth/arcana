@@ -2,17 +2,15 @@
 //! "Whenever a Forest an opponent controls becomes tapped, you gain 1
 //! life."
 //!
-//! GAP: "a [filtered permanent] becomes tapped" has no `TriggerCondition`
-//! variant (only `SelfBecomesTapped` exists, watching THIS enchantment).
-//! The closest condition is wired so the card registers; the life gain —
-//! which IS expressible — is authored so only the trigger remains engine
-//! debt.
+//! Wired via `TriggerCondition::BecomesTapped` with a Forest-subtype
+//! filter constrained to opponent-controlled permanents.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -21,6 +19,7 @@ use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Lifetap");
+    let forest = reg.interner_mut().intern("Forest");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{U}{U}").expect("valid cost")),
@@ -32,11 +31,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_triggered_ability(
             TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "whenever a Forest an opponent controls
-                // becomes tapped" has no TriggerCondition variant;
-                // SelfBecomesTapped (this enchantment) is the closest
-                // tap-shaped condition and will not fire for Forests.
-                trigger_condition: TriggerCondition::SelfBecomesTapped,
+                // "Whenever a Forest an opponent controls becomes tapped"
+                // — filtered BecomesTapped over opponent-controlled Forests.
+                trigger_condition: TriggerCondition::BecomesTapped {
+                    filter: ObjectFilter::permanent()
+                        .with_subtype_sym(forest)
+                        .controlled_by(ControllerConstraint::Opponent),
+                },
                 intervening_if: None,
                 effect: gain_one,
                 trigger_zones: vec![Zone::Battlefield],

@@ -2,7 +2,7 @@
 //! "Equipped creature gets +2/+0 and has afflict 1. Equip {2}."
 //! The +2/+0 static is installed as a layer-7c `attached_pt` continuous
 //! effect via an ETB trigger; the afflict 1 grant is a documented gap
-//! (no attached keyword grant, and Afflict is not in the keyword surface).
+//! (Afflict is not in the keyword surface).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -51,9 +51,9 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has afflict 1' — attached_pt covers P/T only
-    // (no attached keyword grant yet, and Afflict is outside the keyword
-    // surface).
+    // GAP: 'equipped creature has afflict 1' — Afflict is outside the
+    // engine's keyword surface, so the attached keyword grant cannot
+    // express it.
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,

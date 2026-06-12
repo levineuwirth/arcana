@@ -2,10 +2,10 @@
 //! Innistrad).
 //! "Equipped creature gets +0/+3 and has vigilance. Equip {3}."
 //!
-//! The +0/+3 half installs as attached P/T; the vigilance grant is not
-//! expressible on the attached creature (GAP noted).
+//! The +0/+3 half installs as attached P/T; the vigilance grant installs
+//! an `attached_keyword` sibling.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -50,14 +50,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... has vigilance" — attached_pt covers P/T
-    // only (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            0,
-            3,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                0,
+                3,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature … has vigilance" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Vigilance,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

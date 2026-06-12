@@ -1,6 +1,5 @@
 //! Stromgald Cabal — `{1}{B}{B}` 2/2 Human Knight.
 //! `{T}, Pay 1 life: Counter target white spell.`
-//! GAP: "counter target white spell" — no counterspell Effect in catalog.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -9,7 +8,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::effects::Effect;
 
@@ -58,9 +59,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_white_spell(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "counter target white spell" — no counterspell Effect variant
-    Vec::new()
+    // Counter the targeted white spell.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

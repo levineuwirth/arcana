@@ -2,8 +2,9 @@
 //! enters, exile target nonland permanent an opponent controls and all other nonland
 //! permanents that player controls with the same name as that permanent until this
 //! creature leaves the battlefield."
-//! GAP: "and all others with same name" mass exile and "until this leaves" duration
-//! not in engine; emitting single ExilePermanent as best-effort.
+//! Wired via Effect::ExileUntilSourceLeaves — the target plus all other nonland
+//! permanents that player controls with the same name are exiled and linked; the
+//! engine returns them when this creature leaves the battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -57,12 +58,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_exile_nonland(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "all others with same name" mass exile and "until ~ leaves" duration not in engine
-    vec![Effect::ExilePermanent { target: *id }]
+    // The target plus all other nonland permanents that player controls with
+    // the same name; each is linked via ExileUntilSourceLeaves so the engine
+    // returns them when this creature leaves the battlefield.
+    let mut ids = vec![*id];
+    if let Some(t) = state.objects.get(*id) {
+        let same_name = t.characteristics.name;
+        let that_player = t.controller;
+        ids.extend(
+            state
+                .objects_in_zone(Zone::Battlefield)
+                .filter(|o| {
+                    o.id != *id
+                        && o.controller == that_player
+                        && o.characteristics.name == same_name
+                        && !o.is_land()
+                })
+                .map(|o| o.id),
+        );
+    }
+    ids.into_iter()
+        .map(|exiled| Effect::ExileUntilSourceLeaves {
+            source: trig.source,
+            target: exiled,
+        })
+        .collect()
 }

@@ -3,8 +3,8 @@
 //! this creature leaves the battlefield."
 //!
 //! # Notes
-//! GAP: "exile until this creature leaves the battlefield" — ExilePermanent is permanent exile;
-//! no "exile until source leaves" Effect variant. Using ExilePermanent as best approximation.
+//! Wired via Effect::ExileUntilSourceLeaves — the engine returns the exiled
+//! creature when this creature leaves the battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -63,6 +63,10 @@ fn etb_exile_tapped(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: exile until this creature leaves the battlefield — using permanent exile.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled creature when this
+    // creature leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

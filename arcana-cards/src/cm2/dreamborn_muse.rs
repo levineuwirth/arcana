@@ -1,9 +1,8 @@
 //! Dreamborn Muse — `{2}{U}{U}` 2/2 blue Spirit creature.
 //! "At the beginning of each player's upkeep, that player mills X cards,
 //! where X is the number of cards in their hand."
-//! Dynamic X = hand size of the upkeep player; "that player" requires knowing which
-//! player's upkeep it is — GAP: no accessor for upkeep player identity from StepBegins
-//! trigger; using trig.controller as approximation (fires for each player's upkeep).
+//! Dynamic X = hand size of the upkeep player; "that player" is the upkeep
+//! owner — the active player while the trigger resolves (`state.active_player()`).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,11 +53,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn upkeep_mill(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no accessor for "that player" (the player whose upkeep it is);
-    // approximating with trig.controller.
-    let n = script::hand_size(state, trig.controller);
-    vec![Effect::Mill { player: trig.controller, count: n }]
+    // "That player" = whose upkeep it is = the active player.
+    let them = state.active_player();
+    let n = script::hand_size(state, them);
+    vec![Effect::Mill { player: them, count: n }]
 }

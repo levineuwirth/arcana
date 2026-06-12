@@ -3,9 +3,6 @@
 //! your hand onto the battlefield tapped."
 //! GAP: "Spirit or Arcane" — same filter gap as Guardian of Solitude; using
 //! SpellCast(You) as placeholder.
-//! GAP: "put a land card from your hand onto the battlefield tapped" — no
-//! Effect variant for hand-to-battlefield with tapped; modeled as
-//! TutorToBattlefield(land, tapped: true).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -60,9 +57,9 @@ fn put_land_tapped(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "from your hand" restriction not expressible; modeled as
-    // TutorToBattlefield(land, tapped).
-    vec![Effect::TutorToBattlefield {
+    // "You may put a land card from your hand onto the battlefield tapped"
+    // — optional pick over the controller's hand.
+    vec![Effect::PutFromHandOntoBattlefield {
         player: trig.controller,
         filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
         tapped: true,

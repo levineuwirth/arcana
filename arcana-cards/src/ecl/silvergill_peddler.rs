@@ -34,8 +34,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "becomes tapped" trigger not in catalog; using SelfAttacks as closest
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // "Whenever this creature becomes tapped" — SelfBecomesTapped.
+                trigger_condition: TriggerCondition::SelfBecomesTapped,
                 intervening_if: None,
                 effect: on_tapped,
                 trigger_zones: vec![Zone::Battlefield],

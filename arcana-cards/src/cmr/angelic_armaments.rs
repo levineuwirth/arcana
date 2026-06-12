@@ -1,10 +1,11 @@
 //! Angelic Armaments — `{3}` artifact — Equipment.
 //! "Equipped creature gets +2/+2, has flying, and is a white Angel in
 //! addition to its other colors and types. Equip {4}"
-//! The +2/+2 static installs via attached_pt; the flying grant and the
-//! white-Angel color/type addition have no attached-ability surface (GAP).
+//! The +2/+2 static installs via attached_pt and the flying grant via
+//! attached_keyword; the white-Angel color/type addition has no
+//! attached-ability surface (GAP).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -51,16 +52,25 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has flying" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
+    // "equipped creature gets +2/+2 and has flying" — attached P/T plus
+    // an attached keyword grant, both following the attachment.
     // GAP: "is a white Angel in addition to its other colors and types" —
     // no attached color/type/subtype grant.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            2,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                2,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Flying,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

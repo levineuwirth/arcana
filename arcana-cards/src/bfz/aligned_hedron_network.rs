@@ -1,14 +1,13 @@
 //! Aligned Hedron Network — `{4}` artifact (Battle for Zendikar, 2015).
 //! "When this artifact enters, exile all creatures with power 5 or
-//! greater until this artifact leaves the battlefield." The board-wide
-//! exile is wired (ForEach over power >= 5 creatures); GAP: the
-//! "until this artifact leaves the battlefield" return (CR 603.6e
-//! linked exile-return) is not expressible — the exile is modeled as
-//! permanent.
+//! greater until this artifact leaves the battlefield." Board-wide
+//! exile wired as one `Effect::ExileUntilSourceLeaves` per power >= 5
+//! creature — the engine returns the linked batch when this artifact
+//! leaves the battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -48,16 +47,17 @@ fn exile_big_creatures(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until this artifact leaves the battlefield" — the linked
-    // return of the exiled creatures when the source leaves is not
-    // expressible; the exile is permanent here.
+    // One ExileUntilSourceLeaves per match: the engine returns each linked
+    // creature when this artifact leaves the battlefield.
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().with_min_power(5),
         trig.controller,
     );
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ExilePermanent { target: NULL_OBJECT_ID }),
-    }]
+    ids.into_iter()
+        .map(|id| Effect::ExileUntilSourceLeaves {
+            source: trig.source,
+            target: id,
+        })
+        .collect()
 }

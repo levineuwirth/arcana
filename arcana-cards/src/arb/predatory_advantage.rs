@@ -4,9 +4,8 @@
 //! creature token."
 //!
 //! An opponent-end-step trigger with a CR 603.4 intervening-if over
-//! `script::spells_cast_this_turn`. GAP: the intervening-if reads the
-//! FIRST opponent (the documented 2-player read) — in multiplayer
-//! "that player" (whose end step it is) has no accessor.
+//! `script::spells_cast_this_turn`. "That player" (whose end step it is)
+//! is the active player while the trigger fires/resolves.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -56,16 +55,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn if_opponent_cast_no_creature(
     s: &GameState,
     _src: ObjectId,
-    you: PlayerId,
+    _you: PlayerId,
     _reg: &CardRegistry,
 ) -> bool {
-    // GAP: "that player" (whose end step it is) has no accessor here;
-    // the first opponent is the documented 2-player read.
-    let Some(opp) = script::opponents(s, you).first().copied() else {
-        return false;
-    };
+    // "That player" = whose end step it is = the active player.
+    let them = s.active_player();
     let creature = ObjectFilter::new().with_types(TypeLine::CREATURE.into());
-    script::spells_cast_this_turn(s, &creature, opp) == 0
+    script::spells_cast_this_turn(s, &creature, them) == 0
 }
 
 /// "…create a 2/2 green Lizard creature token."

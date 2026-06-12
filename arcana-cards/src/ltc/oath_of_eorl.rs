@@ -2,16 +2,18 @@
 //! I — Create two 1/1 white Human Soldier creature tokens.
 //! II — Create two 2/2 red Human Knight creature tokens with trample and haste.
 //! III — Put an indestructible counter on up to one target Human. You become the monarch.
-//! GAP: indestructible counter not in CounterKind catalog.
+//! The indestructible counter is `CounterKind::Named("indestructible")`
+//! plus a permanent Indestructible grant (CR 122.1g).
 //! GAP: "you become the monarch" — monarch effect not in catalog.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
@@ -22,7 +24,9 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Oath of Eorl");
     let saga_sub = reg.interner_mut().intern("Saga");
-    let _human = reg.interner_mut().intern("Human");
+    let human = reg.interner_mut().intern("Human");
+    // Interned for chapter III's lookup of the named counter kind.
+    reg.interner_mut().intern("indestructible");
     let _soldier = reg.interner_mut().intern("Soldier");
     let _knight = reg.interner_mut().intern("Knight");
     let mut subtypes = SubtypeSet::default();
@@ -92,7 +96,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    // "up to one target Human" (any Human permanent).
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::permanent().with_subtype_sym(human),
+                    ),
                     count: TargetCount::UpTo(1),
                     controller: None,
                 }],
@@ -163,9 +170,25 @@ fn chapter_ii(
 fn chapter_iii(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: indestructible counter not in CounterKind
     // GAP: "you become the monarch" not in catalog
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let Some(kind) = reg.interner().lookup("indestructible").map(CounterKind::Named)
+    else {
+        return Vec::new();
+    };
+    // Indestructible counter + the keyword it grants (CR 122.1g), modeled
+    // as a permanent grant; narrowed GAP: removing the counter later
+    // would not revoke the keyword.
+    vec![
+        Effect::AddCounters { target: *id, kind, count: 1 },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::Permanent,
+        },
+    ]
 }

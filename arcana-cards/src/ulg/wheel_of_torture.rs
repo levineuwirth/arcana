@@ -3,9 +3,8 @@
 //! damage to that player, where X is 3 minus the number of cards in their
 //! hand."
 //!
-//! Fidelity note: "that player" (the upkeep player) has no dedicated
-//! accessor on the trigger — modeled as the first opponent, which is exact
-//! in two-player games.
+//! "That player" is the upkeep owner — the active player while the trigger
+//! resolves (`state.active_player()`).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -52,15 +51,11 @@ fn damage_upkeep_player(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that player" — no upkeep-player accessor on the trigger;
-    // approximated as the first opponent (exact in two-player games).
-    let opponents = script::opponents(state, trig.controller);
-    let Some(&opp) = opponents.first() else {
-        return Vec::new();
-    };
-    let x = (3i32 - script::hand_size(state, opp) as i32).max(0) as u32;
+    // "That player" = whose upkeep it is = the active player.
+    let them = state.active_player();
+    let x = (3i32 - script::hand_size(state, them) as i32).max(0) as u32;
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(opp),
+        target: DamageTarget::Player(them),
         amount: x,
         source: trig.source,
     }]

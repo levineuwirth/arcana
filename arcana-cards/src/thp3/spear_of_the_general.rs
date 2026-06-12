@@ -1,10 +1,11 @@
 //! Spear of the General — Hero Artifact — Equipment (no mana cost).
 //! "Equipped creature gets +2/+0 and has first strike. Equip {2}"
 //! The +2/+0 installs as a dynamic attached-creature pump; the first strike
-//! grant is a documented gap. GAP: the "Hero" card type (Theros face-card
-//! product type) is not modeled — registered as a plain Artifact — Equipment.
+//! grant installs an `attached_keyword` sibling. GAP: the "Hero" card type
+//! (Theros face-card product type) is not modeled — registered as a plain
+//! Artifact — Equipment.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -49,14 +50,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has first strike" — attached_pt covers the P/T
-    // half only (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            2,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                2,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has first strike" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::FirstStrike,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

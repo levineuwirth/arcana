@@ -1,6 +1,5 @@
 //! Daring Apprentice — `{1}{U}{U}` 1/1 Human Wizard.
 //! `{T}, Sacrifice this creature:` Counter target spell.
-//! GAP: "counter target spell" — no Effect::CounterSpell variant.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +9,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -56,9 +57,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_spell(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "counter target spell" — no Effect::CounterSpell variant in catalog.
-    Vec::new()
+    // Counter the targeted spell.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

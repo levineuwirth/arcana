@@ -1,7 +1,5 @@
 //! Ertai, the Corrupted — `{2}{W}{U}{B}` 3/4 Legendary Phyrexian Human Wizard.
 //! `{U}, {T}, Sacrifice a creature or enchantment: Counter target spell.`
-//! GAP: "Sacrifice a creature or enchantment" in cost — ActivationCost.sacrifice is a boolean (sacrifice self); sacrificing another permanent is not supported as a cost. Using sacrifice: true (self-sacrifice) as best effort.
-//! GAP: "Counter target spell" — no Effect::CounterSpell variant; emitting Vec::new().
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +9,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -41,7 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{U}").unwrap(),
                     tap: true,
-                    sacrifice: true, // GAP: should sacrifice any creature or enchantment, not self
+                    // Sacrifice a creature or enchantment (any you control).
+                    sacrifice_other: Some(ObjectFilter::new().with_types_any(
+                        TypeLine(TypeLine::CREATURE | TypeLine::ENCHANTMENT),
+                    )),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
@@ -61,9 +64,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_spell(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Counter target spell" — no Effect::CounterSpell variant
-    Vec::new()
+    // Counter the targeted spell.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

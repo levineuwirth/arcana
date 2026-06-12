@@ -1,8 +1,8 @@
 //! Summon: Valefor — `{4}{U}` blue Enchantment Creature — Saga Drake. 5/4. Flying.
 //! I — Sonic Wings — Each opponent chooses a creature with the greatest mana
 //!     value among creatures they control. Return those creatures to owners' hands.
-//! II, III, IV — Tap up to one target creature and put a stun counter on it.
-//! GAP: "stun counter" not in CounterKind; using AddCounters with placeholder.
+//! II, III, IV — Tap up to one target creature and put a stun counter on it
+//! (dedicated `CounterKind::Stun`).
 //! GAP: "each opponent chooses a creature" not expressible; using opponents'
 //! bounce-all-creatures approach is too broad; returning empty for chapter I.
 
@@ -154,7 +154,6 @@ fn chapter_ii_iv(
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     vec![
         Effect::Tap { target: *id },
-        // GAP: stun counter not in CounterKind; using +1/+1 as placeholder
-        Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 },
+        Effect::AddCounters { target: *id, kind: CounterKind::Stun, count: 1 },
     ]
 }

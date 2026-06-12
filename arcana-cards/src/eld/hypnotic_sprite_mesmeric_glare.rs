@@ -2,7 +2,6 @@
 //! Flying.
 //! Adventure face "Mesmeric Glare" (`{2}{U}` Instant):
 //! "Counter target spell with mana value 3 or less."
-//! GAP: "counter target spell" not in Effect catalog.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -12,7 +11,9 @@ use arcana_core::registry::{
 };
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -64,9 +65,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn mesmeric_glare(
     _state: &GameState,
-    _entry: &StackEntry,
+    entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "counter target spell" not in Effect catalog
-    Vec::new()
+    // Counter the targeted spell (mana value 3 or less, enforced by the filter).
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

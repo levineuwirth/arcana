@@ -3,12 +3,13 @@
 //! target artifact or creature,\" and \"{8}, {T}: Discover 10.\"
 //! Equip {1}"
 //!
-//! The Equip activation is wired via `with_equip`; every granted line
-//! is GAP'd — the Equipment static surface covers attached P/T only,
-//! with no attached keyword grant and no attached activated-ability
-//! grant.
+//! The Equip activation is wired via `with_equip`; the reach grant
+//! installs an `attached_keyword` continuous effect on ETB. The two
+//! granted activated abilities are GAP'd — no attached
+//! activated-ability grant.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -49,14 +50,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_install_grants(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Equipped creature has reach" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
     // GAP: "Equipped creature has \"{2}, {T}: Tap target artifact or
     // creature\"" and "\"{8}, {T}: Discover 10\"" — granting activated
     // abilities to the dynamically-attached creature is not expressible
     // in the Equipment static surface.
-    Vec::new()
+    vec![
+        // "Equipped creature has reach" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Reach,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

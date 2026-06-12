@@ -1,10 +1,10 @@
 //! Fireshrieker — `{3}` artifact — Equipment.
-//! "Equipped creature has double strike. Equip {2}." Keyword-only
-//! static: nothing is installable (no attached keyword grant yet), so
-//! the ETB effect returns no effects with a GAP note. The Equip half
-//! is wired via `with_equip`.
+//! "Equipped creature has double strike. Equip {2}." The double-strike
+//! half installs an `attached_keyword` continuous effect on ETB; the
+//! Equip half is wired via `with_equip`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -43,13 +43,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// ETB trigger: the static is keyword-only, so nothing is installed.
-// GAP: 'equipped creature has double strike' — attached_pt covers P/T
-// only (no attached keyword grant yet)
+/// ETB trigger: install the "equipped creature has double strike"
+/// keyword grant, following the attachment dynamically.
 fn etb_install_static(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    Vec::new()
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_keyword(
+            trig.source,
+            KeywordAbility::DoubleStrike,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

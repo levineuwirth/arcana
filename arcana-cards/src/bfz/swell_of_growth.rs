@@ -2,9 +2,6 @@
 //! until end of turn. You may put a land card from your hand onto the
 //! battlefield."
 //!
-//! The +2/+2 is expressed. "You may put a land card from your hand
-//! onto the battlefield" has no engine primitive — GAP.
-
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
@@ -12,7 +9,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,13 +34,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "put a land card from your hand onto the battlefield" has
-    // no engine primitive.
-    vec![Effect::Pump {
-        target: *id,
-        power: 2,
-        toughness: 2,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
-    }]
+    // Pump, then "You may put a land card from your hand onto the
+    // battlefield" — optional pick over the controller's hand.
+    vec![
+        Effect::Pump {
+            target: *id,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+        Effect::PutFromHandOntoBattlefield {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: false,
+        },
+    ]
 }

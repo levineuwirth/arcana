@@ -3,8 +3,8 @@
 //!          that player controls until this Saga leaves the battlefield.
 //! III — Create Avacyn, a legendary 8/8 white Angel creature token with
 //!        flying, vigilance, and indestructible.
-//! GAP: "exile until this Saga leaves the battlefield" not expressible;
-//!      using ExilePermanent (permanent exile) as best effort.
+//! Chapters I–II exile via Effect::ExileUntilSourceLeaves — the engine
+//! returns the exiled cards when this Saga leaves the battlefield.
 //! GAP: "for each player, target up to one permanent that player controls"
 //!      multi-player-target shape not fully expressible; one target per chapter.
 //! GAP: Avacyn token is legendary (SupertypeSet::LEGENDARY) but TokenDefinition
@@ -123,14 +123,18 @@ fn add_lore_counter(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegist
 }
 
 fn chapter_i_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: exile until this Saga leaves the battlefield — using ExilePermanent (permanent exile).
+    // O-Ring linkage: the engine returns the exiled card when this Saga
+    // leaves the battlefield.
     let Some(target) = trig.targets.targets.first() else {
         return Vec::new();
     };
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    vec![Effect::ExilePermanent { target: *id }]
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }
 
 fn chapter_iii(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {

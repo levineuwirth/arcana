@@ -2,9 +2,8 @@
 //! Realms, 2021). "When this artifact enters, exile target nonland
 //! permanent an opponent controls with mana value 2 or less until this
 //! artifact leaves the battlefield."
-//! The exile is wired; the "until this artifact leaves the battlefield"
-//! return rider is a documented GAP (no linked-exile return primitive
-//! on a plain ExilePermanent).
+//! Wired via `Effect::ExileUntilSourceLeaves` — the engine returns the
+//! exiled permanent when this artifact leaves the battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -62,8 +61,10 @@ fn etb_exile_target(
     let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "until this artifact leaves the battlefield" — the linked
-    // return of the exiled permanent when this artifact leaves is not
-    // expressible; the exile is permanent.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled permanent when this
+    // artifact leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

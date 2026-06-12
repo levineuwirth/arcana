@@ -1,10 +1,9 @@
 //! Behemoth Sledge — `{1}{G}{W}` artifact — Equipment (green-white).
 //! "Equipped creature gets +2/+2 and has trample and lifelink. Equip {3}."
 //! The +2/+2 half is an `attached_pt` continuous effect installed on ETB;
-//! the trample/lifelink half is a documented gap (no attached keyword
-//! grant yet).
+//! the trample/lifelink half installs `attached_keyword` siblings.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -44,20 +43,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// ETB trigger: install the "equipped creature gets +2/+2" layer effect.
+/// ETB trigger: install the "equipped creature gets +2/+2" layer effect
+/// plus the attached trample and lifelink grants.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has trample and lifelink' — attached_pt covers
-    // P/T only (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            2,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                2,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has trample" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Trample,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "… and lifelink" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Lifelink,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

@@ -2,9 +2,9 @@
 //! +1/+1 and has deathtouch. Equip {2}"
 //!
 //! The +1/+1 is installed via `attached_pt`; the deathtouch grant is
-//! a documented GAP (no attached keyword grant).
+//! installed via `attached_keyword`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -49,14 +49,23 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has deathtouch" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    // "equipped creature gets +1/+1 and has deathtouch" — attached P/T
+    // plus an attached keyword grant, both following the attachment.
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Deathtouch,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

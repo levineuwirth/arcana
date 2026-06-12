@@ -1,14 +1,19 @@
 //! Pistus Strike — `{2}{G}` instant. "Destroy target creature with
-//! flying. Its controller gets a poison counter." Poison counters are
-//! not in CounterKind; we emit the destroy and GAP the poison.
+//! flying. Its controller gets a poison counter." The with-flying
+//! target restriction is enforced via
+//! `ObjectFilter::creature().with_keyword(Flying)`. GAP: the poison
+//! counter goes on a PLAYER — `CounterKind::Poison` exists, but there
+//! is no player-directed counter Effect (AddCounters takes ObjectId).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,7 +28,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Destroy target creature with flying. Its controller gets a poison counter.".into(),
-            target_requirements: vec![TargetRequirement::target_creature()],
+            target_requirements: vec![TargetRequirement {
+                filter: TargetFilter::Permanent(
+                    ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
+                ),
+                count: TargetCount::Exactly(1),
+                controller: None,
+            }],
             modal: None,
             effect: resolve,
         }),
@@ -37,6 +48,7 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: poison counter on a player not in CounterKind; with-flying target filter not in ObjectFilter helpers.
+    // GAP: "its controller gets a poison counter" — no player-directed
+    // counter Effect (CounterKind::Poison exists; AddCounters is object-only).
     vec![Effect::DestroyPermanent { target: *id }]
 }

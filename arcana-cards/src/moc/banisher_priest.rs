@@ -1,8 +1,8 @@
 //! Banisher Priest — `{1}{W}{W}` 2/2 white Human Cleric creature.
 //! "When this creature enters, exile target creature an opponent controls until this
 //! creature leaves the battlefield."
-//! GAP: "until this creature leaves the battlefield" duration is not expressible with
-//! ExilePermanent (which is permanent exile). Only the exile part is modelled.
+//! Wired via Effect::ExileUntilSourceLeaves — the engine returns the exiled
+//! creature when this creature leaves the battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -63,6 +63,10 @@ fn etb_exile(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: exile only until this creature leaves the battlefield; duration not expressible.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled creature when this
+    // creature leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

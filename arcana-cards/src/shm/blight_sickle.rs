@@ -1,9 +1,9 @@
 //! Blight Sickle — `{2}` artifact — Equipment (Shadowmoor, 2008).
 //! "Equipped creature gets +1/+0 and has wither." and "Equip {2}".
 //! The +1/+0 static is installed as an attached-P/T continuous effect;
-//! the wither grant is a documented GAP (no attached keyword grant).
+//! the wither grant as an attached-keyword continuous effect.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -44,20 +44,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 /// ETB trigger: install the layer-7c "equipped creature gets +1/+0"
-/// continuous effect anchored to this Equipment.
+/// continuous effect and the "has wither" keyword grant, both anchored
+/// to this Equipment.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has wither" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Wither,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

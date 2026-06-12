@@ -2,9 +2,9 @@
 //! gets +3/+0 and has trample and lifelink. Equip {3}"
 //!
 //! The +3/+0 is installed via `attached_pt`; the trample and
-//! lifelink grants are documented GAPs (no attached keyword grant).
+//! lifelink grants install `attached_keyword` siblings.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -49,14 +49,30 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has trample and lifelink" — attached_pt covers
-    // P/T only (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            3,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                3,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has trample" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Trample,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "… and lifelink" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Lifelink,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

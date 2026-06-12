@@ -1,11 +1,12 @@
 //! Cloak of the Bat — `{2}` artifact — Equipment.
 //! "Equipped creature has flying and haste. Equip {2}"
 //!
-//! The Equip activation is wired via `with_equip`. The static grants
-//! no P/T — the keyword half is a documented gap (see the ETB effect
-//! fn), so nothing is installed.
+//! The Equip activation is wired via `with_equip`. The flying and
+//! haste grants install as `attached_keyword` continuous effects on
+//! ETB.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -46,10 +47,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_install_static(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has flying and haste" — attached_pt covers
-    // P/T only (no attached keyword grant yet); nothing to install.
-    Vec::new()
+    // "equipped creature has flying and haste" — one attached keyword
+    // grant per keyword, both following the attachment dynamically.
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Flying,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Haste,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

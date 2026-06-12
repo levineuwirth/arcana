@@ -61,9 +61,10 @@ fn exile_until_leaves(
     let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: the O-ring return rider ("…until this enchantment leaves the
-    // battlefield — that permanent returns under its owner's control") is
-    // not expressible: DelayedAction can't watch one object's departure to
-    // return a different exiled object. The exile half is faithful.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled permanent when this
+    // enchantment leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

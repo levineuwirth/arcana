@@ -2,8 +2,7 @@
 //! Flying. "Whenever this creature attacks or blocks, scry 2."
 //! Adventure face "Psionic Pulse" (`{2}{U}` Instant):
 //! "Counter target noncreature spell."
-//! GAP: "counter target spell" not in Effect catalog.
-//! GAP: "attacks or blocks" — using SelfAttacks; blocks trigger not combined here.
+//! "Attacks or blocks" is modeled as two triggered abilities (SelfAttacks + SelfBlocks).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -13,7 +12,7 @@ use arcana_core::registry::{
 };
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -99,9 +98,12 @@ fn scry_two(
 
 fn psionic_pulse(
     _state: &GameState,
-    _entry: &StackEntry,
+    entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "counter target spell" not in Effect catalog
-    Vec::new()
+    // Counter the targeted noncreature spell.
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

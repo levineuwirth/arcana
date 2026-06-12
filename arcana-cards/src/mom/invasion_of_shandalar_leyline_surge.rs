@@ -5,8 +5,6 @@
 //! permanent card from your hand onto the battlefield."
 //!
 //! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: Back-face upkeep "put a permanent card from your hand onto the battlefield" not expressible
-//!      (no Effect variant for hand-to-battlefield without library search).
 //! GAP: "up to three targets" multi-target return-from-graveyard — each target is returned
 //!      individually via the targets vec.
 
@@ -15,10 +13,14 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -74,11 +76,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     count: TargetCount::UpTo(3),
                     controller: None,
                 }],
-            }),
+            })
+            // Back face (Leyline Surge): "At the beginning of your upkeep, you
+            // may put a permanent card from your hand onto the battlefield."
+            // Face-gated to the back face (CR 712).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: upkeep_put_permanent_from_hand,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1),
         // GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-        // GAP: back-face upkeep ability ("put a permanent card from hand onto the battlefield")
-        //      not modeled — no Effect variant for hand-to-battlefield.
     )
+}
+
+fn upkeep_put_permanent_from_hand(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "You may put a permanent card from your hand onto the battlefield" —
+    // optional pick over the controller's hand.
+    vec![Effect::PutFromHandOntoBattlefield {
+        player: trig.controller,
+        filter: ObjectFilter::new().with_types_any(TypeLine(
+            TypeLine::CREATURE
+                | TypeLine::ENCHANTMENT
+                | TypeLine::ARTIFACT
+                | TypeLine::LAND
+                | TypeLine::PLANESWALKER
+                | TypeLine::BATTLE,
+        )),
+        tapped: false,
+    }]
 }
 
 fn etb_return_from_graveyard(

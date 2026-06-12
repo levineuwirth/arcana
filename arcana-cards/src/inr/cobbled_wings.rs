@@ -1,11 +1,12 @@
 //! Cobbled Wings — {2} artifact — Equipment. "Equipped creature has
 //! flying. Equip {1}"
 //!
-//! Keyword-only static: nothing installable (no attached keyword
-//! grant) — the ETB install fn returns nothing with a GAP note. The
-//! Equip half is real.
+//! Keyword-only static: the flying grant installs an
+//! `attached_keyword` continuous effect on ETB. The Equip half is
+//! real.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -46,10 +47,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_install_static(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has flying" — attached_pt covers P/T only (no
-    // attached keyword grant yet).
-    Vec::new()
+    // "equipped creature has flying" — attached keyword grant.
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_keyword(
+            trig.source,
+            KeywordAbility::Flying,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

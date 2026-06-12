@@ -3,10 +3,8 @@
 //! opponent controls until this enchantment leaves the battlefield."
 //!
 //! An ETB trigger targeting a nonland permanent an opponent controls; the
-//! exile is `Effect::ExilePermanent`. GAP: the "until this enchantment
-//! leaves the battlefield" return rider (the O-Ring linkage) — the
-//! `DelayedAction` primitive watches a single id and cannot couple "when
-//! THIS leaves" to "return THAT card", so the exile is permanent.
+//! exile is `Effect::ExileUntilSourceLeaves` — the engine returns the
+//! card when this enchantment leaves the battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -68,8 +66,10 @@ fn exile_target(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "until this enchantment leaves the battlefield" return rider —
-    // DelayedAction watches one id and cannot link this enchantment's
-    // departure to the exiled card's return; the exile is permanent.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled card when this
+    // enchantment leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

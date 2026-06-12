@@ -1,7 +1,5 @@
 //! Gretchen Titchwillow — `{G}{U}` 0/4 legendary green/blue Halfling Druid.
 //! "{2}{G}{U}: Draw a card. You may put a land card from your hand onto the battlefield."
-//! GAP: "put a land card from your hand onto the battlefield" — no Effect for playing
-//! from hand. Emitting just the draw.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,6 +9,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -55,6 +54,14 @@ fn draw_and_land(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put a land card from your hand onto the battlefield" — no Effect for playing from hand.
-    vec![Effect::DrawCards { player: ctx.controller, count: 1 }]
+    // "Draw a card. You may put a land card from your hand onto the
+    // battlefield" — draw, then optional pick over the controller's hand.
+    vec![
+        Effect::DrawCards { player: ctx.controller, count: 1 },
+        Effect::PutFromHandOntoBattlefield {
+            player: ctx.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: false,
+        },
+    ]
 }

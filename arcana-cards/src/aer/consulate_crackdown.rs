@@ -2,9 +2,9 @@
 //! "When this enchantment enters, exile all artifacts your opponents
 //! control until this enchantment leaves the battlefield."
 //!
-//! The ETB mass exile is wired via ForEach over opponent artifacts; the
-//! "until this leaves the battlefield" return is a documented GAP (no
-//! return-on-source-leaves hook for an exiled batch).
+//! The ETB mass exile is wired via one `Effect::ExileUntilSourceLeaves`
+//! per opponent artifact — the engine returns the whole exiled batch when
+//! this enchantment leaves the battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -50,9 +50,8 @@ fn crackdown(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until this enchantment leaves the battlefield" — there is no
-    // hook to return the exiled batch when the source leaves; the exile
-    // is applied without the return rider.
+    // One ExileUntilSourceLeaves per opponent artifact: the engine returns
+    // each linked card when this enchantment leaves the battlefield.
     let artifacts = script::ids_matching(
         state,
         &ObjectFilter::new()
@@ -60,10 +59,11 @@ fn crackdown(
             .controlled_by(ControllerConstraint::Opponent),
         trig.controller,
     );
-    vec![Effect::ForEach {
-        targets: artifacts,
-        effect: Box::new(Effect::ExilePermanent {
-            target: arcana_core::objects::NULL_OBJECT_ID,
-        }),
-    }]
+    artifacts
+        .into_iter()
+        .map(|id| Effect::ExileUntilSourceLeaves {
+            source: trig.source,
+            target: id,
+        })
+        .collect()
 }

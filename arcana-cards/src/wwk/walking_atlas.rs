@@ -1,7 +1,5 @@
 //! Walking Atlas — `{2}` 1/1 colorless Artifact Creature — Construct.
 //! "{T}: You may put a land card from your hand onto the battlefield."
-//! GAP: "put a land card from your hand onto the battlefield" — no Effect for playing
-//! from hand (TutorToBattlefield works from library, not hand).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,6 +9,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -46,10 +45,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn play_land_from_hand(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put a land card from your hand onto the battlefield" — no Effect variant
-    // for playing a card from hand.
-    Vec::new()
+    // "You may put a land card from your hand onto the battlefield" —
+    // optional pick over the controller's hand.
+    vec![Effect::PutFromHandOntoBattlefield {
+        player: ctx.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: false,
+    }]
 }

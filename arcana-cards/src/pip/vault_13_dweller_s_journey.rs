@@ -2,20 +2,28 @@
 //!
 //! I — For each player, exile up to one other target enchantment or creature
 //!     that player controls until this Saga leaves the battlefield.
-//!     (GAP: "exile until this leaves" duration not in Duration enum;
-//!     per-player targeting not in multi-target API; emitting Vec::new().)
+//!     Exile wired via Effect::ExileUntilSourceLeaves (engine returns the
+//!     card when this Saga leaves).
+//!     (GAP: "for each player … that player controls" per-player multi-target
+//!     shape and the "other" self-exclusion not expressible; one up-to-one
+//!     target total.)
 //! II — You gain 2 life and scry 2.
 //! III — Return two cards exiled with this Saga to the battlefield under their
 //!        owners' control and put the rest on the bottom.
-//!        (GAP: "cards exiled with this Saga" state tracking not in script API;
-//!        emitting Vec::new().)
+//!        (GAP: the selective two-return/rest-to-bottom split is not
+//!        expressible; the engine's ExileUntilSourceLeaves linkage returns
+//!        ALL exiled cards when the Saga leaves after its final chapter,
+//!        which approximates the return half; emitting Vec::new() here.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef, TriggerSelf,
 };
@@ -66,7 +74,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: chapter_i,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
+                // GAP: "for each player, … up to one … that player controls"
+                // per-player multi-target shape and the "other" self-exclusion
+                // not expressible; one up-to-one target total.
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types_any(TypeLine(
+                            TypeLine::ENCHANTMENT | TypeLine::CREATURE,
+                        )),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 3,
@@ -111,11 +130,18 @@ fn add_lore_counter(
 
 fn chapter_i(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "exile until this Saga leaves" duration not in Duration enum
-    Vec::new()
+    // O-Ring linkage: the engine returns the exiled card when this Saga
+    // leaves the battlefield.
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }
 
 fn chapter_ii(
@@ -134,6 +160,9 @@ fn chapter_iii(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "cards exiled with this Saga" tracking not in script API
+    // GAP: the selective "return two, rest to bottom" split is not
+    // expressible; the ExileUntilSourceLeaves linkage returns ALL exiled
+    // cards when the Saga is sacrificed after this chapter (engine SBA),
+    // approximating the return half.
     Vec::new()
 }

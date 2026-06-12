@@ -1,8 +1,11 @@
 //! Fold into Aether — `{2}{U}{U}` instant. "Counter target spell. If
 //! that spell is countered this way, its controller may put a
-//! creature card from their hand onto the battlefield." The
-//! 'controller-may put creature from hand into play' rider is not a
-//! catalog primitive — best-effort: counter the spell; GAP the rider.
+//! creature card from their hand onto the battlefield." The rider is
+//! an optional PutFromHandOntoBattlefield pick made by the countered
+//! spell's controller.
+//! GAP: "if that spell is countered this way" — the rider is emitted
+//! unconditionally; no hook conditions on counter success (over-fires
+//! only against can't-be-countered spells).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +27,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
-    // GAP: 'controller may put a creature from their hand onto the battlefield' rider.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
@@ -41,11 +43,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(
-    _state: &GameState,
+    state: &GameState,
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::Counter { target: *id }]
+    let mut effects = vec![Effect::Counter { target: *id }];
+    // "its controller may put a creature card from their hand onto the
+    // battlefield" — optional pick by the countered spell's controller.
+    // GAP: emitted unconditionally; see module doc.
+    if let Some(spell_controller) = state.objects.get(*id).map(|o| o.controller) {
+        effects.push(Effect::PutFromHandOntoBattlefield {
+            player: spell_controller,
+            filter: ObjectFilter::creature(),
+            tapped: false,
+        });
+    }
+    effects
 }

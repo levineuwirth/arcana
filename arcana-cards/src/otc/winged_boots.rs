@@ -1,9 +1,10 @@
 //! Winged Boots — `{1}{U}` artifact — Equipment.
 //! "Equipped creature has flying and ward {4}. Equip `{1}`."
-//! The Equip half is wired via `with_equip`; the keyword-only static is a
-//! documented gap (no attached keyword grant yet).
+//! The Equip half is wired via `with_equip`; the flying and ward {4}
+//! grants install `attached_keyword` continuous effects on ETB.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -42,14 +43,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// The printed static is keyword-only ("flying and ward {4}") — there is
-/// no attached keyword grant, so nothing is installed.
+/// ETB trigger: install the attached flying and ward {4} keyword grants.
 fn etb_install_static(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has flying and ward {4}' — attached_pt
-    // covers P/T only (no attached keyword grant yet)
-    Vec::new()
+    vec![
+        // "equipped creature has flying" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Flying,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "… and ward {4}" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Ward(ManaCost::parse("{4}").expect("valid cost")),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

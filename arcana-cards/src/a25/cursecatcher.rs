@@ -1,8 +1,6 @@
 //! Cursecatcher — `{U}` 1/1 blue Merfolk Wizard.
 //! "Sacrifice this creature: Counter target instant or sorcery spell unless
 //! its controller pays {1}."
-//!
-//! GAP: Counterspell effects are not in the Effect catalog.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +10,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -59,9 +59,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_unless_pay(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no Effect::Counter or counterspell variant in the catalog
-    Vec::new()
+    // Counter the targeted spell unless its controller pays {1}.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::CounterUnlessPays {
+        target: *id,
+        cost: ManaCost::parse("{1}").expect("valid cost"),
+    }]
 }

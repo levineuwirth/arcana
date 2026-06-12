@@ -1,10 +1,10 @@
 //! Chitinous Cloak — {3} artifact — Equipment. "Equipped creature
 //! gets +2/+2 and has menace. Equip {3}"
 //!
-//! The +2/+2 is installed via `attached_pt`; the menace grant is a
-//! documented GAP (no attached keyword grant).
+//! The +2/+2 is installed via `attached_pt`; the menace grant via
+//! `attached_keyword`.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -49,14 +49,23 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has menace" — attached_pt covers P/T only (no
-    // attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            2,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    // "equipped creature gets +2/+2 and has menace" — attached P/T plus
+    // an attached keyword grant, both following the attachment.
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                2,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Menace,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

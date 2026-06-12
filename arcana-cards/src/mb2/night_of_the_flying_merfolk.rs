@@ -10,9 +10,8 @@
 //!
 //! I — Create two 1/1 blue Merfolk creature tokens.
 //! II — Put a flying counter on each tapped creature you control.
-//!      GAP: "flying counter" (a persistent named counter) not a CounterKind
-//!      variant; approximated as GrantKeyword::Flying EndOfTurn on each tapped
-//!      creature you control.
+//!      Wired as `CounterKind::Named("flying")` plus a permanent Flying
+//!      grant (CR 122.1g) per creature.
 //! III — Draw a card for each creature you control that dealt combat damage to
 //!       a player this turn. GAP: per-creature combat-damage-dealt-this-turn
 //!       tracking not in script API; emitting Vec::new().
@@ -38,6 +37,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Night of the Flying Merfolk");
     let saga_sub = reg.interner_mut().intern("Saga");
     let _merfolk_sub = reg.interner_mut().intern("Merfolk");
+    // Interned for chapter II's lookup of the named counter kind.
+    reg.interner_mut().intern("flying");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(saga_sub);
 
@@ -161,19 +162,28 @@ fn chapter_i(
 fn chapter_ii(
     state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "flying counter" is not a CounterKind variant.
-    // Approximation: grant Flying until end of turn to each tapped creature you control.
+    // Flying counter on each tapped creature you control, plus the keyword
+    // it grants (CR 122.1g), modeled as a permanent grant; narrowed GAP:
+    // removing the counter later would not revoke the keyword.
+    let kind = reg.interner().lookup("flying").map(CounterKind::Named);
     let filter = ObjectFilter::creature()
         .controlled_by(ControllerConstraint::You)
         .tapped_only();
     let ids = script::ids_matching(state, &filter, trig.controller);
     ids.into_iter()
-        .map(|id| Effect::GrantKeyword {
-            target: id,
-            keyword: KeywordAbility::Flying,
-            duration: Duration::EndOfTurn,
+        .flat_map(|id| {
+            let mut per = Vec::new();
+            if let Some(kind) = kind {
+                per.push(Effect::AddCounters { target: id, kind, count: 1 });
+            }
+            per.push(Effect::GrantKeyword {
+                target: id,
+                keyword: KeywordAbility::Flying,
+                duration: Duration::Permanent,
+            });
+            per
         })
         .collect()
 }

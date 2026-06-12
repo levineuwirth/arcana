@@ -3,9 +3,9 @@
 //! this creature leaves the battlefield. If that creature had power 2 or less,
 //! put a +1/+1 counter on this creature."
 //!
-//! GAP: "until this creature leaves the battlefield" return-on-LTB not expressible;
-//! "if power 2 or less" conditional counter not expressible.
-//! Using ExilePermanent as best approximation.
+//! The exile is wired via Effect::ExileUntilSourceLeaves — the engine returns
+//! the card when this creature leaves the battlefield.
+//! GAP: "if power 2 or less" conditional +1/+1 counter not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -60,7 +60,12 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until this creature leaves the battlefield" and "if power 2 or less" not expressible.
+    // O-Ring linkage: the engine returns the exiled creature when this
+    // creature leaves the battlefield.
+    // GAP: "if power 2 or less, put a +1/+1 counter on this creature" not expressible.
     let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else { return Vec::new(); };
-    vec![Effect::ExilePermanent { target: *id }]
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

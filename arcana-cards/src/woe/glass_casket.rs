@@ -2,9 +2,8 @@
 //! target creature an opponent controls with mana value 3 or less
 //! until this artifact leaves the battlefield."
 //!
-//! The exile is wired; the "until this artifact leaves the
-//! battlefield" return is a documented gap (no leaves-linked return
-//! primitive for a separate exiled object).
+//! Wired via `Effect::ExileUntilSourceLeaves` — the engine returns the
+//! exiled creature when this artifact leaves the battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -61,8 +60,10 @@ fn etb_exile(
     let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "until this artifact leaves the battlefield" — the exiled
-    // creature is not returned when Glass Casket leaves (no
-    // leaves-linked return primitive for a separate exiled object).
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled creature when Glass
+    // Casket leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

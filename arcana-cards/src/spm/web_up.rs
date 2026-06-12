@@ -62,9 +62,10 @@ fn exile_target(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "until this enchantment leaves the battlefield" — the exile is
-    // unconditional; there is no primitive wiring the exiled card's return to
-    // this enchantment leaving (O-Ring linkage), so the return half is
-    // unmodeled.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled card when this
+    // enchantment leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

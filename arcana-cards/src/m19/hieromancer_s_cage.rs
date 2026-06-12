@@ -2,10 +2,9 @@
 //! "When this enchantment enters, exile target nonland permanent an
 //! opponent controls until this enchantment leaves the battlefield."
 //!
-//! Oblivion-Ring class. The exile is wired; the "until this enchantment
-//! leaves the battlefield" return rider is a documented GAP —
-//! `Effect::DelayedAction` watches and acts on the SAME object, so it
-//! cannot watch this enchantment while acting on the exiled permanent.
+//! Oblivion-Ring class, wired via `Effect::ExileUntilSourceLeaves` — the
+//! engine returns the exiled card when this enchantment leaves the
+//! battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -67,8 +66,10 @@ fn exile_target_nonland(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "until this enchantment leaves the battlefield" return rider —
-    // DelayedAction can't watch a different object (the enchantment) while
-    // acting on the exiled permanent; the exile is permanent here.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled card when this
+    // enchantment leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

@@ -3,9 +3,9 @@
 //! controls until this enchantment leaves the battlefield. Create a Food
 //! token."
 //!
-//! ETB trigger targeting an opponent's creature: the exile and the Food
-//! token are wired; the "until this enchantment leaves the battlefield"
-//! return linkage is a documented GAP (the exile is unconditional).
+//! ETB trigger targeting an opponent's creature: the exile is wired via
+//! `Effect::ExileUntilSourceLeaves` — the engine returns the creature
+//! when this enchantment leaves the battlefield — plus the Food token.
 
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaCost;
@@ -63,11 +63,13 @@ fn exile_and_feed(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "until this enchantment leaves the battlefield" — the exiled
-    // creature does not return when this enchantment leaves (no
-    // linked-exile return primitive); the exile is permanent.
+    // O-Ring linkage: the engine returns the exiled creature when this
+    // enchantment leaves the battlefield.
     vec![
-        Effect::ExilePermanent { target: *id },
+        Effect::ExileUntilSourceLeaves {
+            source: trig.source,
+            target: *id,
+        },
         Effect::CreateCommodityToken {
             controller: trig.controller,
             kind: CommodityToken::Food,

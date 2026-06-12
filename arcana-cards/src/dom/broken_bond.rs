@@ -44,7 +44,14 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "put a land card from your hand onto the battlefield" — no
-    // Effect plays a permanent from hand; only the destroy is emitted.
-    vec![Effect::DestroyPermanent { target: *id }]
+    // Destroy, then "You may put a land card from your hand onto the
+    // battlefield" — optional pick over the controller's hand.
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        Effect::PutFromHandOntoBattlefield {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: false,
+        },
+    ]
 }

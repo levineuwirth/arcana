@@ -1,9 +1,9 @@
 //! Boots of Speed — `{R}` artifact — Equipment.
 //! "Equipped creature gets +1/+0 and has haste. Equip `{1}`."
 //! The +1/+0 half installs an `attached_pt` continuous effect; the haste
-//! grant is a documented gap (no attached keyword grant yet).
+//! grant installs an `attached_keyword` sibling.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -43,20 +43,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// ETB trigger: install the "+1/+0 to equipped creature" layer effect.
+/// ETB trigger: install the "+1/+0 to equipped creature" layer effect
+/// plus the attached haste grant.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has haste' — attached_pt covers P/T only
-    // (no attached keyword grant yet)
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has haste" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Haste,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

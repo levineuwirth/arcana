@@ -1,8 +1,5 @@
 //! Growth Spiral — `{G}{U}` instant. "Draw a card. You may put a land
 //! card from your hand onto the battlefield."
-//!
-//! GAP: "play a land from your hand outside the normal land-drop
-//! rules" is not in the catalog — emit the draw only.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,6 +7,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,7 +34,14 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put a land card from your hand onto the battlefield" extra
-    // land-drop isn't expressible.
-    vec![Effect::DrawCards { player: entry.controller, count: 1 }]
+    // Draw, then "You may put a land card from your hand onto the
+    // battlefield" — optional pick over the controller's hand.
+    vec![
+        Effect::DrawCards { player: entry.controller, count: 1 },
+        Effect::PutFromHandOntoBattlefield {
+            player: entry.controller,
+            filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+            tapped: false,
+        },
+    ]
 }

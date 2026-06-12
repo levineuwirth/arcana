@@ -1,7 +1,7 @@
 //! Fairgrounds Warden — `{2}{W}` 1/3 white Dwarf Soldier. "When this creature enters,
 //! exile target creature an opponent controls until this creature leaves the battlefield."
-//! GAP: "until this creature leaves the battlefield" duration not in engine;
-//! emitting ExilePermanent as best-effort.
+//! Wired via Effect::ExileUntilSourceLeaves — the engine returns the exiled
+//! card when this creature leaves the battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -57,6 +57,10 @@ fn etb_exile_creature(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "until this creature leaves the battlefield" duration not in engine
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled card when this creature
+    // leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

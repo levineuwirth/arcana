@@ -1,6 +1,9 @@
 //! Mistfolk — `{U}{U}` 1/2 Illusion.
 //! `{U}: Counter target spell that targets this creature.`
-//! GAP: "Counter target spell that targets this creature" — no Effect::CounterSpell variant; emitting Vec::new().
+//! GAP (narrowed): the "targets this creature" restriction can't be expressed in
+//! the target filter (ObjectFilter has no source-aware targeting predicate), so it
+//! is enforced at resolution instead: the effect fizzles to a no-op if the chosen
+//! spell doesn't target this creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +13,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -52,10 +57,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn counter_spell(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Counter target spell" — no Effect::CounterSpell variant
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "that targets this creature" — enforced here since the target
+    // filter can't reference the ability's source.
+    let targets_self = state.stack.iter().any(|e| {
+        e.id == *id
+            && e.targets
+                .targets
+                .iter()
+                .any(|t| matches!(t, TargetChoice::Object(o) if *o == ctx.source))
+    });
+    if !targets_self {
+        return Vec::new();
+    }
+    vec![Effect::Counter { target: *id }]
 }

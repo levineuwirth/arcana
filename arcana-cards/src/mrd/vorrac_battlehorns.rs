@@ -1,10 +1,11 @@
 //! Vorrac Battlehorns — `{2}` artifact — Equipment.
 //! "Equipped creature has trample and can't be blocked by more than one
 //! creature." and "Equip {1}". The Equip half is wired via `with_equip`;
-//! the static half (attached keyword grant + block-count restriction) is
-//! not expressible — GAP.
+//! the trample half installs an `attached_keyword` continuous effect;
+//! the block-count restriction is not expressible — GAP.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -45,12 +46,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_install_static(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has trample" — attached_pt covers P/T only (no
-    // attached keyword grant yet).
+    // "equipped creature has trample" — attached keyword grant that
+    // follows the attachment dynamically.
     // GAP: "can't be blocked by more than one creature" — block-count
     // restrictions are not expressible.
-    Vec::new()
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_keyword(
+            trig.source,
+            KeywordAbility::Trample,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

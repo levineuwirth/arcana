@@ -1,9 +1,9 @@
 //! Strider Harness — `{3}` artifact — Equipment (Onslaught, 2002).
 //! "Equipped creature gets +1/+1 and has haste. Equip {1}."
 //! The +1/+1 static is installed via `ContinuousEffect::attached_pt`;
-//! the haste grant is a documented GAP (no attached-keyword grant).
+//! the haste grant installs an `attached_keyword` sibling.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -50,14 +50,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has haste" — attached_pt covers P/T only
-    // (no attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has haste" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Haste,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

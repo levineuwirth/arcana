@@ -2,7 +2,7 @@
 //! First strike. 3/3.
 //! I — Exile target creature an opponent controls until this Saga leaves the battlefield.
 //! II, III — Put a +1/+1 counter on each of up to two target creatures you control. You gain 2 life.
-//! GAP: Chapter I "until this Saga leaves the battlefield" duration — ChangeControl with WhileSourceOnBattlefield not available; using ExilePermanent (exile until engine SBA or replacement return not modeled).
+//! Chapter I exiles via Effect::ExileUntilSourceLeaves — the engine returns the card when this Saga leaves the battlefield.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -130,8 +130,9 @@ fn chapter_i(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "until this Saga leaves the battlefield" — using ExilePermanent as proxy
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled creature when this Saga
+    // leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves { source: trig.source, target: *id }]
 }
 
 fn chapter_ii_iii(

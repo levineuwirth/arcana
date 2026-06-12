@@ -1,10 +1,10 @@
 //! Gorgon's Head — `{1}` artifact — Equipment (Theros, 2013).
 //! "Equipped creature has deathtouch. Equip {2}."
-//! The Equip activation is wired via the builder; the keyword-only
-//! static is a documented GAP (attached_pt covers P/T only — no
-//! attached-keyword grant).
+//! The Equip activation is wired via the builder; the deathtouch half
+//! installs an `attached_keyword` continuous effect on ETB.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -45,10 +45,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_install_statics(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has deathtouch" — attached_pt covers P/T
-    // only (no attached keyword grant yet).
-    Vec::new()
+    // "equipped creature has deathtouch" — attached keyword grant that
+    // follows the attachment dynamically.
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_keyword(
+            trig.source,
+            KeywordAbility::Deathtouch,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

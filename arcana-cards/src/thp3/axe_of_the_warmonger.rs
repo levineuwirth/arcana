@@ -1,11 +1,11 @@
 //! Axe of the Warmonger — Hero Artifact — Equipment. "Equipped
 //! creature gets +2/+1 and has haste. Equip {2}"
 //!
-//! The +2/+1 is installed via `attached_pt`; the haste grant is a
-//! documented GAP (no attached keyword grant). The Hero card type is
-//! not a `TypeLine` const; emitted as a plain artifact.
+//! The +2/+1 is installed via `attached_pt`; the haste grant installs
+//! an `attached_keyword` sibling. The Hero card type is not a
+//! `TypeLine` const; emitted as a plain artifact.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -52,14 +52,22 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature has haste" — attached_pt covers P/T only (no
-    // attached keyword grant yet).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            2,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                2,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature has haste" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Haste,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

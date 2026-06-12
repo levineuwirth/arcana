@@ -5,11 +5,11 @@
 //! The +1/+0 static is installed as an attached-P/T continuous effect
 //! via the ETB trigger; Equip {2} via `with_equip`.
 //!
-//! GAP: 'equipped creature has flying' — attached_pt covers P/T only
-//! (no attached keyword grant yet). GAP: 'is a Bird in addition to
-//! its other types' — no attached subtype grant.
+//! The flying grant installs as an attached-keyword continuous effect.
+//! GAP: 'is a Bird in addition to its other types' — no attached
+//! subtype grant.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -50,22 +50,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 /// ETB trigger: install the layer-7c "attached creature gets +1/+0"
-/// continuous effect anchored to this Equipment.
+/// continuous effect and the "has flying" keyword grant, both anchored
+/// to this Equipment.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has flying' — attached_pt covers P/T
-    // only (no attached keyword grant yet).
     // GAP: 'is a Bird in addition to its other types' — no attached
     // subtype grant.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            0,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                0,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Flying,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

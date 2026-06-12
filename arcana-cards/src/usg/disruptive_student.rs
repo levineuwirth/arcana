@@ -1,6 +1,5 @@
 //! Disruptive Student — `{2}{U}` 1/1 Creature — Human Wizard.
 //! `{T}: Counter target spell unless its controller pays {1}.`
-//! GAP: no Effect::CounterSpell variant in catalog; emitting Vec::new().
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -10,7 +9,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -52,9 +53,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_unless_pay(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no Effect::CounterSpell variant; "counter unless pays {1}" not expressible
-    Vec::new()
+    // Counter the targeted spell unless its controller pays {1}.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::CounterUnlessPays {
+        target: *id,
+        cost: ManaCost::parse("{1}").expect("valid cost"),
+    }]
 }

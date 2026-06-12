@@ -2,9 +2,9 @@
 //! "When this enchantment enters, exile target nonland permanent an
 //! opponent controls until this enchantment leaves the battlefield."
 //!
-//! ETB-targeted exile is wired; the "until this enchantment leaves the
-//! battlefield" return is a GAP — no primitive links an exiled card's
-//! return to another permanent leaving the battlefield.
+//! ETB-targeted exile wired via `Effect::ExileUntilSourceLeaves` — the
+//! engine returns the exiled card when this enchantment leaves the
+//! battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -66,9 +66,10 @@ fn exile_target(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "until this enchantment leaves the battlefield" — the exiled
-    // permanent should return when this enchantment leaves; no
-    // primitive links an exile's return to another permanent's
-    // departure, so the exile is permanent here.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled permanent when this
+    // enchantment leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

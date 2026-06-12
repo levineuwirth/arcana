@@ -2,21 +2,25 @@
 //! player's upkeep, if that player controls a nonblack, nonland permanent, this
 //! creature deals 1 damage to that player."
 //!
-//! GAP: intervening_if — "if that player controls a nonblack, nonland
-//! permanent" not representable. Emitting damage unconditionally.
+//! "That player" is the upkeep owner — the active player while the trigger
+//! fires/resolves (`state.active_player()`); the intervening-if checks that
+//! player for a nonblack, nonland permanent.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None, // GAP: intervening_if — "if that player controls nonblack nonland permanent"
+                intervening_if: Some(if_upkeep_player_has_nonblack_nonland),
                 effect: upkeep_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -52,14 +56,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// "…if that player controls a nonblack, nonland permanent…"
+fn if_upkeep_player_has_nonblack_nonland(
+    s: &GameState,
+    _src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    // "That player" = whose upkeep it is = the active player.
+    let them = s.active_player();
+    !script::ids_matching(
+        s,
+        &ObjectFilter::permanent()
+            .without_colors(ColorSet::black())
+            .without_types(TypeLine::LAND.into())
+            .controlled_by(ControllerConstraint::You),
+        them,
+    )
+    .is_empty()
+}
+
 fn upkeep_damage(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no accessor for "current upkeep player" on PendingTrigger; using controller as fallback
+    // "That player" = whose upkeep it is = the active player.
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(trig.controller),
+        target: DamageTarget::Player(state.active_player()),
         amount: 1,
         source: trig.source,
     }]

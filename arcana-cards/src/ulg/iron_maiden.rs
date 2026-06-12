@@ -2,8 +2,8 @@
 //! "At the beginning of each opponent's upkeep, this artifact deals X
 //! damage to that player, where X is the number of cards in their
 //! hand minus 4." The opponent-upkeep trigger and the dynamic hand
-//! count are wired; the per-event upkeep player is approximated by
-//! the first opponent (faithful in two-player games).
+//! count are wired; "that player" is the upkeep owner — the active
+//! player while the trigger resolves (`state.active_player()`).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -52,18 +52,14 @@ fn damage_for_hand_size(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that player" — the per-event upkeep player is not readable from
-    // PendingTrigger; the first opponent is used (exact in two-player games).
-    let opponents = script::opponents(state, trig.controller);
-    let Some(player) = opponents.first() else {
-        return Vec::new();
-    };
-    let x = script::hand_size(state, *player).saturating_sub(4);
+    // "That player" = whose upkeep it is = the active player.
+    let them = state.active_player();
+    let x = script::hand_size(state, them).saturating_sub(4);
     if x == 0 {
         return Vec::new();
     }
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(*player),
+        target: DamageTarget::Player(them),
         amount: x,
         source: trig.source,
     }]

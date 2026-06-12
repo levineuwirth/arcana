@@ -9,9 +9,8 @@
 //! conditional-discard gate; OptionalPaymentKind does not support Discard as a cost.
 //! Approximating with Discard { count: 2 } for each opponent (the "unless nonland" choice
 //! is dropped).
-//! GAP: Level 2 trigger — "that player" refers to the currently-active opponent (the one
-//! whose upkeep it is); the script API does not expose the active player directly.
-//! Approximating by checking all opponents simultaneously.
+//! Level 2 trigger: "that player" is the upkeep owner — the active player while
+//! the trigger resolves (`state.active_player()`).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -136,20 +135,16 @@ fn etb_discard(
 
 fn upkeep_life_loss(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: fires for all opponents simultaneously instead of just the active one
-    script::opponents(state, trig.controller)
-        .into_iter()
-        .filter_map(|p| {
-            if script::hand_size(state, p) <= 1 {
-                Some(Effect::LoseLife { player: p, amount: 2 })
-            } else {
-                None
-            }
-        })
-        .collect()
+    // "That player" = whose upkeep it is = the active player.
+    let them = state.active_player();
+    if script::hand_size(state, them) <= 1 {
+        vec![Effect::LoseLife { player: them, amount: 2 }]
+    } else {
+        Vec::new()
+    }
 }
 
 fn draw_step_draw(

@@ -2,10 +2,11 @@
 //! "Equipped creature gets +1/+1 and has reach and 'Whenever this
 //! creature attacks, tap target creature an opponent controls.'
 //! Equip {2}."
-//! The +1/+1 half is installed as an `attached_pt` continuous effect;
-//! the reach grant and the granted attack trigger are honest GAPs.
+//! The +1/+1 half is installed as an `attached_pt` continuous effect
+//! and the reach grant as an `attached_keyword` sibling; the granted
+//! attack trigger is an honest GAP.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -52,14 +53,23 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'equipped creature has reach' — attached_pt covers P/T only (no attached keyword grant yet)
     // GAP: equipped creature has "Whenever this creature attacks, tap target creature an opponent controls." — no attached triggered-ability grant
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        // "equipped creature … has reach" — attached keyword grant.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Reach,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

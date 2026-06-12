@@ -3,10 +3,10 @@
 //! toughness 3 or greater until this enchantment leaves the battlefield."
 //!
 //! ETB trigger exiling the targeted creature (the "you may" is resolved as
-//! a yes). GAPs: the toughness-3-or-greater target restriction (only
-//! `with_max_toughness` exists, no minimum) and the O-Ring return when this
-//! enchantment leaves (DelayedAction cannot key one object's action to a
-//! DIFFERENT object's zone change).
+//! a yes) via `Effect::ExileUntilSourceLeaves` — the engine returns the
+//! card when this enchantment leaves the battlefield. Remaining GAP: the
+//! toughness-3-or-greater target restriction (only `with_max_toughness`
+//! exists, no minimum).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -60,9 +60,10 @@ fn suspend_creature(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "until this enchantment leaves the battlefield" — the return
-    // half needs a delayed action on the EXILED card keyed to THIS
-    // enchantment's departure; DelayedAction only supports
-    // NextEndStep/ThisDies on a single id, so the exile is permanent here.
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled card when this
+    // enchantment leaves the battlefield.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

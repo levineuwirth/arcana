@@ -4,8 +4,7 @@
 //!           an additional counter of that kind on that permanent.
 //! IV — Search your library for a Doctor card, reveal it, put it into your
 //!      hand, then shuffle.
-//! GAP: stun counters not in CounterKind catalog; using AddCounters with
-//!      PlusOnePlusOne as placeholder.
+//! Chapter I stun counters use the dedicated `CounterKind::Stun`.
 //! GAP: "choose a counter on each permanent" (II, III) not expressible.
 //! GAP: "Doctor" card subtype filter for tutor not a standard creature subtype.
 
@@ -136,10 +135,9 @@ fn chapter_i(
     let mut effects = Vec::new();
     for target in &trig.targets.targets {
         if let TargetChoice::Object(id) = target {
-            // GAP: stun counter not in CounterKind; using +1/+1 as placeholder
             effects.push(Effect::AddCounters {
                 target: *id,
-                kind: CounterKind::PlusOnePlusOne, // GAP: should be stun counter
+                kind: CounterKind::Stun,
                 count: 2,
             });
         }

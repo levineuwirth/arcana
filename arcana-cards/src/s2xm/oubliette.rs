@@ -4,9 +4,10 @@
 //! this way."
 //!
 //! Phasing (CR 702.26) is not modeled. The closest available behavior is
-//! exiling the target (the pre-errata Oubliette behavior); the
-//! return-when-this-leaves linkage and the tapped re-entry are
-//! documented GAPs.
+//! `Effect::ExileUntilSourceLeaves` (the pre-errata Oubliette behavior) —
+//! the engine returns the card when this enchantment leaves the
+//! battlefield. GAP: phasing semantics (attachments/counters preserved)
+//! and the tapped re-entry are not modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,9 +55,12 @@ fn oubliette_remove(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "phases out until this enchantment leaves the battlefield. Tap
-    // that creature as it phases in this way" — phasing is not modeled;
-    // approximated as exile, WITHOUT the return-when-this-leaves linkage
-    // or the tapped re-entry.
-    vec![Effect::ExilePermanent { target: *id }]
+    // Phasing approximated as exile-until-source-leaves (pre-errata
+    // behavior): the engine returns the creature when this enchantment
+    // leaves the battlefield.
+    // GAP: true phasing semantics and the tapped re-entry are not modeled.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

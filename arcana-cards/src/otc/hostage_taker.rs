@@ -2,8 +2,10 @@
 //! "When this creature enters, exile another target creature or artifact until this creature
 //! leaves the battlefield. You may cast that card for as long as it remains exiled, and mana
 //! of any type can be spent to cast that spell."
-//! GAP: duration-linked exile ("until this creature leaves") and free-cast-from-exile
-//! not expressible; emitting ExilePermanent for the exile portion.
+//! The exile is wired via Effect::ExileUntilSourceLeaves — the engine returns the
+//! card when this creature leaves the battlefield. GAP: "you may cast that card
+//! for as long as it remains exiled, and mana of any type can be spent" is not
+//! expressible (no cast-from-exile permission primitive).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -61,6 +63,11 @@ fn exile_permanent(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: duration-linked exile ("until this creature leaves") and cast-from-exile not expressible
-    vec![Effect::ExilePermanent { target: *id }]
+    // O-Ring linkage: the engine returns the exiled card when this creature
+    // leaves the battlefield.
+    // GAP: cast-from-exile with any-type mana not expressible.
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

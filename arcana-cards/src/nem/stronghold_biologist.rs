@@ -1,7 +1,5 @@
 //! Stronghold Biologist — `{2}{U}` 1/1 blue Human Spellshaper.
 //! `{U}{U}, {T}, Discard a card: Counter target creature spell.`
-//!
-//! GAP: "counter target creature spell" — no Effect::Counter variant.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,7 +9,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{U}{U}").unwrap(),
                     tap: true,
-                    discard_self: false,
+                    discard_other: Some(ObjectFilter::default()),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
@@ -60,9 +60,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_creature_spell(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no Effect::Counter / Counterspell variant in the catalog.
-    Vec::new()
+    // Counter the targeted creature spell.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

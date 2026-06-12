@@ -2,7 +2,8 @@
 //! Indestructible. 3/3.
 //! I, II, III, IV — Create three 2/2 white Knight creature tokens.
 //! V — Ultimate End — Other creatures you control get +2/+2 until end of turn. Put an indestructible counter on each of them.
-//! GAP: indestructible counter not in CounterKind catalog.
+//! The indestructible counter is `CounterKind::Named("indestructible")`
+//! plus a permanent Indestructible grant (CR 122.1g) per creature.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
@@ -24,6 +25,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Summon: Knights of Round");
     let saga_sub = reg.interner_mut().intern("Saga");
     let knight_sub = reg.interner_mut().intern("Knight");
+    // Interned for chapter V's lookup of the named counter kind.
+    reg.interner_mut().intern("indestructible");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(saga_sub);
     subtypes.0.insert(knight_sub);
@@ -161,25 +164,34 @@ fn chapter_i_iv(
 fn chapter_v(
     state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let kind = reg.interner().lookup("indestructible").map(CounterKind::Named);
     let filter = ObjectFilter::creature()
         .controlled_by(ControllerConstraint::You);
     let ids = script::ids_matching(state, &filter, trig.controller);
-    let mut effects: Vec<Effect> = ids.into_iter()
+    ids.into_iter()
         .filter(|id| *id != trig.source)
         .flat_map(|id| {
-            vec![
-                Effect::Pump {
+            let mut per = vec![Effect::Pump {
+                target: id,
+                power: 2,
+                toughness: 2,
+                duration: Duration::EndOfTurn,
+                keywords: vec![],
+            }];
+            if let Some(kind) = kind {
+                // Indestructible counter + the keyword it grants
+                // (CR 122.1g), modeled as a permanent grant; narrowed
+                // GAP: removing the counter later would not revoke it.
+                per.push(Effect::AddCounters { target: id, kind, count: 1 });
+                per.push(Effect::GrantKeyword {
                     target: id,
-                    power: 2,
-                    toughness: 2,
-                    duration: Duration::EndOfTurn,
-                    keywords: vec![],
-                },
-                // GAP: indestructible counter not in CounterKind catalog
-            ]
+                    keyword: KeywordAbility::Indestructible,
+                    duration: Duration::Permanent,
+                });
+            }
+            per
         })
-        .collect();
-    effects
+        .collect()
 }

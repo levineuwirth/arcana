@@ -1,9 +1,7 @@
 //! Vault 112: Sadistic Simulation — `{2}{U}{R}` Enchantment — Saga
 //!
 //! I, II — Tap up to one target creature and put a stun counter on it.
-//!          You get {E}{E} (two energy counters).
-//!          (GAP: energy counters not in CounterKind enum; emitting only Tap
-//!          + Stun counter.)
+//!          You get {E}{E} (two energy counters) — `Effect::GainEnergy`.
 //! III — Pay any amount of {E}. If you paid one or more {E}, shuffle library,
 //!        exile that many cards from top, may play one for free.
 //!        (GAP: energy payment and conditional play-for-free not expressible.)
@@ -125,7 +123,11 @@ fn tap_and_stun(trig: &PendingTrigger) -> Vec<Effect> {
             count: 1,
         });
     }
-    // GAP: energy counters not in CounterKind enum
+    // "You get {E}{E}" — unconditional, even with no target.
+    effects.push(Effect::GainEnergy {
+        player: trig.controller,
+        amount: 2,
+    });
     effects
 }
 

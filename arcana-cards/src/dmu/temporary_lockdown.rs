@@ -2,9 +2,9 @@
 //! "When this enchantment enters, exile each nonland permanent with
 //! mana value 2 or less until this enchantment leaves the battlefield."
 //!
-//! ETB sweep over `script::ids_matching` + `Effect::ForEach`. GAP: the
-//! "until this enchantment leaves the battlefield" return half is not
-//! expressible; the exile is permanent here.
+//! ETB sweep over `script::ids_matching`, one
+//! `Effect::ExileUntilSourceLeaves` per match — the engine returns the
+//! exiled batch when this enchantment leaves the battlefield (CR 610.3).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -54,13 +54,12 @@ fn etb_exile_cheap_nonlands(
         .without_types(TypeLine::LAND.into())
         .with_max_cmc(2);
     let ids = script::ids_matching(state, &filter, trig.controller);
-    // GAP: "until this enchantment leaves the battlefield" — the
-    // return-on-leave half of the O-ring is not expressible; the exile
-    // is permanent here.
-    vec![Effect::ForEach {
-        targets: ids,
-        effect: Box::new(Effect::ExilePermanent {
-            target: arcana_core::objects::NULL_OBJECT_ID,
-        }),
-    }]
+    // One ExileUntilSourceLeaves per match: the engine returns each linked
+    // card when this enchantment leaves the battlefield.
+    ids.into_iter()
+        .map(|id| Effect::ExileUntilSourceLeaves {
+            source: trig.source,
+            target: id,
+        })
+        .collect()
 }

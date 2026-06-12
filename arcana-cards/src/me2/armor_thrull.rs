@@ -1,9 +1,11 @@
 //! Armor Thrull — `{2}{B}` 1/3 black Thrull.
 //! "{T}, Sacrifice this creature: Put a +1/+2 counter on target creature."
-//! GAP: "+1/+2 counter" — only PlusOnePlusOne counter kind is available; no +1/+2 counter type.
-//! Using AddCounters with PlusOnePlusOne as approximation.
+//! The +1/+2 counter is wired as `CounterKind::Named("+1/+2")` plus a
+//! permanent +1/+2 continuous effect for its P/T contribution (layer 7d
+//! only sums +1/+1 / -1/-1 counters).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -17,6 +19,8 @@ use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, Typ
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Armor Thrull");
     let thrull = reg.interner_mut().intern("Thrull");
+    // Interned for the effect fn's lookup of the named counter kind.
+    reg.interner_mut().intern("+1/+2");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(thrull);
     let chars = Characteristics {
@@ -52,14 +56,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn sac_add_armor_counter(
     _state: &GameState,
     ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "+1/+2 counter" not in CounterKind; using PlusOnePlusOne as approximation.
-    vec![Effect::AddCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    let Some(kind) = reg.interner().lookup("+1/+2").map(CounterKind::Named) else {
+        return Vec::new();
+    };
+    // Named "+1/+2" counter plus a permanent +1/+2 continuous effect for
+    // its P/T contribution; narrowed GAP: removing the counter later
+    // would not remove the P/T boost.
+    vec![
+        Effect::AddCounters { target: *id, kind, count: 1 },
+        Effect::Pump {
+            target: *id,
+            power: 1,
+            toughness: 2,
+            duration: Duration::Permanent,
+            keywords: vec![],
+        },
+    ]
 }
