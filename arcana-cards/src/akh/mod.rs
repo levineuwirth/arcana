@@ -46,3 +46,4 @@ pub mod throne_of_the_god_pharaoh;
 pub mod cradle_of_the_accursed;
 pub mod hazoret_s_favor;
 pub mod protection_of_the_hekma;
+pub mod anointed_procession;

@@ -377,6 +377,15 @@ pub enum ReplacementKind {
     /// "If you would draw a card, draw two cards instead" (Howling Mine
     /// style; simplified).
     DrawAdditional(u32),
+    /// "If an effect would create one or more tokens [under your
+    /// control], twice that many … instead" (Parallel Lives /
+    /// Anointed Procession = MultiplyTokens(2); Doubling Season's
+    /// token half). Consumed by the token mint site
+    /// (`effects::create_token`): each matching replacement applies
+    /// once; multipliers compound (two Parallel Lives = x4 per
+    /// CR 614.5). Scope "under your control" via the condition's
+    /// `token_filter.controlled_by(You)`.
+    MultiplyTokens(u32),
     /// "You don't draw for the turn".
     SkipDraw,
 
@@ -922,7 +931,7 @@ fn apply_kind_to_event(
 /// resolve `ControllerConstraint::You` inside the replacement's own
 /// filters (e.g. "creature **you** control" on Hardened Scales). If
 /// the source object is gone from the arena, falls back to 0.
-fn source_controller_of(effect: &ReplacementEffect, state: &GameState) -> PlayerId {
+pub(crate) fn source_controller_of(effect: &ReplacementEffect, state: &GameState) -> PlayerId {
     state.objects.get(effect.source).map(|o| o.controller).unwrap_or(0)
 }
 

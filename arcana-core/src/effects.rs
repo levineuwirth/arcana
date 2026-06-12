@@ -2988,6 +2988,47 @@ fn create_token(
     token: &TokenDefinition,
 ) -> Option<ObjectId> {
     if !valid_player(state, controller) { return None; }
+    let first = mint_one_token(state, controller, token)?;
+    // CR 614.5 — token-creation multipliers (Parallel Lives /
+    // Anointed Procession / Doubling Season): each matching
+    // MultiplyTokens replacement applies once; multipliers compound.
+    // Computed against the FIRST minted token (so the condition's
+    // token_filter matches a real object); extra copies mint through
+    // the non-replacing inner path so they don't re-multiply.
+    let mut multiplier: u64 = 1;
+    {
+        let event = crate::replacement::ReplacementEvent::CreateToken {
+            object_id: first,
+        };
+        let factors: Vec<u64> = state.replacement_effects.iter()
+            .filter_map(|e| {
+                let crate::replacement::ReplacementKind::MultiplyTokens(m) =
+                    e.kind else { return None; };
+                let src_ctrl =
+                    crate::replacement::source_controller_of(e, state);
+                if let Some(gate) = e.state_gate {
+                    if !gate(state, e.source, src_ctrl) { return None; }
+                }
+                e.condition.matches(&event, src_ctrl, state)
+                    .then_some(m as u64)
+            })
+            .collect();
+        for f in factors { multiplier = multiplier.saturating_mul(f); }
+    }
+    for _ in 1..multiplier.min(64) {
+        mint_one_token(state, controller, token);
+    }
+    Some(first)
+}
+
+/// Mint exactly one token — the non-replacing inner body of
+/// [`create_token`] (multiplier copies route here so they don't
+/// recursively re-multiply).
+fn mint_one_token(
+    state: &mut GameState,
+    controller: PlayerId,
+    token: &TokenDefinition,
+) -> Option<ObjectId> {
     let id = state.allocate_object_id();
     // Token owner = controller (CR 110.5a — "the player who created
     // a token is that token's owner"). We're minting a new object so
@@ -5259,6 +5300,62 @@ mod tests {
             .execute(&mut s);
         // Jailer wasn't on the battlefield: target is never exiled.
         assert!(s.objects.get(victim).unwrap().zone.is_battlefield());
+    }
+
+    #[test]
+    fn token_multiplier_compounds_and_scopes_by_controller() {
+        use crate::replacement::{
+            ReplacementCondition, ReplacementEffect, ReplacementKind,
+            ReplacementDuration,
+        };
+        let mut s = GameState::new(2, 0);
+        let src = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            src, 0, Zone::Battlefield, 0, Characteristics::default()));
+        // Parallel Lives for player 0: tokens under YOUR control x2.
+        s.add_replacement_effect(ReplacementEffect {
+            source: src, id: 0,
+            condition: ReplacementCondition::WouldCreateToken {
+                token_filter: ObjectFilter::default()
+                    .controlled_by(crate::targets::ControllerConstraint::You),
+            },
+            kind: ReplacementKind::MultiplyTokens(2),
+            is_self_replacement: false,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
+        });
+        let tok = TokenDefinition {
+            name: Default::default(),
+            colors: ColorSet::new(),
+            types: TypeLine::CREATURE.into(),
+            subtypes: Default::default(),
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![],
+            abilities: vec![],
+        };
+        let count = |s: &GameState| s.objects.iter()
+            .filter(|o| o.is_token && o.zone.is_battlefield()).count();
+        // P0 creates one token: doubled.
+        Effect::CreateToken { controller: 0, token: tok.clone() }.execute(&mut s);
+        assert_eq!(count(&s), 2, "your token doubles");
+        // P1 creates one: NOT doubled (controlled_by(You) scopes to P0).
+        Effect::CreateToken { controller: 1, token: tok.clone() }.execute(&mut s);
+        assert_eq!(count(&s), 3, "opponent token unaffected");
+        // Second Parallel Lives: x4 (compounding per CR 614.5).
+        s.add_replacement_effect(ReplacementEffect {
+            source: src, id: 0,
+            condition: ReplacementCondition::WouldCreateToken {
+                token_filter: ObjectFilter::default()
+                    .controlled_by(crate::targets::ControllerConstraint::You),
+            },
+            kind: ReplacementKind::MultiplyTokens(2),
+            is_self_replacement: false,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
+        });
+        Effect::CreateToken { controller: 0, token: tok }.execute(&mut s);
+        assert_eq!(count(&s), 7, "two doublers compound to x4");
     }
 
     #[test]

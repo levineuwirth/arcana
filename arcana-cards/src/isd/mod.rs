@@ -40,3 +40,4 @@ pub mod instigator_gang_wildblood_pack;
 pub mod ghoulcaller_s_bell;
 pub mod stensia_bloodhall;
 pub mod graveyard_shovel;
+pub mod parallel_lives;

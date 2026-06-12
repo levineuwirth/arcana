@@ -39,3 +39,4 @@ pub mod riot_gear;
 pub mod skyblinder_staff;
 pub mod boros_keyrune;
 pub mod orzhov_keyrune;
+pub mod illness_in_the_ranks;
