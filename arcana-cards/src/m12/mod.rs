@@ -35,3 +35,4 @@ pub mod jace_s_erasure;
 pub mod worldslayer;
 pub mod honor_of_the_pure;
 pub mod levitation;
+pub mod personal_sanctuary;

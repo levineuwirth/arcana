@@ -66,3 +66,8 @@ pub mod standstill;
 pub mod unifying_theory;
 pub mod think_tank;
 pub mod pedantic_learning;
+pub mod sphere_of_law;
+pub mod sphere_of_truth;
+pub mod sphere_of_grace;
+pub mod sphere_of_reason;
+pub mod sphere_of_duty;

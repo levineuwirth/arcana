@@ -60,3 +60,5 @@ pub mod rewards_of_diversity;
 pub mod aether_rift;
 pub mod pure_reflection;
 pub mod kavu_lair;
+pub mod spirit_of_resistance;
+pub mod divine_presence;

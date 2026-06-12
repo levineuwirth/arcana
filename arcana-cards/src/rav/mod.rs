@@ -49,3 +49,4 @@ pub mod duskmantle_house_of_shadow;
 pub mod cyclopean_snare;
 pub mod peregrine_mask;
 pub mod halcyon_glaze;
+pub mod light_of_sanction;

@@ -115,3 +115,4 @@ pub mod uphill_battle;
 pub mod magistrate_s_veto;
 pub mod intimidation;
 pub mod crackdown;
+pub mod statecraft;

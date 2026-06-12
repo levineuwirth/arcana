@@ -69,3 +69,4 @@ pub mod tower_of_eons;
 pub mod tangleroot;
 pub mod dead_iron_sledge;
 pub mod necrogen_mists;
+pub mod sphere_of_purity;
