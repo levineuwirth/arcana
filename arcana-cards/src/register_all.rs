@@ -1327,6 +1327,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mmq::uphill_battle::register(reg); n += 1;
     crate::mmq::magistrate_s_veto::register(reg); n += 1;
     crate::mmq::intimidation::register(reg); n += 1;
+    crate::mmq::crackdown::register(reg); n += 1;
     // --- gs1 ---
     crate::gs1::leopard_spotted_jiao::register(reg); n += 1;
     crate::gs1::ferocious_zheng::register(reg); n += 1;
@@ -2116,6 +2117,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::me4::staff_of_zegon::register(reg); n += 1;
     crate::me4::kismet::register(reg); n += 1;
     crate::me4::serra_aviary::register(reg); n += 1;
+    crate::me4::smoke::register(reg); n += 1;
     // --- thb ---
     crate::thb::nyxborn_courser::register(reg); n += 1;
     crate::thb::nyxborn_brute::register(reg); n += 1;
@@ -3068,6 +3070,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::s8ed::dingus_egg::register(reg); n += 1;
     crate::s8ed::sanctimony::register(reg); n += 1;
     crate::s8ed::warped_devotion::register(reg); n += 1;
+    crate::s8ed::choke::register(reg); n += 1;
     // --- s00 ---
     crate::s00::willow_elf::register(reg); n += 1;
     crate::s00::mons_s_goblin_raiders::register(reg); n += 1;
@@ -5620,6 +5623,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::pcy::rhystic_cave::register(reg); n += 1;
     crate::pcy::well_of_life::register(reg); n += 1;
     crate::pcy::infernal_genesis::register(reg); n += 1;
+    crate::pcy::root_cage::register(reg); n += 1;
     // --- uds ---
     crate::uds::wild_colos::register(reg); n += 1;
     crate::uds::plated_spider::register(reg); n += 1;
@@ -7532,6 +7536,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::uma::fecundity::register(reg); n += 1;
     crate::uma::sigil_of_the_new_dawn::register(reg); n += 1;
     crate::uma::raid_bombardment::register(reg); n += 1;
+    crate::uma::back_to_basics::register(reg); n += 1;
     // --- ddo ---
     crate::ddo::loxodon_partisan::register(reg); n += 1;
     crate::ddo::mortal_s_ardor::register(reg); n += 1;
@@ -10291,6 +10296,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     // --- atq ---
     crate::atq::priest_of_yawgmoth::register(reg); n += 1;
     crate::atq::powerleech::register(reg); n += 1;
+    crate::atq::damping_field::register(reg); n += 1;
     // --- gn3 ---
     crate::gn3::maeve_insidious_singer::register(reg); n += 1;
     // --- sum ---

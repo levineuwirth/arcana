@@ -502,6 +502,51 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "[this] doesn't untap during its controller's untap
+    /// step" restriction.
+    pub fn dont_untap(source: ObjectId, target: ObjectId,
+                      duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::DontUntapTarget { target },
+        }
+    }
+
+    /// Build a "[filter] don't untap during their controllers' untap
+    /// steps" restriction (Crackdown / Choke / Winter Orb class).
+    pub fn filtered_dont_untap(source: ObjectId,
+                               filter: crate::targets::ObjectFilter,
+                               duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredDontUntap { filter },
+        }
+    }
+
+    /// Build a "players can't untap more than `max` [filter] during
+    /// their untap steps" cap (Damping Field / Smoke class).
+    pub fn untap_cap(source: ObjectId,
+                     filter: crate::targets::ObjectFilter,
+                     max: u32,
+                     duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::UntapCap { filter, max },
+        }
+    }
+
     /// Build a Ghostly Prison / Propaganda attack tax protecting the
     /// source's controller.
     pub fn attack_tax(source: ObjectId, generic: u32,
@@ -746,6 +791,20 @@ pub enum ContinuousEffectKind {
         filter: crate::targets::ObjectFilter,
         ability: Box<crate::triggers::TriggeredAbilityDef>,
     },
+    /// Marker — "[this permanent] doesn't untap during its
+    /// controller's untap step" (tapped-for-good costs, Exhaust-kin).
+    /// Consumed by [`GameState::skips_untap`] in the untap step.
+    DontUntapTarget { target: ObjectId },
+    /// Marker — "[filter] don't untap during their controllers'
+    /// untap steps" (Crackdown, Choke's Islands, Winter Orb / Stasis
+    /// templating with broad filters). Filter is matched on BASE
+    /// characteristics from the source controller's perspective.
+    FilteredDontUntap { filter: crate::targets::ObjectFilter },
+    /// Marker — "players can't untap more than `max` [filter] during
+    /// their untap steps" (Damping Field, Smoke, Mungha Wurm).
+    /// Enforced in the untap step in deterministic ascending-id order
+    /// (the player-choice ordering is a documented stand-in).
+    UntapCap { filter: crate::targets::ObjectFilter, max: u32 },
     /// Marker — Ghostly Prison / Propaganda: "creatures can't attack
     /// [the source's controller] unless their controller pays
     /// {generic} for each attacking creature". Consumed by
@@ -834,6 +893,9 @@ impl ContinuousEffectKind {
             Self::FilteredCantAttack { .. }
             | Self::FilteredCantBlock { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
+            | Self::DontUntapTarget { .. }
+            | Self::FilteredDontUntap { .. }
+            | Self::UntapCap { .. }
             | Self::AttackTax { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
@@ -890,6 +952,9 @@ impl ContinuousEffectKind {
             Self::FilteredCantAttack { .. }
             | Self::FilteredCantBlock { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
+            | Self::DontUntapTarget { .. }
+            | Self::FilteredDontUntap { .. }
+            | Self::UntapCap { .. }
             | Self::AttackTax { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
@@ -1155,6 +1220,39 @@ impl GameState {
             }
             _ => false,
         })
+    }
+
+    /// Does `object_id` skip its controller's untap step? Consumed
+    /// by `engine::untap_step` (CR 502.1 "doesn't untap" effects).
+    pub fn skips_untap(&self, object_id: ObjectId) -> bool {
+        self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::DontUntapTarget { target } =>
+                e.is_live(self) && *target == object_id,
+            ContinuousEffectKind::FilteredDontUntap { filter } => {
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .map(|s| s.controller)
+                        .zip(self.objects.get(object_id))
+                        .is_some_and(|(ctrl, o)|
+                            filter.matches_base(o, self, ctrl))
+            }
+            _ => None::<()>.is_some(),
+        })
+    }
+
+    /// Live untap caps: (filter, max, source controller) triples —
+    /// "players can't untap more than `max` [filter] during their
+    /// untap steps". Consumed by `engine::untap_step`.
+    pub fn untap_caps(&self)
+        -> Vec<(crate::targets::ObjectFilter, u32, PlayerId)>
+    {
+        self.continuous_effects.iter().filter_map(|e| match &e.kind {
+            ContinuousEffectKind::UntapCap { filter, max }
+                if e.is_live(self) =>
+                    self.objects.get(e.source).map(|s|
+                        (filter.clone(), *max, s.controller)),
+            _ => None,
+        }).collect()
     }
 
     /// Total generic attack tax protecting `defender` (Ghostly

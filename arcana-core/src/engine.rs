@@ -3029,20 +3029,46 @@ fn untap_step(state: &mut GameState) {
         pl.damaged_this_turn = false;
     }
     // CR 502.1 — untap the active player's permanents; remove
-    // summoning sickness from their creatures.
-    // TODO(keywords): honor "doesn't untap" effects (e.g., Stasis).
+    // summoning sickness from their creatures. "Doesn't untap"
+    // effects (Crackdown / Choke / Winter Orb class) skip matching
+    // permanents; untap CAPS (Damping Field / Smoke class) limit how
+    // many matching permanents untap, in deterministic ascending-id
+    // order (the player-choice ordering is a documented stand-in).
     // TODO(task-21): honor phasing (CR 502.1 step order).
-    let ids: Vec<ObjectId> = state.objects
+    let mut ids: Vec<ObjectId> = state.objects
         .objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == ap)
         .map(|o| o.id)
         .collect();
+    ids.sort_unstable();
+    let caps = state.untap_caps();
+    let mut cap_used: Vec<u32> = vec![0; caps.len()];
     for id in ids {
-        let untapped = {
-            let obj = state.objects.get_mut(id).unwrap();
+        // Summoning sickness clears even if the permanent stays
+        // tapped (CR 502.1 untaps; sickness is turn-based).
+        if let Some(obj) = state.objects.get_mut(id) {
             obj.status.summoning_sick = false;
-            obj.untap()
-        };
+        }
+        if state.objects.get(id).is_none_or(|o| !o.is_tapped()) {
+            continue;
+        }
+        if state.skips_untap(id) { continue; }
+        // Cap check: untapping `id` must not exceed any cap whose
+        // filter matches it.
+        let mut blocked = false;
+        let mut matched: Vec<usize> = Vec::new();
+        for (i, (filter, max, src_ctrl)) in caps.iter().enumerate() {
+            let m = state.objects.get(id).is_some_and(|o|
+                filter.matches_base(o, state, *src_ctrl));
+            if m {
+                if cap_used[i] >= *max { blocked = true; break; }
+                matched.push(i);
+            }
+        }
+        if blocked { continue; }
+        for i in matched { cap_used[i] += 1; }
+        let untapped = state.objects.get_mut(id)
+            .is_some_and(|obj| obj.untap());
         if untapped {
             state.emit(GameEvent::Untapped { object_id: id });
         }
@@ -7432,6 +7458,55 @@ mod tests {
         run_sba_and_triggers(&mut state, &registry);
         assert_eq!(state.stack_size(), 1,
             "re-scan should not double-fire the same event");
+    }
+
+    #[test]
+    fn untap_step_honors_dont_untap_and_caps() {
+        let mut state = GameState::new(2, 0);
+        // Active player 0 with four tapped artifacts and one tapped
+        // creature.
+        let mut arts = Vec::new();
+        for _ in 0..4 {
+            let id = state.allocate_object_id();
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0,
+                Characteristics {
+                    types: crate::types::TypeLine::ARTIFACT.into(),
+                    ..Default::default()
+                });
+            o.tap();
+            state.objects.insert(o);
+            arts.push(id);
+        }
+        let beast = state.allocate_object_id();
+        let mut o = GameObject::new(beast, 0, Zone::Battlefield, 0,
+            creature_chars(2, 2));
+        o.tap();
+        state.objects.insert(o);
+
+        // Damping Field: players can't untap more than one artifact.
+        state.add_continuous_effect(
+            crate::layers::ContinuousEffect::untap_cap(
+                arts[0],
+                crate::targets::ObjectFilter::new()
+                    .with_types(crate::types::TypeLine::ARTIFACT.into()),
+                1, crate::layers::Duration::WhileSourceOnBattlefield));
+        // Crackdown-ish: creatures don't untap.
+        state.add_continuous_effect(
+            crate::layers::ContinuousEffect::filtered_dont_untap(
+                arts[0],
+                crate::targets::ObjectFilter::creature(),
+                crate::layers::Duration::WhileSourceOnBattlefield));
+
+        untap_step(&mut state);
+        let untapped_arts = arts.iter()
+            .filter(|id| state.objects.get(**id)
+                .is_some_and(|o| !o.is_tapped()))
+            .count();
+        assert_eq!(untapped_arts, 1, "cap allows exactly one artifact");
+        assert!(state.objects.get(beast).unwrap().is_tapped(),
+            "creature stays tapped under don't-untap");
+        assert!(!state.objects.get(beast).unwrap().status.summoning_sick,
+            "sickness still clears");
     }
 
     #[test]

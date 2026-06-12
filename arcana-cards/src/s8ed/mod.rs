@@ -61,3 +61,4 @@ pub mod distorting_lens;
 pub mod dingus_egg;
 pub mod sanctimony;
 pub mod warped_devotion;
+pub mod choke;

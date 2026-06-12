@@ -84,3 +84,4 @@ pub mod tablet_of_epityr;
 pub mod staff_of_zegon;
 pub mod kismet;
 pub mod serra_aviary;
+pub mod smoke;
