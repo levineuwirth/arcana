@@ -161,6 +161,14 @@ pub struct GameObject {
     /// Zone-local: cleared by [`Self::reset_on_zone_change`], so a
     /// card that leaves exile by any other route sheds the link.
     pub exiled_with: Option<ObjectId>,
+    /// CR 903.3 — the commander DESIGNATION. Never set by the 2-player
+    /// engine paths today (commander games are future work); exists so
+    /// Background statics ("Commander creatures you own have …") and
+    /// [`crate::targets::ObjectFilter::commander_only`] can be wired
+    /// faithfully now and light up when the format does. NOT cleared
+    /// by zone changes — the designation follows the card everywhere
+    /// (`reset_on_zone_change` deliberately leaves it).
+    pub is_commander: bool,
     /// CR 712 — which printed face of a multi-face card this object
     /// is currently showing. `0` = front face (default, and the only
     /// state for single-face cards). `1` = back face — set during
@@ -293,6 +301,7 @@ impl GameObject {
             status: PermanentStatus::default(),
             madness_pending: false,
             exiled_with: None,
+            is_commander: false,
             adventure_exile_pending: false,
             impulse_play_pending: false,
             visible_face: 0,

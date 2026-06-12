@@ -5811,6 +5811,12 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::clb::greatsword_of_tyr::register(reg); n += 1;
     crate::clb::mystery_key::register(reg); n += 1;
     crate::clb::warstorm_surge::register(reg); n += 1;
+    crate::clb::candlekeep_sage::register(reg); n += 1;
+    crate::clb::guild_artisan::register(reg); n += 1;
+    crate::clb::sword_coast_sailor::register(reg); n += 1;
+    crate::clb::agent_of_the_iron_throne::register(reg); n += 1;
+    crate::clb::flaming_fist::register(reg); n += 1;
+    crate::clb::cultist_of_the_absolute::register(reg); n += 1;
     // --- wth ---
     crate::wth::benalish_infantry::register(reg); n += 1;
     crate::wth::shadow_rider::register(reg); n += 1;

@@ -479,6 +479,29 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a STATIC "[filter] creatures have '<triggered
+    /// ability>'" grant (Background statics). The def's `id` should
+    /// use the granted range
+    /// (`crate::triggers::GRANTED_TRIGGER_ID_BASE + n`); its effect
+    /// fn dispatches via the pending trigger's effect_override.
+    pub fn filtered_grant_triggered(
+        source: ObjectId,
+        filter: crate::targets::ObjectFilter,
+        ability: crate::triggers::TriggeredAbilityDef,
+        duration: Duration,
+    ) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredGrantTriggeredAbility {
+                filter, ability: Box::new(ability),
+            },
+        }
+    }
+
     /// Build a Ghostly Prison / Propaganda attack tax protecting the
     /// source's controller.
     pub fn attack_tax(source: ObjectId, generic: u32,
@@ -709,6 +732,20 @@ pub enum ContinuousEffectKind {
     /// kin, "creatures with power 2 or less can't block"). Consumed
     /// by [`GameState::cant_block`].
     FilteredCantBlock { filter: crate::targets::ObjectFilter },
+    /// Marker — STATIC ability grant to a filtered class: "[filter]
+    /// creatures have '<triggered ability>'" (Backgrounds' "Commander
+    /// creatures you own have …", Aether Charge-kin). Consumed by the
+    /// trigger-collection scan in `engine::collect_pending_triggers`:
+    /// each battlefield object matching `filter` (base
+    /// characteristics, source-controller perspective) gets the
+    /// ability checked against every event while this effect is
+    /// live; fires carry the def's effect fn via
+    /// `PendingTrigger::effect_override` (no registry entry exists
+    /// for granted ids — same dispatch as delayed triggers).
+    FilteredGrantTriggeredAbility {
+        filter: crate::targets::ObjectFilter,
+        ability: Box<crate::triggers::TriggeredAbilityDef>,
+    },
     /// Marker — Ghostly Prison / Propaganda: "creatures can't attack
     /// [the source's controller] unless their controller pays
     /// {generic} for each attacking creature". Consumed by
@@ -796,6 +833,7 @@ impl ContinuousEffectKind {
             // characteristics.
             Self::FilteredCantAttack { .. }
             | Self::FilteredCantBlock { .. }
+            | Self::FilteredGrantTriggeredAbility { .. }
             | Self::AttackTax { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
@@ -851,6 +889,7 @@ impl ContinuousEffectKind {
             }
             Self::FilteredCantAttack { .. }
             | Self::FilteredCantBlock { .. }
+            | Self::FilteredGrantTriggeredAbility { .. }
             | Self::AttackTax { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);

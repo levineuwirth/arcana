@@ -587,6 +587,9 @@ pub struct ObjectFilter {
     pub name: Option<SmallString>,
     pub is_token: Option<bool>,
     pub has_counter: Option<CounterKind>,
+    /// `Some(true)` = only commanders (CR 903.3 designation —
+    /// Background statics); `Some(false)` = only non-commanders.
+    pub is_commander: Option<bool>,
     pub custom: Option<fn(&GameObject, &GameState) -> bool>,
 }
 
@@ -687,6 +690,14 @@ impl ObjectFilter {
     }
     /// Builder: accept any of the given subtypes (OR). For
     /// "Human or Warrior creature" pass `vec![human_sym, warrior_sym]`.
+    /// "Commander creatures" (CR 903.3 designation — Background
+    /// statics). Inert in non-commander games (nothing carries the
+    /// designation), which is the faithful reading.
+    pub fn commander_only(mut self) -> Self {
+        self.is_commander = Some(true);
+        self
+    }
+
     pub fn with_subtypes_any(mut self, syms: Vec<SmallString>) -> Self {
         self.subtypes_any = Some(syms);
         self
@@ -851,6 +862,13 @@ impl ObjectFilter {
         // --- tap state ---
         if let Some(want_tapped) = self.tapped {
             if obj.is_tapped() != want_tapped {
+                return false;
+            }
+        }
+        // --- commander designation (CR 903.3) — object-level flag,
+        // not a layer property, so it reads the same in base mode ---
+        if let Some(want_cmd) = self.is_commander {
+            if obj.is_commander != want_cmd {
                 return false;
             }
         }

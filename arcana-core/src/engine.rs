@@ -2423,6 +2423,47 @@ fn collect_pending_triggers(
             }
         }
 
+        // 1b. STATIC filtered ability grants (Background statics —
+        //     ContinuousEffectKind::FilteredGrantTriggeredAbility):
+        //     each live grant's ability is checked for every
+        //     battlefield object matching its filter. Fires carry the
+        //     def's effect fn via effect_override (granted ids have no
+        //     registry entry — same dispatch as delayed triggers).
+        let grants: Vec<(crate::targets::ObjectFilter,
+                         crate::triggers::TriggeredAbilityDef,
+                         ObjectId)> =
+            state.continuous_effects.iter()
+                .filter(|e| e.is_live(state))
+                .filter_map(|e| match &e.kind {
+                    crate::layers::ContinuousEffectKind::
+                        FilteredGrantTriggeredAbility { filter, ability } =>
+                            Some((filter.clone(), (**ability).clone(),
+                                  e.source)),
+                    _ => None,
+                })
+                .collect();
+        if !grants.is_empty() {
+            let bf: Vec<(ObjectId, PlayerId)> = state.objects
+                .objects_in_zone(Zone::Battlefield)
+                .map(|o| (o.id, o.controller))
+                .collect();
+            for (filter, ability, grant_src) in &grants {
+                let Some(src_ctrl) = state.objects.get(*grant_src)
+                    .map(|s| s.controller) else { continue; };
+                for &(oid, octrl) in &bf {
+                    let matches = state.objects.get(oid).is_some_and(|o|
+                        filter.matches_base(o, state, src_ctrl));
+                    if !matches { continue; }
+                    if let Some(mut pt) = ability.should_fire(
+                        event, oid, octrl, state, registry)
+                    {
+                        pt.effect_override = Some(ability.effect);
+                        pending.push(pt);
+                    }
+                }
+            }
+        }
+
         // 2. Delayed triggers matching this event. `take_matching_delayed_triggers`
         //    is APNAP-sorted internally; we re-sort after merging with
         //    registered-trigger matches anyway.
@@ -7391,6 +7432,72 @@ mod tests {
         run_sba_and_triggers(&mut state, &registry);
         assert_eq!(state.stack_size(), 1,
             "re-scan should not double-fire the same event");
+    }
+
+    #[test]
+    fn filtered_grant_fires_for_matching_objects_via_effect_override() {
+        use crate::triggers::{TriggerCondition, TriggerFrequency,
+                              TriggeredAbilityDef, GRANTED_TRIGGER_ID_BASE};
+        let registry = crate::registry::CardRegistry::new();
+        let mut state = GameState::new(2, 0);
+        // A Background-ish source and two creatures: one commander.
+        let background = state.allocate_object_id();
+        state.objects.insert(GameObject::new(
+            background, 0, Zone::Battlefield, 0,
+            Characteristics::default()));
+        let commander = state.allocate_object_id();
+        let mut cmd_obj = GameObject::new(
+            commander, 0, Zone::Battlefield, 0, creature_chars(3, 3));
+        cmd_obj.is_commander = true;
+        state.objects.insert(cmd_obj);
+        let plain = state.allocate_object_id();
+        state.objects.insert(GameObject::new(
+            plain, 0, Zone::Battlefield, 0, creature_chars(2, 2)));
+
+        fn drain_two(
+            _s: &GameState, pt: &crate::triggers::PendingTrigger,
+            _r: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> {
+            vec![crate::effects::Effect::LoseLife { player: 1 - pt.controller, amount: 2 }]
+        }
+        // "Commander creatures you own have 'whenever this creature
+        // attacks, each opponent loses 2 life'."
+        state.add_continuous_effect(
+            crate::layers::ContinuousEffect::filtered_grant_triggered(
+                background,
+                crate::targets::ObjectFilter::creature()
+                    .commander_only()
+                    .controlled_by(crate::targets::ControllerConstraint::You),
+                TriggeredAbilityDef {
+                    id: GRANTED_TRIGGER_ID_BASE + 7,
+                    trigger_condition: TriggerCondition::SelfAttacks,
+                    intervening_if: None,
+                    effect: drain_two,
+                    trigger_zones: vec![Zone::Battlefield],
+                    frequency: TriggerFrequency::EachTime,
+                    target_requirements: Vec::new(),
+                },
+                crate::layers::Duration::WhileSourceOnBattlefield,
+            ));
+
+        let before = state.player(1).life;
+        // The PLAIN creature attacks: no fire.
+        state.emit(GameEvent::CreatureAttacks {
+            attacker: plain,
+            defending: crate::combat::DefendingEntity::Player(1),
+        });
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 0, "non-commander must not fire");
+        // The COMMANDER attacks: fires and resolves via effect_override.
+        state.emit(GameEvent::CreatureAttacks {
+            attacker: commander,
+            defending: crate::combat::DefendingEntity::Player(1),
+        });
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1, "commander attack fires the grant");
+        resolve_top_of_stack(&mut state, &registry);
+        assert_eq!(state.player(1).life, before - 2,
+            "granted effect must execute at resolution");
     }
 
     #[test]
