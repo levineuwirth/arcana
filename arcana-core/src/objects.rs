@@ -550,6 +550,16 @@ pub struct Characteristics {
     /// counters AND the chapter ability has fully resolved.
     #[serde(default)]
     pub saga_final_chapter: Option<u32>,
+    /// CR 702.73a — "this is every creature type" (Changeling CDA;
+    /// also set by Layer-4 grants like Runed Stalactite's "equipped
+    /// creature is every creature type"). Folded into computed
+    /// characteristics by the layer system; layer-aware subtype
+    /// predicates treat a flagged object as having EVERY subtype
+    /// (filters' type constraints keep land/Equipment subtype reads
+    /// honest — a changeling creature isn't a land, so "untap target
+    /// Forest" still type-fails before the subtype check).
+    #[serde(default)]
+    pub every_creature_type: bool,
 }
 
 impl Characteristics {
@@ -600,6 +610,7 @@ mod tests {
             is_aura: false,
             is_fortification: false,
             saga_final_chapter: None,
+            every_creature_type: false,
         }
     }
 

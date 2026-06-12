@@ -519,6 +519,20 @@ pub enum Effect {
         filter: crate::targets::ObjectFilter,
         action: PickAction,
     },
+    /// Exact-count sibling of [`Self::ChooseAnyNumberFromZone`] with
+    /// the CHOICE redirected to any player — "destroy a nonartifact
+    /// creature of THAT PLAYER's choice" (The Abyss), "each player
+    /// sacrifices a permanent of their choice" shapes (one effect per
+    /// player). `min` is clamped to however many candidates exist;
+    /// min==max==1 renders "a … of their choice".
+    ChooseNFromZone {
+        chooser: PlayerId,
+        zone: Zone,
+        filter: crate::targets::ObjectFilter,
+        min: u32,
+        max: u32,
+        action: PickAction,
+    },
 
     /// CR 601.3e — impulse draw: "exile the top `count` cards of
     /// `player`'s library. Until end of turn, you may play them." Moves
@@ -648,6 +662,21 @@ pub enum Effect {
     PutFromHandOntoBattlefieldTappedAttacking {
         player: PlayerId,
         filter: ObjectFilter,
+    },
+    /// Schedule an ARBITRARY delayed effect: "at the beginning of the
+    /// next [end step / upkeep], [anything]" where the action isn't a
+    /// canned [`DelayedAction`] variant (Quenchable Fire's delayed
+    /// damage, Casey Jones' delayed discard, Aang's delayed
+    /// transform). `effect` is a module-level effect fn — bake
+    /// card-specific amounts into the fn; it receives the firing
+    /// trigger (its `source`/`controller` are the scheduled values).
+    /// Delayed-trigger effects dispatch through the stack-entry
+    /// snapshot, so the fn runs even if `source` has left play.
+    ScheduleDelayedEffect {
+        source: ObjectId,
+        controller: PlayerId,
+        when: DelayedWhen,
+        effect: crate::triggers::EffectFn,
     },
     /// "Choose a player. That player [does X]" (Spectral Searchlight's
     /// mana grant, Hama's exile pick, chosen-opponent riders). Posts a
@@ -1658,7 +1687,11 @@ impl Effect {
                 amass_resolve(state, *controller, *count, *army_subtype, *race_subtype);
             }
             Effect::ChooseAnyNumberFromZone { chooser, zone, filter, action } => {
-                choose_any_number_from_zone(state, *chooser, *zone, filter, *action);
+                choose_from_zone(state, *chooser, *zone, filter, None, *action);
+            }
+            Effect::ChooseNFromZone { chooser, zone, filter, min, max, action } => {
+                choose_from_zone(
+                    state, *chooser, *zone, filter, Some((*min, *max)), *action);
             }
             Effect::ExileUntilSourceLeaves { source, target } => {
                 // Jailer must still be on the battlefield (CR 610.3
@@ -1758,6 +1791,24 @@ impl Effect {
             }
             Effect::PutFromHandOntoBattlefieldTappedAttacking { player, filter } => {
                 push_put_from_hand_choice(state, *player, filter, true, true);
+            }
+            Effect::ScheduleDelayedEffect { source, controller, when, effect } => {
+                use crate::triggers::{DelayedTrigger, TriggerCondition};
+                let condition = match when {
+                    DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
+                        step: crate::turn::Step::End,
+                        whose: crate::targets::ControllerConstraint::Any,
+                    },
+                    DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
+                        step: crate::turn::Step::Upkeep,
+                        whose: crate::targets::ControllerConstraint::Any,
+                    },
+                    DelayedWhen::ThisDies => TriggerCondition::SelfDies,
+                    DelayedWhen::SelfResolvesToPermanent =>
+                        TriggerCondition::Custom(cond_self_zone_to_battlefield),
+                };
+                state.register_delayed_trigger(DelayedTrigger::one_shot(
+                    *source, *controller, condition, *effect));
             }
             Effect::ChoosePlayerThen { chooser, opponents_only, then } => {
                 if !valid_player(state, *chooser) { return; }
@@ -2265,6 +2316,9 @@ pub enum PickAction {
     Sacrifice,
     /// Exile the picked cards.
     Exile,
+    /// Destroy the picked permanents (CR 701.7 — regeneration and
+    /// indestructible apply via the normal destruction path).
+    Destroy,
 }
 
 /// Where the unchosen looked-at cards of an [`Effect::DigTopN`] go
@@ -2371,6 +2425,8 @@ impl TokenDefinition {
             is_fortification: false,
             // Tokens are never Sagas.
             saga_final_chapter: None,
+            every_creature_type: self.keywords.contains(
+                &KeywordAbility::Changeling),
         }
     }
 }
@@ -3749,11 +3805,12 @@ fn amass_resolve(
 /// candidates in `zone`, post a `PickCards { min: 0, max: all }`, and
 /// stash the [`crate::actions::ChoiceFollowUp`] the chosen `action`
 /// maps to. No candidates → clean no-op (the choice would be empty).
-fn choose_any_number_from_zone(
+fn choose_from_zone(
     state: &mut GameState,
     chooser: PlayerId,
     zone: Zone,
     filter: &crate::targets::ObjectFilter,
+    bounds: Option<(u32, u32)>,
     action: PickAction,
 ) {
     if !valid_player(state, chooser) { return; }
@@ -3764,7 +3821,13 @@ fn choose_any_number_from_zone(
     candidates.sort();
     if candidates.is_empty() { return; }
     let Some(stack_entry) = state.currently_resolving else { return; };
-    let max = candidates.len() as u32;
+    // `None` = the any-number form (min 0, max all); `Some` clamps
+    // min to the candidate count (CR 701.16-style "as many as able").
+    let all = candidates.len() as u32;
+    let (min, max) = match bounds {
+        None => (0, all),
+        Some((lo, hi)) => (lo.min(all), hi.min(all).max(1)),
+    };
     let follow_up = match action {
         PickAction::ReturnToHand => crate::actions::ChoiceFollowUp::MoveToZone {
             destination: Zone::Hand(chooser), reveal: false, shuffle_library_owner: None,
@@ -3774,12 +3837,13 @@ fn choose_any_number_from_zone(
         },
         PickAction::Discard => crate::actions::ChoiceFollowUp::Discard { player: chooser },
         PickAction::Sacrifice => crate::actions::ChoiceFollowUp::Sacrifice { player: chooser },
+        PickAction::Destroy => crate::actions::ChoiceFollowUp::Destroy,
     };
     state.pending_choice_follow_up = Some(follow_up);
     state.push_pending_choice(
         chooser,
         crate::actions::ChoiceContext::ResolvingStack(stack_entry),
-        crate::actions::ChoiceKind::PickCards { candidates, min: 0, max },
+        crate::actions::ChoiceKind::PickCards { candidates, min, max },
     );
 }
 
@@ -6674,6 +6738,7 @@ mod tests {
             source: 7, trigger_id: 0, controller: 0,
             trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         let eff = (t.effect)(&s, &pt, &crate::registry::CardRegistry::new());
         assert!(matches!(eff.as_slice(),
@@ -6720,6 +6785,7 @@ mod tests {
             source: token_id, trigger_id: 0, controller: 0,
             trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         let eff = (t.effect)(&s, &pt, &reg);
         assert!(matches!(eff.as_slice(),

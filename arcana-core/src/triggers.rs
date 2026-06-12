@@ -217,6 +217,7 @@ impl TriggeredAbilityDef {
             controller: source_controller,
             trigger_event: event.clone(),
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         })
     }
 }
@@ -305,6 +306,15 @@ pub enum TriggerCondition {
     /// before the full attacker set is recorded), but the batch event
     /// is self-contained.
     SelfAttacksAlone,
+    /// "Whenever a [filter] creature you control attacks alone" — the
+    /// filtered sibling of [`Self::SelfAttacksAlone`] for watchers
+    /// that aren't the attacker (Tempered in Solitude, the NEO
+    /// Samurai cluster, Thoughtweft Imbuer). Matches the batch
+    /// [`GameEvent::AttacksDeclared`] whose declaration list is
+    /// exactly ONE creature satisfying the filter. Read the sole
+    /// attacker in the effect via
+    /// [`PendingTrigger::lone_attacker`].
+    AttacksAlone { filter: ObjectFilter },
     /// "Whenever a creature enters the battlefield under your control".
     ZoneChange { filter: ObjectFilter, from: Option<Zone>, to: Zone },
     /// "Whenever you cast a spell" (optionally filtered).
@@ -428,6 +438,15 @@ impl TriggerCondition {
                 GameEvent::AttacksDeclared { attackers }
                     if attackers.len() == 1
                         && attackers[0].attacker == source),
+
+            AttacksAlone { filter } => {
+                let GameEvent::AttacksDeclared { attackers } = event
+                    else { return false; };
+                attackers.len() == 1
+                    && match_filter_on(
+                        state, attackers[0].attacker, filter,
+                        source_controller)
+            }
 
             SelfIsDealtDamage { combat_only } => {
                 let GameEvent::DamageDealt { target, is_combat, .. } = event
@@ -606,6 +625,15 @@ pub struct PendingTrigger {
     /// [`crate::stack::StackEntry::targets`] at resolution time so
     /// the effect callback can read the chosen targets.
     pub targets: crate::targets::TargetSelection,
+    /// For DELAYED triggers: the scheduled effect fn, carried from
+    /// [`DelayedTrigger::effect`] through the stack entry to
+    /// resolution. Delayed triggers have no registry-backed
+    /// `TriggeredAbilityDef` (their `trigger_id` is 0), so without
+    /// this snapshot the resolution dispatch found nothing and the
+    /// effect SILENTLY VANISHED — every "sacrifice it at end of
+    /// turn" / control-revert / next-cast rider no-op'd at
+    /// resolution. `None` for registry-backed triggers.
+    pub effect_override: Option<EffectFn>,
 }
 
 impl PendingTrigger {
@@ -705,6 +733,19 @@ impl PendingTrigger {
     pub fn attacking_creature(&self) -> Option<ObjectId> {
         match &self.trigger_event {
             GameEvent::CreatureAttacks { attacker, .. } => Some(*attacker),
+            _ => None,
+        }
+    }
+
+    /// The sole declared attacker, if this trigger fired on a
+    /// single-attacker [`GameEvent::AttacksDeclared`] — pairs with
+    /// [`TriggerCondition::AttacksAlone`] ("whenever a creature you
+    /// control attacks alone, [it gets +2/+0 / put a counter on
+    /// it]"). For `SelfAttacksAlone` this equals [`Self::source`].
+    pub fn lone_attacker(&self) -> Option<ObjectId> {
+        match &self.trigger_event {
+            GameEvent::AttacksDeclared { attackers }
+                if attackers.len() == 1 => Some(attackers[0].attacker),
             _ => None,
         }
     }
@@ -879,6 +920,9 @@ impl GameState {
                 controller: t.controller,
                 trigger_event: event.clone(),
                 targets: crate::targets::TargetSelection::new(),
+                // Delayed triggers have no registry def to dispatch
+                // from at resolution — the fn rides the trigger.
+                effect_override: Some(t.effect),
             }
         }).collect();
         sort_by_apnap(&mut out, self.active_player(), self.num_players());
@@ -1100,6 +1144,7 @@ mod tests {
                 blocker: 8, attacker: 7,
             },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         assert_eq!(trig.other_combatant(), Some(7));
 
@@ -1110,6 +1155,7 @@ mod tests {
                 attacker: 7, blockers: vec![8, 9, 10],
             },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         assert_eq!(trig.other_combatant(), Some(8));
 
@@ -1118,6 +1164,7 @@ mod tests {
             source: 1, trigger_id: 0, controller: 0,
             trigger_event: GameEvent::Dies { object_id: 1 },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         assert_eq!(trig.other_combatant(), None);
     }
@@ -1131,6 +1178,7 @@ mod tests {
                 defending: crate::combat::DefendingEntity::Player(1),
             },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         assert_eq!(trig.attacking_creature(), Some(7));
 
@@ -1139,6 +1187,7 @@ mod tests {
             source: 3, trigger_id: 0, controller: 0,
             trigger_event: GameEvent::Dies { object_id: 7 },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         assert_eq!(trig.attacking_creature(), None);
     }
@@ -1166,6 +1215,41 @@ mod tests {
         assert!(into_back.matches(&ev, wolf, 0, &s));
         let into_front = TriggerCondition::SelfTransforms { to_face: Some(0) };
         assert!(!into_front.matches(&ev, wolf, 0, &s));
+    }
+
+    #[test]
+    fn filtered_attacks_alone_checks_the_sole_attacker() {
+        use crate::combat::{AttackerDeclaration, DefendingEntity};
+        let mut s = GameState::new(2, 0);
+        let mine = put_creature(&mut s, 0, Zone::Battlefield);
+        let theirs = put_creature(&mut s, 1, Zone::Battlefield);
+        let cond = TriggerCondition::AttacksAlone {
+            filter: ObjectFilter::creature()
+                .controlled_by(ControllerConstraint::You),
+        };
+        // My creature attacks alone: fires (source 99 is a watcher).
+        let ev = GameEvent::AttacksDeclared { attackers: vec![
+            AttackerDeclaration { attacker: mine, defending: DefendingEntity::Player(1) },
+        ]};
+        assert!(cond.matches(&ev, 99, 0, &s));
+        // Accessor reads the sole attacker.
+        let trig = PendingTrigger {
+            source: 99, trigger_id: 0, controller: 0,
+            trigger_event: ev, targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
+        };
+        assert_eq!(trig.lone_attacker(), Some(mine));
+        // Opponent's creature attacking alone: filter rejects.
+        let ev = GameEvent::AttacksDeclared { attackers: vec![
+            AttackerDeclaration { attacker: theirs, defending: DefendingEntity::Player(0) },
+        ]};
+        assert!(!cond.matches(&ev, 99, 0, &s));
+        // Two attackers: not alone.
+        let ev = GameEvent::AttacksDeclared { attackers: vec![
+            AttackerDeclaration { attacker: mine, defending: DefendingEntity::Player(1) },
+            AttackerDeclaration { attacker: theirs, defending: DefendingEntity::Player(1) },
+        ]};
+        assert!(!cond.matches(&ev, 99, 0, &s));
     }
 
     #[test]
@@ -1545,11 +1629,14 @@ mod tests {
         let empty = crate::targets::TargetSelection::new();
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 1,
-                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
+                effect_override: None },
             PendingTrigger { source: 2, trigger_id: 2, controller: 0,
-                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
+                effect_override: None },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
-                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
+                effect_override: None },
         ];
         sort_by_apnap(&mut triggers, /*active=*/ 0, /*N=*/ 2);
         let controllers: Vec<_> = triggers.iter().map(|t| t.controller).collect();
@@ -1564,11 +1651,14 @@ mod tests {
         let empty = crate::targets::TargetSelection::new();
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 0,
-                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
+                effect_override: None },
             PendingTrigger { source: 2, trigger_id: 2, controller: 2,
-                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
+                effect_override: None },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
-                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone() },
+                trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
+                effect_override: None },
         ];
         // Active = 1, so APNAP order is 1, 2, 0.
         sort_by_apnap(&mut triggers, 1, 3);
@@ -1696,6 +1786,7 @@ mod tests {
             controller: 0,
             trigger_event: event,
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         }
     }
 

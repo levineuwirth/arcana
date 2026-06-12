@@ -1503,6 +1503,7 @@ mod tests {
                 count: 3,
             },
             targets: crate::targets::TargetSelection::default(),
+            effect_override: None,
         });
         assert!(!pending_saga_sacrifice(&s));
         apply_state_based_actions(&mut s);

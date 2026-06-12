@@ -837,28 +837,41 @@ impl ObjectFilter {
             || self.not_subtypes.is_some()
         {
             let computed = state.objects.get(obj.id)
-                .and_then(|_| state.compute_characteristics(obj.id))
-                .map(|c| c.subtypes);
-            let subtypes = computed.as_ref()
+                .and_then(|_| state.compute_characteristics(obj.id));
+            // CR 702.73a — "is every creature type": the flagged
+            // object satisfies any positive subtype requirement and
+            // fails any subtype exclusion. (Filters' type constraints
+            // keep land/Equipment subtype reads honest — see the
+            // flag's doc on Characteristics.)
+            let every = computed.as_ref()
+                .map(|c| c.every_creature_type)
+                .unwrap_or(obj.characteristics.every_creature_type);
+            let computed_subs = computed.map(|c| c.subtypes);
+            let subtypes = computed_subs.as_ref()
                 .unwrap_or(&obj.characteristics.subtypes);
             // All required subtypes must be present.
             if let Some(subs) = &self.subtypes {
-                for s in subs {
-                    if !subtypes.contains(*s) {
-                        return false;
+                if !every {
+                    for s in subs {
+                        if !subtypes.contains(*s) {
+                            return false;
+                        }
                     }
                 }
             }
             // subtypes_any: at least one must be present (OR). Empty
             // Vec matches no object (consistent with types_any=0).
             if let Some(any) = &self.subtypes_any {
-                if !any.iter().any(|s| subtypes.contains(*s)) {
+                if !every && !any.iter().any(|s| subtypes.contains(*s)) {
                     return false;
                 }
             }
-            // Subtype exclusion: none of these may be present.
+            // Subtype exclusion: none of these may be present — an
+            // every-creature-type object IS each of them, so it fails.
             if let Some(excluded) = &self.not_subtypes {
-                if excluded.iter().any(|s| subtypes.contains(*s)) {
+                if every
+                    || excluded.iter().any(|s| subtypes.contains(*s))
+                {
                     return false;
                 }
             }

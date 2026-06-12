@@ -108,6 +108,9 @@ impl Layer {
 pub enum Duration {
     EndOfTurn,
     UntilYourNextTurn(crate::types::PlayerId),
+    /// "Until your next upkeep" (Halfdane's copy, Erhnam Djinn's
+    /// forestwalk grant): expires when that player's upkeep begins.
+    UntilNextUpkeepOf(crate::types::PlayerId),
     WhileSourceOnBattlefield,
     WhileCondition(crate::types::ConditionId),
     WhileExiled(ObjectId),
@@ -332,6 +335,51 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "TARGET creature becomes a [subtype] in addition to
+    /// its other types" effect (Layer 4, additive) — the targeted
+    /// sibling of [`Self::attached_subtypes`].
+    pub fn add_subtypes(source: ObjectId, target: ObjectId,
+                        subtypes: crate::types::SubtypeSet,
+                        duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L4Type,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AddSubtypesTarget { target, subtypes },
+        }
+    }
+
+    /// Build an "equipped creature is an artifact in addition to its
+    /// other types" effect (Layer 4) — attached CARD-TYPE add
+    /// (Silverskin Armor).
+    pub fn attached_types(source: ObjectId, types: crate::types::TypeLine,
+                          duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L4Type,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureAddTypes { types },
+        }
+    }
+
+    /// Build an "equipped creature is every creature type" effect
+    /// (Layer 4 changeling templating — Runed Stalactite).
+    pub fn attached_every_creature_type(source: ObjectId,
+                                        duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L4Type,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureEveryCreatureType,
+        }
+    }
+
     /// Build an "… and is [color] in addition to its other colors"
     /// effect (Layer 5, ADDITIVE — unlike `SetColor`). Follows the
     /// attachment; pair with [`Duration::WhileSourceOnBattlefield`].
@@ -498,8 +546,23 @@ pub enum ContinuousEffectKind {
     /// addition to its other types" (Raven Wings "is a Bird", Angelic
     /// Armaments "is an Angel"). ADDITIVE; follows `attached_to` like
     /// the other Attached* kinds. ("Is EVERY creature type" — Runed
-    /// Stalactite — is the changeling CDA, a separate subsystem.)
+    /// Stalactite — is [`Self::AttachedCreatureEveryCreatureType`].)
     AttachedCreatureAddSubtypes { subtypes: crate::types::SubtypeSet },
+    /// Layer 4 — "TARGET creature becomes a [subtype] in addition to
+    /// its other types" (Vault 87's Mutant, Xu-Ifit's Skeleton): the
+    /// targeted sibling of [`Self::AttachedCreatureAddSubtypes`].
+    AddSubtypesTarget { target: ObjectId, subtypes: crate::types::SubtypeSet },
+    /// Layer 4 — "Equipped creature is an artifact in addition to its
+    /// other types" (Silverskin Armor): attached CARD-TYPE add, the
+    /// attached sibling of [`Self::AddType`].
+    AttachedCreatureAddTypes { types: crate::types::TypeLine },
+    /// Layer 4 — "Equipped creature is every creature type"
+    /// (Runed Stalactite, Amorphous Axe — changeling templating).
+    /// Sets [`crate::objects::Characteristics::every_creature_type`];
+    /// layer-aware subtype predicates then treat the creature as
+    /// having every subtype (type constraints on filters keep
+    /// land/Equipment subtype filters honest in practice).
+    AttachedCreatureEveryCreatureType,
     /// Layer 5 — "… and is [color] in addition to its other colors"
     /// (Angelic Armaments' white half). ADDITIVE — contrast
     /// [`Self::SetColor`], which replaces per CR 613.3e.
@@ -542,6 +605,7 @@ impl ContinuousEffectKind {
             | Self::LoseAllAbilities { target }
             | Self::AddType { target, .. }
             | Self::RemoveKeywordTarget { target, .. }
+            | Self::AddSubtypesTarget { target, .. }
             | Self::SetColor { target, .. } => *target == object_id,
             Self::AnthemForController { controller, .. }
             | Self::GrantKeywordToController { controller, .. } => {
@@ -555,6 +619,8 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureGetsPtDynamic { .. }
             | Self::AttachedCreatureAddSubtypes { .. }
             | Self::AttachedCreatureAddColors { .. }
+            | Self::AttachedCreatureAddTypes { .. }
+            | Self::AttachedCreatureEveryCreatureType
             | Self::AttachedCreatureLosesKeyword { .. } => {
                 state.objects.get(source)
                     .and_then(|src| src.attached_to)
@@ -586,8 +652,15 @@ impl ContinuousEffectKind {
                 let (power, toughness) = compute(state, source);
                 add_to_pt(chars, power, toughness);
             }
-            Self::AttachedCreatureAddSubtypes { subtypes } => {
+            Self::AttachedCreatureAddSubtypes { subtypes }
+            | Self::AddSubtypesTarget { subtypes, .. } => {
                 chars.subtypes.0.extend(subtypes.0.iter().copied());
+            }
+            Self::AttachedCreatureAddTypes { types } => {
+                chars.types = crate::types::TypeLine(chars.types.0 | types.0);
+            }
+            Self::AttachedCreatureEveryCreatureType => {
+                chars.every_creature_type = true;
             }
             Self::RemoveKeywordTarget { keyword, .. }
             | Self::AttachedCreatureLosesKeyword { keyword } => {
@@ -708,6 +781,21 @@ impl GameState {
             matches!(e.duration, Duration::EndOfTurn));
     }
 
+    /// Expire "until your next turn" effects as `player`'s turn
+    /// begins (engine turn-start hook). Without this they lasted
+    /// forever — Goblin Racketeer's goad never lapsed.
+    pub fn expire_until_next_turn_effects(&mut self, player: crate::types::PlayerId) {
+        self.remove_continuous_effects(|e|
+            matches!(e.duration, Duration::UntilYourNextTurn(p) if p == player));
+    }
+
+    /// Expire "until your next upkeep" effects as `player`'s upkeep
+    /// begins (engine upkeep-tick hook).
+    pub fn expire_until_next_upkeep_effects(&mut self, player: crate::types::PlayerId) {
+        self.remove_continuous_effects(|e|
+            matches!(e.duration, Duration::UntilNextUpkeepOf(p) if p == player));
+    }
+
     /// Expire continuous effects sourced from `source_id` whose
     /// `duration == WhileSourceOnBattlefield`. Called when an object
     /// leaves the battlefield (engine hook).
@@ -723,6 +811,13 @@ impl GameState {
     pub fn compute_characteristics(&self, object_id: ObjectId) -> Option<Characteristics> {
         let obj = self.objects.get(object_id)?;
         let mut chars = obj.characteristics.clone();
+
+        // CR 702.73a — Changeling is a characteristic-defining
+        // ability: a printed Changeling keyword means "this is every
+        // creature type" in every zone, before any layer applies.
+        if chars.keywords.contains(&crate::effects::KeywordAbility::Changeling) {
+            chars.every_creature_type = true;
+        }
 
         for &layer in Layer::all_in_order().iter() {
             if layer == Layer::L7dPTCounters {
@@ -1255,6 +1350,85 @@ mod tests {
         s.objects.get_mut(equipment).unwrap().attached_to = Some(bearer_b);
         assert!(!s.has_keyword(bearer_a, &KeywordAbility::Vigilance));
         assert!( s.has_keyword(bearer_b, &KeywordAbility::Vigilance));
+    }
+
+    #[test]
+    fn targeted_subtype_add_and_attached_type_add() {
+        let mut s = GameState::new(2, 0);
+        let equipment = put_creature(&mut s, 0, 0, 0);
+        let bearer = put_creature(&mut s, 0, 2, 2);
+        let other = put_creature(&mut s, 0, 2, 2);
+        // Targeted: `other` becomes subtype-7 ("Mutant").
+        s.add_continuous_effect(ContinuousEffect::add_subtypes(
+            0, other, {
+                let mut set = crate::types::SubtypeSet::new();
+                set.0.insert(7);
+                set
+            }, Duration::Permanent,
+        ));
+        assert!( s.compute_characteristics(other).unwrap().subtypes.contains(7));
+        assert!(!s.compute_characteristics(bearer).unwrap().subtypes.contains(7));
+        // Attached card-type add: bearer becomes an ARTIFACT creature.
+        s.add_continuous_effect(ContinuousEffect::attached_types(
+            equipment, crate::types::TypeLine::ARTIFACT.into(),
+            Duration::WhileSourceOnBattlefield,
+        ));
+        s.objects.get_mut(equipment).unwrap().attached_to = Some(bearer);
+        let chars = s.compute_characteristics(bearer).unwrap();
+        assert!(chars.types.is_artifact());
+        assert!(chars.types.is_creature()); // additive, not replacing
+    }
+
+    #[test]
+    fn every_creature_type_flag_satisfies_subtype_filters() {
+        let mut s = GameState::new(2, 0);
+        let stalactite = put_creature(&mut s, 0, 0, 0);
+        let bearer = put_creature(&mut s, 0, 2, 2);
+        s.add_continuous_effect(ContinuousEffect::attached_every_creature_type(
+            stalactite, Duration::WhileSourceOnBattlefield,
+        ));
+        s.objects.get_mut(stalactite).unwrap().attached_to = Some(bearer);
+        assert!(s.compute_characteristics(bearer).unwrap().every_creature_type);
+        // Any positive subtype filter matches; exclusions reject.
+        let obj = s.objects.get(bearer).unwrap();
+        let goblin = crate::targets::ObjectFilter::new().with_subtype_sym(42);
+        assert!(goblin.matches(obj, &s, 0));
+        let non_goblin = crate::targets::ObjectFilter::new().without_subtype_sym(42);
+        assert!(!non_goblin.matches(obj, &s, 0));
+    }
+
+    #[test]
+    fn changeling_keyword_is_a_cda() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.objects.get_mut(c).unwrap().characteristics.keywords
+            .push(crate::effects::KeywordAbility::Changeling);
+        assert!(s.compute_characteristics(c).unwrap().every_creature_type);
+        let obj = s.objects.get(c).unwrap();
+        let any_tribe = crate::targets::ObjectFilter::new().with_subtype_sym(13);
+        assert!(any_tribe.matches(obj, &s, 0));
+    }
+
+    #[test]
+    fn until_next_turn_and_upkeep_durations_expire_on_their_hooks() {
+        let mut s = GameState::new(2, 0);
+        let c = put_creature(&mut s, 0, 2, 2);
+        s.add_continuous_effect(ContinuousEffect::grant_keyword(
+            0, c, KeywordAbility::Flying, Duration::UntilYourNextTurn(1),
+        ));
+        s.add_continuous_effect(ContinuousEffect::grant_keyword(
+            0, c, KeywordAbility::Haste, Duration::UntilNextUpkeepOf(0),
+        ));
+        assert!(s.has_keyword(c, &KeywordAbility::Flying));
+        assert!(s.has_keyword(c, &KeywordAbility::Haste));
+        // Player 0's turn/upkeep: only the upkeep-bound effect ends.
+        s.expire_until_next_turn_effects(0);
+        s.expire_until_next_upkeep_effects(0);
+        assert!( s.has_keyword(c, &KeywordAbility::Flying));
+        assert!(!s.has_keyword(c, &KeywordAbility::Haste));
+        // Player 1's turn begins: the until-your-next-turn effect ends.
+        s.expire_until_next_turn_effects(1);
+        assert!(!s.has_keyword(c, &KeywordAbility::Flying));
     }
 
     #[test]

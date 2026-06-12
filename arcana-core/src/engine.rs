@@ -1739,6 +1739,12 @@ fn apply_choice_follow_up(
                 }
             }
         }
+        ChoiceFollowUp::Destroy => {
+            for id in chosen {
+                crate::effects::Effect::DestroyPermanent { target: *id }
+                    .execute(state);
+            }
+        }
         ChoiceFollowUp::Sacrifice { player } => {
             for id in chosen {
                 state.emit(GameEvent::Sacrifice { player, object_id: *id });
@@ -2284,6 +2290,15 @@ fn push_trigger_stack_entry(
         Vec::new(),
     );
     entry.target_requirements = requirements;
+    // Delayed triggers carry their effect fn (no registry def exists
+    // for trigger_id 0) — snapshot it onto the entry for resolution.
+    if let Some(f) = pt.effect_override {
+        if let crate::stack::StackEntryKind::TriggeredAbility {
+            resolved_effect, ..
+        } = &mut entry.kind {
+            *resolved_effect = Some(f);
+        }
+    }
     if let Some(obj) = state.object_or_lki(pt.source) {
         if let Some(def) = registry.get(obj.card_id) {
             if let Some(resolver) =
@@ -2436,6 +2451,7 @@ fn collect_pending_triggers(
                             controller: ward_obj.controller,
                             trigger_event: event.clone(),
                             targets: crate::targets::TargetSelection::new(),
+                            effect_override: None,
                         });
                     }
                 }
@@ -2478,6 +2494,7 @@ fn collect_pending_triggers(
                         controller: owner,
                         trigger_event: zc.clone(),
                         targets: crate::targets::TargetSelection::new(),
+                        effect_override: None,
                     });
                 };
                 if kws.contains(&KA::Undying) && no_plus {
@@ -2518,6 +2535,7 @@ fn collect_pending_triggers(
                     controller: ctrl,
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
+                    effect_override: None,
                 });
             };
             // Exalted (CR 702.83a): a creature attacking alone. One
@@ -2590,6 +2608,7 @@ fn collect_pending_triggers(
                     controller: ctrl,
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
+                    effect_override: None,
                 });
             }
         }
@@ -2608,6 +2627,7 @@ fn collect_pending_triggers(
                     source: src, trigger_id: tid, controller: ctrl,
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
+                    effect_override: None,
                 });
             };
             match event {
@@ -2667,6 +2687,7 @@ fn collect_pending_triggers(
                             source: src, trigger_id: EVOLVE_TRIGGER_ID,
                             controller: c, trigger_event: event.clone(),
                             targets: crate::targets::TargetSelection::new(),
+                            effect_override: None,
                         });
                     }
                 }
@@ -2687,6 +2708,7 @@ fn collect_pending_triggers(
                         source: *object_id, trigger_id: tid,
                         controller: c, trigger_event: event.clone(),
                         targets: crate::targets::TargetSelection::new(),
+                        effect_override: None,
                     });
                 };
                 if kws.iter().any(|k| matches!(k, KA::Devour(_))) {
@@ -2706,6 +2728,9 @@ fn collect_pending_triggers(
         } = event {
             use crate::effects::KeywordAbility as KA;
             let ap = state.active_player();
+            // "Until your next upkeep" effects end as this player's
+            // upkeep begins.
+            state.expire_until_next_upkeep_effects(ap);
             let ids: Vec<ObjectId> = state.objects
                 .objects_in_zone(Zone::Battlefield)
                 .filter(|o| o.controller == ap)
@@ -2718,6 +2743,7 @@ fn collect_pending_triggers(
                     source: src, trigger_id: FADEVANISH_TRIGGER_ID,
                     controller: ap, trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
+                    effect_override: None,
                 });
             }
         }
@@ -3061,6 +3087,9 @@ fn next_turn(state: &mut GameState) {
         None => crate::priority::next_in_turn_order(ap, state.num_players()),
     };
     state.turn.start_next_turn(next_ap);
+    // "Until your next turn" continuous effects end as that player's
+    // turn begins.
+    state.expire_until_next_turn_effects(next_ap);
     // CR 702.40a: storm count resets between turns.
     state.storm_count = 0;
     // CR 606.3 — loyalty-activation ledger is per-turn; clear it so
@@ -3357,8 +3386,24 @@ fn resolution_effects(
             (ability.effect)(state, &ctx, registry)
         }
         crate::stack::StackEntryKind::TriggeredAbility {
-            trigger_id, trigger_event, ..
+            trigger_id, trigger_event, resolved_effect, ..
         } => {
+            // DELAYED triggers (no registry def) dispatch through the
+            // snapshotted effect fn — checked FIRST and without an
+            // object lookup, because a delayed trigger must run even
+            // after its source has left every zone (return-the-exiled-
+            // card, revert-control).
+            if let Some(f) = resolved_effect {
+                let pt = crate::triggers::PendingTrigger {
+                    source: entry.source,
+                    trigger_id: *trigger_id,
+                    controller: entry.controller,
+                    trigger_event: trigger_event.clone(),
+                    targets: entry.targets.clone(),
+                    effect_override: None,
+                };
+                return (f)(state, &pt, registry);
+            }
             // Ward (CR 702.21a) is a keyword-born trigger; its stack
             // entry carries the [`WARD_TRIGGER_ID`] sentinel and no
             // per-card [`TriggeredAbilityDef`] exists. Dispatch to
@@ -3399,6 +3444,7 @@ fn resolution_effects(
                 controller: entry.controller,
                 trigger_event: trigger_event.clone(),
                 targets: entry.targets.clone(),
+                effect_override: None,
             };
             // Granted abilities (id in the granted range) dispatch from
             // the object's runtime list; otherwise the registry def.
@@ -5640,6 +5686,7 @@ mod tests {
             controller: 0,
             trigger_event: GameEvent::TurnBegins { player: 0, turn_number: 1 },
             targets: Default::default(),
+            effect_override: None,
         });
 
         // Must not panic (it would, pre-fix, when the drain pushed a 2nd
@@ -7341,6 +7388,37 @@ mod tests {
         run_sba_and_triggers(&mut state, &registry);
         assert_eq!(state.stack_size(), 1,
             "re-scan should not double-fire the same event");
+    }
+
+    #[test]
+    fn delayed_trigger_effect_executes_at_resolution() {
+        // End-to-end: the delayed trigger's EFFECT must run when its
+        // stack entry resolves — not just land on the stack.
+        use crate::triggers::{DelayedTrigger, TriggerCondition};
+        let registry = crate::registry::CardRegistry::new();
+        let mut state = GameState::new(2, 0);
+        fn gain_five(
+            _s: &GameState, pt: &crate::triggers::PendingTrigger,
+            _r: &CardRegistry,
+        ) -> Vec<crate::effects::Effect> {
+            vec![crate::effects::Effect::GainLife {
+                player: pt.controller, amount: 5 }]
+        }
+        state.register_delayed_trigger(DelayedTrigger::one_shot(
+            1, 0,
+            TriggerCondition::StepBegins {
+                step: crate::turn::Step::End,
+                whose: crate::targets::ControllerConstraint::Any,
+            },
+            gain_five,
+        ));
+        let before = state.player(0).life;
+        state.emit(GameEvent::StepBegins { step: crate::turn::Step::End });
+        run_sba_and_triggers(&mut state, &registry);
+        assert_eq!(state.stack_size(), 1);
+        resolve_top_of_stack(&mut state, &registry);
+        assert_eq!(state.player(0).life, before + 5,
+            "delayed trigger effect must execute at resolution");
     }
 
     #[test]

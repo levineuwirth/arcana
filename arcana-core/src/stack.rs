@@ -325,6 +325,7 @@ impl StackEntry {
                 trigger_id,
                 trigger_event,
                 text,
+                resolved_effect: None,
             },
             targets,
             modes,
@@ -416,6 +417,15 @@ pub enum StackEntryKind {
         /// around so the trigger's effect fn has the context it needs.
         trigger_event: GameEvent,
         text: String,
+        /// For DELAYED triggers (trigger_id 0, no registry def):
+        /// the scheduled effect fn, snapshotted from
+        /// [`crate::triggers::DelayedTrigger::effect`] when the entry
+        /// was pushed. Resolution dispatches through this when set.
+        /// Serde-skipped like the activated-ability snapshot — a
+        /// deserialized delayed entry loses its effect (same
+        /// TODO(serialize) plan as the rest of the fn-pointer sites).
+        #[serde(skip)]
+        resolved_effect: Option<crate::triggers::EffectFn>,
     },
 }
 

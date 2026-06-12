@@ -262,6 +262,7 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
                 object_id: src, from_zone: Zone::Stack, was_cast: true,
             });
         let pt = crate::triggers::PendingTrigger {
+            effect_override: None,
             source: src, trigger_id: ability.id, controller: 0,
             trigger_event: event, targets,
         };
@@ -313,6 +314,14 @@ fn synth_event(
         TC::SelfAttacksAlone => GE::AttacksDeclared {
             attackers: vec![crate::combat::AttackerDeclaration {
                 attacker: source,
+                defending: crate::combat::DefendingEntity::Player(1 - controller),
+            }],
+        },
+        // Filtered alone: the omni-tribal seed is the sole attacker,
+        // same posture as the other filtered forms.
+        TC::AttacksAlone { .. } => GE::AttacksDeclared {
+            attackers: vec![crate::combat::AttackerDeclaration {
+                attacker: other,
                 defending: crate::combat::DefendingEntity::Player(1 - controller),
             }],
         },

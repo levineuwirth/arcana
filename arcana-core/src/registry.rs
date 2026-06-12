@@ -1361,6 +1361,8 @@ fn combine_split_characteristics(
         // Split cards aren't Sagas — neither half can be one, since
         // Sagas are a layout in their own right.
         saga_final_chapter: None,
+        every_creature_type: left.every_creature_type
+            || right.every_creature_type,
     }
 }
 
@@ -1823,6 +1825,7 @@ mod tests {
                 amount: 5, is_combat: true,
             },
             targets: crate::targets::TargetSelection::new(),
+            effect_override: None,
         };
         assert_eq!(found.unwrap()(&pt), 5);
 

@@ -686,6 +686,10 @@ pub enum ChoiceFollowUp {
     /// Sacrifice each picked permanent (move to owner's graveyard,
     /// emit [`crate::events::GameEvent::Sacrifice`]).
     Sacrifice { player: PlayerId },
+    /// Destroy each picked permanent via the normal destruction path
+    /// ([`crate::effects::Effect::DestroyPermanent`] semantics) —
+    /// pairs with [`crate::effects::PickAction::Destroy`].
+    Destroy,
     /// Discard each picked card from hand (move to graveyard, emit
     /// [`crate::events::GameEvent::Discarded`]).
     Discard { player: PlayerId },
