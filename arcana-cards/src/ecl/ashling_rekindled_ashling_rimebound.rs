@@ -10,9 +10,8 @@
 //!   main phase, add two mana of any one color. Spend this mana only to cast spells with mana value 4+.
 //!   At the beginning of your first main phase, you may pay {R}. If you do, transform Ashling.
 //!
-//! GAP: "enters OR transforms into" combined trigger — wired as SelfEntersBattlefield +
-//!   a separate ZoneChange/transform event is not directly available; using SelfEntersBattlefield only.
-//! GAP: back-face "transforms into Ashling, Rimebound" trigger not modeled (back-face-only).
+//! GAP: back-face "transforms into Ashling, Rimebound [or first main phase], add two
+//!   mana" trigger not modeled — the mana effect itself is inexpressible (see below).
 //! GAP: "add two mana of any one color" — any-color choice not expressible (single color only).
 //! GAP: "spend this mana only to cast spells with mana value 4 or greater" restriction not modeled.
 //! GAP: Back-face triggered abilities not auto-installed on transform.
@@ -80,11 +79,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Trigger 1: front face — ETB: you may discard, if you do draw a card
-            // GAP: "enters OR transforms" — only SelfEntersBattlefield wired here.
             // GAP: OptionalPayment discard cost not available; simplified to optional draw.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_loot,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 4: "or transforms into Ashling, Rekindled" (front face) half
+            // of the loot trigger.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(0) },
                 intervening_if: None,
                 effect: etb_loot,
                 trigger_zones: vec![Zone::Battlefield],

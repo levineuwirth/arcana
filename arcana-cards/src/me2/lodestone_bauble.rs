@@ -3,9 +3,12 @@
 //! cards from a player's graveyard on top of their library in any order.
 //! That player draws a card at the beginning of the next turn's upkeep."
 //! Up-to-four graveyard-card targets each go on top of their library; the
-//! 'in any order' choice and the delayed upkeep draw are documented gaps.
+//! delayed upkeep draw is wired via Effect::DelayedAction
+//! (DelayedWhen::NextUpkeep + DelayedAction::ControllerDrawsCard,
+//! controller = the graveyard's owner). The 'in any order' choice stays a
+//! documented gap.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -71,15 +74,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn stack_lands_on_library(
-    _state: &GameState,
+    state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: 'in any order' — the controller's ordering choice is not
-    // modeled (cards go on top in target order). GAP: 'That player draws
-    // a card at the beginning of the next turn's upkeep' — DelayedAction
-    // has no Draw action and no upkeep timing.
-    ctx.targets
+    // modeled (cards go on top in target order).
+    let mut effects: Vec<Effect> = ctx
+        .targets
         .targets
         .iter()
         .filter_map(|t| match t {
@@ -88,5 +90,25 @@ fn stack_lands_on_library(
             }
             _ => None,
         })
-        .collect()
+        .collect();
+    // "That player draws a card at the beginning of the next turn's
+    // upkeep" — 'that player' is the graveyard's owner, read from the
+    // first targeted card (falls back to player 0, the graveyard the
+    // target requirement is registered against).
+    let drawer = ctx
+        .targets
+        .targets
+        .iter()
+        .find_map(|t| match t {
+            TargetChoice::Object(id) => state.objects.get(*id).map(|o| o.owner),
+            _ => None,
+        })
+        .unwrap_or(0);
+    effects.push(Effect::DelayedAction {
+        source: ctx.source,
+        controller: drawer,
+        when: DelayedWhen::NextUpkeep,
+        action: DelayedAction::ControllerDrawsCard,
+    });
+    effects
 }

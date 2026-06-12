@@ -49,6 +49,9 @@ fn resolve(
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     // GAP: "put a flying counter on it" (no FlyingCounter kind; only +1/+1 supported).
-    // GAP: "it's a Spirit in addition to its other types" (no type-add Effect).
+    // GAP: "it's a Spirit in addition to its other types" — Spirit is a
+    // subtype (only the ATTACHED attached_subtypes grant exists, no
+    // targeted subtype-add), and riders on the returned permanent can't
+    // follow the zone-change re-id.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

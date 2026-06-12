@@ -6,7 +6,6 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -38,7 +37,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .with_subtype_sym(warrior)
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -56,8 +57,10 @@ fn warrior_enters_counter(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Warrior" subtype filter on the entering creature not enforced here
-    // (trigger condition can't filter by subtype on ZoneChange entering object).
+    // "another Warrior" — skip this creature's own entry.
+    if trig.entering_object() == Some(trig.source) {
+        return Vec::new();
+    }
     vec![Effect::AddCounters {
         target: trig.source,
         kind: CounterKind::PlusOnePlusOne,

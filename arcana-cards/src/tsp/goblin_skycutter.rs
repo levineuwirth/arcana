@@ -2,10 +2,11 @@
 //! creature: It deals 2 damage to target creature with flying. That creature
 //! loses flying until end of turn."
 //!
-//! Note: "loses flying" not expressible directly (GrantKeyword grants, but
-//! there's no RemoveKeyword). Emitting damage only.
+//! "Loses flying until end of turn" installs a targeted
+//! `ContinuousEffect::remove_keyword` (Layer 6).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -60,6 +61,17 @@ fn deal_two_remove_flying(
 ) -> Vec<Effect> {
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "loses flying" = RemoveKeyword not available.
-    vec![Effect::DealDamage { target: DamageTarget::Object(*id), amount: 2, source: ctx.source }]
+    // "That creature loses flying until end of turn" — targeted keyword
+    // removal (Layer 6).
+    vec![
+        Effect::DealDamage { target: DamageTarget::Object(*id), amount: 2, source: ctx.source },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::remove_keyword(
+                ctx.source,
+                *id,
+                KeywordAbility::Flying,
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

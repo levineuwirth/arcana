@@ -9,10 +9,10 @@
 //!   When this creature transforms into Hideous Fleshwheeler, put target permanent card with
 //!     mana value 2 or less from a graveyard onto the battlefield under your control.
 //!
-//! GAP: the back-face "When this creature transforms into Hideous Fleshwheeler, ..." trigger
-//!   is not expressible — there is no transform-completion TriggerCondition in the demonstrated
-//!   API (only StepBegins/ZoneChange/etc.). The ETB each-player-mills-3 trigger and the
-//!   sorcery-speed activated transform ({5}{W/P}) ARE authored.
+//! GAP: the back-face transform trigger returns the permanent card to the battlefield
+//!   via Effect::ReturnFromGraveyardToBattlefield, which places it under its OWNER's
+//!   control — the "under your control" rider for cards from an opponent's graveyard
+//!   is not modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,6 +24,9 @@ use arcana_core::registry::{
 use arcana_core::effects::KeywordAbility;
 use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -99,6 +102,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0),
                 effect: transform_self,
             })
+            // Back: When this creature transforms into Hideous Fleshwheeler, put
+            // target permanent card with mana value 2 or less from a graveyard
+            // onto the battlefield under your control.
+            // GAP: returns under the owner's control; the "under your control"
+            // rider for opponent-owned cards is not modeled.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_reanimate,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    // "a graveyard" — TargetFilter::Card matches by zone KIND,
+                    // so Graveyard(0) covers every player's graveyard.
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new()
+                            .with_types_any(TypeLine(
+                                TypeLine::CREATURE
+                                    | TypeLine::ARTIFACT
+                                    | TypeLine::ENCHANTMENT
+                                    | TypeLine::LAND
+                                    | TypeLine::PLANESWALKER
+                                    | TypeLine::BATTLE,
+                            ))
+                            .with_max_cmc(2),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+            })
             .with_trigger_face_gate(1, 0),
     )
 }
@@ -115,4 +150,16 @@ fn etb_mill(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Ve
 
 fn transform_self(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Transform { target: ctx.source }]
+}
+
+fn on_transform_reanimate(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: enters under its owner's control, not "under your control".
+    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

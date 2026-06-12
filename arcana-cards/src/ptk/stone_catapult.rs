@@ -1,7 +1,9 @@
 //! Stone Catapult — `{4}{B}` 1/2 black Human Soldier.
 //! "{T}: Destroy target tapped nonblack creature. Activate only during your turn,
 //! before attackers are declared."
-//! GAP: "only during your turn, before attackers are declared" timing restriction
+//! The "during your turn, before attackers are declared" window is
+//! enforced via `ActivationCost.activation_condition`
+//! (`conditions::your_turn_before_attackers`).
 //! is not fully expressible; using is_instant_speed: false as approximation.
 
 use arcana_core::effects::Effect;
@@ -36,7 +38,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Destroy target tapped nonblack creature. Activate only during your turn, before attackers are declared.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    // "Activate only during your turn, before attackers
+                    // are declared" (CR 602.5e window).
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::your_turn_before_attackers(s, you)
+                    }),
+                    ..ActivationCost::tap_only()
+                },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::creature()

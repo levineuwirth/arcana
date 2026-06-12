@@ -3,8 +3,11 @@
 //! "At the beginning of combat on your turn, target noncreature artifact
 //! you control becomes an 8/8 Robot Villain artifact creature in addition
 //! to its other types."
-//! GAP: "becomes a creature in addition to its other types" with SetBasePT
-//! is best-effort; type-line modification (adding Creature) not modeled.
+//! The animation is the additive Layer-4 `Effect::AddType` (Creature)
+//! plus `Effect::SetBasePT` 8/8, both `Duration::Permanent` (the oracle
+//! text has no duration).
+//! GAP: "Robot Villain" — only the ATTACHED subtype grant
+//! (attached_subtypes) exists; no targeted subtype-add.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -73,12 +76,22 @@ fn animate_artifact(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: type-line modification (adding Creature type) not modeled.
-    // Best-effort: set base P/T to 8/8 until end of turn.
-    vec![Effect::SetBasePT {
-        target: *id,
-        power: 8,
-        toughness: 8,
-        duration: Duration::EndOfTurn,
-    }]
+    // "becomes an 8/8 ... artifact creature in addition to its other
+    // types" — additive Layer-4 type overlay plus base P/T, permanent
+    // (the oracle text has no duration).
+    // GAP: "Robot Villain" — no targeted subtype-add (only the attached
+    // attached_subtypes grant exists).
+    vec![
+        Effect::AddType {
+            target: *id,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::Permanent,
+        },
+        Effect::SetBasePT {
+            target: *id,
+            power: 8,
+            toughness: 8,
+            duration: Duration::Permanent,
+        },
+    ]
 }

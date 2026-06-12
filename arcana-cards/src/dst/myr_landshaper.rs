@@ -1,10 +1,11 @@
 //! Myr Landshaper — `{3}` 1/1 colorless Artifact Creature — Myr.
 //! "{T}: Target land becomes an artifact in addition to its other types until end
 //! of turn."
-//! GAP: "Becomes an artifact in addition to its other types until end of turn" is
-//! a type-addition continuous effect not in the Effect catalog.
+//! The type addition is the additive Layer-4 `Effect::AddType` with
+//! `Duration::EndOfTurn`.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -54,10 +55,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn add_artifact_type(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Adding a type (Artifact) to a permanent in addition to its existing
-    // types until end of turn is not in the Effect catalog.
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "becomes an artifact in addition to its other types until end of
+    // turn" — additive Layer-4 type overlay.
+    vec![Effect::AddType {
+        target: *id,
+        types: TypeLine::ARTIFACT.into(),
+        duration: Duration::EndOfTurn,
+    }]
 }

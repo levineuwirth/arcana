@@ -1,10 +1,11 @@
 //! Vertigo — `{R}` instant. "Vertigo deals 2 damage to target creature
-//! with flying. That creature loses flying until end of turn." We
-//! can't directly REMOVE a keyword for a duration — best-effort: deal
-//! 2 damage to a flying creature; GAP the 'loses flying' rider.
+//! with flying. That creature loses flying until end of turn." The
+//! removal installs a targeted `ContinuousEffect::remove_keyword`
+//! (Layer 6) with `Duration::EndOfTurn`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -24,8 +25,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::INSTANT.into(),
         ..Default::default()
     };
-    // GAP: 'loses flying until end of turn' — no negative-keyword grant primitive (we ALSO can't filter targets to flying creatures specifically without a 'with keyword' ObjectFilter — use plain creature).
-    let _ = KeywordAbility::Flying;
+    // GAP: the "with flying" target restriction isn't keyword-filtered
+    // here; target is any creature.
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
@@ -48,9 +49,21 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 2,
-    }]
+    // "That creature loses flying until end of turn" — targeted keyword
+    // removal (Layer 6).
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 2,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::remove_keyword(
+                entry.source,
+                *id,
+                KeywordAbility::Flying,
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

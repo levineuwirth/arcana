@@ -51,8 +51,10 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "is an artifact in addition to its other types" —
-    // attached_pt covers P/T only (no attached type-add builder).
+    // GAP: "is an artifact in addition to its other types" — Artifact is
+    // a CARD type; attached_subtypes covers subtypes only and there is
+    // no attached card-type-add builder (Effect::AddType is targeted at
+    // install time and would not follow the attachment).
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,

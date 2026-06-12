@@ -72,7 +72,11 @@ fn reanimate_as_skeleton(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "it's a Skeleton in addition to its other types and has no abilities"
-    //      — no Effect for type-addition or ability-stripping modifier on ETB
+    // GAP: "it's a Skeleton in addition to its other types and has no
+    // abilities" — Skeleton is a subtype (only the ATTACHED
+    // attached_subtypes grant exists, no targeted subtype-add), and
+    // riders on the returned permanent can't follow the zone-change
+    // re-id (Effect::LoseAllAbilities aimed at the graveyard id would
+    // miss the new battlefield object).
     vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
 }

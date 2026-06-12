@@ -1,8 +1,7 @@
 //! Yuan Shao's Infantry — `{3}{R}` 2/2 red Human Soldier.
 //! "Whenever this creature attacks alone, this creature can't be blocked this combat."
 //!
-//! GAP: The trigger condition "attacks alone" (i.e., is the only attacking creature)
-//! has no dedicated TriggerCondition variant. Using SelfAttacks as closest match.
+//! "Attacks alone" via TriggerCondition::SelfAttacksAlone.
 //! The "this combat" scoping on CantBeBlocked is modeled as EndOfTurn (close approximation).
 
 use arcana_core::effects::Effect;
@@ -38,9 +37,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks alone" (sole attacker) is not a
-                // distinct TriggerCondition; using SelfAttacks as closest match.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // "Attacks alone" — sole declared attacker (CR 506.5).
+                trigger_condition: TriggerCondition::SelfAttacksAlone,
                 intervening_if: None,
                 effect: cant_be_blocked_this_combat,
                 trigger_zones: vec![Zone::Battlefield],

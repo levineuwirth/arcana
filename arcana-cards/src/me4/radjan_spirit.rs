@@ -1,8 +1,9 @@
 //! Radjan Spirit — `{3}{G}` 3/2 Spirit.
 //! `{T}: Target creature loses flying until end of turn.`
-//! GAP: "loses flying" — no "remove keyword" Effect; GrantKeyword adds keywords but
-//! there's no RevokKeyword or SetBasePT-equivalent for keyword removal.
+//! The removal installs a targeted `ContinuousEffect::remove_keyword`
+//! (Layer 6) with `Duration::EndOfTurn`.
 
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -10,9 +11,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Radjan Spirit");
@@ -47,9 +48,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn remove_flying(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "loses flying" — no keyword-removal Effect variant
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "Target creature loses flying until end of turn" — targeted
+    // keyword removal (Layer 6).
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::remove_keyword(
+            ctx.source,
+            *id,
+            KeywordAbility::Flying,
+            Duration::EndOfTurn,
+        ),
+    }]
 }

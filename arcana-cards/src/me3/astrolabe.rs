@@ -2,14 +2,11 @@
 //! "{1}, {T}, Sacrifice this artifact: Add two mana of any one color.
 //! Draw a card at the beginning of the next turn's upkeep." The
 //! any-one-color choice is modeled as five activated abilities, one
-//! per WUBRG color, each adding two mana of that color.
-//!
-//! GAP: "Draw a card at the beginning of the next turn's upkeep" —
-//! there is no delayed-draw action (DelayedAction covers Sacrifice /
-//! Exile / ReturnToHand / ReturnFromExileToBattlefield only); the
-//! delayed draw is unmodeled.
+//! per WUBRG color, each adding two mana of that color. The delayed
+//! draw is wired via Effect::DelayedAction (DelayedWhen::NextUpkeep +
+//! DelayedAction::ControllerDrawsCard).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -76,15 +73,22 @@ fn sac_ability(
 }
 
 fn add_two_of(color: ManaColor, ctx: &ActivationContext) -> Vec<Effect> {
-    // GAP: "Draw a card at the beginning of the next turn's upkeep" —
-    // no delayed-draw DelayedAction; only the mana resolves.
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![
-            ManaUnit::plain(color, ctx.source),
-            ManaUnit::plain(color, ctx.source),
-        ],
-    }]
+    vec![
+        Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![
+                ManaUnit::plain(color, ctx.source),
+                ManaUnit::plain(color, ctx.source),
+            ],
+        },
+        // "Draw a card at the beginning of the next turn's upkeep."
+        Effect::DelayedAction {
+            source: ctx.source,
+            controller: ctx.controller,
+            when: DelayedWhen::NextUpkeep,
+            action: DelayedAction::ControllerDrawsCard,
+        },
+    ]
 }
 
 fn add_two_white(

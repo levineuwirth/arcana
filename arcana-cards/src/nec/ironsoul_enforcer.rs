@@ -38,10 +38,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "this creature or a commander attacks alone"
-                // not a single TriggerCondition; using SelfAttacks as best
-                // approximation for the "this creature" half.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // SelfAttacksAlone covers the "this creature attacks alone" half.
+                // GAP: "or a commander you control attacks alone" half not
+                // expressible as a TriggerCondition.
+                trigger_condition: TriggerCondition::SelfAttacksAlone,
                 intervening_if: None,
                 effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],

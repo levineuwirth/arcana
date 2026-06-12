@@ -9,23 +9,16 @@
 # future ForEach/subtype_filter-class bug) fails CI. The trigger block is an
 # un-triaged baseline — mine it for real bugs (like subtype_filter) and SHRINK
 # it; never grow without confirming the card is a genuine false-positive.
-Aang, Swift Savior
 Absorb Energy
 Access Denied
-Aclazotz, Deepest Betrayal
-Aetherblade Agent
 Aladdin
 All Suns' Dawn
 Altar of the Wretched
-Ambitious Farmhand
 Armed Response
 Ayara, Widow of the Realm
 Bag Check
 Bane's Contingency
 Beguiler of Wills
-Blightreaper Thallid
-Bloodline Keeper
-Bonded Herdbeast
 Boon of Boseiju
 Burst of Energy
 Calamitous Cave-In
@@ -34,15 +27,11 @@ Ceremonious Rejection
 Chain Stasis
 Chandra, Fire of Kaladesh
 Charge Across the Araba
-Chosen of Markov
 Civic Gardener
 Clever Conjurer
-Clive, Ifrit's Dominant
 Clone Legion
 Coffin Puppets
-Concealing Curtains
 Concerted Defense
-Conduit of Storms
 Convolute
 Corridor Monitor
 Corrupted Resolve
@@ -50,14 +39,11 @@ Counterbore
 Counterlash
 Counterpoint
 Counterspell
-Crystal Fragments
 Dazzling Denial
 Delay
 Descendant of Masumaro
 Desertion
 Devious Cover-Up
-Dion, Bahamut's Dominant
-Disallow
 Dispersal Shield
 Dissipate
 Divert Disaster
@@ -70,11 +56,9 @@ Dumb Ass
 Durable Coilbug
 Elder Druid
 Electrosiphon
-Elusive Tormentor
 Elvish Scout
 Empress Galina
 Ertai's Trickery
-Etali, Primal Conqueror
 Evaporate
 Evasive Action
 Faerie Trickery
@@ -86,27 +70,19 @@ Fuel for the Cause
 Fyndhorn Brownie
 Gates Ablaze
 Ghoulsteed
-Gnottvold Hermit
 Goblin Assassin
 Goblin Psychopath
 Greenside Watcher
-Grimlock, Dinobot Leader
 Groundskeeper
 Gruesome Menagerie
 Gumdrop Poisoner
 Gustcloak Runner
 Gustcloak Sentinel
-Gwen Stacy
 Hajar, Loyal Bodyguard
 Hana Kami
-Harried Artisan
-Heir of Falkenrath
-Heliod, the Radiant Dawn
-Herbology Instructor
 Hinder
 Hisoka's Defiance
 Horseshoe Crab
-Huatli, Poet of Unity
 Hyrax Tower Scout
 Induce Paranoia
 Initiate's Companion
@@ -118,11 +94,7 @@ Ire of Kaminari
 It'll Quench Ya!
 Ixidor's Will
 Jaded Response
-Jill, Shiva's Dominant
-Jin-Gitaxias
 Jungle Creeper
-Kessig Prowler
-Kindly Stranger
 Kindred Denial
 Kiora's Follower
 Kumano Faces Kakkazan
@@ -148,20 +120,15 @@ Minamo's Meddling
 Mindstatic
 Minor Misstep
 Mystic Genesis
-Mystic Skull
 Nanoform Sentinel
 Negate
 Nether Spirit
 Neutralizing Blast
-Nezumi Freewheeler
-Nicol Bolas, the Ravager
 Nimbleclaw Adept
 Nix
 No More Lies
-Ojer Axonil, Deepest Might
 Open the Vaults
 Oppressive Will
-Order of the Mirror
 Outwit
 Ovalchase Daredevil
 Override
@@ -170,9 +137,7 @@ Pendelhaven Elder
 Permission Denied
 Peter Parker
 Phyrexian Infiltrator
-Pious Evangel
 Plasm Capture
-Polukranos Reborn
 Praetor's Counsel
 Priest of the Haunted Edge
 Prince of Thralls
@@ -182,7 +147,6 @@ Quench
 Radagast the Brown
 Rakshasa's Disdain
 Raph & Leo, Sibling Rivals
-Ravenous Demon
 Rebuff the Wicked
 Reinterpret
 Reject Imperfection
@@ -206,13 +170,10 @@ Scuttling Sliver
 Second Guess
 Seeker of Skybreak
 Serene Heart
-Shrill Howler
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm
 Skred
-Skyclave Aerialist
-Smoldering Werewolf
 Soliton
 Sparring Mummy
 Spell Crumple
@@ -226,11 +187,8 @@ Spelljack
 Steel Overseer
 Stensia Innkeeper
 Superior Numbers
-Sygg, Wanderwine Wisdom
 Tale's End
-Tangleclaw Werewolf
 Teferi's Contingency
-Terra, Magical Adept
 Thassa's Rebuff
 The Akroan War
 The Legend of Yangchen
@@ -238,20 +196,16 @@ The Modern Age
 Thing in the Ice
 Thistledown Players
 Thoughtbind
-Thraben Gargoyle
 Tibalt's Trickery
 Ticking Mime Bomb
 Trickster Mage
 Tunnel Rats
 Turn Aside
 Two-Headed Giant
-Ulvenwald Captive
-Ulvenwald Oddity
 Undersimplify
 Unified Lunge
 Unravel
 Vedalken Plotter
-Vildin-Pack Outcast
 Voidslime
 Voltaic Construct
 Warren Pilferers

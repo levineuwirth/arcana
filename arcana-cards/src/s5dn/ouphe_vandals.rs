@@ -1,8 +1,9 @@
 //! Ouphe Vandals — `{2}{G}` 2/2 green Ouphe Rogue.
 //! "{G}, Sacrifice this creature: Counter target activated ability from an artifact source
 //! and destroy that artifact if it's on the battlefield."
-//! GAP: "Counter target activated ability" — no Effect variant for countering an ability.
-//! GAP: targeting an activated ability on the stack is not in the TargetFilter catalog.
+//! Wired via TargetFilter::AbilityOnStack (artifact source_filter) + Effect::Counter,
+//! which handles ability stack entries; the source artifact is looked up from the
+//! targeted stack entry and destroyed if it's still on the battlefield.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,6 +13,9 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -40,7 +44,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     sacrifice: true,
                     ..ActivationCost::default()
                 },
-                target_requirements: Vec::new(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::AbilityOnStack {
+                        activated: true,
+                        triggered: false,
+                        source_filter: Some(
+                            ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+                        ),
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
@@ -52,11 +66,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn counter_artifact_ability(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "counter target activated ability from artifact source" — no Effect variant
-    // for countering abilities on the stack.
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    let mut effects = vec![Effect::Counter { target: *id }];
+    // "…and destroy that artifact if it's on the battlefield": read the
+    // targeted ability entry's source off the stack at resolution.
+    if let Some(entry) = state.stack.iter().find(|e| e.id == *id) {
+        if state
+            .objects
+            .get(entry.source)
+            .is_some_and(|o| o.is_permanent_on_battlefield())
+        {
+            effects.push(Effect::DestroyPermanent { target: entry.source });
+        }
+    }
+    effects
 }

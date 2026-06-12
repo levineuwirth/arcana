@@ -8,18 +8,19 @@
 //!   opponent controls gets -0/-X until end of turn, where X is this
 //!   creature's power.
 //!
-//! GAP: "When this creature transforms into Malady Invoker" has no expressible
-//! TriggerCondition (the trigger enum has no transforms-into event). The back
-//! face's on-transform -0/-X debuff is therefore not wired.
-
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationCost, ActivationContext, ActivationZone, CardDefinition,
     CardFace, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -95,6 +96,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0),
                 effect: transform_self,
+            })
+            // Back: When this creature transforms into Malady Invoker, target
+            // creature an opponent controls gets -0/-X until end of turn, where
+            // X is this creature's power.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_debuff,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
+                }],
             }),
     )
 }
@@ -108,4 +125,23 @@ fn etb_gain_life(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry)
 
 fn transform_self(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Transform { target: ctx.source }]
+}
+
+fn on_transform_debuff(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    // X = this creature's power, read at resolution.
+    let x = script::power_of(state, trig.source).max(0);
+    vec![Effect::Pump {
+        target: *id,
+        power: 0,
+        toughness: -x,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

@@ -2,14 +2,11 @@
 //! "{1}, {T}, Sacrifice this artifact: Add one mana of any color.
 //! Draw a card at the beginning of the next turn's upkeep." The
 //! any-color choice is modeled as five separately activatable mana
-//! abilities, one per WUBRG color.
-//!
-//! GAP: "Draw a card at the beginning of the next turn's upkeep" —
-//! delayed draw has no `DelayedAction` variant (only Sacrifice /
-//! Exile / ReturnToHand / ReturnFromExileToBattlefield); the rider is
-//! omitted from each ability.
+//! abilities, one per WUBRG color. The delayed draw is wired via
+//! Effect::DelayedAction (DelayedWhen::NextUpkeep +
+//! DelayedAction::ControllerDrawsCard) on each ability.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -97,18 +94,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-// GAP (each ability): "Draw a card at the beginning of the next turn's
-// upkeep" — no delayed-draw DelayedAction variant.
+// Each ability: add one mana of its color and schedule "Draw a card at
+// the beginning of the next turn's upkeep".
+fn add_one_of(color: ManaColor, ctx: &ActivationContext) -> Vec<Effect> {
+    vec![
+        Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![ManaUnit::plain(color, ctx.source)],
+        },
+        Effect::DelayedAction {
+            source: ctx.source,
+            controller: ctx.controller,
+            when: DelayedWhen::NextUpkeep,
+            action: DelayedAction::ControllerDrawsCard,
+        },
+    ]
+}
 
 fn add_white(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)],
-    }]
+    add_one_of(ManaColor::White, ctx)
 }
 
 fn add_blue(
@@ -116,10 +124,7 @@ fn add_blue(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)],
-    }]
+    add_one_of(ManaColor::Blue, ctx)
 }
 
 fn add_black(
@@ -127,10 +132,7 @@ fn add_black(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
-    }]
+    add_one_of(ManaColor::Black, ctx)
 }
 
 fn add_red(
@@ -138,10 +140,7 @@ fn add_red(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
-    }]
+    add_one_of(ManaColor::Red, ctx)
 }
 
 fn add_green(
@@ -149,8 +148,5 @@ fn add_green(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
-    }]
+    add_one_of(ManaColor::Green, ctx)
 }

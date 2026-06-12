@@ -11,16 +11,12 @@
 //! When this creature transforms into Avacyn, the Purifier, it deals 3 damage to each
 //! other creature and each opponent.
 //!
-//! GAP: Back face "deals 3 damage to each other creature" — we approximate with ForEach
-//!      over all creatures (including controller's) minus self; the "other" filter is
-//!      approximated without excluding the source itself.
-//! GAP: Back face on-transform trigger "when this transforms" is a back-face-only ability
-//!      not auto-installed. Modeled here as a shared ZoneChange trigger that fires after
-//!      transform, but cannot distinguish front-to-back from back-to-front.
-//! GAP: "at the beginning of the next upkeep" transform scheduling is approximated by a
-//!      TriggeredAbility on UpkeepBegins; the "next" qualifier (only once) is best-effort.
+//! GAP: "transform Archangel Avacyn at the beginning of the next upkeep" — the
+//!      delayed scheduling is approximated by transforming immediately when the
+//!      non-Angel creature dies.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
@@ -106,6 +102,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Trigger 3: When this creature transforms into Avacyn, the Purifier,
+            // it deals 3 damage to each other creature and each opponent.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_purify,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
     )
 }
 
@@ -137,4 +144,32 @@ fn on_non_angel_dies(
     // GAP: "at the beginning of the next upkeep" scheduling — emitting Transform
     // immediately as a best-effort approximation.
     vec![Effect::Transform { target: trig.source }]
+}
+
+fn on_transform_purify(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "each other creature" — every creature except this one.
+    let others: Vec<_> = script::ids_matching(state, &ObjectFilter::creature(), trig.controller)
+        .into_iter()
+        .filter(|&id| id != trig.source)
+        .collect();
+    let mut effects = vec![Effect::ForEach {
+        targets: others,
+        effect: Box::new(Effect::DealDamage {
+            source: trig.source,
+            target: DamageTarget::Object(NULL_OBJECT_ID),
+            amount: 3,
+        }),
+    }];
+    for p in script::opponents(state, trig.controller) {
+        effects.push(Effect::DealDamage {
+            source: trig.source,
+            target: DamageTarget::Player(p),
+            amount: 3,
+        });
+    }
+    effects
 }

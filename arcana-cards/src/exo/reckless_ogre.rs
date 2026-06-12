@@ -33,9 +33,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: no "attacks alone" variant; closest is SelfAttacks;
-                // the "alone" constraint is dropped
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // "Attacks alone" — sole declared attacker (CR 506.5).
+                trigger_condition: TriggerCondition::SelfAttacksAlone,
                 intervening_if: None,
                 effect: on_attacks_alone,
                 trigger_zones: vec![Zone::Battlefield],

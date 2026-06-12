@@ -5,7 +5,8 @@
 //!
 //! Adventure: `{2}{G}` Instant — A-Dissonant Wave
 //!   Counter target activated or triggered ability from a noncreature source.
-//!   (GAP: ability countering not in Effect API; emitting Vec::new().)
+//!   (Wired via TargetFilter::AbilityOnStack with a noncreature source_filter;
+//!   Effect::Counter handles ability stack entries.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -13,6 +14,9 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -42,7 +46,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     let adv_ability = SpellAbilityDef {
         text: "Counter target activated or triggered ability from a noncreature source.".into(),
-        target_requirements: Vec::new(),
+        target_requirements: vec![TargetRequirement {
+            filter: TargetFilter::AbilityOnStack {
+                activated: true,
+                triggered: true,
+                source_filter: Some(
+                    ObjectFilter::new().without_types(TypeLine::CREATURE.into()),
+                ),
+            },
+            count: TargetCount::Exactly(1),
+            controller: None,
+        }],
         modal: None,
         effect: adv_resolve,
     };
@@ -50,7 +64,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(CardDefinition::new(name, main_chars).with_adventure(adventure))
 }
 
-fn adv_resolve(_state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: ability countering not in Effect API
-    Vec::new()
+fn adv_resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

@@ -9,13 +9,15 @@
 //! Back face: Creature — Human Cleric.
 //! When this creature transforms into Lunarch Inquisitors, you may exile another target
 //! creature until this creature leaves the battlefield.
-//! GAP: Back-face-only triggered ability (exile target creature until this leaves) not modeled.
+//! GAP: "another" (excluding this creature) is not expressible in the target filter;
+//! the exile trigger targets any creature.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     ControllerConstraint, PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -79,6 +81,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // When this creature transforms into Lunarch Inquisitors, you may
+            // exile another target creature until this creature leaves the
+            // battlefield.
+            // GAP: "another" (excluding this creature) not expressible in the
+            // target filter; "you may" modeled via the up-to-one target count.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_exile,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
             }),
     )
 }
@@ -89,4 +109,18 @@ fn end_step_transform(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: trig.source }]
+}
+
+fn on_transform_exile(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::ExileUntilSourceLeaves {
+        source: trig.source,
+        target: *id,
+    }]
 }

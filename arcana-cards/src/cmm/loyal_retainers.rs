@@ -1,6 +1,8 @@
 //! Loyal Retainers — `{2}{W}` 1/1 Human Advisor.
 //! `Sacrifice this creature: Return target legendary creature card from your graveyard to the battlefield. Activate only during your turn, before attackers are declared.`
-//! GAP: "Activate only during your turn, before attackers are declared" — activation timing restriction not modeled.
+//! The "during your turn, before attackers are declared" window is
+//! enforced via `ActivationCost.activation_condition`
+//! (`conditions::your_turn_before_attackers`).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -37,6 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Sacrifice this creature: Return target legendary creature card from your graveyard to the battlefield. Activate only during your turn, before attackers are declared.".into(),
                 cost: ActivationCost {
                     sacrifice: true,
+                    // "Activate only during your turn, before attackers
+                    // are declared" (CR 602.5e window).
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::your_turn_before_attackers(s, you)
+                    }),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {

@@ -3,7 +3,8 @@
 //! II — Put a +1/+1 counter on target creature you control. It becomes a Mutant.
 //! III — Draw cards equal to the greatest power among Mutants you control.
 //! GAP: Chapter I "for as long as you control this Saga" duration not in catalog (only EndOfTurn/WhileSourceOnBattlefield); using ChangeControl (permanent).
-//! GAP: Chapter II "it becomes a Mutant in addition to its other types" — subtype-grant effect not in catalog.
+//! GAP: Chapter II "it becomes a Mutant in addition to its other types" — only the
+//! attached subtype grant exists; no targeted subtype-add continuous effect.
 //! GAP: Chapter III "draw cards equal to greatest power among Mutants" — max-power-among-subtype query not in script API; emitting Vec::new().
 //! Final-chapter sacrifice is automatic (engine SBA).
 
@@ -128,7 +129,9 @@ fn chapter_ii(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "it becomes a Mutant in addition to its other types" — subtype-grant not in catalog
+    // GAP: "it becomes a Mutant in addition to its other types" — only the
+    // ATTACHED subtype grant (attached_subtypes) exists; no TARGETED
+    // subtype-add continuous effect.
     vec![Effect::AddCounters { target: *id, kind: CounterKind::PlusOnePlusOne, count: 1 }]
 }
 

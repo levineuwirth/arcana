@@ -1,8 +1,10 @@
 //! Burning Palm Efreet — `{2}{R}{R}` 2/2 red Creature — Efreet.
 //! {1}{R}{R}: This creature deals 2 damage to target creature with flying and that creature loses flying until end of turn.
-//! GAP: "loses flying until end of turn" — removing a keyword (GrantKeyword negative) not in catalog.
+//! "Loses flying until end of turn" installs a targeted
+//! `ContinuousEffect::remove_keyword` (Layer 6).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -59,6 +61,17 @@ fn deal_damage_remove_flying(
 ) -> Vec<Effect> {
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "loses flying until end of turn" — keyword removal not in catalog
-    vec![Effect::DealDamage { target: DamageTarget::Object(*id), amount: 2, source: ctx.source }]
+    // "and that creature loses flying until end of turn" — targeted
+    // keyword removal (Layer 6).
+    vec![
+        Effect::DealDamage { target: DamageTarget::Object(*id), amount: 2, source: ctx.source },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::remove_keyword(
+                ctx.source,
+                *id,
+                KeywordAbility::Flying,
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

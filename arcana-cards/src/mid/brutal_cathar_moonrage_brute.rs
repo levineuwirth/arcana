@@ -13,9 +13,6 @@
 //!   implemented KeywordAbility list — omitted; the day/night transform
 //!   automation is engine debt.
 //! - "Transform" is a layout keyword, not a KeywordAbility.
-//! - The ETB trigger fires on `SelfEntersBattlefield`; the "or transforms into
-//!   Brutal Cathar" half of the trigger has no transform-into trigger condition
-//!   in the engine — only the enters half is modeled.
 //! - The exile is wired via `Effect::ExileUntilSourceLeaves` — the engine
 //!   returns the card when this creature leaves the battlefield.
 //! - "Ward—Pay 3 life" is a non-mana Ward cost, which is not expressible as
@@ -83,11 +80,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face trigger: ETB exile target creature an opponent controls.
-            // GAP: "or transforms into Brutal Cathar" half not modeled.
+            // "Whenever this creature enters or transforms into Brutal Cathar,
+            // exile target creature an opponent controls until this creature
+            // leaves the battlefield." Enters half:
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_exile_creature,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
+                }],
+            })
+            // Transforms-into-front half:
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(0) },
                 intervening_if: None,
                 effect: etb_exile_creature,
                 trigger_zones: vec![Zone::Battlefield],

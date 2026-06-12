@@ -4,14 +4,12 @@
 //! Revealing Eye, target opponent reveals their hand. You may choose a nonland
 //! card from it. If you do, that player discards that card, then draws a card.
 //!
-//! GAP: "When this creature transforms into Revealing Eye" — back-face-only
-//! transform-into trigger not modeled (triggered abilities live on the
-//! CardDefinition, not the face; no face-gate on TriggeredAbilityDef).
-//! The back face has Menace as a keyword in its characteristics.
-//! GAP: "choose a nonland card from opponent's hand" selection is not
-//! expressible; the triggered effect (discard then draw) is omitted.
+//! GAP: the transforms-into trigger is wired as "target opponent discards a card
+//! of YOUR choice, then draws a card" (DiscardChoice::OpponentChooses) — the hand
+//! reveal, the NONLAND restriction on the chosen card, and the "you may" optionality
+//! (declining the choice entirely) are not expressible.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -19,7 +17,14 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Concealing Curtains");
@@ -62,8 +67,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // GAP: back-face-only "transforms into Revealing Eye" trigger not modeled.
-
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
@@ -81,8 +84,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: None,
                 effect: transform_self,
+            })
+            // Back: When this creature transforms into Revealing Eye, target
+            // opponent reveals their hand. You may choose a nonland card from
+            // it. If you do, that player discards that card, then draws a card.
+            // GAP: reveal, nonland restriction, and optionality not expressible;
+            // wired as a mandatory you-choose discard, then draw.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_eye,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
+                }],
             }),
     )
+}
+
+fn on_transform_eye(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![
+        // "OpponentChooses" — the opponent of the discarding player (i.e. you)
+        // picks which card is discarded.
+        Effect::Discard {
+            player: *p,
+            count: 1,
+            choice: DiscardChoice::OpponentChooses,
+        },
+        Effect::DrawCards { player: *p, count: 1 },
+    ]
 }
 
 fn transform_self(

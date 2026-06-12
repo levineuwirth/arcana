@@ -12,30 +12,26 @@
 //! At the beginning of each upkeep, if a player cast two or more spells
 //! last turn, transform Ulrich.
 //!
-//! GAP: "enters or transforms into" — no TransformsInto TriggerCondition; using
-//!      ZoneChange (ETB only) for the +4/+4 pump trigger. Transforms-into path
-//!      is not authored.
-//! GAP: "at the beginning of each upkeep" — no StepBegins TriggerCondition shown;
-//!      upkeep-based werewolf transform triggers not authored.
-//! GAP: "if no spells were cast last turn" / "if a player cast two or more spells
-//!      last turn" — last-turn spell count not queryable; condition not expressible.
-//! GAP: back-face-only triggered abilities (fight trigger, back upkeep trigger)
-//!      not modeled per engine limitations.
+//! GAP: "you may have it fight" — the optional fight is modeled via the
+//!      up-to-one target count (declining = no target).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 
@@ -83,27 +79,79 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face ETB pump trigger (partial — ETB only, not "transforms into")
+            // "Whenever this creature enters or transforms into Ulrich of the
+            // Krallenhorde, target creature gets +4/+4 until end of turn."
+            // Enters half:
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::new()
-                        .controlled_by(ControllerConstraint::You),
-                    from: None,
-                    to: Zone::Battlefield,
-                },
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
                 effect: front_pump_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
-            }),
-        // GAP: "transforms into Ulrich of the Krallenhorde" path for +4/+4 not modeled
-        //      (no TransformsInto TriggerCondition).
-        // GAP: upkeep-based werewolf transform triggers not authored (no StepBegins
-        //      TriggerCondition; "no spells cast last turn" condition not expressible).
-        // GAP: back-face-only triggered ability (fight on transforms-into-back) not
-        //      modeled per engine limitations.
+            })
+            // Transforms-into-front half:
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(0) },
+                intervening_if: None,
+                effect: front_pump_trigger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement::target_creature()],
+            })
+            // Back: "Whenever this creature transforms into Ulrich, Uncontested
+            // Alpha, you may have it fight target non-Werewolf creature you
+            // don't control." ("you may" via up-to-one target.)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: back_fight_trigger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent)
+                            .without_subtype_sym(werewolf_sub),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+            })
+            // Front: at the beginning of each upkeep, if no spells were cast
+            // last turn, transform Ulrich.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_no_spells_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back: at the beginning of each upkeep, if a player cast two or
+            // more spells last turn, transform Ulrich.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 5,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_player_cast_two_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 4 fires only on the front face; trigger 5 only on the back.
+            .with_trigger_face_gate(4, 0)
+            .with_trigger_face_gate(5, 1),
     )
 }
 
@@ -121,4 +169,37 @@ fn front_pump_trigger(
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]
+}
+
+fn back_fight_trigger(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Fight { a: trig.source, b: *id }]
+}
+
+fn if_no_spells_last_turn(
+    s: &GameState,
+    _src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::no_spells_cast_last_turn(s)
+}
+
+fn if_player_cast_two_last_turn(
+    s: &GameState,
+    _src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(s)
+}
+
+fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
 }

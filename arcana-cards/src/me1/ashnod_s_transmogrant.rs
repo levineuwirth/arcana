@@ -1,11 +1,12 @@
 //! Ashnod's Transmogrant — `{1}` artifact.
 //! "{T}, Sacrifice this artifact: Put a +1/+1 counter on target nonartifact
 //! creature. That creature becomes an artifact in addition to its other
-//! types." The counter is wired; the permanent type change is a GAP (only
-//! EndOfTurn / WhileSourceOnBattlefield durations exist, and the source
-//! sacrifices itself).
+//! types." The counter is wired; the type change is an additive
+//! `Effect::AddType` with `Duration::Permanent` (it outlives the
+//! sacrificed source).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -60,13 +61,19 @@ fn counter_and_artifactize(
     let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: "That creature becomes an artifact in addition to its other types"
-    // is a PERMANENT type change — Effect::AddType only offers
-    // Duration::EndOfTurn / WhileSourceOnBattlefield (and this source
-    // sacrifices itself as a cost), so the type change is omitted.
-    vec![Effect::AddCounters {
-        target: *id,
-        kind: CounterKind::PlusOnePlusOne,
-        count: 1,
-    }]
+    vec![
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
+        // "That creature becomes an artifact in addition to its other
+        // types" — additive Layer-4 type overlay, permanent (survives
+        // the sacrificed source).
+        Effect::AddType {
+            target: *id,
+            types: TypeLine::ARTIFACT.into(),
+            duration: Duration::Permanent,
+        },
+    ]
 }

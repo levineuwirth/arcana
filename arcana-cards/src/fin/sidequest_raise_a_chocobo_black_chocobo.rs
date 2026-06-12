@@ -90,10 +90,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: BACK "When this permanent transforms into Black Chocobo, search
-            // your library for a land card, put it onto the battlefield tapped, then
-            // shuffle." — there is no transforms-into trigger condition variant in
-            // TriggerCondition; the on-transform search cannot be authored.
+            // id 3 — BACK: When this permanent transforms into Black Chocobo,
+            // search your library for a land card, put it onto the battlefield
+            // tapped, then shuffle.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_fetch_land,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             // id 4 — BACK: Landfall — whenever a land you control enters, Birds you
             // control get +1/+0 until end of turn.
             .with_triggered_ability(TriggeredAbilityDef {
@@ -156,6 +164,18 @@ fn etb_make_bird(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) 
 
 fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Transform { target: trig.source }]
+}
+
+fn on_transform_fetch_land(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::TutorToBattlefield {
+        player: trig.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        tapped: true,
+    }]
 }
 
 fn landfall_pump_birds(

@@ -3,9 +3,8 @@
 //! target opponent."
 //!
 //! NOTE: "outlaw" is a creature type group (Assassin, Mercenary, Pirate, Rogue,
-//! Warlock). ZoneChange filter captures creature-entering; subtype filter for
-//! outlaw-group not expressible as a single ObjectFilter.
-//! GAP: trigger — "another outlaw" multi-subtype OR filter not expressible.
+//! Warlock), modeled with a subtypes-any (OR) filter on the ZoneChange trigger;
+//! "another" is enforced by skipping this creature's own entry.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -24,6 +23,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Vial Smasher, Gleeful Grenadier");
     let goblin = reg.interner_mut().intern("Goblin");
     let mercenary = reg.interner_mut().intern("Mercenary");
+    let assassin = reg.interner_mut().intern("Assassin");
+    let pirate = reg.interner_mut().intern("Pirate");
+    let rogue = reg.interner_mut().intern("Rogue");
+    let warlock = reg.interner_mut().intern("Warlock");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
     subtypes.0.insert(mercenary);
@@ -42,9 +45,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "another outlaw" multi-subtype filter; using all creatures you control entering
+                // "another outlaw you control" — Assassin/Mercenary/Pirate/
+                // Rogue/Warlock (OR); self-entry is skipped in the effect fn.
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .with_subtypes_any(vec![assassin, mercenary, pirate, rogue, warlock])
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -62,6 +68,10 @@ fn outlaw_enters_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // "another outlaw" — skip this creature's own entry (it is a Mercenary).
+    if trig.entering_object() == Some(trig.source) {
+        return Vec::new();
+    }
     let Some(target) = trig.targets.targets.first() else {
         return Vec::new();
     };

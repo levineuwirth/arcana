@@ -1,9 +1,10 @@
 //! Colossus Hammer — `{1}` artifact — Equipment.
 //! "Equipped creature gets +10/+10 and loses flying. Equip {8}." The
 //! +10/+10 is installed as an attached-PT continuous effect; the
-//! loses-flying rider is a GAP.
+//! loses-flying rider as an attached keyword-removal continuous effect
+//! (Layer 6).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -48,14 +49,24 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... loses flying" — attached_pt covers P/T
-    // only (no attached keyword removal).
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            10,
-            10,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    // "equipped creature gets +10/+10 and loses flying" — attached P/T
+    // plus an attached keyword removal (Layer 6), both following the
+    // attachment.
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                10,
+                10,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_loses_keyword(
+                trig.source,
+                KeywordAbility::Flying,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

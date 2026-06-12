@@ -50,8 +50,9 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... is every creature type" — attached_pt
-    // covers P/T only (no attached type/subtype grant).
+    // GAP: "equipped creature ... is every creature type" — the
+    // attached_subtypes grant exists but enumerates a fixed SubtypeSet;
+    // the changeling-style "every creature type" CDA is not expressible.
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,

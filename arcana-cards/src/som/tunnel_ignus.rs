@@ -2,14 +2,19 @@
 //! under an opponent's control, if that player had another land enter
 //! the battlefield under their control this turn, this creature deals
 //! 3 damage to that player."
-//! GAP: intervening_if — the "if that player had another land enter
-//! this turn" clause cannot be checked with the available API.
+//! "That player" is the entering land's controller (via
+//! `trig.entering_object()`); the "another land this turn" clause is
+//! checked at resolution via the event log — the triggering land's own
+//! entry is already logged, so a count of 2+ means another entered.
+//! GAP (fidelity): a true intervening-if is also checked at stack-add;
+//! this gate runs only at resolution.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -47,7 +52,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     from: None,
                     to: Zone::Battlefield,
                 },
-                // GAP: intervening_if — cannot check "that player had another land enter this turn"
+                // "if that player had another land enter this turn" is
+                // checked at resolution in the effect fn (the iif hook
+                // can't see the entering land's controller).
                 intervening_if: None,
                 effect: deal_damage_to_opponent,
                 trigger_zones: vec![Zone::Battlefield],
@@ -58,14 +65,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn deal_damage_to_opponent(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: need the controller of the entering land (the opponent who played it).
-    // Using trig.controller as placeholder — engine will need to supply event context.
+    // "that player" — the controller of the land that just entered.
+    let Some(them) = trig.entering_object()
+        .and_then(|id| state.objects.get(id))
+        .map(|o| o.controller) else { return Vec::new(); };
+    // "if that player had another land enter the battlefield under their
+    // control this turn" — the triggering land's own entry is already in
+    // the log, so 2+ entries means another land entered.
+    let lands_under_them = ObjectFilter {
+        types_any: Some(TypeLine::LAND.into()),
+        ..Default::default()
+    }
+    .controlled_by(ControllerConstraint::You);
+    if script::entered_this_turn_matching(state, &lands_under_them, them) < 2 {
+        return Vec::new();
+    }
     vec![Effect::DealDamage {
-        target: DamageTarget::Player(trig.controller),
+        target: DamageTarget::Player(them),
         amount: 3,
         source: trig.source,
     }]

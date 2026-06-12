@@ -3,9 +3,9 @@
 //! its other types. Equip {3}"
 //!
 //! The Equip activation is wired via `with_equip`; the +2/+2 static
-//! installs `ContinuousEffect::attached_pt`. The "is a Spider Hero in
-//! addition to its other types" half is a documented gap (no attached
-//! subtype-add builder).
+//! installs `ContinuousEffect::attached_pt`, and the "is a Spider Hero
+//! in addition to its other types" half installs
+//! `ContinuousEffect::attached_subtypes` (Layer 4, additive).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -22,6 +22,8 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Spider-Suit");
     let equipment = reg.interner_mut().intern("Equipment");
+    reg.interner_mut().intern("Spider");
+    reg.interner_mut().intern("Hero");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(equipment);
     let chars = Characteristics {
@@ -50,16 +52,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "is a Spider Hero in addition to its other types" — no attached
-    // subtype-add builder; only the +2/+2 half is installed.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            2,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    // "is a Spider Hero in addition to its other types" — attached
+    // subtype grant (Layer 4, additive) following the attachment.
+    let mut subs = SubtypeSet::default();
+    if let Some(s) = reg.interner().lookup("Spider") {
+        subs.0.insert(s);
+    }
+    if let Some(s) = reg.interner().lookup("Hero") {
+        subs.0.insert(s);
+    }
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                2,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_subtypes(
+                trig.source,
+                subs,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

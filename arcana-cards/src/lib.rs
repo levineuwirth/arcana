@@ -1379,6 +1379,8 @@ mod behavioral_triage {
             T::SelfBecomesBlocked => "BecomesBlocked", T::SelfBlocks => "Blocks",
             T::SelfBlocksOrBecomesBlocked => "BlocksOrBlocked", T::SelfBecomesTapped => "Tapped",
             T::BecomesTapped { .. } => "BecomesTapped(filtered)",
+            T::SelfAttacksAlone => "AttacksAlone",
+            T::SelfTransforms { .. } => "Transforms",
             T::SelfBecomesBlockedBy { .. } => "BecomesBlockedBy(filtered)",
             T::SelfBlocksOrBecomesBlockedBy { .. } => "BlocksOrBlockedBy(filtered)",
             T::SelfSpecializes => "Specializes", T::SelfBecomesTarget{..} => "BecomesTarget",

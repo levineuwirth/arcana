@@ -6,8 +6,6 @@
 //! Back: {T}: Add X {G} or X {W}, where X is the number of other creatures you control.
 //! Back: At the beginning of your first main phase, you may pay {W}. If you do, transform.
 //!
-//! GAP: "enters or transforms into" — only SelfEntersBattlefield (ETB part) is wired;
-//! the "transforms into" half has no TriggerCondition variant. The token trigger fires on ETB only.
 //! GAP: Back-face {T} mana ability (dynamic X, color choice) is a back-face-only activated
 //! mana ability — not modeled here.
 //! GAP: Back-face transform trigger is a back-face-only triggered ability not modeled.
@@ -73,11 +71,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Trigger 1: ETB — create a 1/1 green and white Kithkin creature token.
-            // GAP: "or transforms into Brigid, Clachan's Heart" half not wired
-            // (no TriggerCondition for that).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_trigger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 3: "or transforms into Brigid, Clachan's Heart" (front face)
+            // half of the token trigger.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(0) },
                 intervening_if: None,
                 effect: etb_trigger,
                 trigger_zones: vec![Zone::Battlefield],

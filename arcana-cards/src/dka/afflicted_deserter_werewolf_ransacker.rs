@@ -6,11 +6,10 @@
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn,
 //!     transform this creature.
 //!
-//! GAP: "Whenever this creature transforms into Werewolf Ransacker, you may destroy target
-//! artifact. If that artifact is put into a graveyard this way, this creature deals 3 damage
-//! to that artifact's controller." — there is no `TriggerCondition` for an object transforming
-//! (no Transforms variant); this transform-completion trigger is not expressible. Front->back
-//! and back->front transform triggers (the werewolf day/night flips) ARE authored below.
+//! GAP: the destroy half of "Whenever this creature transforms into Werewolf Ransacker,
+//! you may destroy target artifact" is wired; the conditional rider "If that artifact is
+//! put into a graveyard this way, this creature deals 3 damage to that artifact's
+//! controller" is not expressible (no destroyed-this-way linkage) and is omitted.
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -18,7 +17,10 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -94,6 +96,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // "Whenever this creature transforms into Werewolf Ransacker, you may
+            // destroy target artifact." ("you may" via up-to-one target.)
+            // GAP: the "deals 3 damage to that artifact's controller if it died
+            // this way" rider is not expressible; only the destroy half is wired.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_smash_artifact,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+            })
             // Trigger 1 fires only on the front face; trigger 2 only on the back face.
             .with_trigger_face_gate(1, 0)
             .with_trigger_face_gate(2, 1),
@@ -112,4 +133,17 @@ fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry
     vec![Effect::Transform {
         target: trig.source,
     }]
+}
+
+fn on_transform_smash_artifact(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: "If that artifact is put into a graveyard this way, this creature
+    // deals 3 damage to that artifact's controller" — conditional rider omitted.
+    vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -14,10 +14,6 @@
 //! # GAP notes
 //! - Keywords "Blight" and "Transform" (Scryfall marker) are not in the
 //!   KeywordAbility enum; omitted.
-//! - "Whenever this creature enters or transforms into Grub, Storied Matriarch":
-//!   only the ETB half is wired (ZoneChange to Battlefield). The "transforms
-//!   into" half has no available TriggerCondition.
-//!   // GAP: "transforms into [named face]" trigger condition not modeled.
 //! - Back-face attack trigger (Blight 1 + copy-token) not modeled.
 //!   // GAP: back-face-only triggered ability not modeled.
 //! - The two PhaseBegins triggers (ids 2 and 3) both fire from either face;
@@ -110,12 +106,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 // ETB half of "enters or transforms into" trigger.
-                // GAP: "transforms into [named face]" trigger condition not modeled.
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: etb_filter,
                     from: None,
                     to: Zone::Battlefield,
                 },
+                intervening_if: None,
+                effect: etb_trigger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![goblin_gy_req.clone()],
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                // "Transforms into Grub, Storied Matriarch" (front face) half.
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(0) },
                 intervening_if: None,
                 effect: etb_trigger,
                 trigger_zones: vec![Zone::Battlefield],

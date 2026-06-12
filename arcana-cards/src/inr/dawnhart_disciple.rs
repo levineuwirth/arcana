@@ -6,7 +6,6 @@ use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -38,7 +37,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .with_subtype_sym(human)
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -54,12 +55,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn human_enters_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Filter: "another Human you control" — use subtype filter to confirm at resolution
-    let id = trig.entering_object().unwrap_or(trig.source);
-    // GAP: trigger — "another Human" subtype filter on ZoneChange not expressible; trigger fires for all creatures you control entering
-    let _ = script::subtype_filter(reg, "Human"); // ensure subtype is interned
+    // "another Human" — skip this creature's own entry (it is a Human).
+    if trig.entering_object() == Some(trig.source) {
+        return Vec::new();
+    }
     vec![Effect::Pump {
         target: trig.source,
         power: 1,

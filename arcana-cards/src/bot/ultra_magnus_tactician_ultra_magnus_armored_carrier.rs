@@ -12,19 +12,25 @@
 //!     convert Ultra Magnus.
 //!
 //! GAP: "More Than Meets the Eye" / "Living metal" / "Formidable" / "Convert" are not in the
-//!   usable keyword surface — only Haste and Ward {2} are emitted. Both attack triggers are
-//!   GAPs: the front trigger puts a card from hand onto the battlefield tapped-and-attacking
-//!   (no Effect for "put from hand onto battlefield attacking") and conditionally converts at
-//!   end of combat (no delayed-transform); the back Formidable trigger grants indestructible to
-//!   the dynamic set "attacking creatures you control" (no script filter for the attacking set)
-//!   and converts on a total-power threshold. "Convert" is this card's transform — there is no
-//!   transform-completion or end-of-combat-conditional-transform hook to author it cleanly.
+//!   usable keyword surface — only Haste and Ward {2} are emitted. The front attack trigger's
+//!   "you may put an artifact creature card from your hand onto the battlefield tapped and
+//!   attacking" is wired via Effect::PutFromHandOntoBattlefieldTappedAttacking (face-gated to
+//!   the front face); its "If you do, convert Ultra Magnus at end of combat" rider stays a GAP
+//!   (no if-you-do linkage / end-of-combat-conditional-transform hook). The back Formidable
+//!   trigger remains a GAP: it grants indestructible to the dynamic set "attacking creatures
+//!   you control" and converts on a total-power threshold.
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ultra Magnus, Tactician");
@@ -64,5 +70,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    reg.register(CardDefinition::new(name, chars).with_transform_back(back))
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_transform_back(back)
+            // Front face: "Whenever Ultra Magnus attacks, you may put an
+            // artifact creature card from your hand onto the battlefield
+            // tapped and attacking." GAP: "If you do, convert Ultra
+            // Magnus at end of combat" — no if-you-do linkage or
+            // end-of-combat-conditional-transform hook.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: on_attack_put_artifact_creature,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0),
+    )
+}
+
+fn on_attack_put_artifact_creature(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::PutFromHandOntoBattlefieldTappedAttacking {
+        player: trig.controller,
+        filter: ObjectFilter::new()
+            .with_types(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),
+    }]
 }

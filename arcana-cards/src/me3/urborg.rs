@@ -1,11 +1,12 @@
 //! Urborg — Legendary Land (Legends, 1994).
 //! "{T}: Add {B}." and "{T}: Target creature loses first strike or
-//! swampwalk until end of turn." The keyword-REMOVAL effect ("loses
-//! first strike or swampwalk") is not expressible — there is no
-//! remove-keyword effect — so the utility activation's effect is a GAP;
-//! the ability is still wired with its printed cost and target.
+//! swampwalk until end of turn." The removal installs a targeted
+//! `ContinuousEffect::remove_keyword` (Layer 6). The activation can't
+//! offer the printed choice (no modal activated abilities), so first
+//! strike is removed deterministically; GAP: the swampwalk option.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -13,7 +14,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, ManaColor, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -68,11 +69,22 @@ fn add_black_mana(
 
 fn strip_keyword(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "loses first strike or swampwalk until end of turn" — there is
-    // no keyword-removal effect (LoseAllAbilities strips everything, which
-    // would be materially wrong).
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "loses first strike or swampwalk until end of turn" — targeted
+    // keyword removal (Layer 6). GAP: the printed CHOICE isn't
+    // expressible (no modal activated abilities); first strike is
+    // removed deterministically, the swampwalk option is omitted.
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::remove_keyword(
+            ctx.source,
+            *id,
+            KeywordAbility::FirstStrike,
+            Duration::EndOfTurn,
+        ),
+    }]
 }

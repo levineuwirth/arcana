@@ -392,7 +392,14 @@ pub fn probe_activated(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
             toughness: Some(PtValue::Fixed(2)),
             ..Default::default()
         };
-        state.objects.insert(GameObject::new(src, 0, Zone::Battlefield, card_id, chars));
+        let mut src_obj = GameObject::new(src, 0, Zone::Battlefield, card_id, chars);
+        // Transform back-face seeding, mirroring the triggered-probe
+        // source: "{cost}: Transform this" activations must flip
+        // visible_face instead of hitting the no-back fallback.
+        if let Some(back) = def.alternate_face.as_ref().and_then(|a| a.as_transform()) {
+            src_obj.back_face_characteristics = Some(back.characteristics.clone());
+        }
+        state.objects.insert(src_obj);
         state.currently_resolving = Some(src);
         let stack_spell = add_dummy_stack_spell(&mut state);
         let dummy = first_battlefield_creature(&state, 0);
@@ -454,9 +461,14 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         // control a creature with power 4 or greater" — Saga chapters,
         // power-matters triggers) are satisfied; the 2/2s cover the
         // low-power / max-power side.
+        // LEGENDARY so "other legendary creatures you control" sweeps
+        // (Casal-class) find a referent; one per player, distinct
+        // boards, so the legend-rule SBA never trips.
         let big = state.allocate_object_id();
         state.objects.insert(GameObject::new(big, p, Zone::Battlefield, 0, Characteristics {
             types: TypeLine::CREATURE.into(),
+            supertypes: crate::types::SupertypeSet::new()
+                .with(crate::types::SupertypeSet::LEGENDARY),
             power: Some(PtValue::Fixed(8)),
             toughness: Some(PtValue::Fixed(8)),
             ..Default::default()
@@ -723,6 +735,22 @@ fn add_dummy_stack_spell(state: &mut GameState) -> ObjectId {
     let entry = StackEntry::new_spell(
         id, 1, 0, chars, TargetSelection::new(), Vec::new(), None);
     state.stack.push(entry);
+    // An opponent's ACTIVATED ABILITY entry beneath it (source: an
+    // opponent artifact) so "counter target activated ability"
+    // (TargetFilter::AbilityOnStack) finds a candidate — ability
+    // entries aren't stack-zone objects, so the spell above can't
+    // serve. Noncreature source on purpose: "from a noncreature
+    // source" filters must also match.
+    let ability_src = state.allocate_object_id();
+    state.objects.insert(GameObject::new(
+        ability_src, 1, Zone::Battlefield, 0,
+        Characteristics { types: TypeLine::ARTIFACT.into(), ..Default::default() },
+    ));
+    let entry_id = state.allocate_object_id();
+    state.stack.push(StackEntry::new_activated_ability(
+        entry_id, ability_src, 1, /*card_id=*/ 0, /*ability_id=*/ 0,
+        "probe dummy ability".into(), TargetSelection::new(), Vec::new(), None,
+    ));
     id
 }
 
@@ -805,6 +833,12 @@ fn legal_target(
         .filter(|o| o.zone != Zone::Library(o.owner))
         .map(|o| o.id).collect();
     ids.push(stack_spell);
+    // Ability stack entries aren't GameObjects — push their entry ids
+    // so AbilityOnStack requirements ("counter target activated
+    // ability") find the seeded dummy ability.
+    ids.extend(state.stack.iter()
+        .filter(|e| !e.is_spell())
+        .map(|e| e.id));
     // Deterministic id order. Creatures are seeded UNTAPPED (so
     // "tap target creature" — the common attack/ETB trigger — shows a
     // delta) and basic lands TAPPED (so "untap target land" mana-dorks

@@ -2,9 +2,9 @@
 //! deals 1 damage to any target. Activate only during your turn, before
 //! attackers are declared."
 //!
-//! GAP: The "Activate only during your turn, before attackers are declared"
-//! timing restriction is not expressible via ActivationCost or ActivatedAbilityDef.
-//! The ability is registered as a normal tap activation.
+//! The "during your turn, before attackers are declared" window is
+//! enforced via `ActivationCost.activation_condition`
+//! (`conditions::your_turn_before_attackers`).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -41,7 +41,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: This creature deals 1 damage to any target. Activate only during your turn, before attackers are declared.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    // "Activate only during your turn, before attackers
+                    // are declared" (CR 602.5e window).
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::your_turn_before_attackers(s, you)
+                    }),
+                    ..ActivationCost::tap_only()
+                },
                 target_requirements: vec![TargetRequirement::any_target()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,

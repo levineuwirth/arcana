@@ -9,12 +9,9 @@
 //! 1/1 green Phyrexian Saproling creature token."
 //!
 //! # GAP
-//! - Back face "transforms into Blightsower Thallid or dies" trigger is a
-//!   back-face-only triggered ability; the engine does not auto-install back-face-only
-//!   triggers. Authored on CardDefinition — fires on both faces for the "dies" half.
-//! - "Transforms into Blightsower Thallid" (back-face transform trigger) is not
-//!   separately expressible as a distinct TriggerCondition; only the "dies" half
-//!   (SelfDies) is wired here.
+//! - The "dies" half of the trigger is authored on CardDefinition and fires on
+//!   both faces (oracle: the ability is back-face-only, but the dies half only
+//!   matters once transformed in practice — front-face dies also fires here).
 //! - Back face P/T inferred from Scryfall: 3/3.
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -93,13 +90,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: transform_self,
             })
             // "When this creature ... or dies, create a 1/1 green Phyrexian Saproling token."
-            // GAP: back-face-only triggered ability — fires on both faces.
-            // GAP: "transforms into Blightsower Thallid" half not separately wired.
+            // Dies half. GAP: fires on both faces (oracle: back-face-only ability).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfDies,
                 intervening_if: None,
-                effect: create_token_on_dies,
+                effect: create_saproling,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // "Transforms into Blightsower Thallid" half.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: create_saproling,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -115,13 +121,11 @@ fn transform_self(
     vec![Effect::Transform { target: ctx.source }]
 }
 
-fn create_token_on_dies(
+fn create_saproling(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: back-face-only triggered ability — fires on both faces.
-    // GAP: "transforms into Blightsower Thallid" half not wired; only "dies" is.
     // Creates a 1/1 green Phyrexian Saproling creature token.
     let saproling = reg.interner().lookup("Saproling")
         .expect("Saproling interned during register()");

@@ -5,9 +5,9 @@
 //! The +1/+0 static is installed as an attached-P/T continuous effect
 //! via the ETB trigger; Equip {2} via `with_equip`.
 //!
-//! The flying grant installs as an attached-keyword continuous effect.
-//! GAP: 'is a Bird in addition to its other types' — no attached
-//! subtype grant.
+//! The flying grant installs as an attached-keyword continuous effect;
+//! the "is a Bird in addition to its other types" half installs as an
+//! attached-subtype continuous effect (Layer 4, additive).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -24,6 +24,7 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Raven Wings");
     let equipment = reg.interner_mut().intern("Equipment");
+    reg.interner_mut().intern("Bird");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(equipment);
     let chars = Characteristics {
@@ -50,15 +51,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 /// ETB trigger: install the layer-7c "attached creature gets +1/+0"
-/// continuous effect and the "has flying" keyword grant, both anchored
-/// to this Equipment.
+/// continuous effect, the "has flying" keyword grant, and the layer-4
+/// "is a Bird in addition to its other types" subtype grant, all
+/// anchored to this Equipment.
 fn etb_install_attached_pump(
     _state: &GameState,
     trig: &PendingTrigger,
-    _: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'is a Bird in addition to its other types' — no attached
-    // subtype grant.
+    let mut subs = SubtypeSet::default();
+    if let Some(s) = reg.interner().lookup("Bird") {
+        subs.0.insert(s);
+    }
     vec![
         Effect::InstallContinuousEffect {
             effect: ContinuousEffect::attached_pt(
@@ -72,6 +76,13 @@ fn etb_install_attached_pump(
             effect: ContinuousEffect::attached_keyword(
                 trig.source,
                 KeywordAbility::Flying,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_subtypes(
+                trig.source,
+                subs,
                 Duration::WhileSourceOnBattlefield,
             ),
         },

@@ -5,7 +5,6 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -19,7 +18,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let elf = reg.interner_mut().intern("Elf");
     let druid = reg.interner_mut().intern("Druid");
     let noble = reg.interner_mut().intern("Noble");
-    let _beast = reg.interner_mut().intern("Beast");
+    let beast = reg.interner_mut().intern("Beast");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elf);
     subtypes.0.insert(druid);
@@ -40,7 +39,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    filter: ObjectFilter::creature()
+                        .with_subtype_sym(beast)
+                        .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -56,12 +57,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn beast_enters_draw(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Confirm entering creature is a Beast via subtype filter
-    let id = trig.entering_object().unwrap_or(trig.source);
-    let beast_filter = script::subtype_filter(reg, "Beast");
-    // GAP: can't check subtype of entering object without state access beyond allowed helpers
-    let _ = (id, beast_filter);
+    // The Beast restriction is enforced by the trigger's ZoneChange filter.
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

@@ -5,6 +5,7 @@
 //! among those cards and put it into your hand. Put the rest on the bottom of your
 //! library in a random order."
 //!
+//! X is read as the entering creature's mana value via `trig.entering_object()`.
 //! GAP: The filter "doesn't share a creature type with a creature you control" cannot
 //! be expressed in the ObjectFilter API. We use DigTopN with a creature filter as a
 //! best-effort approximation (finds any creature card, not restricted by type-share).
@@ -60,14 +61,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn radagast_etb_trigger(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: mana value of the entering creature is not accessible via script API;
-    // using 0 as placeholder (DigTopN with count 0 is a no-op approximation).
-    // The entering creature's CMC would require a script::cmc_of helper not yet present.
-    let x = 0u32; // GAP: should be entering creature's mana value
+    // "X is that creature's mana value" — read from the entering object.
+    let Some(x) = trig.entering_object()
+        .and_then(|id| state.objects.get(id))
+        .map(|o| o.characteristics.mana_cost.as_ref().map(|c| c.mana_value()).unwrap_or(0))
+    else {
+        return Vec::new();
+    };
     // GAP: filter "doesn't share creature type with a creature you control" not
     // expressible; using any creature card as approximation.
     let creature_filter = ObjectFilter {

@@ -1,6 +1,8 @@
 //! Alaborn Veteran — `{2}{W}` 2/2 Human Knight.
 //! `{T}: Target creature gets +2/+2 until end of turn. Activate only during your turn, before attackers are declared.`
-//! GAP: "Activate only during your turn, before attackers are declared" — activation timing restriction not modeled.
+//! The "during your turn, before attackers are declared" window is
+//! enforced via `ActivationCost.activation_condition`
+//! (`conditions::your_turn_before_attackers`).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -35,7 +37,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Target creature gets +2/+2 until end of turn. Activate only during your turn, before attackers are declared.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    // "Activate only during your turn, before attackers
+                    // are declared" (CR 602.5e window).
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::your_turn_before_attackers(s, you)
+                    }),
+                    ..ActivationCost::tap_only()
+                },
                 target_requirements: vec![TargetRequirement::target_creature()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -52,7 +61,6 @@ fn pump_creature(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: timing restriction "only during your turn, before attackers declared" not checked
     let Some(target) = ctx.targets.targets.first() else {
         return Vec::new();
     };

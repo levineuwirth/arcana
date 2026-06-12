@@ -1,10 +1,8 @@
 //! Goblin Assassin — `{3}{R}{R}` 2/2 Goblin Assassin.
 //! Whenever this creature or another Goblin enters, each player flips a coin.
 //! Each player whose coin comes up tails sacrifices a creature of their choice.
-//! GAP: trigger should only fire when the entering creature is this card or a
-//! Goblin; ZoneChange on any creature ETB over-fires. Approximated with a
-//! ZoneChange filter (any creature) because subtype-restricted ZoneChange is
-//! not expressible as a single filter on the entering object's subtype here.
+//! The ZoneChange filter is restricted to Goblin creatures; since this card is
+//! itself a Goblin, "this creature or another Goblin" = any Goblin entering.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -41,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature(),
+                    filter: ObjectFilter::creature().with_subtype_sym(goblin),
                     from: None,
                     to: Zone::Battlefield,
                 },

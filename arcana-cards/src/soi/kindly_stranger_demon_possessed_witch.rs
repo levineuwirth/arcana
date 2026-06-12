@@ -8,9 +8,6 @@
 //! - Delirium activation condition (4+ card types in graveyard) is not expressible
 //!   via `ActivationCost` — there is no "graveyard card-type count" gate field.
 //!   The activated ability is authored without that condition check.
-//! - "When this transforms into Demon-Possessed Witch, you may destroy target creature"
-//!   is a back-face-only triggered ability — not modeled (GAP: back-face-only triggered
-//!   abilities not auto-installed on transform).
 //! - Delirium keyword not in KeywordAbility enum — omitted.
 
 use arcana_core::effects::Effect;
@@ -21,7 +18,12 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Kindly Stranger");
@@ -78,9 +80,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0), // front face only
                 effect: transform_self,
+            })
+            // Back: When this creature transforms into Demon-Possessed Witch,
+            // you may destroy target creature ("you may" via up-to-one target).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_destroy,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
             }),
-        // GAP: back-face-only triggered ability ("when this transforms into Demon-Possessed Witch,
-        // you may destroy target creature") not modeled.
     )
 }
 
@@ -90,4 +105,15 @@ fn transform_self(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: ctx.source }]
+}
+
+fn on_transform_destroy(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::DestroyPermanent { target: *id }]
 }

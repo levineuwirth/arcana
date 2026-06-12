@@ -1,9 +1,7 @@
 //! Lunk Errant — `{5}{R}` 4/4 red Giant Warrior. "Whenever this creature attacks
 //! alone, it gets +1/+1 and gains trample until end of turn."
 //!
-//! GAP: TriggerCondition::SelfAttacks does not have an "attacks alone" filter.
-//! Using SelfAttacks as the closest match; the verify pipeline will flag that the
-//! "alone" qualifier is not enforced by the engine.
+//! "Attacks alone" via TriggerCondition::SelfAttacksAlone.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -39,8 +37,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — SelfAttacks has no "attacks alone" filter.
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // "Attacks alone" — sole declared attacker (CR 506.5).
+                trigger_condition: TriggerCondition::SelfAttacksAlone,
                 intervening_if: None,
                 effect: attacks_alone_pump,
                 trigger_zones: vec![Zone::Battlefield],

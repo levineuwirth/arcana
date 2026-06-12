@@ -55,7 +55,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, main_chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // "Attacks alone" — sole declared attacker (CR 506.5).
+                trigger_condition: TriggerCondition::SelfAttacksAlone,
                 intervening_if: None,
                 effect: attacks_alone_food,
                 trigger_zones: vec![Zone::Battlefield],
@@ -71,7 +72,6 @@ fn attacks_alone_food(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacks alone" condition not in TriggerCondition — using SelfAttacks as approximation
     vec![Effect::CreateCommodityToken {
         controller: trig.controller,
         kind: CommodityToken::Food,

@@ -3,7 +3,8 @@
 //! the battlefield under its owner's control and it loses all abilities."
 //! GAP: intervening-if check (had -1/-1 counter) not expressible — trigger fires
 //! unconditionally and always returns to battlefield.
-//! GAP: "loses all abilities" modifier on ETB return is not expressible.
+//! GAP: "loses all abilities" rider — Effect::LoseAllAbilities exists, but
+//! it can't follow the returned object's zone-change re-id.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -52,6 +53,9 @@ fn dies_return_to_battlefield(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let id = trig.dying_object().unwrap_or(trig.source);
-    // GAP: "loses all abilities" on the returned permanent is not expressible
+    // GAP: "it loses all abilities" — Effect::LoseAllAbilities exists, but
+    // the returned permanent gets a NEW object id on the zone change
+    // (CR 400.7), so a rider aimed at the graveyard id would silently
+    // miss; omitted until a put-with-rider continuation primitive lands.
     vec![Effect::ReturnFromGraveyardToBattlefield { target: id }]
 }

@@ -1,9 +1,11 @@
 //! Soul Sear — `{2}{R}` instant. "Soul Sear deals 5 damage to target
 //! creature or planeswalker. That permanent loses indestructible until end
-//! of turn." Only the damage is expressible; removing indestructible is
-//! gapped.
+//! of turn." The removal installs a targeted
+//! `ContinuousEffect::remove_keyword` (Layer 6); within-layer
+//! timestamps mean it beats earlier indestructible grants.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -41,13 +43,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "loses indestructible until end of turn" has no catalog Effect.
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 5,
-    }]
+    // "That permanent loses indestructible until end of turn" — the
+    // removal is installed BEFORE the damage so a previously-granted
+    // indestructible doesn't save the permanent from this damage's
+    // destruction SBA.
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::remove_keyword(
+                entry.source,
+                *id,
+                KeywordAbility::Indestructible,
+                Duration::EndOfTurn,
+            ),
+        },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 5,
+        },
+    ]
 }

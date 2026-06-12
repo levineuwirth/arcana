@@ -56,7 +56,10 @@ fn soul_sculpt(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "becomes an enchantment and loses all abilities until a player
-    // casts a creature spell" — type-changing and conditional ability removal
-    // are not in the Effect catalog.
+    // casts a creature spell" — Effect::AddType / Effect::LoseAllAbilities
+    // exist, but the "until a player casts a creature spell" duration has
+    // no Duration variant (and the type change REPLACES the creature type,
+    // which AddType's additive overlay can't express), so the effect is
+    // omitted rather than wired with a materially wrong duration.
     Vec::new()
 }

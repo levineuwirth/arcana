@@ -3,7 +3,10 @@
 //! III — Destroy all creatures. For each creature destroyed, its controller creates a 2/2 black Phyrexian creature token.
 //! GAP: Read Ahead (starting counter choice) — not in EntersWithSpec; entering with 1 counter as default.
 //! GAP: Chapter I/II "phases out ... can't phase in as long as you control this Saga" — phasing not in catalog.
-//! GAP: Chapter III "for each creature destroyed, its controller creates a token" — per-controller token creation not in catalog; emitting destroy-all + token creation for controller only.
+//! Chapter III mints each token for the swept creature's own controller
+//! (read from game state at resolution).
+//! GAP (fidelity): Chapter III tokens are minted per creature SWEPT, even if
+//! its destruction is replaced (indestructible/regeneration).
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
@@ -147,17 +150,21 @@ fn chapter_iii(
         &ObjectFilter::creature(),
         trig.controller,
     );
-    let n = creature_ids.len() as u32;
     let mut effects: Vec<Effect> = vec![
         Effect::ForEach {
-            targets: creature_ids,
+            targets: creature_ids.clone(),
             effect: Box::new(Effect::DestroyPermanent { target: NULL_OBJECT_ID }),
         },
     ];
-    // GAP: "for each creature destroyed, its controller creates a token" — per-controller creation not in catalog
-    // Creating tokens for self only as approximation
-    for _ in 0..n {
-        effects.push(Effect::CreateToken { controller: trig.controller, token: token.clone() });
+    // "for each creature destroyed, its controller creates a 2/2 …" — each
+    // token goes to the swept creature's own controller, read from state.
+    // GAP (fidelity): minted per creature swept, even if destruction is
+    // replaced (indestructible/regeneration).
+    for id in creature_ids {
+        let Some(controller) = state.objects.get(id).map(|o| o.controller) else {
+            continue;
+        };
+        effects.push(Effect::CreateToken { controller, token: token.clone() });
     }
     effects
 }

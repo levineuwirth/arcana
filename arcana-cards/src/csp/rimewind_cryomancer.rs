@@ -1,6 +1,7 @@
 //! Rimewind Cryomancer — `{3}{U}` 2/3 Human Wizard.
 //! `{1}, {T}: Counter target activated ability. Activate only if you control 4+ snow perms.`
-//! GAP: "counter target activated ability" — no counterspell Effect for abilities.
+//! "Counter target activated ability" wired via TargetFilter::AbilityOnStack +
+//! Effect::Counter (which handles ability stack entries).
 //! GAP: "4+ snow permanents" precondition.
 
 use arcana_core::mana::ManaCost;
@@ -10,6 +11,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::effects::Effect;
 
@@ -39,7 +41,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     tap: true,
                     ..ActivationCost::default()
                 },
-                target_requirements: Vec::new(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::AbilityOnStack {
+                        activated: true,
+                        triggered: false,
+                        source_filter: None,
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
@@ -52,9 +62,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn counter_ability(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "counter target activated ability" — no ability-counter Effect
-    Vec::new()
+    // GAP: "Activate only if you control four or more snow permanents"
+    // precondition not enforced.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Counter { target: *id }]
 }

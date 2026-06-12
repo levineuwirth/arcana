@@ -13,23 +13,21 @@
 //!   creatures you control get +2/+2 and gain trample until end of turn.
 //!   At the beginning of your upkeep, transform Casal.
 //!
-//! GAP: Back-face-only triggered ability "when this creature transforms into Casal,
-//!      Pathbreaker Owlbear — other legendary creatures get +2/+2 and trample" not
-//!      auto-installed on transform. Not modeled.
-//! GAP: Back-face-only upkeep transform (back to front) not auto-installed on transform.
 //! The attack trigger with optional {1}{G} pay to transform is modeled on the front face.
 
 use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -102,12 +100,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
-            }),
-        // GAP: back-face-only triggered ability not modeled:
-        //   "When this creature transforms into Casal, Pathbreaker Owlbear,
-        //    other legendary creatures you control get +2/+2 and gain trample until end of turn."
-        // GAP: back-face-only triggered ability not modeled:
-        //   "At the beginning of your upkeep, transform Casal." (back to front)
+            })
+            // Back: When this creature transforms into Casal, Pathbreaker Owlbear,
+            // other legendary creatures you control get +2/+2 and gain trample
+            // until end of turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: back_transform_pump_legends,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![],
+            })
+            // Back: At the beginning of your upkeep, transform Casal. (back→front)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: upkeep_transform_back,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![],
+            })
+            // The upkeep transform-back only exists on the back face.
+            .with_trigger_face_gate(4, 1),
     )
 }
 
@@ -138,4 +158,37 @@ fn attack_optional_transform(
         then: Box::new(Effect::Transform { target: trig.source }),
         else_effect: None,
     }]
+}
+
+fn back_transform_pump_legends(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "Other legendary creatures you control" — exclude Casal herself.
+    let filter = ObjectFilter::creature()
+        .controlled_by(ControllerConstraint::You)
+        .with_supertypes(SupertypeSet(SupertypeSet::LEGENDARY));
+    let others: Vec<_> = script::ids_matching(state, &filter, trig.controller)
+        .into_iter()
+        .filter(|&id| id != trig.source)
+        .collect();
+    vec![Effect::ForEach {
+        targets: others,
+        effect: Box::new(Effect::Pump {
+            target: NULL_OBJECT_ID,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Trample],
+        }),
+    }]
+}
+
+fn upkeep_transform_back(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
 }

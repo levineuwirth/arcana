@@ -2,7 +2,9 @@
 //! "{T}: Target creature gets +0/+2 until end of turn. Activate only during
 //! your turn, before attackers are declared."
 //!
-//! GAP: "Activate only during your turn, before attackers are declared"
+//! The "during your turn, before attackers are declared" window is
+//! enforced via `ActivationCost.activation_condition`
+//! (`conditions::your_turn_before_attackers`).
 //! timing restriction not expressible.
 
 use arcana_core::effects::Effect;
@@ -39,7 +41,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Target creature gets +0/+2 until end of turn. Activate only during your turn, before attackers are declared.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    // "Activate only during your turn, before attackers
+                    // are declared" (CR 602.5e window).
+                    activation_condition: Some(|s, _src, you, _reg| {
+                        arcana_core::conditions::your_turn_before_attackers(s, you)
+                    }),
+                    ..ActivationCost::tap_only()
+                },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Creature,
                     count: TargetCount::Exactly(1),

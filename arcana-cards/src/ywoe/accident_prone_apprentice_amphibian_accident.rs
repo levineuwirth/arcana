@@ -13,8 +13,9 @@
 //!   the engine has no `Effect::Perpetually` variant. The trigger fires but produces `Vec::new()`.
 //! - "This ability also triggers if ... in exile" — exile-zone trigger not supported by
 //!   `trigger_zones`; only `Battlefield` is wired.
-//! - Adventure resolve: "loses all abilities" is not a catalog Effect. `SetBasePT` models
-//!   the 1/1 floor only. The color-change (becomes blue) and subtype-change (Frog) are GAP'd.
+//! - Adventure resolve: `Effect::LoseAllAbilities` + `Effect::SetColor` (blue) +
+//!   `Effect::SetBasePT` 1/1, all until end of turn. The subtype-change (becomes a
+//!   Frog, REPLACING its creature types) has no targeted effect surface and stays GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -114,13 +115,25 @@ fn adv_resolve(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "loses all abilities" is not a catalog Effect.
-    // GAP: "becomes a blue Frog" — color-change and subtype-change not expressible.
-    // Partial: set base P/T to 1/1 until end of turn.
-    vec![Effect::SetBasePT {
-        target: *id,
-        power: 1,
-        toughness: 1,
-        duration: Duration::EndOfTurn,
-    }]
+    // "Until end of turn, target creature loses all abilities and
+    // becomes a blue Frog with base power and toughness 1/1."
+    // GAP: the Frog subtype change (replaces its creature types) — no
+    // targeted subtype-set effect.
+    vec![
+        Effect::LoseAllAbilities {
+            target: *id,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetColor {
+            target: *id,
+            colors: ColorSet::blue(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetBasePT {
+            target: *id,
+            power: 1,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }

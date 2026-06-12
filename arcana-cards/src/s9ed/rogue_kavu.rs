@@ -1,9 +1,7 @@
 //! Rogue Kavu — `{1}{R}` 1/1 Kavu.
 //! "Whenever this creature attacks alone, it gets +2/+0 until end of turn."
 //!
-//! GAP: trigger condition "attacks alone" — no catalog variant
-//! distinguishes attacking alone from SelfAttacks. Using SelfAttacks
-//! as closest match; effect fn always pumps (cannot verify alone condition).
+//! "Attacks alone" via TriggerCondition::SelfAttacksAlone.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -37,8 +35,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "attacks alone"; SelfAttacks used as closest match
-                trigger_condition: TriggerCondition::SelfAttacks,
+                // "Attacks alone" — sole declared attacker (CR 506.5).
+                trigger_condition: TriggerCondition::SelfAttacksAlone,
                 intervening_if: None,
                 effect: on_attacks,
                 trigger_zones: vec![Zone::Battlefield],

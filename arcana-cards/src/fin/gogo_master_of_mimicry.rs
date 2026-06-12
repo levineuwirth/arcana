@@ -1,8 +1,10 @@
 //! Gogo, Master of Mimicry — `{2}{U}` 2/4 legendary blue Wizard.
 //! "{X}{X}, {T}: Copy target activated or triggered ability you control X
 //! times. You may choose new targets for the copies."
-//! GAP: copying an activated or triggered ability on the stack is not in the
-//! Effect catalog; emitting Vec::new().
+//! Targeting an activated/triggered ability is wired via
+//! TargetFilter::AbilityOnStack; GAP: copying the ability X times is not in
+//! the Effect catalog (Effect::Counter is the only ability-entry consumer);
+//! emitting Vec::new().
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,6 +14,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,7 +41,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     tap: true,
                     ..ActivationCost::default()
                 },
-                target_requirements: Vec::new(),
+                // GAP: "you control" — ability stack entries are not
+                // GameObjects, so the outer controller constraint can't
+                // see their controller; left unconstrained.
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::AbilityOnStack {
+                        activated: true,
+                        triggered: true,
+                        source_filter: None,
+                    },
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
@@ -55,6 +69,8 @@ fn copy_ability(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: copying an activated or triggered ability X times is not in the
-    // Effect catalog (CopySpell only copies spells, not abilities).
+    // Effect catalog (CopySpell only copies spells, not abilities; the new
+    // AbilityOnStack target is only consumable by Effect::Counter). Also
+    // GAP: the {X}{X} cost is not modeled on ActivationCost.
     Vec::new()
 }

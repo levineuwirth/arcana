@@ -2,9 +2,12 @@
 //! enters, each creature target opponent controls loses all abilities, becomes a
 //! Coward in addition to its other types, and has base power and toughness 1/1."
 //!
-//! GAP: effect — "loses all abilities" and "becomes Coward subtype in addition"
-//! have no matching Effect variants. Emitting SetBasePT 1/1 for each opponent
-//! creature as best-effort.
+//! "Loses all abilities" is `Effect::LoseAllAbilities` and the 1/1 base
+//! is `Effect::SetBasePT`, both `Duration::Permanent` (the oracle text
+//! has no duration).
+//! GAP: "becomes a Coward in addition to its other types" — only the
+//! ATTACHED subtype grant (attached_subtypes) exists; no targeted
+//! subtype-add.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -64,18 +67,29 @@ fn etb_mass_debuff(
     let TargetChoice::Player(opp) = target else {
         return Vec::new();
     };
+    // "each creature target opponent controls" — from the targeted
+    // opponent's perspective that is ControllerConstraint::You.
     let ids = script::ids_matching(
         state,
-        &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+        &ObjectFilter::creature().controlled_by(ControllerConstraint::You),
         *opp,
     );
-    // GAP: effect — "loses all abilities" and "becomes Coward" not expressible; emitting SetBasePT only
+    // GAP: "becomes a Coward in addition to its other types" — no
+    // targeted subtype-add (only the attached attached_subtypes grant).
     ids.into_iter()
-        .map(|id| Effect::SetBasePT {
-            target: id,
-            power: 1,
-            toughness: 1,
-            duration: Duration::EndOfTurn,
+        .flat_map(|id| {
+            [
+                Effect::LoseAllAbilities {
+                    target: id,
+                    duration: Duration::Permanent,
+                },
+                Effect::SetBasePT {
+                    target: id,
+                    power: 1,
+                    toughness: 1,
+                    duration: Duration::Permanent,
+                },
+            ]
         })
         .collect()
 }

@@ -5,7 +5,8 @@
 //! III — Target Mutant fights another target creature named Fenric.
 //! GAP: Chapter I "for each player targeting" not expressible per-player.
 //! GAP: Chapter I "create token for each destroyed" not expressible (no loop).
-//! GAP: Chapter II "becomes a 6/6 legendary Horror losing abilities" — no type/name change effect.
+//! GAP: Chapter II — SetBasePT 6/6 + LoseAllAbilities are wired (permanent);
+//! the Horror type / legendary / "named Fenric" changes have no effect surface.
 //! GAP: Chapter III "target named Fenric" — can't filter by name in TargetRequirement.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
@@ -149,14 +150,22 @@ fn chapter_i(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> V
 fn chapter_ii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "becomes 6/6 legendary Horror named Fenric, loses all abilities"
-    // SetBasePT approximation only
-    vec![Effect::SetBasePT {
-        target: *id,
-        power: 6,
-        toughness: 6,
-        duration: arcana_core::layers::Duration::WhileSourceOnBattlefield,
-    }]
+    // "becomes a 6/6 ... and loses all abilities" — permanent (the
+    // modification must survive the Saga's final-chapter sacrifice).
+    // GAP: the Horror type / legendary / "named Fenric" changes — no
+    // targeted subtype/supertype/name-change effect.
+    vec![
+        Effect::LoseAllAbilities {
+            target: *id,
+            duration: arcana_core::layers::Duration::Permanent,
+        },
+        Effect::SetBasePT {
+            target: *id,
+            power: 6,
+            toughness: 6,
+            duration: arcana_core::layers::Duration::Permanent,
+        },
+    ]
 }
 
 fn chapter_iii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {

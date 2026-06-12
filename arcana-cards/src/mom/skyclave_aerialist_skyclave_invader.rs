@@ -8,11 +8,15 @@
 //!    If you don't put the card onto the battlefield, put it into your hand."
 //! GAP: {G/P} hybrid-Phyrexian mana cost for the activation — modeled as {4}{G}
 //!      (the green alternative; life-payment option is engine debt).
-//! GAP: back-face-only triggered ability (transforms-into trigger with library look)
-//!      not auto-installed on transform (engine debt; triggers live on CardDefinition).
+//! GAP: the non-land branch of the transforms-into trigger ("if you don't put the
+//!      card onto the battlefield, put it into your hand") is not expressible —
+//!      `DigRest` has no Hand destination; a non-land top card goes to the bottom
+//!      instead. The land branch ("you may put it onto the battlefield") is wired
+//!      via RevealUntil (the put is deterministic, not optional).
 
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{DigRest, RevealDest};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -20,6 +24,10 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -89,9 +97,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0),
                 effect: transform_to_invader,
+            })
+            // "When this creature transforms into Skyclave Invader, look at the
+            // top card of your library. If it's a land card, you may put it onto
+            // the battlefield. If you don't put the card onto the battlefield,
+            // put it into your hand."
+            // GAP: the non-land → hand branch is not expressible (DigRest has no
+            // Hand destination); a non-land top card goes to the bottom instead.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: on_transform_dig_land,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
-        // GAP: back-face-only triggered ability "when this creature transforms
-        // into Skyclave Invader, look at the top card of your library..." not modeled.
     )
 }
 
@@ -102,4 +123,20 @@ fn transform_to_invader(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: ctx.source }]
+}
+
+/// Transforms-into trigger: look at the top card; a land goes onto the
+/// battlefield. GAP: a non-land card should go to hand; it bottoms instead.
+fn on_transform_dig_land(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::RevealUntil {
+        player: trig.controller,
+        filter: ObjectFilter::new().with_types(TypeLine::LAND.into()),
+        found_dest: RevealDest::Battlefield,
+        rest: DigRest::BottomRandom,
+        max_reveal: Some(1),
+    }]
 }

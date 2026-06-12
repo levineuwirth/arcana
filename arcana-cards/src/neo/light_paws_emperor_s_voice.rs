@@ -3,8 +3,11 @@
 //! library for an Aura card with mana value less than or equal to that Aura
 //! and with a different name than each Aura you control, put that card onto
 //! the battlefield attached to Light-Paws, then shuffle."
-//! GAP: trigger — ZoneChange filtered to Aura entering; complex search with MV/name
-//! constraints not fully expressible; emitting TutorToBattlefield as best effort.
+//! The trigger is filtered to Auras you control entering; the search is
+//! capped at the entering Aura's mana value (read via `trig.entering_object()`).
+//! GAP: "if you cast it" not checkable; "a different name than each Aura you
+//! control" not expressible; the found Aura enters unattached rather than
+//! attached to Light-Paws; the search is mandatory rather than "may".
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -22,6 +25,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Light-Paws, Emperor's Voice");
     let fox = reg.interner_mut().intern("Fox");
     let advisor = reg.interner_mut().intern("Advisor");
+    let aura = reg.interner_mut().intern("Aura");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(fox);
     subtypes.0.insert(advisor);
@@ -43,6 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::permanent()
                         .with_types(TypeLine::ENCHANTMENT.into())
+                        .with_subtype_sym(aura)
                         .controlled_by(ControllerConstraint::You),
                     from: None,
                     to: Zone::Battlefield,
@@ -57,15 +62,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn aura_enters_tutor_aura(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'Aura with MV <= that Aura, different name' search constraint not expressible;
-    // using TutorToBattlefield for any enchantment as best effort
+    let aura = reg.interner().lookup("Aura").expect("interned at register");
+    // "an Aura card with mana value less than or equal to that Aura" — read
+    // the entering Aura's mana value from state.
+    let Some(mv) = trig.entering_object()
+        .and_then(|id| state.objects.get(id))
+        .map(|o| o.characteristics.mana_cost.as_ref().map(|c| c.mana_value()).unwrap_or(0))
+    else {
+        return Vec::new();
+    };
+    // GAP: "if you cast it" not checkable; "a different name than each Aura
+    // you control" not expressible; the found Aura enters unattached rather
+    // than attached to Light-Paws; search is mandatory rather than "may".
     vec![Effect::TutorToBattlefield {
         player: trig.controller,
-        filter: ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into()),
+        filter: ObjectFilter::permanent()
+            .with_types(TypeLine::ENCHANTMENT.into())
+            .with_subtype_sym(aura)
+            .with_max_cmc(mv),
         tapped: false,
     }]
 }

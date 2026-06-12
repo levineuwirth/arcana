@@ -1,16 +1,14 @@
 //! Zo-Zu the Punisher — `{1}{R}{R}` 2/2 legendary red Goblin Warrior. "Whenever a
 //! land enters, Zo-Zu deals 2 damage to that land's controller."
 //!
-//! GAP: "that land's controller" — the entering land's controller is not directly
-//! available on PendingTrigger; using script::target_controller approximation by
-//! iterating all players.
+//! "That land's controller" is read from the entering object via
+//! `trig.entering_object()`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -61,14 +59,13 @@ fn deal_to_land_controller(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that land's controller" not on PendingTrigger; dealing to all players as proxy
-    // This over-fires; a better approximation would be the trigger source's controller.
-    let all = script::all_players(state);
-    all.into_iter()
-        .map(|p| Effect::DealDamage {
-            target: DamageTarget::Player(p),
-            amount: 2,
-            source: trig.source,
-        })
-        .collect()
+    // "that land's controller" — the controller of the land that just entered.
+    let Some(them) = trig.entering_object()
+        .and_then(|id| state.objects.get(id))
+        .map(|o| o.controller) else { return Vec::new(); };
+    vec![Effect::DealDamage {
+        target: DamageTarget::Player(them),
+        amount: 2,
+        source: trig.source,
+    }]
 }

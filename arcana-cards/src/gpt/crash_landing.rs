@@ -1,8 +1,11 @@
 //! Crash Landing — `{2}{G}` instant. "Target creature with flying
 //! loses flying until end of turn. Crash Landing deals damage to that
 //! creature equal to the number of Forests you control."
+//! "Loses flying" installs a targeted `ContinuousEffect::remove_keyword`
+//! (Layer 6) before the damage.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -26,11 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
-                // GAP: "loses flying" — no Effect removes a keyword, and
-                // the "with flying" target restriction can't be keyword-
-                // filtered. Damage equal to Forests controlled is
-                // emitted; target is any creature.
-                text: "Crash Landing deals damage to target creature equal to the number of Forests you control.".into(),
+                // GAP: the "with flying" target restriction isn't
+                // keyword-filtered here; target is any creature.
+                text: "Target creature with flying loses flying until end of turn. Crash Landing deals damage to that creature equal to the number of Forests you control.".into(),
                 target_requirements: vec![TargetRequirement::target_creature()],
                 modal: None,
                 effect: resolve,
@@ -51,9 +52,22 @@ fn resolve(
             .controlled_by(ControllerConstraint::You),
         entry.controller,
     );
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: forests,
-    }]
+    vec![
+        // "Target creature with flying loses flying until end of turn"
+        // — targeted keyword removal (Layer 6), installed before the
+        // damage per the oracle order.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::remove_keyword(
+                entry.source,
+                *id,
+                KeywordAbility::Flying,
+                Duration::EndOfTurn,
+            ),
+        },
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: forests,
+        },
+    ]
 }

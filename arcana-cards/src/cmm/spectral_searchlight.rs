@@ -1,9 +1,10 @@
 //! Spectral Searchlight — `{3}` artifact (Ravnica: City of Guilds, 2005).
 //! "{T}: Choose a player. That player adds one mana of any color they
-//! choose." Modeled as five mana abilities (one per WUBRG color) adding
-//! the mana to the activating player — the chosen-player recipient and
-//! their color choice are a documented GAP (no choose-a-player /
-//! grant-mana-to-another-player primitive).
+//! choose." Modeled as five mana abilities (one per WUBRG color); each
+//! wraps its AddMana in Effect::ChoosePlayerThen so the activator picks
+//! the player who receives the mana. GAP: the COLOR is chosen by the
+//! activator (via which of the five abilities is activated), not by the
+//! chosen player as the oracle text says.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -51,19 +52,28 @@ fn mana_ability(
     }
 }
 
-// GAP: "Choose a player. That player adds one mana of any color they
-// choose." — the chosen player (a non-controller mana recipient) is not
-// expressible; the mana is added to the activating player instead.
+// "Choose a player. That player adds one mana of [this ability's
+// color]" — Effect::ChoosePlayerThen posts the player pick and
+// substitutes the chosen player into the AddMana (the placeholder
+// player 0 below is overwritten). GAP: the chosen player's own color
+// choice is approximated by the activator's choice of ability.
+fn choose_player_add(color: ManaColor, ctx: &ActivationContext) -> Vec<Effect> {
+    vec![Effect::ChoosePlayerThen {
+        chooser: ctx.controller,
+        opponents_only: false,
+        then: Box::new(Effect::AddMana {
+            player: 0,
+            mana: vec![ManaUnit::plain(color, ctx.source)],
+        }),
+    }]
+}
 
 fn add_white(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)],
-    }]
+    choose_player_add(ManaColor::White, ctx)
 }
 
 fn add_blue(
@@ -71,10 +81,7 @@ fn add_blue(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)],
-    }]
+    choose_player_add(ManaColor::Blue, ctx)
 }
 
 fn add_black(
@@ -82,10 +89,7 @@ fn add_black(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
-    }]
+    choose_player_add(ManaColor::Black, ctx)
 }
 
 fn add_red(
@@ -93,10 +97,7 @@ fn add_red(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
-    }]
+    choose_player_add(ManaColor::Red, ctx)
 }
 
 fn add_green(
@@ -104,8 +105,5 @@ fn add_green(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
-    }]
+    choose_player_add(ManaColor::Green, ctx)
 }
