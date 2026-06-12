@@ -1,9 +1,10 @@
 //! Hazardous Blast — `{3}{R}` sorcery. Deals 1 damage to each creature
 //! your opponents control. Creatures your opponents control can't block
-//! this turn. (Can't-block rider not modeled.)
+//! this turn (filtered can't-block static until end of turn).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -37,17 +38,26 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "creatures your opponents control can't block this turn" rider not modeled.
     let ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
         entry.controller,
     );
-    ids.into_iter()
+    let mut effects: Vec<Effect> = ids
+        .into_iter()
         .map(|id| Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(id),
             amount: 1,
         })
-        .collect()
+        .collect();
+    // "Creatures your opponents control can't block this turn."
+    effects.push(Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_cant_block(
+            entry.source,
+            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+            Duration::EndOfTurn,
+        ),
+    });
+    effects
 }

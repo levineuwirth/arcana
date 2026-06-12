@@ -1,7 +1,10 @@
 //! Fire of Orthanc — `{3}{R}` sorcery. "Destroy target artifact or land.
-//! Creatures without flying can't block this turn."
+//! Creatures without flying can't block this turn." The rider is a
+//! filtered can't-block static (keyword-exclusion filter, layer-aware)
+//! until end of turn.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -43,6 +46,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: "Creatures without flying can't block this turn" — no global combat-restriction Effect variant.
-    vec![Effect::DestroyPermanent { target: *id }]
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        // "Creatures without flying can't block this turn."
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_cant_block(
+                entry.source,
+                ObjectFilter::creature().without_keyword(KeywordAbility::Flying),
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

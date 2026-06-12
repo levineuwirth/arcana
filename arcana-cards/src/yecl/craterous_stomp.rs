@@ -1,9 +1,16 @@
 //! Craterous Stomp — `{1}{R}` Kindred Instant — Giant. "Craterous Stomp
 //! deals 3 damage to target creature an opponent controls. Each other
-//! creature that player controls becomes a Coward..." Only the damage is
-//! expressible; the type-change/can't-block grant is gapped.
+//! creature that player controls becomes a Coward in addition to its other
+//! types and gains 'This creature can't block Giants or Warriors.'"
+//! The grant is modeled as a filtered can't-block static until end of
+//! turn. GAP (narrowed): the restriction is a full can't-block (attacker
+//! scoping "Giants or Warriors" not expressible); "that player" is
+//! approximated as ControllerConstraint::Opponent (exact in two-player);
+//! the targeted creature is not excludable (no exclude-by-id filter); the
+//! Coward type-add is not modeled.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -46,14 +53,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: making each other creature a Coward and granting a can't-block
-    // ability is not expressible.
     let Some(TargetChoice::Object(id)) = entry.targets.targets.first() else {
         return Vec::new();
     };
-    vec![Effect::DealDamage {
-        source: entry.source,
-        target: DamageTarget::Object(*id),
-        amount: 3,
-    }]
+    vec![
+        Effect::DealDamage {
+            source: entry.source,
+            target: DamageTarget::Object(*id),
+            amount: 3,
+        },
+        // "Each other creature that player controls ... gains 'This
+        // creature can't block Giants or Warriors.'" GAP (narrowed): full
+        // can't-block (no attacker scoping), Opponent stands in for "that
+        // player" (exact in 2p), target not excludable, Coward type-add
+        // not modeled.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_cant_block(
+                entry.source,
+                ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

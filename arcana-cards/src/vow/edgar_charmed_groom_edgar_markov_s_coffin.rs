@@ -13,10 +13,12 @@
 //!     transform it.
 //!
 //! # GAP
-//! - Front "Other Vampires you control get +1/+1" is a static anthem with a subtype
-//!   filter. The exposed Effect catalog has no static/continuous anthem variant
-//!   (ContinuousEffect machinery is outside this card class's API surface), so the
-//!   anthem is not modeled.
+//! - Front "Other Vampires you control get +1/+1" is modeled as a filtered pump
+//!   installed once from an ungated ETB trigger with
+//!   `Duration::WhileSourceShowsFace(0)` — live while Edgar (front) shows, dimmed
+//!   while the Coffin shows. NOTE: no exclude-source filter builder, and Edgar is
+//!   himself a Vampire, so he pumps himself +1/+1 too (accepted approximation of
+//!   "other").
 //! - Back upkeep "then if there are three or more bloodline counters on it, remove
 //!   those counters and transform it" is a resolution-time conditional on the source's
 //!   own counter total. No exposed Effect models "if source has N counters, then
@@ -25,11 +27,12 @@
 //!   the conditional removal/transform is GAP'd.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -58,7 +61,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(4)),
-        // GAP: "Other Vampires you control get +1/+1" static anthem not modeled.
+        // "Other Vampires you control get +1/+1" — installed from the ETB
+        // trigger with Duration::WhileSourceShowsFace(0) below.
         ..Default::default()
     };
 
@@ -102,10 +106,48 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // ETB (either face): install the front-face Vampire anthem once;
+            // the face-gated duration dims it while the Coffin shows. Left
+            // ungated so re-entry transformed still installs it.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_vampire_anthem,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             // Trigger 1 front-only, trigger 2 back-only.
             .with_trigger_face_gate(1, 0)
             .with_trigger_face_gate(2, 1),
     )
+}
+
+fn install_vampire_anthem(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    // Front face: "Other Vampires you control get +1/+1" — live while the
+    // front face shows. NOTE: no exclude-source filter builder, and Edgar is
+    // himself a Vampire, so he pumps himself +1/+1 (accepted approximation
+    // of "other").
+    let vampire = reg
+        .interner()
+        .lookup("Vampire")
+        .expect("Vampire interned during register()");
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_pump(
+            trig.source,
+            ObjectFilter::creature()
+                .controlled_by(ControllerConstraint::You)
+                .with_subtype_sym(vampire),
+            1,
+            1,
+            Duration::WhileSourceShowsFace(0),
+        ),
+    }]
 }
 
 fn on_dies_return_transformed(

@@ -1,8 +1,10 @@
 //! Sparkmage's Gambit — `{1}{R}` sorcery. "Sparkmage's Gambit deals
 //! 1 damage to each of up to two target creatures. Those creatures
-//! can't block this turn."
+//! can't block this turn." Each target gets a per-object can't-block
+//! static until end of turn.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -38,8 +40,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "those creatures can't block this turn" has no catalog
-    // primitive — only the 1 damage to each target is emitted.
     let mut effects = Vec::new();
     for target in &entry.targets.targets {
         if let TargetChoice::Object(id) = target {
@@ -47,6 +47,14 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
                 source: entry.source,
                 target: DamageTarget::Object(*id),
                 amount: 1,
+            });
+            // "Those creatures can't block this turn."
+            effects.push(Effect::InstallContinuousEffect {
+                effect: ContinuousEffect::cant_block(
+                    entry.source,
+                    *id,
+                    Duration::EndOfTurn,
+                ),
             });
         }
     }

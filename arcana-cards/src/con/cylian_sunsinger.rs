@@ -1,11 +1,13 @@
 //! Cylian Sunsinger — `{1}{G}` 2/2 green Elf Shaman. "{R}{G}{W}: This creature
 //! and each other creature with the same name as it get +3/+3 until end of turn."
 //!
-//! GAP: "each other creature with the same name as it" — no ObjectFilter for
-//! "same name as source". Pump is applied only to this creature.
+//! "This creature and each other creature with the same name" is modeled as a
+//! name-filtered global pump until end of turn — the source matches its own
+//! name filter, so one filtered effect covers both halves. The filter matches
+//! PRINTED names (copies named Cylian Sunsinger are caught).
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -13,6 +15,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -54,14 +57,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn pump_self_and_namesakes(
     _state: &GameState,
     ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each other creature with the same name" filter not expressible.
-    vec![Effect::Pump {
-        target: ctx.source,
-        power: 3,
-        toughness: 3,
-        duration: Duration::EndOfTurn,
-        keywords: vec![],
+    // Name-filtered global pump: the source matches its own name filter,
+    // so this covers "this creature AND each other creature with the same
+    // name" (any controller) in one effect.
+    let name = reg
+        .interner()
+        .lookup("Cylian Sunsinger")
+        .expect("name interned during register()");
+    let mut namesakes = ObjectFilter::creature();
+    namesakes.name = Some(name);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_pump(
+            ctx.source,
+            namesakes,
+            3,
+            3,
+            Duration::EndOfTurn,
+        ),
     }]
 }

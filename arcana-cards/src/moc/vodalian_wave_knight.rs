@@ -2,17 +2,16 @@
 //! Knight). "Whenever you draw a card, put a +1/+1 counter on each
 //! other Merfolk and/or Knight you control."
 //!
-//! GAP: "each other Merfolk and/or Knight" — ObjectFilter can filter by
-//! a single subtype via script::subtype_filter; filtering by two
-//! disjoint subtypes is not supported. Using ForEach with Merfolk
-//! filter as closest approximation; Knight coverage is dropped.
+//! "each other Merfolk and/or Knight you control" — subtype-OR via
+//! `ObjectFilter::with_subtypes_any`; "other" is honored by dropping the
+//! source id from the resolved set.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -60,11 +59,21 @@ fn on_draw(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each other Merfolk and/or Knight" — filtering by two
-    // disjoint subtypes not supported; using Merfolk only as approximation.
-    let filter = script::subtype_filter(reg, "Merfolk")
+    // "each other Merfolk and/or Knight you control": subtype-OR filter;
+    // "other" = drop the source from the resolved set.
+    let merfolk = reg
+        .interner()
+        .lookup("Merfolk")
+        .expect("Merfolk interned during register()");
+    let knight = reg
+        .interner()
+        .lookup("Knight")
+        .expect("Knight interned during register()");
+    let filter = ObjectFilter::permanent()
+        .with_subtypes_any(vec![merfolk, knight])
         .controlled_by(ControllerConstraint::You);
-    let ids = script::ids_matching(state, &filter, trig.controller);
+    let mut ids = script::ids_matching(state, &filter, trig.controller);
+    ids.retain(|&id| id != trig.source);
     vec![Effect::ForEach {
         targets: ids,
         effect: Box::new(Effect::AddCounters {

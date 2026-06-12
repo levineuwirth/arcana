@@ -1,10 +1,10 @@
 //! Tectonic Rift — `{3}{R}` sorcery. "Destroy target land. Creatures
-//! without flying can't block this turn." The "can't block this turn"
-//! rider has no catalog primitive (no Pump-style 'creatures without
-//! flying lose blocking ability for the turn'); only the destroy is
-//! expressible.
+//! without flying can't block this turn." The rider is a filtered
+//! can't-block static (keyword-exclusion filter, layer-aware) until
+//! end of turn.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -48,8 +48,15 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP: 'creatures without flying can't block this turn' — no catalog
-    // primitive to remove blocking ability for a filtered set of
-    // creatures for one turn.
-    vec![Effect::DestroyPermanent { target: *id }]
+    vec![
+        Effect::DestroyPermanent { target: *id },
+        // "Creatures without flying can't block this turn."
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_cant_block(
+                entry.source,
+                ObjectFilter::creature().without_keyword(KeywordAbility::Flying),
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

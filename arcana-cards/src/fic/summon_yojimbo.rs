@@ -4,11 +4,12 @@
 //! II, III — Until your next turn, creatures can't attack you unless their controller pays {2} for each.
 //! IV — Create X Treasure tokens, where X = number of opponents who control a creature with power 4 or greater.
 //! GAP: Chapter I "artifact, enchantment, or tapped creature" — no TargetFilter for type-OR with tapped condition.
-//! GAP: Chapter II/III "creatures can't attack you unless controller pays {2}" — attack-tax not in catalog.
+//! Chapter II/III: attack-tax static ({2} per attacking creature) protecting you, Duration::UntilYourNextTurn.
 //! GAP: Chapter IV "X = opponents with power 4+ creature" — per-player condition count not in script API.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
 use arcana_core::effects::{CommodityToken, Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -139,11 +140,18 @@ fn chapter_i(
 
 fn chapter_ii_iii(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "creatures can't attack you unless controller pays {2}" — attack-tax not in catalog
-    Vec::new()
+    // "Until your next turn, creatures can't attack you unless their
+    // controller pays {2} for each of those creatures."
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attack_tax(
+            trig.source,
+            2,
+            Duration::UntilYourNextTurn(trig.controller),
+        ),
+    }]
 }
 
 fn chapter_iv(
