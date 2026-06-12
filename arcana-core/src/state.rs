@@ -598,6 +598,35 @@ impl GameState {
             });
         }
 
+        // O-ring release (CR 610.3): a permanent that leaves the
+        // battlefield immediately returns everything it was holding
+        // in exile via [`crate::effects::Effect::ExileUntilSourceLeaves`]
+        // — no stack, owner's control. `id` is the jailer's
+        // battlefield id, which is what the linked objects recorded.
+        // Recursive `move_object_to_zone` is safe here: the main move
+        // above is complete, and the re-id gives each released object
+        // a clean link-free body (`reset_on_zone_change`).
+        if from_battlefield {
+            let jailed: Vec<ObjectId> = self.objects.iter()
+                .filter(|o| o.zone.is_exile() && o.exiled_with == Some(id))
+                .map(|o| o.id)
+                .collect();
+            for jailed_id in jailed {
+                let owner = match self.objects.get(jailed_id) {
+                    Some(o) => o.owner,
+                    None => continue,
+                };
+                if let Some(back) = self.move_object_to_zone(
+                    jailed_id, Zone::Battlefield,
+                    crate::events::MoveCause::SpellResolution,
+                ) {
+                    if let Some(obj) = self.objects.get_mut(back) {
+                        obj.controller = owner;
+                    }
+                }
+            }
+        }
+
         Some(new_id)
     }
 

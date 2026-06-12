@@ -530,6 +530,16 @@ pub enum Effect {
     /// *lands* is a documented partial — only nonland spells are
     /// currently enumerated.
     ImpulseExile { player: PlayerId, count: u32 },
+    /// Oblivion Ring / Banishing Light: "exile target [permanent]
+    /// until [source] leaves the battlefield" (the modern one-ability
+    /// templating, CR 603.6e). Moves `target` to exile and stamps the
+    /// post-move object with `exiled_with: source`; when `source`
+    /// later leaves the battlefield, the zone-mover returns every
+    /// linked object to the battlefield under its OWNER's control,
+    /// immediately and without the stack (CR 610.3). No-op when
+    /// `source` is no longer on the battlefield at resolution (the
+    /// "jailer already left" ruling — the target is never exiled).
+    ExileUntilSourceLeaves { source: ObjectId, target: ObjectId },
 
     /// CR 309 — "Venture into the dungeon." If `player` isn't in a
     /// dungeon, they enter the default dungeon's first room; otherwise
@@ -615,6 +625,20 @@ pub enum Effect {
     Search { player: PlayerId, zone: Zone, filter: ObjectFilter,
              destination: Zone, reveal: bool },
     Reanimate { player: PlayerId, filter: ObjectFilter, from_zone: Zone },
+    /// "Put a [filter] card from your hand onto the battlefield"
+    /// (Elvish Piper, Sneak Attack, Quicksilver Amulet riders, "you
+    /// may put a creature card from your hand onto the battlefield
+    /// tapped and attacking" is the TappedAttacking sibling). Posts a
+    /// `PickCards{0,1}` over `player`'s OWN hand cards matching
+    /// `filter` (owner-exact, unlike [`Self::Reanimate`] which is
+    /// deliberately owner-broad for graveyards); the follow-up moves
+    /// the pick onto the battlefield under `player`'s control,
+    /// optionally tapped. No-op (no prompt) when nothing matches.
+    PutFromHandOntoBattlefield {
+        player: PlayerId,
+        filter: ObjectFilter,
+        tapped: bool,
+    },
     Sacrifice { player: PlayerId, filter: ObjectFilter, count: u32 },
     /// Pass 4.1 — Enlist (CR 702.151a). Posts the optional "tap a
     /// nonattacking creature you control without summoning sickness"
@@ -1567,6 +1591,22 @@ impl Effect {
             Effect::ChooseAnyNumberFromZone { chooser, zone, filter, action } => {
                 choose_any_number_from_zone(state, *chooser, *zone, filter, *action);
             }
+            Effect::ExileUntilSourceLeaves { source, target } => {
+                // Jailer must still be on the battlefield (CR 610.3
+                // ruling: otherwise the target is never exiled).
+                let jailer_present = state.objects.get(*source)
+                    .is_some_and(|o| o.zone.is_battlefield());
+                if jailer_present {
+                    if let Some(new_id) = state.move_object_to_zone(
+                        *target, Zone::Exile,
+                        crate::events::MoveCause::SpellResolution,
+                    ) {
+                        if let Some(obj) = state.objects.get_mut(new_id) {
+                            obj.exiled_with = Some(*source);
+                        }
+                    }
+                }
+            }
             Effect::ImpulseExile { player, count } => {
                 impulse_exile(state, *player, *count);
             }
@@ -1643,6 +1683,9 @@ impl Effect {
             }
             Effect::Reanimate { player, filter, from_zone } => {
                 push_reanimate_choice(state, *player, *from_zone, filter);
+            }
+            Effect::PutFromHandOntoBattlefield { player, filter, tapped } => {
+                push_put_from_hand_choice(state, *player, filter, *tapped);
             }
             Effect::Sacrifice { player, filter, count } => {
                 push_sacrifice_choice(state, *player, filter, *count);
@@ -3873,6 +3916,37 @@ fn push_tutor_to_battlefield_choice(
     );
 }
 
+/// Push a PickCards choice for [`Effect::PutFromHandOntoBattlefield`].
+/// Candidates are `player`'s own hand cards matching `filter`; the
+/// follow-up moves the pick onto the battlefield under `player`'s
+/// control (tapped per the flag). No prompt when nothing matches.
+fn push_put_from_hand_choice(
+    state: &mut GameState,
+    player: PlayerId,
+    filter: &ObjectFilter,
+    tapped: bool,
+) {
+    if !valid_player(state, player) { return; }
+    let candidates = collect_matching_candidates(
+        state, player, Zone::Hand(player), filter);
+    if candidates.is_empty() { return; }
+    let stack_entry = state.currently_resolving
+        .expect("push_put_from_hand_choice: no currently_resolving \
+                 stack entry");
+    state.pending_choice_follow_up = Some(
+        crate::actions::ChoiceFollowUp::MoveToBattlefield {
+            controller: player, tapped,
+            shuffle_library_owner: None,
+        });
+    state.push_pending_choice(
+        player,
+        crate::actions::ChoiceContext::ResolvingStack(stack_entry),
+        crate::actions::ChoiceKind::PickCards {
+            candidates, min: 0, max: 1,
+        },
+    );
+}
+
 /// Push a PickCards choice for a Reanimate-style effect. Follow-up
 /// puts the card onto the battlefield under `player`'s control.
 fn push_reanimate_choice(
@@ -4901,6 +4975,90 @@ mod tests {
     }
 
     // --- graveyard returns ------------------------------------------------
+
+    #[test]
+    fn exile_until_source_leaves_round_trips_on_jailer_departure() {
+        let mut s = GameState::new(2, 0);
+        // P0's O-ring (enchantment stand-in), P1's creature.
+        let oring = put_creature(&mut s, 0, Zone::Battlefield, 0, 4);
+        let victim = put_creature(&mut s, 1, Zone::Battlefield, 3, 3);
+
+        Effect::ExileUntilSourceLeaves { source: oring, target: victim }
+            .execute(&mut s);
+        let jailed = s.objects.iter()
+            .find(|o| o.zone.is_exile())
+            .expect("victim should be in exile");
+        assert_eq!(jailed.exiled_with, Some(oring));
+        assert_eq!(jailed.owner, 1);
+
+        // Jailer leaves → victim returns to the battlefield under its
+        // owner's control, immediately (no stack).
+        s.move_object_to_zone(
+            oring, Zone::Graveyard(0),
+            crate::events::MoveCause::StateBasedAction);
+        let back = s.objects.iter()
+            .find(|o| o.zone.is_battlefield() && o.owner == 1)
+            .expect("victim should be back on the battlefield");
+        assert_eq!(back.controller, 1);
+        assert_eq!(back.exiled_with, None);
+        assert!(!s.objects.iter().any(|o| o.zone.is_exile()));
+    }
+
+    #[test]
+    fn exile_until_source_leaves_noop_when_jailer_already_left() {
+        let mut s = GameState::new(2, 0);
+        let oring = put_creature(&mut s, 0, Zone::Graveyard(0), 0, 4);
+        let victim = put_creature(&mut s, 1, Zone::Battlefield, 3, 3);
+        Effect::ExileUntilSourceLeaves { source: oring, target: victim }
+            .execute(&mut s);
+        // Jailer wasn't on the battlefield: target is never exiled.
+        assert!(s.objects.get(victim).unwrap().zone.is_battlefield());
+    }
+
+    #[test]
+    fn put_from_hand_pushes_pick_over_own_matching_hand_cards() {
+        use crate::actions::{ChoiceFollowUp, ChoiceKind};
+        let mut s = GameState::new(2, 0);
+        let mine = put_creature(&mut s, 0, Zone::Hand(0), 2, 2);
+        let _instant = put_instant(&mut s, 0, Zone::Hand(0));
+        let _theirs = put_creature(&mut s, 1, Zone::Hand(1), 3, 3);
+        s.currently_resolving = Some(999);
+
+        Effect::PutFromHandOntoBattlefield {
+            player: 0,
+            filter: ObjectFilter::creature(),
+            tapped: true,
+        }.execute(&mut s);
+
+        let pc = s.pending_choice.as_ref()
+            .expect("should push a PickCards choice");
+        assert_eq!(pc.choosing_player, 0);
+        match &pc.kind {
+            ChoiceKind::PickCards { candidates, min, max } => {
+                // Own creature only — not the instant, not the
+                // opponent's hand card.
+                assert_eq!(candidates, &vec![mine]);
+                assert_eq!((*min, *max), (0, 1));
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        }
+        assert!(matches!(s.pending_choice_follow_up,
+            Some(ChoiceFollowUp::MoveToBattlefield {
+                controller: 0, tapped: true, shuffle_library_owner: None })));
+    }
+
+    #[test]
+    fn put_from_hand_is_silent_noop_with_no_matches() {
+        let mut s = GameState::new(2, 0);
+        let _instant = put_instant(&mut s, 0, Zone::Hand(0));
+        s.currently_resolving = Some(999);
+        Effect::PutFromHandOntoBattlefield {
+            player: 0,
+            filter: ObjectFilter::creature(),
+            tapped: false,
+        }.execute(&mut s);
+        assert!(s.pending_choice.is_none());
+    }
 
     fn put_creature_in_graveyard(
         s: &mut GameState, owner: PlayerId, p: i32, t: i32,

@@ -270,6 +270,13 @@ pub enum TriggerCondition {
     /// "Whenever ~ becomes tapped". Matches [`GameEvent::Tapped`]
     /// on this source.
     SelfBecomesTapped,
+    /// "Whenever [filter] becomes tapped" — the filtered sibling of
+    /// [`Self::SelfBecomesTapped`] (Fatigue "a creature an opponent
+    /// controls", Quicksilver Fountain "an Island", Manabarbs-kin
+    /// watching lands). Matches [`GameEvent::Tapped`] whose object
+    /// satisfies the filter; read the tapped object in the effect via
+    /// the trigger event.
+    BecomesTapped { filter: ObjectFilter },
     /// CR 711 / 716 — "When this creature specializes". Matches
     /// [`GameEvent::Specialized`] on this source (emitted by
     /// [`crate::effects::Effect::Specialize`]).
@@ -382,6 +389,12 @@ impl TriggerCondition {
 
             SelfBecomesTapped => matches!(event,
                 GameEvent::Tapped { object_id } if *object_id == source),
+
+            BecomesTapped { filter } => {
+                let GameEvent::Tapped { object_id } = event
+                    else { return false; };
+                match_filter_on(state, *object_id, filter, source_controller)
+            }
 
             SelfSpecializes => matches!(event,
                 GameEvent::Specialized { object_id } if *object_id == source),
@@ -641,6 +654,27 @@ impl PendingTrigger {
             GameEvent::EntersBattlefield { object_id, .. } => Some(*object_id),
             GameEvent::ZoneChange { object_id, to: Zone::Battlefield, .. } =>
                 Some(*object_id),
+            _ => None,
+        }
+    }
+
+    /// The attacking creature, if this trigger fired on
+    /// [`GameEvent::CreatureAttacks`] — "whenever a creature attacks,
+    /// [do something to/with that creature]" (Hissing Iguanar's kin,
+    /// attack-tax punishers, pump-the-attacker enchantments). For a
+    /// `SelfAttacks` trigger this equals [`Self::source`]; for
+    /// filtered `CreatureAttacks { filter }` triggers it's the
+    /// creature that satisfied the filter.
+    ///
+    /// Note "that player" for step/phase triggers ("at the beginning
+    /// of each player's upkeep, that player…") is NOT an accessor:
+    /// [`GameEvent::StepBegins`] carries no player because steps
+    /// always belong to the active player, and an upkeep trigger
+    /// resolves during that same upkeep — read
+    /// `state.active_player()` in the effect fn.
+    pub fn attacking_creature(&self) -> Option<ObjectId> {
+        match &self.trigger_event {
+            GameEvent::CreatureAttacks { attacker, .. } => Some(*attacker),
             _ => None,
         }
     }
@@ -1059,11 +1093,53 @@ mod tests {
     }
 
     #[test]
+    fn attacking_creature_accessor_returns_attacker() {
+        let trig = PendingTrigger {
+            source: 3, trigger_id: 0, controller: 0,
+            trigger_event: GameEvent::CreatureAttacks {
+                attacker: 7,
+                defending: crate::combat::DefendingEntity::Player(1),
+            },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        assert_eq!(trig.attacking_creature(), Some(7));
+
+        // Non-attack event: None.
+        let trig = PendingTrigger {
+            source: 3, trigger_id: 0, controller: 0,
+            trigger_event: GameEvent::Dies { object_id: 7 },
+            targets: crate::targets::TargetSelection::new(),
+        };
+        assert_eq!(trig.attacking_creature(), None);
+    }
+
+    #[test]
     fn self_becomes_tapped_matches() {
         let s = GameState::new(2, 0);
         let ev = GameEvent::Tapped { object_id: 42 };
         assert!(TriggerCondition::SelfBecomesTapped.matches(&ev, 42, 0, &s));
         assert!(!TriggerCondition::SelfBecomesTapped.matches(&ev, 7, 0, &s));
+    }
+
+    #[test]
+    fn becomes_tapped_filter_checks_the_tapped_object() {
+        let mut s = GameState::new(2, 0);
+        let my_creature = put_creature(&mut s, 0, Zone::Battlefield);
+        let opp_creature = put_creature(&mut s, 1, Zone::Battlefield);
+
+        // "Whenever a creature an opponent controls becomes tapped"
+        // (source controlled by player 0).
+        let cond = TriggerCondition::BecomesTapped {
+            filter: ObjectFilter::creature()
+                .controlled_by(ControllerConstraint::Opponent),
+        };
+        let ev = GameEvent::Tapped { object_id: opp_creature };
+        assert!(cond.matches(&ev, 99, 0, &s));
+        let ev = GameEvent::Tapped { object_id: my_creature };
+        assert!(!cond.matches(&ev, 99, 0, &s));
+        // Non-tap event: no match.
+        let ev = GameEvent::Dies { object_id: opp_creature };
+        assert!(!cond.matches(&ev, 99, 0, &s));
     }
 
     #[test]

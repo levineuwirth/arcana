@@ -323,6 +323,9 @@ fn synth_event(
         TC::SelfBlocksOrBecomesBlockedBy { .. } =>
             GE::CreatureBlocks { blocker: source, attacker: other },
         TC::SelfBecomesTapped => GE::Tapped { object_id: source },
+        // Filtered tapped: `other` (the omni-tribal seed) is the
+        // tapped object, same posture as the other filtered forms.
+        TC::BecomesTapped { .. } => GE::Tapped { object_id: other },
         TC::SelfSpecializes => GE::Specialized { object_id: source },
         TC::SelfBecomesTarget { caster } => GE::BecomesTarget {
             target: source, source: stack_spell, controller: who(caster) },

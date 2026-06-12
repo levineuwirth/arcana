@@ -150,6 +150,17 @@ pub struct GameObject {
     /// only lives during the brief exile window between discard and
     /// cast/cleanup.
     pub madness_pending: bool,
+    /// "Exiled until [jailer] leaves the battlefield" linkage
+    /// (Oblivion Ring / Banishing Light templating, CR 603.6e one-
+    /// ability form). Set on the EXILED object (post-move id) by
+    /// [`crate::effects::Effect::ExileUntilSourceLeaves`], pointing
+    /// at the jailer's battlefield id. When that permanent leaves the
+    /// battlefield, [`crate::state::GameState::move_object_to_zone`]
+    /// immediately returns every linked exile object to the
+    /// battlefield under its owner's control (CR 610.3 — no stack).
+    /// Zone-local: cleared by [`Self::reset_on_zone_change`], so a
+    /// card that leaves exile by any other route sheds the link.
+    pub exiled_with: Option<ObjectId>,
     /// CR 712 — which printed face of a multi-face card this object
     /// is currently showing. `0` = front face (default, and the only
     /// state for single-face cards). `1` = back face — set during
@@ -281,6 +292,7 @@ impl GameObject {
             abilities: Vec::new(),
             status: PermanentStatus::default(),
             madness_pending: false,
+            exiled_with: None,
             adventure_exile_pending: false,
             impulse_play_pending: false,
             visible_face: 0,
@@ -459,6 +471,10 @@ impl GameObject {
         // other effect) drops the flag. The re-id on zone change
         // then gives the downstream zone a clean object.
         self.madness_pending = false;
+        // O-ring linkage is zone-local for the same reason: it's set
+        // on the freshly-exiled object AFTER the move, and any later
+        // zone change (return, recursion, cast-from-exile) sheds it.
+        self.exiled_with = None;
         // Adventure-exile marker is similarly zone-local (CR 715):
         // set when an Adventure spell leaves the stack to exile,
         // cleared the moment the card moves anywhere (creature

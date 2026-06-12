@@ -245,6 +245,26 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build an Equipment/Aura "equipped creature gets +X/+Y for each
+    /// …" effect, layer 7c — the dynamic sibling of
+    /// [`Self::attached_pt`]. `compute` receives the game state and
+    /// the SOURCE (the Equipment/Aura, so its controller and
+    /// attachment are readable) and returns the (power, toughness)
+    /// delta, re-evaluated every layer application. Pair with
+    /// [`Duration::WhileSourceOnBattlefield`].
+    pub fn attached_pt_dynamic(source: ObjectId,
+                               compute: fn(&GameState, ObjectId) -> (i32, i32),
+                               duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7cPTModifying,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureGetsPtDynamic { compute },
+        }
+    }
+
     /// Build an "equipped/enchanted creature has [keyword]" effect —
     /// the keyword sibling of [`Self::attached_pt`]: whatever creature
     /// `source` is currently attached to gains the keyword (Layer 6).
@@ -397,6 +417,16 @@ pub enum ContinuousEffectKind {
     /// sibling of [`Self::AttachedCreatureGetsPt`]; follows
     /// `source.attached_to` dynamically, inert while unattached.
     AttachedCreatureGainsKeyword { keyword: KeywordAbility },
+    /// "Equipped/enchanted creature gets +X/+Y where X/Y depend on
+    /// board state" (Blackblade Reforged "+1/+1 for each land you
+    /// control", Empyrial Armor "+1/+1 for each card in your hand").
+    /// The dynamic sibling of [`Self::AttachedCreatureGetsPt`]:
+    /// follows `source.attached_to`, and `compute` is called at
+    /// apply-time with the SOURCE (the Equipment/Aura) so it can read
+    /// the source's controller and count whatever the card names.
+    AttachedCreatureGetsPtDynamic {
+        compute: fn(&GameState, ObjectId) -> (i32, i32),
+    },
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
@@ -433,7 +463,8 @@ impl ContinuousEffectKind {
                     && o.controller == *controller)
             }
             Self::AttachedCreatureGetsPt { .. }
-            | Self::AttachedCreatureGainsKeyword { .. } => {
+            | Self::AttachedCreatureGainsKeyword { .. }
+            | Self::AttachedCreatureGetsPtDynamic { .. } => {
                 state.objects.get(source)
                     .and_then(|src| src.attached_to)
                     == Some(object_id)
@@ -443,10 +474,14 @@ impl ContinuousEffectKind {
     }
 
     /// Apply this effect to `chars` (the in-flight characteristics
-    /// of `object_id`).
+    /// of `object_id`). `source` is the installer (the permanent
+    /// that produced the effect) — needed by variants whose value is
+    /// computed relative to the source, such as
+    /// [`Self::AttachedCreatureGetsPtDynamic`].
     pub fn apply(
         &self,
         object_id: ObjectId,
+        source: ObjectId,
         chars: &mut Characteristics,
         state: &GameState,
     ) {
@@ -455,6 +490,10 @@ impl ContinuousEffectKind {
             | Self::AnthemForController { power, toughness, .. }
             | Self::AttachedCreatureGetsPt { power, toughness } => {
                 add_to_pt(chars, *power, *toughness);
+            }
+            Self::AttachedCreatureGetsPtDynamic { compute } => {
+                let (power, toughness) = compute(state, source);
+                add_to_pt(chars, power, toughness);
             }
             Self::SetPt { power, toughness, .. } => {
                 chars.power = Some(PtValue::Fixed(*power));
@@ -604,7 +643,7 @@ impl GameState {
                 .collect();
             effects.sort_by_key(|e| e.timestamp);
             for e in effects {
-                e.kind.apply(object_id, &mut chars, self);
+                e.kind.apply(object_id, e.source, &mut chars, self);
             }
         }
 
@@ -1115,6 +1154,36 @@ mod tests {
         s.objects.get_mut(equipment).unwrap().attached_to = Some(bearer_b);
         assert!(!s.has_keyword(bearer_a, &KeywordAbility::Vigilance));
         assert!( s.has_keyword(bearer_b, &KeywordAbility::Vigilance));
+    }
+
+    #[test]
+    fn attached_pt_dynamic_recomputes_from_board_state() {
+        // "+1/+1 for each creature its controller controls" stand-in.
+        fn per_controlled_creature(s: &GameState, source: ObjectId) -> (i32, i32) {
+            let Some(src) = s.objects.get(source) else { return (0, 0); };
+            let n = s.objects.iter()
+                .filter(|o| o.zone.is_battlefield()
+                    && o.is_creature()
+                    && o.controller == src.controller)
+                .count() as i32;
+            (n, n)
+        }
+        let mut s = GameState::new(2, 0);
+        let equipment = put_creature(&mut s, 0, 1, 1); // stands in for the Equipment
+        let bearer = put_creature(&mut s, 0, 2, 2);
+        s.add_continuous_effect(ContinuousEffect::attached_pt_dynamic(
+            equipment, per_controlled_creature,
+            Duration::WhileSourceOnBattlefield,
+        ));
+        // Unattached: inert.
+        assert_eq!(s.computed_power(bearer), Some(2));
+        // Attached: 2 creatures on board → +2/+2.
+        s.objects.get_mut(equipment).unwrap().attached_to = Some(bearer);
+        assert_eq!(s.computed_power(bearer), Some(4));
+        assert_eq!(s.computed_toughness(bearer), Some(4));
+        // Board changes re-evaluate: add a third creature → +3/+3.
+        let _third = put_creature(&mut s, 0, 1, 1);
+        assert_eq!(s.computed_power(bearer), Some(5));
     }
 
     #[test]
