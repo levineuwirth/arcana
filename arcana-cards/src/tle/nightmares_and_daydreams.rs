@@ -2,16 +2,18 @@
 //! I, II, III — Until your next turn, whenever you cast an instant or sorcery spell, target player mills
 //!   cards equal to that spell's mana value.
 //! IV — Draw a card. If a graveyard has twenty or more cards in it, draw three cards instead.
-//! GAP: Chapter I/II/III — delayed trigger until next turn with spell-CMC-based milling not in catalog.
+//! GAP-NARROW: Chapter I/II/III "target player mills" — delayed triggers carry no targets;
+//!   deterministic pick: the lowest-numbered living opponent mills.
 //! GAP: Chapter IV — conditional draw based on any graveyard size not in script API.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, FloatingUntil};
+use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
@@ -116,11 +118,48 @@ fn add_lore_counter(
 
 fn chapter_i_iii(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until your next turn, whenever you cast instant/sorcery, target player mills mana value" — not in catalog
-    Vec::new()
+    // "Until your next turn, whenever you cast an instant or sorcery
+    // spell, target player mills cards equal to that spell's mana value."
+    vec![Effect::ScheduleFloatingTrigger {
+        source: trig.source,
+        controller: trig.controller,
+        condition: TriggerCondition::SpellCast {
+            filter: Some(ObjectFilter::new().with_types_any(TypeLine(
+                TypeLine::INSTANT | TypeLine::SORCERY,
+            ))),
+            caster: ControllerConstraint::You,
+        },
+        effect: mill_for_cast,
+        until: FloatingUntil::YourNextTurn,
+    }]
+}
+
+fn mill_for_cast(
+    state: &GameState,
+    pt: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    let GameEvent::SpellCast { object_id, .. } = &pt.trigger_event else {
+        return Vec::new();
+    };
+    let count = state
+        .object_or_lki(*object_id)
+        .map_or(0, |o| o.characteristics.mana_value());
+    if count == 0 {
+        return Vec::new();
+    }
+    // GAP-NARROW: "target player mills" — delayed triggers carry no
+    // targets; deterministic pick: lowest-numbered living opponent.
+    let Some(victim) = (0..state.num_players())
+        .filter(|p| *p != pt.controller && state.player(*p).is_alive())
+        .min()
+    else {
+        return Vec::new();
+    };
+    vec![Effect::Mill { player: victim, count }]
 }
 
 fn chapter_iv(

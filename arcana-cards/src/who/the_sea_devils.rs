@@ -3,18 +3,18 @@
 //! III — Until end of turn, whenever a Salamander deals combat damage to a player, it deals
 //!   that much damage to target creature that player controls.
 //!
-//! GAP: Chapter III "until end of turn, whenever a Salamander deals combat damage to a player,
-//!   it deals that much damage to target creature that player controls" — delayed triggered
-//!   ability installed for the rest of the turn is not expressible in the current engine
-//!   (no Effect::InstallTriggeredAbility for the turn). Vec::new() is returned.
+//! GAP-NARROW: Chapter III "target creature that player controls" — delayed triggers carry
+//!   no targets; deterministic pick: the lowest-id creature that player controls.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, FloatingUntil, KeywordAbility, TokenDefinition};
+use arcana_core::events::{DamageTarget, GameEvent};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
@@ -172,14 +172,62 @@ fn chapter_ii(
     make_salamander_token(state, trig, reg)
 }
 
-/// GAP: "Until end of turn, whenever a Salamander deals combat damage to a player, it deals
-/// that much damage to target creature that player controls" — delayed triggered ability
-/// installed for the turn is not expressible in the current engine.
+/// "Until end of turn, whenever a Salamander deals combat damage to a player, it deals
+/// that much damage to target creature that player controls."
 fn chapter_iii(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "Salamander" was interned at registration time.
+    let Some(salamander) = reg.interner().lookup("Salamander") else {
+        return Vec::new();
+    };
+    vec![Effect::ScheduleFloatingTrigger {
+        source: trig.source,
+        controller: trig.controller,
+        condition: TriggerCondition::DamageDealt {
+            source_filter: ObjectFilter::creature().with_subtype_sym(salamander),
+            target_filter: TargetFilter::Player,
+            combat_only: true,
+        },
+        effect: lash_back,
+        until: FloatingUntil::EndOfTurn,
+    }]
+}
+
+fn lash_back(
+    state: &GameState,
+    pt: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no Effect::InstallTriggeredAbility variant available.
-    Vec::new()
+    let GameEvent::DamageDealt {
+        source,
+        target: DamageTarget::Player(player),
+        amount,
+        ..
+    } = &pt.trigger_event
+    else {
+        return Vec::new();
+    };
+    if *amount == 0 {
+        return Vec::new();
+    }
+    // GAP-NARROW: "target creature that player controls" — delayed
+    // triggers carry no targets; deterministic lowest-id pick.
+    let Some(victim) = script::ids_matching(
+        state,
+        &ObjectFilter::creature()
+            .controlled_by(ControllerConstraint::Player(*player)),
+        pt.controller,
+    )
+    .into_iter()
+    .min() else {
+        return Vec::new();
+    };
+    vec![Effect::DealDamage {
+        source: *source,
+        target: DamageTarget::Object(victim),
+        amount: *amount,
+    }]
 }

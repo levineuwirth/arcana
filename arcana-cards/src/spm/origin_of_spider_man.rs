@@ -2,8 +2,8 @@
 //! I — Create a 2/1 green Spider creature token with reach.
 //! II — Put a +1/+1 counter on target creature you control.
 //!   It becomes a legendary Spider Hero in addition to its other types.
-//!   (Spider+Hero via targeted subtype-add continuous effect, Duration::Permanent;
-//!   GAP: the "legendary" supertype add is not modeled — no supertype-add effect)
+//!   (Spider+Hero via targeted subtype-add continuous effect and legendary via
+//!   targeted supertype-add continuous effect, both Duration::Permanent)
 //! III — Target creature you control gains double strike until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
@@ -19,7 +19,9 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef, TriggerSelf,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -144,8 +146,8 @@ fn chapter_ii(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> 
         }
     }
     // "It becomes a legendary Spider Hero in addition to its other types" —
-    // Spider+Hero via targeted subtype-add, Duration::Permanent.
-    // GAP: the "legendary" supertype add is not modeled (no supertype-add effect).
+    // Spider+Hero via targeted subtype-add, legendary via targeted
+    // supertype-add, both Duration::Permanent.
     vec![
         Effect::AddCounters {
             target: *id,
@@ -154,6 +156,14 @@ fn chapter_ii(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> 
         },
         Effect::InstallContinuousEffect {
             effect: ContinuousEffect::add_subtypes(trig.source, *id, subs, Duration::Permanent),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::add_supertypes(
+                trig.source,
+                *id,
+                SupertypeSet::new().with(SupertypeSet::LEGENDARY),
+                Duration::Permanent,
+            ),
         },
     ]
 }

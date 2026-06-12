@@ -1,8 +1,6 @@
 //! Mountain Titan — `{2}{B}{R}` 2/2 Giant.
 //! `{1}{R}{R}: Until end of turn, whenever you cast a black spell, put a +1/+1 counter on
 //! this creature.`
-//! GAP: "until end of turn, whenever you cast a black spell" — no way to register a
-//! temporary triggered ability for the rest of the turn.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -11,8 +9,10 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
-use arcana_core::effects::Effect;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{PendingTrigger, TriggerCondition};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::effects::{Effect, FloatingUntil};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Mountain Titan");
@@ -50,10 +50,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn temporary_trigger(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until end of turn, whenever you cast a black spell" — temporary triggered
-    // ability registration not supported.
-    Vec::new()
+    // "Until end of turn, whenever you cast a black spell, put a +1/+1
+    // counter on this creature."
+    vec![Effect::ScheduleFloatingTrigger {
+        source: ctx.source,
+        controller: ctx.controller,
+        condition: TriggerCondition::SpellCast {
+            filter: Some(ObjectFilter::new().with_colors(ColorSet::black())),
+            caster: ControllerConstraint::You,
+        },
+        effect: counter_on_black_cast,
+        until: FloatingUntil::EndOfTurn,
+    }]
+}
+
+fn counter_on_black_cast(
+    _state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::AddCounters {
+        target: pt.source,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }

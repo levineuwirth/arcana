@@ -3,7 +3,7 @@
 //! of turn, whenever a creature you control dies, exile the top card
 //! of your library. You may play it until the end of your next turn."
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, FloatingUntil};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -15,7 +15,9 @@ use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
     TargetRequirement,
 };
+use arcana_core::triggers::{PendingTrigger, TriggerCondition};
 use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Waltz of Rage");
@@ -63,7 +65,29 @@ fn resolve(
             amount: dmg,
         });
     }
-    // GAP: per-turn 'whenever a creature you control dies, exile top of
-    // library and play it' delayed trigger isn't expressible.
+    // "Until end of turn, whenever a creature you control dies, exile
+    // the top card of your library. You may play it until the end of
+    // your next turn."
+    out.push(Effect::ScheduleFloatingTrigger {
+        source: entry.id,
+        controller: entry.controller,
+        condition: TriggerCondition::ZoneChange {
+            filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            from: Some(Zone::Battlefield),
+            to: Zone::Graveyard(0),
+        },
+        effect: impulse_on_death,
+        until: FloatingUntil::EndOfTurn,
+    });
     out
+}
+
+fn impulse_on_death(
+    _state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP-NARROW: oracle grants play "until the end of your next turn";
+    // the engine impulse window lapses at end of this turn.
+    vec![Effect::ImpulseExile { player: pt.controller, count: 1 }]
 }

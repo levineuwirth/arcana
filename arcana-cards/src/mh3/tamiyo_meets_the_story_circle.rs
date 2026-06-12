@@ -2,17 +2,19 @@
 //! I — Until your next turn, whenever a creature attacks you or a planeswalker you control, it gets -2/-0 until end of turn.
 //! II — Discard any number of cards, then investigate twice for each card discarded.
 //! III — Shuffle up to three target cards from your graveyard into your library.
-//! GAP: Chapter I "until your next turn, whenever a creature attacks you, -2/-0" — delayed triggered ability until next turn not in catalog.
 //! GAP: Chapter II "investigate twice for each card discarded" — dynamic number of Clue tokens based on discard count not in catalog.
 //! GAP: Chapter III "shuffle target cards into library" — shuffle-from-graveyard-to-library not in catalog.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::Effect;
+use arcana_core::combat::DefendingEntity;
+use arcana_core::effects::{Effect, FloatingUntil};
+use arcana_core::events::GameEvent;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
@@ -104,11 +106,52 @@ fn add_lore_counter(
 
 fn chapter_i(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until your next turn, whenever a creature attacks you, it gets -2/-0" — delayed trigger not in catalog
-    Vec::new()
+    // "Until your next turn, whenever a creature attacks you or a
+    // planeswalker you control, it gets -2/-0 until end of turn."
+    vec![Effect::ScheduleFloatingTrigger {
+        source: trig.source,
+        controller: trig.controller,
+        condition: TriggerCondition::CreatureAttacks {
+            filter: ObjectFilter::creature(),
+        },
+        effect: attacker_penalty,
+        until: FloatingUntil::YourNextTurn,
+    }]
+}
+
+fn attacker_penalty(
+    state: &GameState,
+    pt: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    let GameEvent::CreatureAttacks { attacker, defending } = &pt.trigger_event
+    else {
+        return Vec::new();
+    };
+    // Only attacks against the scheduling player or a planeswalker
+    // they control qualify.
+    let attacks_us = match defending {
+        DefendingEntity::Player(p) => *p == pt.controller,
+        DefendingEntity::Planeswalker(pw) => state
+            .object_or_lki(*pw)
+            .is_some_and(|o| o.controller == pt.controller),
+        DefendingEntity::Battle(_) => false,
+    };
+    if !attacks_us {
+        return Vec::new();
+    }
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::pump(
+            pt.source,
+            *attacker,
+            -2,
+            0,
+            Duration::EndOfTurn,
+        ),
+    }]
 }
 
 fn chapter_ii(

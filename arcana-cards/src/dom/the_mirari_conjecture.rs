@@ -3,10 +3,9 @@
 //! II — Return target sorcery card from your graveyard to your hand.
 //! III — Until end of turn, whenever you cast an instant or sorcery spell,
 //!       copy it. You may choose new targets for the copy.
-//! GAP: Chapter III "until end of turn, whenever you cast...copy it" is a
-//! delayed triggered ability that is not expressible.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, FloatingUntil};
+use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -141,10 +140,32 @@ fn chapter_ii(
 
 fn chapter_iii(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until end of turn, whenever you cast instant/sorcery, copy it"
-    // is a delayed triggered ability not expressible with current API
-    Vec::new()
+    // "Until end of turn, whenever you cast an instant or sorcery
+    // spell, copy it. You may choose new targets for the copy."
+    vec![Effect::ScheduleFloatingTrigger {
+        source: trig.source,
+        controller: trig.controller,
+        condition: TriggerCondition::SpellCast {
+            filter: Some(ObjectFilter::new().with_types_any(TypeLine(
+                TypeLine::INSTANT | TypeLine::SORCERY,
+            ))),
+            caster: arcana_core::targets::ControllerConstraint::You,
+        },
+        effect: copy_cast_spell,
+        until: FloatingUntil::EndOfTurn,
+    }]
+}
+
+fn copy_cast_spell(
+    _state: &GameState,
+    pt: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let GameEvent::SpellCast { object_id, .. } = &pt.trigger_event else {
+        return Vec::new();
+    };
+    vec![Effect::CopySpell { target: *object_id }]
 }
