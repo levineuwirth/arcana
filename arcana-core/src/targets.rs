@@ -784,6 +784,31 @@ impl ObjectFilter {
         state: &GameState,
         source_controller: PlayerId,
     ) -> bool {
+        self.matches_inner(obj, state, source_controller, false)
+    }
+
+    /// BASE-characteristics variant of [`Self::matches`]: subtype /
+    /// color / keyword predicates read the object's printed
+    /// characteristics instead of the layer-computed ones. REQUIRED
+    /// for filters evaluated INSIDE the layer pipeline (the filtered
+    /// global statics' `applies_to`) — a layer-aware read there would
+    /// recurse into `compute_characteristics`.
+    pub fn matches_base(
+        &self,
+        obj: &GameObject,
+        state: &GameState,
+        source_controller: PlayerId,
+    ) -> bool {
+        self.matches_inner(obj, state, source_controller, true)
+    }
+
+    fn matches_inner(
+        &self,
+        obj: &GameObject,
+        state: &GameState,
+        source_controller: PlayerId,
+        base_only: bool,
+    ) -> bool {
         // --- type bits: all required, at least one of any, none forbidden ---
         if let Some(required) = self.types {
             if (obj.characteristics.types.0 & required.0) != required.0 {
@@ -805,10 +830,11 @@ impl ObjectFilter {
         // (Layer-5 SetColor / AttachedCreatureAddColors count); base
         // characteristics otherwise. ---
         if self.colors.is_some() || self.not_colors.is_some() {
-            let colors = state.objects.get(obj.id)
-                .and_then(|_| state.compute_characteristics(obj.id))
-                .map(|c| c.colors)
-                .unwrap_or(obj.characteristics.colors);
+            let colors = if base_only { None } else {
+                state.objects.get(obj.id)
+                    .and_then(|_| state.compute_characteristics(obj.id))
+                    .map(|c| c.colors)
+            }.unwrap_or(obj.characteristics.colors);
             // All colors in the filter must be in the object.
             if let Some(required) = self.colors {
                 if (colors.0 & required.0) != required.0 {
@@ -836,8 +862,10 @@ impl ObjectFilter {
         if self.subtypes.is_some() || self.subtypes_any.is_some()
             || self.not_subtypes.is_some()
         {
-            let computed = state.objects.get(obj.id)
-                .and_then(|_| state.compute_characteristics(obj.id));
+            let computed = if base_only { None } else {
+                state.objects.get(obj.id)
+                    .and_then(|_| state.compute_characteristics(obj.id))
+            };
             // CR 702.73a — "is every creature type": the flagged
             // object satisfies any positive subtype requirement and
             // fails any subtype exclusion. (Filters' type constraints
@@ -895,7 +923,7 @@ impl ObjectFilter {
         // yet in the state's object table). ---
         if self.keywords.is_some() || self.keywords_any.is_some() || self.not_keywords.is_some() {
             let has = |kw: &KeywordAbility| -> bool {
-                if state.objects.get(obj.id).is_some() {
+                if !base_only && state.objects.get(obj.id).is_some() {
                     state.has_keyword(obj.id, kw)
                 } else {
                     obj.characteristics.keywords.contains(kw)

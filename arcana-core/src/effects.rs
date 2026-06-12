@@ -678,6 +678,15 @@ pub enum Effect {
         when: DelayedWhen,
         effect: crate::triggers::EffectFn,
     },
+    /// Install an arbitrary [`crate::replacement::ReplacementEffect`]
+    /// (Boon Reflection's life doubling, Kismet's opponents-enter-
+    /// tapped, Hardened Scales-class counter modifiers) — the
+    /// general surface behind the canned wrappers like
+    /// [`Self::PreventDamage`]. `state.add_replacement_effect`
+    /// assigns the id; set `effect.id` to 0.
+    InstallReplacementEffect {
+        effect: Box<crate::replacement::ReplacementEffect>,
+    },
     /// Schedule a FLOATING REPEATING trigger window: "until [end of
     /// turn / your next turn], whenever [condition], [effect]"
     /// (Don't Move's tap-destroyer, Tamiyo Meets the Story Circle's
@@ -1096,9 +1105,9 @@ impl Effect {
                 state.player_mut(*player).energy += *amount;
             }
             Effect::GainLife { player, amount } => {
-                if !valid_player(state, *player) || *amount == 0 { return; }
-                state.player_mut(*player).life += *amount as i32;
-                state.emit(GameEvent::LifeGained { player: *player, amount: *amount });
+                // Single choke point — life-gain replacements (Boon
+                // Reflection) apply inside.
+                state.gain_life(*player, *amount);
             }
             Effect::LoseLife { player, amount } => {
                 lose_life(state, *player, *amount);
@@ -1816,6 +1825,9 @@ impl Effect {
             }
             Effect::PutFromHandOntoBattlefieldTappedAttacking { player, filter } => {
                 push_put_from_hand_choice(state, *player, filter, true, true);
+            }
+            Effect::InstallReplacementEffect { effect } => {
+                state.add_replacement_effect((**effect).clone());
             }
             Effect::ScheduleFloatingTrigger {
                 source, controller, condition, effect, until,

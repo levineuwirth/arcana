@@ -564,7 +564,15 @@ fn enumerate_attacker_declarations(state: &GameState, active: PlayerId) -> Vec<A
         // battlefield (each could be attacked instead of its
         // controller).
         for &opp in &opponents {
-            if !goaders.contains(&opp) {
+            // Attack tax (Ghostly Prison class): with a single-
+            // attacker declaration the whole tax must be coverable by
+            // the attacker's FLOATED pool, else the declaration is
+            // not legal (mirrors the apply-side gate).
+            let tax_ok = {
+                let tax = state.attack_tax_total(opp) as usize;
+                tax == 0 || state.player(active).mana_pool.total() >= tax
+            };
+            if !goaders.contains(&opp) && tax_ok {
                 out.push(Action::DeclareAttackers {
                     attackers: vec![AttackerDeclaration {
                         attacker: atk,

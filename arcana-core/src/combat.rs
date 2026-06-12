@@ -413,8 +413,9 @@ impl GameState {
         // on the departed object (arena survives past the zone).
         if self.has_keyword(source, &KeywordAbility::Lifelink) {
             if let Some(controller) = self.objects.get(source).map(|o| o.controller) {
-                self.player_mut(controller).life += amount as i32;
-                self.emit(GameEvent::LifeGained { player: controller, amount });
+                // Routed through the life-gain choke point so
+                // doubling replacements apply to lifelink too.
+                self.gain_life(controller, amount);
             }
         }
     }
@@ -473,6 +474,7 @@ impl GameState {
             let has_defender = self.has_keyword(
                 d.attacker, &KeywordAbility::Defender);
             let restricted = self.cant_attack(d.attacker);
+            let attacker_controller = obj.controller;
             if !obj.is_creature()
                 || !obj.zone.is_battlefield()
                 || obj.is_tapped()
@@ -481,6 +483,20 @@ impl GameState {
                 || restricted
             {
                 continue;
+            }
+            // Ghostly Prison / Propaganda (CR 508.1e): attacking a
+            // taxed player costs {N} per attacker, paid HERE from the
+            // attacker's FLOATED pool once every other gate has
+            // passed — no float, no attack (documented strictness;
+            // pools are usually empty at declare-attackers).
+            if let DefendingEntity::Player(p) = &d.defending {
+                let tax = self.attack_tax_total(*p) as usize;
+                if tax > 0
+                    && !self.player_mut(attacker_controller)
+                        .mana_pool.remove_any(tax)
+                {
+                    continue;
+                }
             }
             // Determine the defending player from the declaration.
             let (defending_player, defending_pw) = match d.defending {

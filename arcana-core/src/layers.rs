@@ -111,6 +111,13 @@ pub enum Duration {
     /// "Until your next upkeep" (Halfdane's copy, Erhnam Djinn's
     /// forestwalk grant): expires when that player's upkeep begins.
     UntilNextUpkeepOf(crate::types::PlayerId),
+    /// FACE-GATED static (transforming DFC back-face statics —
+    /// Belenon War Anthem): live only while the source shows `face`
+    /// AND is on the battlefield. A LIVE check, not removal — the
+    /// effect dims when the permanent transforms away and lights
+    /// back up when it returns; removed for real when the source
+    /// leaves the battlefield.
+    WhileSourceShowsFace(u8),
     WhileSourceOnBattlefield,
     WhileCondition(crate::types::ConditionId),
     WhileExiled(ObjectId),
@@ -411,6 +418,81 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a GLOBAL filtered pump ("[filter] creatures get +P/+T"),
+    /// layer 7c. Filter is matched against BASE characteristics from
+    /// the source controller's perspective.
+    pub fn filtered_pump(source: ObjectId,
+                         filter: crate::targets::ObjectFilter,
+                         power: i32, toughness: i32,
+                         duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7cPTModifying,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredPump { filter, power, toughness },
+        }
+    }
+
+    /// Build a GLOBAL filtered keyword grant ("all [filter] have
+    /// [keyword]"), layer 6.
+    pub fn filtered_keyword(source: ObjectId,
+                            filter: crate::targets::ObjectFilter,
+                            keyword: KeywordAbility,
+                            duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredGrantKeyword { filter, keyword },
+        }
+    }
+
+    /// Build a "[filter] creatures can't attack" restriction.
+    pub fn filtered_cant_attack(source: ObjectId,
+                                filter: crate::targets::ObjectFilter,
+                                duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredCantAttack { filter },
+        }
+    }
+
+    /// Build a "[filter] creatures can't block" restriction.
+    pub fn filtered_cant_block(source: ObjectId,
+                               filter: crate::targets::ObjectFilter,
+                               duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredCantBlock { filter },
+        }
+    }
+
+    /// Build a Ghostly Prison / Propaganda attack tax protecting the
+    /// source's controller.
+    pub fn attack_tax(source: ObjectId, generic: u32,
+                      duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttackTax { generic },
+        }
+    }
+
     /// Build a "target can't attack" effect (Pacifism-style).
     pub fn cant_attack(source: ObjectId, target: ObjectId,
                        duration: Duration) -> Self {
@@ -599,9 +681,60 @@ pub enum ContinuousEffectKind {
     AttachedCreatureGetsPtDynamic {
         compute: fn(&GameState, ObjectId) -> (i32, i32),
     },
+    /// Layer 7c — GLOBAL FILTERED pump: "[filter] creatures get
+    /// +P/+T" beyond the controller-anthem ("creatures with flying
+    /// you control get +1/+1", "all Goblins get +1/+0", "white
+    /// creatures get -1/-1"). The filter is evaluated against BASE
+    /// characteristics (`ObjectFilter::matches_base`) from the
+    /// SOURCE's controller's perspective — layer-aware predicates
+    /// here would recurse.
+    FilteredPump {
+        filter: crate::targets::ObjectFilter,
+        power: i32,
+        toughness: i32,
+    },
+    /// Layer 6 — global filtered keyword grant ("all Zombies have
+    /// menace", "creatures with power 2 or less have shroud"). Same
+    /// base-characteristics filter posture as
+    /// [`Self::FilteredPump`].
+    FilteredGrantKeyword {
+        filter: crate::targets::ObjectFilter,
+        keyword: KeywordAbility,
+    },
+    /// Marker — "[filter] creatures can't attack" (Moat templating
+    /// via without-flying filters; Peacekeeper-class with default
+    /// filter). Consumed by [`GameState::cant_attack`].
+    FilteredCantAttack { filter: crate::targets::ObjectFilter },
+    /// Marker — "[filter] creatures can't block" (Goblin War Drums
+    /// kin, "creatures with power 2 or less can't block"). Consumed
+    /// by [`GameState::cant_block`].
+    FilteredCantBlock { filter: crate::targets::ObjectFilter },
+    /// Marker — Ghostly Prison / Propaganda: "creatures can't attack
+    /// [the source's controller] unless their controller pays
+    /// {generic} for each attacking creature". Consumed by
+    /// [`GameState::attack_tax_total`]; payment is taken from the
+    /// attacker's FLOATED mana pool at declaration (documented
+    /// strictness: no float, no attack).
+    AttackTax { generic: u32 },
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
+}
+
+impl ContinuousEffect {
+    /// Is this effect currently LIVE? `WhileSourceShowsFace` dims
+    /// while the source shows a different face (and while off the
+    /// battlefield); every other duration is live until removed by
+    /// its expiry hook.
+    pub fn is_live(&self, state: &GameState) -> bool {
+        match self.duration {
+            Duration::WhileSourceShowsFace(face) => {
+                state.objects.get(self.source).is_some_and(|o|
+                    o.zone.is_battlefield() && o.visible_face == face)
+            }
+            _ => true,
+        }
+    }
 }
 
 impl ContinuousEffectKind {
@@ -649,6 +782,21 @@ impl ContinuousEffectKind {
                     .and_then(|src| src.attached_to)
                     == Some(object_id)
             }
+            Self::FilteredPump { filter, .. }
+            | Self::FilteredGrantKeyword { filter, .. } => {
+                // Battlefield-only, base-characteristics filter from
+                // the source controller's perspective.
+                let Some(src_ctrl) = state.objects.get(source)
+                    .map(|s| s.controller) else { return false; };
+                state.objects.get(object_id).is_some_and(|o|
+                    o.zone.is_battlefield()
+                        && filter.matches_base(o, state, src_ctrl))
+            }
+            // Markers: consumed by their scanners, never applied to
+            // characteristics.
+            Self::FilteredCantAttack { .. }
+            | Self::FilteredCantBlock { .. }
+            | Self::AttackTax { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
     }
@@ -693,6 +841,17 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureLosesKeyword { keyword } => {
                 chars.keywords.retain(|k| k != keyword);
             }
+            Self::FilteredPump { power, toughness, .. } => {
+                add_to_pt(chars, *power, *toughness);
+            }
+            Self::FilteredGrantKeyword { keyword, .. } => {
+                if !chars.keywords.contains(keyword) {
+                    chars.keywords.push(keyword.clone());
+                }
+            }
+            Self::FilteredCantAttack { .. }
+            | Self::FilteredCantBlock { .. }
+            | Self::AttackTax { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
             }
@@ -829,7 +988,9 @@ impl GameState {
     pub fn expire_effects_from_source(&mut self, source_id: ObjectId) {
         self.remove_continuous_effects(|e|
             e.source == source_id
-            && matches!(e.duration, Duration::WhileSourceOnBattlefield));
+            && matches!(e.duration,
+                Duration::WhileSourceOnBattlefield
+                | Duration::WhileSourceShowsFace(_)));
     }
 
     /// Run the CR 613 layer pipeline for `object_id` and return its
@@ -862,6 +1023,7 @@ impl GameState {
             // analysis — we only honor timestamps for now.)
             let mut effects: Vec<&ContinuousEffect> = self.continuous_effects.iter()
                 .filter(|e| e.layer == layer
+                    && e.is_live(self)
                     && e.kind.applies_to(object_id, e.source, self))
                 .collect();
             effects.sort_by_key(|e| e.timestamp);
@@ -942,8 +1104,33 @@ impl GameState {
 
     /// Does `object_id` have an active "can't attack" restriction?
     pub fn cant_attack(&self, object_id: ObjectId) -> bool {
-        self.continuous_effects.iter().any(|e| matches!(&e.kind,
-            ContinuousEffectKind::CantAttack { target } if *target == object_id))
+        self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::CantAttack { target } => *target == object_id,
+            ContinuousEffectKind::FilteredCantAttack { filter } => {
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .map(|s| s.controller)
+                        .zip(self.objects.get(object_id))
+                        .is_some_and(|(ctrl, o)|
+                            filter.matches_base(o, self, ctrl))
+            }
+            _ => false,
+        })
+    }
+
+    /// Total generic attack tax protecting `defender` (Ghostly
+    /// Prison / Propaganda class): the sum over live [`
+    /// ContinuousEffectKind::AttackTax`] effects whose SOURCE is
+    /// controlled by the defender. Paid per attacking creature.
+    pub fn attack_tax_total(&self, defender: PlayerId) -> u32 {
+        self.continuous_effects.iter().filter_map(|e| match &e.kind {
+            ContinuousEffectKind::AttackTax { generic }
+                if e.is_live(self)
+                    && self.objects.get(e.source)
+                        .is_some_and(|s| s.controller == defender) =>
+                Some(*generic),
+            _ => None,
+        }).sum()
     }
 
     /// Does `object_id` have an active "can't be blocked" restriction?
@@ -956,8 +1143,18 @@ impl GameState {
     /// Does `object_id` have an active "can't block" restriction?
     /// Consumed by [`crate::combat::GameState::blocker_eligible`].
     pub fn cant_block(&self, object_id: ObjectId) -> bool {
-        self.continuous_effects.iter().any(|e| matches!(&e.kind,
-            ContinuousEffectKind::CantBlock { target } if *target == object_id))
+        self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::CantBlock { target } => *target == object_id,
+            ContinuousEffectKind::FilteredCantBlock { filter } => {
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .map(|s| s.controller)
+                        .zip(self.objects.get(object_id))
+                        .is_some_and(|(ctrl, o)|
+                            filter.matches_base(o, self, ctrl))
+            }
+            _ => false,
+        })
     }
 
     /// Every active Protection quality on `object_id`. Reads from the
@@ -1404,6 +1601,92 @@ mod tests {
         let chars = s.compute_characteristics(bearer).unwrap();
         assert!(chars.types.is_artifact());
         assert!(chars.types.is_creature()); // additive, not replacing
+    }
+
+    #[test]
+    fn filtered_pump_and_keyword_hit_the_matching_class_only() {
+        let mut s = GameState::new(2, 0);
+        let anthem_src = put_creature(&mut s, 0, 0, 0);
+        let my_flyer = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(2, 2);
+            chars.keywords.push(KeywordAbility::Flying);
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            o.controller = 0;
+            s.objects.insert(o);
+            id
+        };
+        let my_grounded = put_creature(&mut s, 0, 2, 2);
+        let their_flyer = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(2, 2);
+            chars.keywords.push(KeywordAbility::Flying);
+            let mut o = GameObject::new(id, 1, Zone::Battlefield, 0, chars);
+            o.controller = 1;
+            s.objects.insert(o);
+            id
+        };
+        // "Creatures with flying you control get +1/+1 and have
+        // vigilance" — perspective = the SOURCE's controller (P0).
+        let filter = crate::targets::ObjectFilter::creature()
+            .with_keyword(KeywordAbility::Flying)
+            .controlled_by(crate::targets::ControllerConstraint::You);
+        s.add_continuous_effect(ContinuousEffect::filtered_pump(
+            anthem_src, filter.clone(), 1, 1,
+            Duration::WhileSourceOnBattlefield));
+        s.add_continuous_effect(ContinuousEffect::filtered_keyword(
+            anthem_src, filter, KeywordAbility::Vigilance,
+            Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.computed_power(my_flyer), Some(3));
+        assert!(s.has_keyword(my_flyer, &KeywordAbility::Vigilance));
+        assert_eq!(s.computed_power(my_grounded), Some(2));
+        assert_eq!(s.computed_power(their_flyer), Some(2));
+        assert!(!s.has_keyword(their_flyer, &KeywordAbility::Vigilance));
+    }
+
+    #[test]
+    fn filtered_cant_block_and_attack_tax_scanners() {
+        let mut s = GameState::new(2, 0);
+        let prison = put_creature(&mut s, 0, 0, 4);
+        let weenie = put_creature(&mut s, 1, 1, 1);
+        let big = put_creature(&mut s, 1, 5, 5);
+        // "Creatures with power 2 or less can't block."
+        s.add_continuous_effect(ContinuousEffect::filtered_cant_block(
+            prison,
+            crate::targets::ObjectFilter::creature().with_max_power(2),
+            Duration::WhileSourceOnBattlefield));
+        assert!( s.cant_block(weenie));
+        assert!(!s.cant_block(big));
+        // Ghostly Prison protecting P0 (the prison's controller).
+        s.add_continuous_effect(ContinuousEffect::attack_tax(
+            prison, 2, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.attack_tax_total(0), 2);
+        assert_eq!(s.attack_tax_total(1), 0);
+    }
+
+    #[test]
+    fn while_source_shows_face_dims_with_the_face() {
+        let mut s = GameState::new(2, 0);
+        let dfc = put_creature(&mut s, 0, 2, 2);
+        let c = put_creature(&mut s, 0, 2, 2);
+        // Back-face anthem: live only while the source shows face 1.
+        s.add_continuous_effect(ContinuousEffect {
+            source: dfc,
+            layer: Layer::L7cPTModifying,
+            timestamp: 0,
+            duration: Duration::WhileSourceShowsFace(1),
+            dependency: None,
+            kind: ContinuousEffectKind::AnthemForController {
+                controller: 0, power: 1, toughness: 1 },
+        });
+        // Front face: dim.
+        assert_eq!(s.computed_power(c), Some(2));
+        // Transformed to the back face: live.
+        s.objects.get_mut(dfc).unwrap().visible_face = 1;
+        assert_eq!(s.computed_power(c), Some(3));
+        // Back to front: dims again (not removed).
+        s.objects.get_mut(dfc).unwrap().visible_face = 0;
+        assert_eq!(s.computed_power(c), Some(2));
     }
 
     #[test]

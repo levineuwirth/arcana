@@ -366,6 +366,18 @@ impl ManaPool {
     }
 
     pub fn total(&self) -> usize { self.pool.len() }
+
+    /// Remove up to `n` units of ANY mana (generic payment — attack
+    /// taxes). Returns true and removes exactly `n` when the pool
+    /// covers it; returns false and removes nothing otherwise.
+    /// Restricted units are spent like any other (documented
+    /// permissiveness — generic sinks rarely care).
+    pub fn remove_any(&mut self, n: usize) -> bool {
+        if self.pool.len() < n { return false; }
+        let keep = self.pool.len() - n;
+        self.pool.truncate(keep);
+        true
+    }
 }
 
 // =============================================================================

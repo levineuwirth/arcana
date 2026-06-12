@@ -148,6 +148,10 @@ pub enum ReplacementCondition {
     WouldDie {
         object_filter: ObjectFilter,
     },
+    /// "If [player] would gain life, …" — life-gain replacements
+    /// (Boon Reflection). The constraint resolves You/Opponent
+    /// against the replacement SOURCE's controller.
+    WouldGainLife { player: crate::targets::ControllerConstraint },
     /// "If this specific creature would die, …" — used by
     /// [`ReplacementKind::RegenerateShield`] and other single-entity
     /// die-time replacements.
@@ -232,6 +236,11 @@ impl ReplacementCondition {
                 state.objects.get(*object_id)
                     .is_some_and(|o| object_filter.matches(o, state, source_controller))
             }
+
+            (
+                WouldGainLife { player },
+                ReplacementEvent::GainLife { player: p, .. },
+            ) => player.matches(*p, source_controller),
 
             (
                 WouldDieSpecific { object_id: shielded },
@@ -349,6 +358,11 @@ pub enum ReplacementKind {
     /// "You don't draw for the turn".
     SkipDraw,
 
+    // --- Life-gain-event kinds ---
+    /// "If you would gain life, you gain twice that much instead"
+    /// (Boon Reflection = MultiplyLifeGain(2); Rhox Faithmender kin).
+    MultiplyLifeGain(u32),
+
     /// Custom escape hatch. Takes the current event and state, returns
     /// the replaced event (or `None` for full cancellation).
     Custom(fn(&ReplacementEvent, &GameState) -> Option<ReplacementEvent>),
@@ -379,6 +393,10 @@ pub enum ReplacementEvent {
     },
     DrawCard {
         player: PlayerId,
+    },
+    GainLife {
+        player: PlayerId,
+        amount: u32,
     },
     BeginTurn {
         player: PlayerId,
@@ -503,6 +521,41 @@ impl GameState {
                 Some((source, target, amount)),
             _ => None, // morphed into a different event kind (unusual)
         }
+    }
+
+    /// Route a would-gain-life event through replacements and commit
+    /// it: the SINGLE choke point for life gain (Effect::GainLife,
+    /// lifelink) so Boon Reflection-class doublers intercept every
+    /// path. Emits [`crate::events::GameEvent::LifeGained`] with the
+    /// post-replacement amount. No-op on zero/invalid.
+    pub fn gain_life(&mut self, player: PlayerId, amount: u32) {
+        if amount == 0 || (player as usize) >= self.players.len() { return; }
+        let mut current = ReplacementEvent::GainLife { player, amount };
+        let mut used: crate::collections::HashSet<u64> = crate::collections::HashSet::default();
+        loop {
+            let candidates: Vec<&ReplacementEffect> = self.replacement_effects.iter()
+                .filter(|e| {
+                    if used.contains(&e.id) { return false; }
+                    let source_ctrl = source_controller_of(e, self);
+                    e.condition.matches(&current, source_ctrl, self)
+                })
+                .collect();
+            if candidates.is_empty() { break; }
+            let pick = candidates.iter()
+                .find(|e| e.is_self_replacement)
+                .copied()
+                .or_else(|| candidates.first().copied());
+            let Some(effect) = pick else { break; };
+            used.insert(effect.id);
+            let Some(next) = apply_kind_to_event(&effect.kind, &current, self)
+                else { return; };
+            current = next;
+        }
+        let ReplacementEvent::GainLife { player, amount } = current
+            else { return; };
+        if amount == 0 { return; }
+        self.player_mut(player).life += amount as i32;
+        self.emit(crate::events::GameEvent::LifeGained { player, amount });
     }
 
     /// Route a would-place-counters event through replacements and
@@ -750,6 +803,9 @@ fn apply_kind_to_event(
     match (kind, event) {
         (PreventAllDamage, Damage { .. }) => None,
 
+        (MultiplyLifeGain(m), GainLife { player, amount }) =>
+            Some(GainLife { player: *player, amount: amount * m }),
+
         (PreventDamageUpTo(n), Damage { source, target, amount }) => {
             let new_amt = amount.saturating_sub(*n);
             if new_amt == 0 { None }
@@ -822,6 +878,32 @@ mod tests {
     use crate::objects::{Characteristics, GameObject};
     use crate::targets::ControllerConstraint;
     use crate::zones::Zone;
+
+    #[test]
+    fn life_gain_doubling_intercepts_the_choke_point() {
+        let mut s = GameState::new(2, 0);
+        // Boon Reflection for player 0 (source controlled by 0).
+        let src = s.allocate_object_id();
+        s.objects.insert(crate::objects::GameObject::new(
+            src, 0, crate::zones::Zone::Battlefield, 0,
+            crate::objects::Characteristics::default()));
+        s.add_replacement_effect(ReplacementEffect {
+            source: src,
+            id: 0,
+            condition: ReplacementCondition::WouldGainLife {
+                player: crate::targets::ControllerConstraint::You,
+            },
+            kind: ReplacementKind::MultiplyLifeGain(2),
+            is_self_replacement: false,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+        });
+        let before0 = s.player(0).life;
+        let before1 = s.player(1).life;
+        s.gain_life(0, 3);
+        s.gain_life(1, 3);
+        assert_eq!(s.player(0).life, before0 + 6, "doubled for you");
+        assert_eq!(s.player(1).life, before1 + 3, "not for the opponent");
+    }
 
     // --- helpers -----------------------------------------------------------
 
