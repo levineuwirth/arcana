@@ -1869,9 +1869,22 @@ impl Effect {
                     .filter(|p| !*opponents_only || p != chooser)
                     .collect();
                 if candidates.is_empty() { return; }
-                let stack_entry = state.currently_resolving
-                    .expect("ChoosePlayerThen: no currently_resolving \
-                             stack entry");
+                // Non-stack contexts (MANA ABILITIES — CR 605.3:
+                // they resolve immediately and can't post choices;
+                // Spectral Searchlight's political mana) can't park a
+                // pending choice. Deterministic fallback: the chooser
+                // picks themselves — same convention as the other
+                // deterministic-pick stand-ins. Stack contexts get
+                // the real choice below.
+                let Some(stack_entry) = state.currently_resolving else {
+                    let pick = if candidates.contains(chooser) {
+                        *chooser
+                    } else {
+                        candidates[0]
+                    };
+                    then.for_player(pick).execute(state);
+                    return;
+                };
                 state.pending_choice_follow_up = Some(
                     crate::actions::ChoiceFollowUp::EffectForChosenPlayer {
                         effect: (**then).clone(),
