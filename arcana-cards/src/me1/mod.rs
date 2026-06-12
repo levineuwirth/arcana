@@ -47,3 +47,4 @@ pub mod shield_of_the_ages;
 pub mod serpent_generator;
 pub mod primal_order;
 pub mod urza_s_bauble;
+pub mod moat;

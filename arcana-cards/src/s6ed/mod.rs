@@ -31,3 +31,5 @@ pub mod dragon_mask;
 pub mod warmth;
 pub mod insight;
 pub mod serenity;
+pub mod dread_of_night;
+pub mod light_of_day;

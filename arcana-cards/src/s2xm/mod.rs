@@ -63,3 +63,6 @@ pub mod thopter_foundry;
 pub mod oubliette;
 pub mod valor_in_akros;
 pub mod mishra_s_bauble;
+pub mod boon_reflection;
+pub mod tempered_steel;
+pub mod rage_reflection;

@@ -25,3 +25,4 @@ pub mod walking_atlas;
 pub mod tuktuk_scrapper;
 pub mod razor_boomerang;
 pub mod amulet_of_vigor;
+pub mod terra_eternal;

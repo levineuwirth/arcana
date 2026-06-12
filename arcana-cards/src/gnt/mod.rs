@@ -8,3 +8,4 @@ pub mod fan_bearer;
 pub mod jungle_delver;
 pub mod nissa_s_revelation;
 pub mod manalith;
+pub mod favorable_winds;

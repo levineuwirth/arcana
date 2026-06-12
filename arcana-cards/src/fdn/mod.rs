@@ -147,3 +147,5 @@ pub mod rite_of_the_dragoncaller;
 pub mod valkyrie_s_call;
 pub mod impact_tremors;
 pub mod phyrexian_arena;
+pub mod anthem_of_champions;
+pub mod gratuitous_violence;

@@ -51,3 +51,4 @@ pub mod swarmyard;
 pub mod gemstone_caverns;
 pub mod urza_s_factory;
 pub mod flagstones_of_trokair;
+pub mod gaea_s_anthem;

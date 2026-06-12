@@ -111,3 +111,6 @@ pub mod horn_of_plenty;
 pub mod liability;
 pub mod close_quarters;
 pub mod moonlit_wake;
+pub mod uphill_battle;
+pub mod magistrate_s_veto;
+pub mod intimidation;

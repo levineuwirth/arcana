@@ -63,3 +63,5 @@ pub mod fountain_of_youth;
 pub mod the_hive;
 pub mod leonin_scimitar;
 pub mod citanul_flute;
+pub mod root_maze;
+pub mod primal_rage;

@@ -41,3 +41,5 @@ pub mod bereavement;
 pub mod yawgmoth_s_edict;
 pub mod equilibrium;
 pub mod compost;
+pub mod knighthood;
+pub mod bedlam;

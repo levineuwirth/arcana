@@ -33,3 +33,5 @@ pub mod kite_shield;
 pub mod throne_of_empires;
 pub mod jace_s_erasure;
 pub mod worldslayer;
+pub mod honor_of_the_pure;
+pub mod levitation;

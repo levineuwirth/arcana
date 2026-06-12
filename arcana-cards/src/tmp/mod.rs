@@ -39,3 +39,4 @@ pub mod mogg_cannon;
 pub mod echo_chamber;
 pub mod havoc;
 pub mod mirri_s_guile;
+pub mod hanna_s_custody;

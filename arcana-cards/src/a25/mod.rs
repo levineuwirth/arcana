@@ -38,3 +38,4 @@ pub mod kindle;
 pub mod pendelhaven;
 pub mod rishadan_port;
 pub mod quicksand;
+pub mod goblin_war_drums;

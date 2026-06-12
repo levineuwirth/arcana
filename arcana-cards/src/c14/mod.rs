@@ -8,3 +8,4 @@ pub mod magus_of_the_coffers;
 pub mod gift_of_estates;
 pub mod ur_golem_s_eye;
 pub mod tectonic_edge;
+pub mod true_conviction;

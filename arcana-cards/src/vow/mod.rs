@@ -92,3 +92,4 @@ pub mod groom_s_finery;
 pub mod ceremonial_knife;
 pub mod dying_to_serve;
 pub mod stensia_uprising;
+pub mod sigarda_s_summons;

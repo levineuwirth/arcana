@@ -32,3 +32,5 @@ pub mod kolaghan_monument;
 pub mod serum_powder;
 pub mod angelic_accord;
 pub mod skywise_teachings;
+pub mod night_of_souls_betrayal;
+pub mod crucible_of_fire;

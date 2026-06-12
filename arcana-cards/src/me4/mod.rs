@@ -82,3 +82,5 @@ pub mod book_of_rass;
 pub mod coral_helm;
 pub mod tablet_of_epityr;
 pub mod staff_of_zegon;
+pub mod kismet;
+pub mod serra_aviary;

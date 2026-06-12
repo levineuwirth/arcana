@@ -51,3 +51,4 @@ pub mod pillar_of_the_paruns;
 pub mod livewire_lash;
 pub mod bounty_of_the_luxa;
 pub mod bitterblossom;
+pub mod concordant_crossroads;

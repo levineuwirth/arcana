@@ -21,3 +21,4 @@ pub mod evangel_of_heliod;
 pub mod foul_orchard;
 pub mod meandering_river;
 pub mod prowess_of_the_fair;
+pub mod pride_of_the_perfect;

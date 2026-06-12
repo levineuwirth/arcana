@@ -93,3 +93,4 @@ pub mod cathars_crusade;
 pub mod blood_mist;
 pub mod necroduality;
 pub mod unnatural_growth;
+pub mod mass_hysteria;

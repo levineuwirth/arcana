@@ -25,3 +25,4 @@ pub mod sands_of_delirium;
 pub mod gem_of_becoming;
 pub mod touch_of_the_eternal;
 pub mod blood_reckoning;
+pub mod fervor;
