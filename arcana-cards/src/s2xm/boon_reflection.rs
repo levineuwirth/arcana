@@ -62,6 +62,7 @@ fn etb_install_double_lifegain(
             kind: ReplacementKind::MultiplyLifeGain(2),
             is_self_replacement: false,
             duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
         }),
     }]
 }

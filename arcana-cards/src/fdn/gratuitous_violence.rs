@@ -61,10 +61,12 @@ fn etb_install_double_damage(
                 source_filter: ObjectFilter::creature()
                     .controlled_by(ControllerConstraint::You),
                 target_filter: TargetFilter::AnyTarget,
+                combat: None,
             },
             kind: ReplacementKind::DoubleDamage,
             is_self_replacement: false,
             duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
         }),
     }]
 }

@@ -1129,6 +1129,7 @@ impl Effect {
                     Some(n) => ReplacementKind::PreventDamageUpTo(*n),
                 };
                 state.add_replacement_effect(ReplacementEffect {
+                    state_gate: None,
                     source: crate::objects::NULL_OBJECT_ID,
                     id: 0,
                     condition: ReplacementCondition::WouldDealDamageToSpecific {
@@ -1144,6 +1145,7 @@ impl Effect {
                     ReplacementCondition, ReplacementEffect, ReplacementKind,
                 };
                 state.add_replacement_effect(ReplacementEffect {
+                    state_gate: None,
                     source: crate::objects::NULL_OBJECT_ID,
                     id: 0,
                     condition: ReplacementCondition::WouldDealDamageToSpecific {
@@ -1163,9 +1165,11 @@ impl Effect {
                     Some(n) => ReplacementKind::PreventDamageUpTo(*n),
                 };
                 state.add_replacement_effect(ReplacementEffect {
+                    state_gate: None,
                     source: crate::objects::NULL_OBJECT_ID,
                     id: 0,
                     condition: ReplacementCondition::WouldDealDamage {
+                        combat: None,
                         source_filter: source_filter.clone(),
                         target_filter: target_filter.clone(),
                     },
@@ -3308,6 +3312,7 @@ fn install_regenerate_shield(state: &mut GameState, target: ObjectId) {
         ReplacementEffect, ReplacementKind,
     };
     state.add_replacement_effect(ReplacementEffect {
+        state_gate: None,
         source: target,
         id: 0,
         condition: ReplacementCondition::WouldDieSpecific {

@@ -62,6 +62,7 @@ fn etb_install_static(
             kind: ReplacementKind::EtbTapped,
             is_self_replacement: false,
             duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
         }),
     }]
 }

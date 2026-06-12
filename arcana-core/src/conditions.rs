@@ -342,6 +342,20 @@ pub fn your_turn_before_attackers(state: &GameState, you: PlayerId) -> bool {
     }
 }
 
+/// "if you control a creature" — Worship's classic replacement gate;
+/// shaped to drop straight into
+/// [`crate::replacement::ReplacementEffect::state_gate`].
+pub fn controls_a_creature(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    state.objects.iter().any(|o|
+        o.zone.is_battlefield() && o.controller == you && o.is_creature())
+}
+
+/// "during your turn" — Personal Sanctuary's gate; same state_gate
+/// shape.
+pub fn is_your_turn(state: &GameState, _source: ObjectId, you: PlayerId) -> bool {
+    state.active_player() == you
+}
+
 /// "if [this permanent] has a [kind] counter on it" (≥1). Uses the
 /// ability's `source`, which is why intervening-if fns receive it.
 pub fn source_has_counter(state: &GameState, source: ObjectId, kind: CounterKind) -> bool {

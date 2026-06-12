@@ -323,6 +323,23 @@ impl TargetFilter {
                     && state.player(*p).is_alive()
             }
 
+            // --- Creature-or-player: bare Object/Player choices are
+            // accepted too (the replacement pipeline and deterministic
+            // agents construct those shapes directly) ---
+            (TargetFilter::CreatureOrPlayer, TargetChoice::Player(p))
+            | (TargetFilter::AnyTarget, TargetChoice::Player(p)) => {
+                (*p as usize) < state.players.len()
+                    && state.player(*p).is_alive()
+            }
+            (TargetFilter::CreatureOrPlayer, TargetChoice::Object(id))
+            | (TargetFilter::AnyTarget, TargetChoice::Object(id)) => {
+                state.objects.get(*id).is_some_and(|o|
+                    o.zone.is_battlefield()
+                        && (o.is_creature()
+                            || (matches!(self, TargetFilter::AnyTarget)
+                                && o.is_planeswalker())))
+            }
+
             // --- Creature-or-player: either branch legal ---
             (TargetFilter::CreatureOrPlayer, TargetChoice::ObjectOrPlayer(oop))
             | (TargetFilter::AnyTarget, TargetChoice::ObjectOrPlayer(oop)) => {

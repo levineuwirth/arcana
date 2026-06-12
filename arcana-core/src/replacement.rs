@@ -109,6 +109,12 @@ pub struct ReplacementEffect {
     /// Hardened Scales's "another +1/+1 counter" is not.
     pub is_self_replacement: bool,
     pub duration: ReplacementDuration,
+    /// Optional STATE gate (CR 614.x intervening conditions): the
+    /// replacement applies only while this predicate holds —
+    /// Worship's "if you control a creature", Personal Sanctuary's
+    /// "during your turn". Receives (state, effect source, source
+    /// controller). `None` = unconditional.
+    pub state_gate: Option<fn(&GameState, ObjectId, PlayerId) -> bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -132,6 +138,9 @@ pub enum ReplacementCondition {
     WouldDealDamage {
         source_filter: ObjectFilter,
         target_filter: TargetFilter,
+        /// `Some(true)` = combat damage only; `Some(false)` =
+        /// noncombat only; `None` = either.
+        combat: Option<bool>,
     },
     /// "If a source would deal damage to `target` specifically, …"
     /// Used by spell-installed prevention/redirection shields (Healing
@@ -198,9 +207,12 @@ impl ReplacementCondition {
         use ReplacementCondition::*;
         match (self, event) {
             (
-                WouldDealDamage { source_filter, target_filter },
-                ReplacementEvent::Damage { source, target, .. },
+                WouldDealDamage { source_filter, target_filter, combat },
+                ReplacementEvent::Damage { source, target, is_combat, .. },
             ) => {
+                if combat.is_some_and(|want| want != *is_combat) {
+                    return false;
+                }
                 let src_obj = state.objects.get(*source);
                 let src_ok = match src_obj {
                     Some(o) => source_filter.matches(o, state, source_controller),
@@ -322,6 +334,16 @@ pub enum ReplacementKind {
     DoubleDamage,
     /// "Instead, that damage is dealt to [target]" (Palisade Giant).
     RedirectDamageTo(DamageTarget),
+    /// "If a source would deal N or more damage …, it deals N-cap
+    /// instead" (Divine Presence = CapDamageAt(3)).
+    CapDamageAt(u32),
+    /// Worship: "if you control a creature, damage that would reduce
+    /// your life total to less than `floor` reduces it to `floor`
+    /// instead." Applies only to player-directed damage; the
+    /// you-control-a-creature half lives on
+    /// [`ReplacementEffect::state_gate`]. Reads the target player's
+    /// CURRENT life at apply time.
+    DamageLifeFloor { floor: i32 },
 
     // --- ETB-event kinds ---
     /// "X enters the battlefield with N [counters]" (Kalonian Hydra).
@@ -381,6 +403,11 @@ pub enum ReplacementEvent {
         source: ObjectId,
         target: DamageTarget,
         amount: u32,
+        /// CR 510.1c combat damage vs everything else — lets
+        /// "prevent all COMBAT damage" / "noncombat damage"
+        /// replacements discriminate (Personal Sanctuary, Mark of
+        /// Asylum).
+        is_combat: bool,
     },
     EnterBattlefield {
         object_id: ObjectId,
@@ -491,8 +518,9 @@ impl GameState {
         source: ObjectId,
         target: DamageTarget,
         amount: u32,
+        is_combat: bool,
     ) -> Option<(ObjectId, DamageTarget, u32)> {
-        let mut current = ReplacementEvent::Damage { source, target, amount };
+        let mut current = ReplacementEvent::Damage { source, target, amount, is_combat };
         let mut used: crate::collections::HashSet<u64> = crate::collections::HashSet::default();
 
         loop {
@@ -500,6 +528,9 @@ impl GameState {
                 .filter(|e| {
                     if used.contains(&e.id) { return false; }
                     let source_ctrl = source_controller_of(e, self);
+                    if let Some(gate) = e.state_gate {
+                        if !gate(self, e.source, source_ctrl) { return false; }
+                    }
                     e.condition.matches(&current, source_ctrl, self)
                 })
                 .collect();
@@ -517,7 +548,7 @@ impl GameState {
         }
 
         match current {
-            ReplacementEvent::Damage { source, target, amount } =>
+            ReplacementEvent::Damage { source, target, amount, .. } =>
                 Some((source, target, amount)),
             _ => None, // morphed into a different event kind (unusual)
         }
@@ -537,6 +568,9 @@ impl GameState {
                 .filter(|e| {
                     if used.contains(&e.id) { return false; }
                     let source_ctrl = source_controller_of(e, self);
+                    if let Some(gate) = e.state_gate {
+                        if !gate(self, e.source, source_ctrl) { return false; }
+                    }
                     e.condition.matches(&current, source_ctrl, self)
                 })
                 .collect();
@@ -594,6 +628,9 @@ impl GameState {
                     // own controller (Hardened Scales' controller, not
                     // the player whose counter is being placed).
                     let source_ctrl = source_controller_of(e, self);
+                    if let Some(gate) = e.state_gate {
+                        if !gate(self, e.source, source_ctrl) { return false; }
+                    }
                     e.condition.matches(&current, source_ctrl, self)
                 })
                 .map(|e| e.id)
@@ -655,6 +692,9 @@ impl GameState {
         let mut applicable: Vec<&ReplacementEffect> = self.replacement_effects.iter()
             .filter(|e| {
                 let source_ctrl = source_controller_of(e, self);
+                if let Some(gate) = e.state_gate {
+                    if !gate(self, e.source, source_ctrl) { return false; }
+                }
                 e.condition.matches(&event, source_ctrl, self)
             })
             .collect();
@@ -746,6 +786,9 @@ impl GameState {
         let mut applicable_ids: Vec<u64> = self.replacement_effects.iter()
             .filter(|e| {
                 let source_ctrl = source_controller_of(e, self);
+                if let Some(gate) = e.state_gate {
+                    if !gate(self, e.source, source_ctrl) { return false; }
+                }
                 e.condition.matches(&event, source_ctrl, self)
             })
             .map(|e| e.id)
@@ -806,19 +849,41 @@ fn apply_kind_to_event(
         (MultiplyLifeGain(m), GainLife { player, amount }) =>
             Some(GainLife { player: *player, amount: amount * m }),
 
-        (PreventDamageUpTo(n), Damage { source, target, amount }) => {
+        (PreventDamageUpTo(n), Damage { source, target, amount, is_combat }) => {
             let new_amt = amount.saturating_sub(*n);
             if new_amt == 0 { None }
-            else { Some(Damage { source: *source, target: *target, amount: new_amt }) }
+            else { Some(Damage { source: *source, target: *target, amount: new_amt, is_combat: *is_combat }) }
         }
 
-        (DoubleDamage, Damage { source, target, amount }) => {
+        (DoubleDamage, Damage { source, target, amount, is_combat }) => {
             let new_amt = amount.saturating_mul(2);
-            Some(Damage { source: *source, target: *target, amount: new_amt })
+            Some(Damage { source: *source, target: *target, amount: new_amt, is_combat: *is_combat })
         }
 
-        (RedirectDamageTo(new_target), Damage { source, amount, .. }) => {
-            Some(Damage { source: *source, target: *new_target, amount: *amount })
+        (RedirectDamageTo(new_target), Damage { source, amount, is_combat, .. }) => {
+            Some(Damage { source: *source, target: *new_target, amount: *amount, is_combat: *is_combat })
+        }
+
+        // Divine Presence: cap any single damage event at N.
+        (CapDamageAt(cap), Damage { source, target, amount, is_combat }) => {
+            Some(Damage {
+                source: *source, target: *target,
+                amount: (*amount).min(*cap), is_combat: *is_combat,
+            })
+        }
+
+        // Worship: damage to a player can't take their life below
+        // `floor`. Non-player targets pass through untouched.
+        (DamageLifeFloor { floor }, Damage { source, target, amount, is_combat }) => {
+            let new_amt = match target {
+                DamageTarget::Player(p) => {
+                    let life = state.player(*p).life;
+                    let max_loss = (life - floor).max(0) as u32;
+                    (*amount).min(max_loss)
+                }
+                _ => *amount,
+            };
+            Some(Damage { source: *source, target: *target, amount: new_amt, is_combat: *is_combat })
         }
 
         (DrawAdditional(n), DrawCard { player }) => {
@@ -880,6 +945,89 @@ mod tests {
     use crate::zones::Zone;
 
     #[test]
+    fn cap_floor_and_combat_discriminator() {
+        let mut s = GameState::new(2, 0);
+        let src = s.allocate_object_id();
+        s.objects.insert(crate::objects::GameObject::new(
+            src, 0, crate::zones::Zone::Battlefield, 0,
+            crate::objects::Characteristics::default()));
+        // Divine Presence: cap all damage at 3.
+        s.add_replacement_effect(ReplacementEffect {
+            source: src, id: 0,
+            condition: ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::AnyTarget,
+                combat: None,
+            },
+            kind: ReplacementKind::CapDamageAt(3),
+            is_self_replacement: false,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
+        });
+        let out = s.replace_damage(src, DamageTarget::Player(1), 7, false);
+        assert_eq!(out, Some((src, DamageTarget::Player(1), 3)));
+
+        // Worship for player 0, gated on controlling a creature.
+        fn controls_creature(s: &GameState, _src: ObjectId, you: crate::types::PlayerId) -> bool {
+            s.objects.iter().any(|o|
+                o.zone.is_battlefield() && o.controller == you && o.is_creature())
+        }
+        s.add_replacement_effect(ReplacementEffect {
+            source: src, id: 0,
+            condition: ReplacementCondition::WouldDealDamageToSpecific {
+                target: DamageTarget::Player(0),
+            },
+            kind: ReplacementKind::DamageLifeFloor { floor: 1 },
+            is_self_replacement: false,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: Some(controls_creature),
+        });
+        // No creature: gate OFF — lethal damage passes (capped at 3 by
+        // the Presence first; deal 3x to verify floor inactive).
+        s.player_mut(0).life = 2;
+        let out = s.replace_damage(99, DamageTarget::Player(0), 2, false);
+        assert_eq!(out, Some((99, DamageTarget::Player(0), 2)),
+            "no creature -> no floor");
+        // With a creature: floor holds life at 1 (2 -> max loss 1).
+        let c = s.allocate_object_id();
+        let mut chars = crate::objects::Characteristics {
+            types: crate::types::TypeLine::CREATURE.into(),
+            ..Default::default()
+        };
+        chars.power = Some(crate::types::PtValue::Fixed(1));
+        chars.toughness = Some(crate::types::PtValue::Fixed(1));
+        s.objects.insert(crate::objects::GameObject::new(
+            c, 0, crate::zones::Zone::Battlefield, 0, chars));
+        let out = s.replace_damage(99, DamageTarget::Player(0), 2, false);
+        assert_eq!(out, Some((99, DamageTarget::Player(0), 1)),
+            "floor caps the loss at life-1");
+
+        // Combat discriminator: noncombat-only prevention ignores
+        // combat damage.
+        let mut s2 = GameState::new(2, 0);
+        let src2 = s2.allocate_object_id();
+        s2.objects.insert(crate::objects::GameObject::new(
+            src2, 0, crate::zones::Zone::Battlefield, 0,
+            crate::objects::Characteristics::default()));
+        s2.add_replacement_effect(ReplacementEffect {
+            source: src2, id: 0,
+            condition: ReplacementCondition::WouldDealDamage {
+                source_filter: ObjectFilter::default(),
+                target_filter: TargetFilter::AnyTarget,
+                combat: Some(false),
+            },
+            kind: ReplacementKind::PreventAllDamage,
+            is_self_replacement: false,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
+        });
+        assert_eq!(s2.replace_damage(src2, DamageTarget::Player(1), 4, true),
+            Some((src2, DamageTarget::Player(1), 4)), "combat passes");
+        assert_eq!(s2.replace_damage(src2, DamageTarget::Player(1), 4, false),
+            None, "noncombat prevented");
+    }
+
+    #[test]
     fn life_gain_doubling_intercepts_the_choke_point() {
         let mut s = GameState::new(2, 0);
         // Boon Reflection for player 0 (source controlled by 0).
@@ -896,6 +1044,7 @@ mod tests {
             kind: ReplacementKind::MultiplyLifeGain(2),
             is_self_replacement: false,
             duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
         });
         let before0 = s.player(0).life;
         let before1 = s.player(1).life;
@@ -958,6 +1107,7 @@ mod tests {
             kind,
             is_self_replacement: false,
             duration: ReplacementDuration::Permanent,
+            state_gate: None,
         }
     }
 
@@ -971,10 +1121,11 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventAllDamage,
         ));
-        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3, false);
         assert!(out.is_none());
     }
 
@@ -986,10 +1137,11 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventDamageUpTo(2),
         ));
-        let out = s.replace_damage(99, DamageTarget::Player(1), 5);
+        let out = s.replace_damage(99, DamageTarget::Player(1), 5, false);
         assert_eq!(out, Some((99, DamageTarget::Player(1), 3)));
     }
 
@@ -1001,10 +1153,11 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventDamageUpTo(5),
         ));
-        let out = s.replace_damage(99, DamageTarget::Player(1), 3);
+        let out = s.replace_damage(99, DamageTarget::Player(1), 3, false);
         assert!(out.is_none());
     }
 
@@ -1019,10 +1172,11 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::DoubleDamage,
         ));
-        let out = s.replace_damage(99, DamageTarget::Player(1), 3);
+        let out = s.replace_damage(99, DamageTarget::Player(1), 3, false);
         assert_eq!(out, Some((99, DamageTarget::Player(1), 6)));
     }
 
@@ -1036,10 +1190,11 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::RedirectDamageTo(DamageTarget::Player(1)),
         ));
-        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3, false);
         assert_eq!(out, Some((99, DamageTarget::Player(1), 3)));
     }
 
@@ -1056,19 +1211,20 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::new().with_colors(ColorSet::red()),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventAllDamage,
         ));
 
-        assert!(s.replace_damage(red_src, DamageTarget::Player(1), 3).is_none());
-        assert_eq!(s.replace_damage(green_src, DamageTarget::Player(1), 3),
+        assert!(s.replace_damage(red_src, DamageTarget::Player(1), 3, false).is_none());
+        assert_eq!(s.replace_damage(green_src, DamageTarget::Player(1), 3, false),
             Some((green_src, DamageTarget::Player(1), 3)));
     }
 
     #[test]
     fn damage_replacement_with_no_filters_passes_through() {
         let s = GameState::new(2, 0);
-        let out = s.replace_damage(99, DamageTarget::Player(0), 4);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 4, false);
         assert_eq!(out, Some((99, DamageTarget::Player(0), 4)));
     }
 
@@ -1083,12 +1239,13 @@ mod tests {
                 ReplacementCondition::WouldDealDamage {
                     source_filter: ObjectFilter::default(),
                     target_filter: TargetFilter::Player,
+                    combat: None,
                 },
                 ReplacementKind::PreventDamageUpTo(n),
             ));
         }
         // Total reduction: 3 points from 5 → 2 remaining.
-        let out = s.replace_damage(99, DamageTarget::Player(0), 5);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 5, false);
         assert_eq!(out.map(|t| t.2), Some(2));
     }
 
@@ -1103,10 +1260,11 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventDamageUpTo(1),
         ));
-        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3, false);
         assert_eq!(out.map(|t| t.2), Some(2));
     }
 
@@ -1126,6 +1284,7 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventDamageUpTo(5),
         );
@@ -1137,6 +1296,7 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::DoubleDamage,
         );
@@ -1144,7 +1304,7 @@ mod tests {
         s.add_replacement_effect(self_repl);
 
         // Self-first ordering: double to 6, then prevent 5 → 1.
-        let out = s.replace_damage(99, DamageTarget::Player(0), 3);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 3, false);
         assert_eq!(out.map(|t| t.2), Some(1));
     }
 
@@ -1157,9 +1317,10 @@ mod tests {
             _: &GameState,
         ) -> Option<ReplacementEvent> {
             match event {
-                ReplacementEvent::Damage { source, target, amount } if *amount > 1 =>
+                ReplacementEvent::Damage { source, target, amount, is_combat } if *amount > 1 =>
                     Some(ReplacementEvent::Damage {
                         source: *source, target: *target, amount: amount - 1,
+                        is_combat: *is_combat,
                     }),
                 _ => Some(event.clone()),
             }
@@ -1170,10 +1331,11 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::Custom(shrink),
         ));
-        let out = s.replace_damage(99, DamageTarget::Player(0), 5);
+        let out = s.replace_damage(99, DamageTarget::Player(0), 5, false);
         assert_eq!(out.map(|t| t.2), Some(4));
     }
 
@@ -1188,6 +1350,7 @@ mod tests {
                 ReplacementCondition::WouldDealDamage {
                     source_filter: ObjectFilter::default(),
                     target_filter: TargetFilter::Player,
+                    combat: None,
                 },
                 ReplacementKind::PreventAllDamage)
         });
@@ -1196,6 +1359,7 @@ mod tests {
             ReplacementCondition::WouldDealDamage {
                 source_filter: ObjectFilter::default(),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventDamageUpTo(1),
         ));
@@ -1215,6 +1379,7 @@ mod tests {
                 ReplacementCondition::WouldDealDamage {
                     source_filter: ObjectFilter::default(),
                     target_filter: TargetFilter::Player,
+                    combat: None,
                 },
                 ReplacementKind::PreventAllDamage)
         });
@@ -1225,6 +1390,7 @@ mod tests {
                 ReplacementCondition::WouldDealDamage {
                     source_filter: ObjectFilter::default(),
                     target_filter: TargetFilter::Player,
+                    combat: None,
                 },
                 ReplacementKind::PreventAllDamage)
         });
@@ -1752,14 +1918,15 @@ mod tests {
                 source_filter: ObjectFilter::creature()
                     .controlled_by(ControllerConstraint::You),
                 target_filter: TargetFilter::Player,
+                combat: None,
             },
             ReplacementKind::PreventAllDamage,
         ));
         assert!(
-            s.replace_damage(my_attacker, DamageTarget::Player(1), 3).is_none(),
+            s.replace_damage(my_attacker, DamageTarget::Player(1), 3, false).is_none(),
             "my creature's damage to opponent should be prevented");
         assert_eq!(
-            s.replace_damage(enemy_attacker, DamageTarget::Player(0), 3),
+            s.replace_damage(enemy_attacker, DamageTarget::Player(0), 3, false),
             Some((enemy_attacker, DamageTarget::Player(0), 3)),
             "opponent's creature is not 'you control' — damage passes through");
     }

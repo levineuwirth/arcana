@@ -318,7 +318,7 @@ impl GameState {
         // May fully prevent the damage (returns None) or modify source,
         // target, amount.
         let (source, target, amount) =
-            match self.replace_damage(source, target, amount) {
+            match self.replace_damage(source, target, amount, is_combat) {
                 Some(tuple) => tuple,
                 None => return,
             };
