@@ -4,3 +4,4 @@ pub mod reckless_handling;
 pub mod filter_out;
 pub mod arni_metalbrow;
 pub mod drannith_ruins;
+pub mod training_grounds;

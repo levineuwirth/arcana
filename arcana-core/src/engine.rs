@@ -415,6 +415,15 @@ fn apply_cast_spell(
                 split_right_face_of(state, registry, object_id)
                     .and_then(|f| f.characteristics.mana_cost.clone()),
         };
+        let cost_opt = cost_opt.map(|c| {
+            let chars = state.objects.get(object_id)
+                .map(|o| o.characteristics.clone());
+            match chars {
+                Some(ch) => c.with_generic_delta(
+                    state.spell_cost_delta(&ch, controller)),
+                None => c,
+            }
+        });
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
                 if let crate::mana::ManaCostComponent::Generic(n) = comp {

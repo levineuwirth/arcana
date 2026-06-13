@@ -832,6 +832,10 @@ fn legal_priority_actions(
             .unwrap_or(&obj.characteristics);
 
         let Some(printed_cost) = cast_chars.mana_cost.clone() else { continue; };
+        // CR 601.2f — cost modifiers (Chill / Sphere of Resistance /
+        // Arcane Melee class) adjust the generic component.
+        let printed_cost = printed_cost.with_generic_delta(
+            state.spell_cost_delta(cast_chars, player));
 
         let ctx = SpendContext::for_spell(
             cast_chars.types, cast_chars.colors);
@@ -1231,6 +1235,8 @@ fn legal_priority_actions(
         if back.characteristics.types.is_land() { continue; }
         let Some(back_cost) = back.characteristics.mana_cost.clone()
             else { continue; };
+        let back_cost = back_cost.with_generic_delta(
+            state.spell_cost_delta(&back.characteristics, player));
 
         let back_is_instant_speed = back.characteristics.types.is_instant();
         if !back_is_instant_speed && !sorcery_speed_ok { continue; }
@@ -1292,6 +1298,8 @@ fn legal_priority_actions(
             .and_then(|af| af.as_split()) else { continue; };
         let Some(right_cost) = right.characteristics.mana_cost.clone()
             else { continue; };
+        let right_cost = right_cost.with_generic_delta(
+            state.spell_cost_delta(&right.characteristics, player));
 
         let right_is_instant_speed = right.characteristics.types.is_instant();
         if !right_is_instant_speed && !sorcery_speed_ok { continue; }
@@ -1360,6 +1368,8 @@ fn legal_priority_actions(
         let Some(face_cost) = face.characteristics.mana_cost.clone() else {
             continue;
         };
+        let face_cost = face_cost.with_generic_delta(
+            state.spell_cost_delta(&face.characteristics, player));
         let face_is_instant_speed = face.characteristics.types.is_instant();
         if !face_is_instant_speed && !sorcery_speed_ok { continue; }
 
@@ -1424,6 +1434,8 @@ fn legal_priority_actions(
 
         let Some(printed_cost) = obj.characteristics.mana_cost.clone()
             else { continue; };
+        let printed_cost = printed_cost.with_generic_delta(
+            state.spell_cost_delta(&obj.characteristics, player));
 
         let reqs: Vec<TargetRequirement> = registry.get(obj.card_id)
             .and_then(|def| def.spell_ability.as_ref())
@@ -1488,6 +1500,8 @@ fn legal_priority_actions(
 
         let Some(printed_cost) = obj.characteristics.mana_cost.clone()
             else { continue; };
+        let printed_cost = printed_cost.with_generic_delta(
+            state.spell_cost_delta(&obj.characteristics, player));
 
         let reqs: Vec<TargetRequirement> = registry.get(obj.card_id)
             .and_then(|def| def.spell_ability.as_ref())
@@ -2083,10 +2097,21 @@ fn enumerate_activation_actions(
             // Enumerate payment plans for the mana portion of the cost.
             let ctx = SpendContext::for_activated_ability();
             let pool = &state.player(player).mana_pool;
-            let plans = if ability.cost.mana_cost.is_empty() {
+            // Training Grounds class: activated-ability cost
+            // modifiers adjust the generic component (floor 0).
+            // MANA ABILITIES are exempt (Suppression Field's printed
+            // exception, and a +N tax on land taps would otherwise
+            // deadlock mana production entirely).
+            let modified_ability_cost = if ability.is_mana_ability {
+                ability.cost.mana_cost.clone()
+            } else {
+                ability.cost.mana_cost
+                    .with_generic_delta(state.ability_cost_delta(obj.id))
+            };
+            let plans = if modified_ability_cost.is_empty() {
                 vec![crate::actions::ManaPaymentPlan::empty()]
             } else {
-                enumerate_payment_plans(&ability.cost.mana_cost, pool, None, &ctx)
+                enumerate_payment_plans(&modified_ability_cost, pool, None, &ctx)
             };
             if plans.is_empty() { continue; }
 

@@ -285,6 +285,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rav::peregrine_mask::register(reg); n += 1;
     crate::rav::halcyon_glaze::register(reg); n += 1;
     crate::rav::light_of_sanction::register(reg); n += 1;
+    crate::rav::suppression_field::register(reg); n += 1;
     // --- m11 ---
     crate::m11::preordain::register(reg); n += 1;
     crate::m11::typhoid_rats::register(reg); n += 1;
@@ -1335,6 +1336,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mmq::intimidation::register(reg); n += 1;
     crate::mmq::crackdown::register(reg); n += 1;
     crate::mmq::statecraft::register(reg); n += 1;
+    crate::mmq::squeeze::register(reg); n += 1;
+    crate::mmq::high_seas::register(reg); n += 1;
     // --- gs1 ---
     crate::gs1::leopard_spotted_jiao::register(reg); n += 1;
     crate::gs1::ferocious_zheng::register(reg); n += 1;
@@ -3508,6 +3511,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::s6ed::serenity::register(reg); n += 1;
     crate::s6ed::dread_of_night::register(reg); n += 1;
     crate::s6ed::light_of_day::register(reg); n += 1;
+    crate::s6ed::chill::register(reg); n += 1;
     // --- w17 ---
     crate::w17::falkenrath_reaver::register(reg); n += 1;
     crate::w17::glory_seeker::register(reg); n += 1;
@@ -7415,6 +7419,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::c13::carnage_altar::register(reg); n += 1;
     crate::c13::where_ancients_tread::register(reg); n += 1;
     crate::c13::foster::register(reg); n += 1;
+    crate::c13::arcane_melee::register(reg); n += 1;
     // --- lgn ---
     crate::lgn::aven_envoy::register(reg); n += 1;
     crate::lgn::defiant_elf::register(reg); n += 1;
@@ -9299,6 +9304,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mat::filter_out::register(reg); n += 1;
     crate::mat::arni_metalbrow::register(reg); n += 1;
     crate::mat::drannith_ruins::register(reg); n += 1;
+    crate::mat::training_grounds::register(reg); n += 1;
     // --- mh3 ---
     crate::mh3::gift_of_the_viper::register(reg); n += 1;
     crate::mh3::strix_serenade::register(reg); n += 1;

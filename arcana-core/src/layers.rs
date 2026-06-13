@@ -547,6 +547,42 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a spell cost modifier ("[filter] spells cost {N}
+    /// more/less" — positive delta = tax, negative = reduction).
+    pub fn spell_cost_modifier(source: ObjectId,
+                               spell_filter: crate::targets::ObjectFilter,
+                               caster: crate::targets::ControllerConstraint,
+                               generic_delta: i32,
+                               duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::SpellCostModifier {
+                spell_filter, caster, generic_delta,
+            },
+        }
+    }
+
+    /// Build an activated-ability cost modifier (Training Grounds).
+    pub fn ability_cost_modifier(source: ObjectId,
+                                 source_filter: crate::targets::ObjectFilter,
+                                 generic_delta: i32,
+                                 duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AbilityCostModifier {
+                source_filter, generic_delta,
+            },
+        }
+    }
+
     /// Build a "[filter] creatures can't be blocked by more than
     /// `max` creature(s)" cap (Familiar Ground).
     pub fn filtered_max_blockers(source: ObjectId,
@@ -838,6 +874,29 @@ pub enum ContinuousEffectKind {
     /// Enforced in the untap step in deterministic ascending-id order
     /// (the player-choice ordering is a documented stand-in).
     UntapCap { filter: crate::targets::ObjectFilter, max: u32 },
+    /// Marker — SPELL cost modifier: "[filter] spells [cast by
+    /// caster] cost {N} more/less to cast" (Chill +1 on red spells,
+    /// Sphere of Resistance +1 all, Arcane Melee -2 on instants/
+    /// sorceries, Thalia-class taxes). `generic_delta` adjusts the
+    /// GENERIC component only (colored pips never change; floor 0 —
+    /// CR 601.2f). The spell filter matches the CAST FACE's
+    /// characteristics; `caster` resolves against the modifier
+    /// source's controller. Consumed by
+    /// [`GameState::spell_cost_delta`] at cast-cost computation.
+    SpellCostModifier {
+        spell_filter: crate::targets::ObjectFilter,
+        caster: crate::targets::ControllerConstraint,
+        generic_delta: i32,
+    },
+    /// Marker — ACTIVATED-ABILITY cost modifier: "activated abilities
+    /// of [filter] permanents [you control] cost {N} less to
+    /// activate" (Training Grounds, Heartstone class). The filter
+    /// matches the ability's SOURCE permanent. Consumed by
+    /// [`GameState::ability_cost_delta`].
+    AbilityCostModifier {
+        source_filter: crate::targets::ObjectFilter,
+        generic_delta: i32,
+    },
     /// Marker — "each [filter] creature can't be blocked by more
     /// than `max` creature(s)" (Familiar Ground class). Consumed by
     /// [`crate::combat`]'s `block_constraints` (sets max_blockers).
@@ -944,6 +1003,8 @@ impl ContinuousEffectKind {
             | Self::FilteredDontUntap { .. }
             | Self::UntapCap { .. }
             | Self::FilteredMaxBlockers { .. }
+            | Self::SpellCostModifier { .. }
+            | Self::AbilityCostModifier { .. }
             | Self::AttackTax { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
@@ -1007,6 +1068,8 @@ impl ContinuousEffectKind {
             | Self::FilteredDontUntap { .. }
             | Self::UntapCap { .. }
             | Self::FilteredMaxBlockers { .. }
+            | Self::SpellCostModifier { .. }
+            | Self::AbilityCostModifier { .. }
             | Self::AttackTax { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
@@ -1305,6 +1368,54 @@ impl GameState {
                         (filter.clone(), *max, s.controller)),
             _ => None,
         }).collect()
+    }
+
+    /// Net generic-cost delta for casting a spell whose CAST-FACE
+    /// characteristics are `chars`, by `caster` (CR 601.2f — sum of
+    /// live SpellCostModifier deltas whose filter matches and whose
+    /// caster constraint accepts `caster`). The spell filter is
+    /// evaluated against a transient object built from the face
+    /// characteristics (the spell may not be a battlefield object).
+    pub fn spell_cost_delta(
+        &self,
+        chars: &crate::objects::Characteristics,
+        caster: PlayerId,
+    ) -> i32 {
+        let probe = crate::objects::GameObject::new(
+            crate::objects::NULL_OBJECT_ID, caster,
+            crate::zones::Zone::Stack, 0, chars.clone());
+        self.continuous_effects.iter().filter_map(|e| match &e.kind {
+            ContinuousEffectKind::SpellCostModifier {
+                spell_filter, caster: who, generic_delta,
+            } if e.is_live(self) => {
+                let src_ctrl = self.objects.get(e.source)
+                    .map(|s| s.controller)?;
+                (who.matches(caster, src_ctrl)
+                    && spell_filter.matches_base(&probe, self, src_ctrl))
+                    .then_some(*generic_delta)
+            }
+            _ => None,
+        }).sum()
+    }
+
+    /// Net generic-cost delta for activating an ability of
+    /// `ability_source` (Training Grounds class).
+    pub fn ability_cost_delta(
+        &self,
+        ability_source: ObjectId,
+    ) -> i32 {
+        self.continuous_effects.iter().filter_map(|e| match &e.kind {
+            ContinuousEffectKind::AbilityCostModifier {
+                source_filter, generic_delta,
+            } if e.is_live(self) => {
+                let src_ctrl = self.objects.get(e.source)
+                    .map(|s| s.controller)?;
+                let m = self.objects.get(ability_source).is_some_and(|o|
+                    source_filter.matches_base(o, self, src_ctrl));
+                m.then_some(*generic_delta)
+            }
+            _ => None,
+        }).sum()
     }
 
     /// Total generic attack tax protecting `defender` (Ghostly
@@ -1831,6 +1942,48 @@ mod tests {
         assert_eq!(s.computed_power(my_grounded), Some(2));
         assert_eq!(s.computed_power(their_flyer), Some(2));
         assert!(!s.has_keyword(their_flyer, &KeywordAbility::Vigilance));
+    }
+
+    #[test]
+    fn spell_and_ability_cost_deltas() {
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+        let mut s = GameState::new(2, 0);
+        let chill = put_creature(&mut s, 0, 0, 4); // stands in for Chill
+        // "Red spells cost {1} more to cast" (any caster).
+        s.add_continuous_effect(ContinuousEffect::spell_cost_modifier(
+            chill,
+            ObjectFilter::new().with_colors(crate::types::ColorSet::red()),
+            ControllerConstraint::Any, 1,
+            Duration::WhileSourceOnBattlefield));
+        // "Spells YOU cast cost {2} less" (controller-scoped).
+        s.add_continuous_effect(ContinuousEffect::spell_cost_modifier(
+            chill, ObjectFilter::default(),
+            ControllerConstraint::You, -2,
+            Duration::WhileSourceOnBattlefield));
+        let red_spell = Characteristics {
+            colors: crate::types::ColorSet::red(),
+            types: crate::types::TypeLine::INSTANT.into(),
+            ..Default::default()
+        };
+        // P0 (the modifier controller): +1 tax, -2 reduction = -1 net.
+        assert_eq!(s.spell_cost_delta(&red_spell, 0), -1);
+        // P1: only the unscoped tax applies.
+        assert_eq!(s.spell_cost_delta(&red_spell, 1), 1);
+        // The generic floor: {R} (no generic) taxed +1 grows a {1};
+        // reduced -2 stays {R}.
+        let r_cost = crate::mana::ManaCost::parse("{R}").unwrap();
+        assert_eq!(r_cost.with_generic_delta(1),
+                   crate::mana::ManaCost::parse("{1}{R}").unwrap());
+        assert_eq!(r_cost.with_generic_delta(-2), r_cost);
+
+        // Training Grounds: abilities of creatures you control cost
+        // {2} less.
+        let dork = put_creature(&mut s, 0, 1, 1);
+        s.add_continuous_effect(ContinuousEffect::ability_cost_modifier(
+            chill,
+            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            -2, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.ability_cost_delta(dork), -2);
     }
 
     #[test]

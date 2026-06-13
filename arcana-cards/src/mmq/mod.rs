@@ -116,3 +116,5 @@ pub mod magistrate_s_veto;
 pub mod intimidation;
 pub mod crackdown;
 pub mod statecraft;
+pub mod squeeze;
+pub mod high_seas;

@@ -33,3 +33,4 @@ pub mod insight;
 pub mod serenity;
 pub mod dread_of_night;
 pub mod light_of_day;
+pub mod chill;

@@ -23,3 +23,4 @@ pub mod obelisk_of_esper;
 pub mod carnage_altar;
 pub mod where_ancients_tread;
 pub mod foster;
+pub mod arcane_melee;

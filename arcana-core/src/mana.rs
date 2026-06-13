@@ -29,6 +29,29 @@ pub struct ManaCost {
     pub components: Vec<ManaCostComponent>,
 }
 
+impl ManaCost {
+    /// Clone with the GENERIC component adjusted by `delta` (cost
+    /// modifiers — CR 601.2f increases/decreases). Colored pips are
+    /// untouched; the generic total floors at 0 (a zero result drops
+    /// the Generic component entirely). A cost with no Generic pip
+    /// gains one when taxed.
+    pub fn with_generic_delta(&self, delta: i32) -> ManaCost {
+        let current: i64 = self.components.iter().map(|c| match c {
+            ManaCostComponent::Generic(n) => *n as i64,
+            _ => 0,
+        }).sum();
+        let new_generic = (current + delta as i64).max(0) as u32;
+        let mut components: Vec<ManaCostComponent> = self.components.iter()
+            .filter(|c| !matches!(c, ManaCostComponent::Generic(_)))
+            .cloned()
+            .collect();
+        if new_generic > 0 {
+            components.insert(0, ManaCostComponent::Generic(new_generic));
+        }
+        ManaCost { components }
+    }
+}
+
 /// One pip of a mana cost.
 ///
 /// `Colorless` represents the `{C}` symbol — a requirement that must be
