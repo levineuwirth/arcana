@@ -653,6 +653,24 @@ impl GameState {
         // block" half lives in legal_actions::can_block; the menace
         // half is granted here so suspected creatures always need at
         // least 2 blockers, even without printed menace.
+        // Familiar Ground class: "[filter] can't be blocked by more
+        // than N creatures" — clamp max_blockers for matching
+        // attackers (base-characteristics filter, source-controller
+        // perspective; live check honors face-gated durations).
+        for e in self.continuous_effects.iter() {
+            let crate::layers::ContinuousEffectKind::FilteredMaxBlockers {
+                filter, max,
+            } = &e.kind else { continue; };
+            if !e.is_live(self) { continue; }
+            let Some(src_ctrl) = self.objects.get(e.source)
+                .map(|s| s.controller) else { continue; };
+            let matches = self.objects.get(attacker).is_some_and(|o|
+                filter.matches_base(o, self, src_ctrl));
+            if matches {
+                c.max_blockers = Some(c.max_blockers
+                    .map_or(*max, |m| m.min(*max)));
+            }
+        }
         let suspected = self.objects.get(attacker)
             .map(|o| o.status.suspected).unwrap_or(false);
         if suspected || self.has_keyword(attacker, &KeywordAbility::Menace) {

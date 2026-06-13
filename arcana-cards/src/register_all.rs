@@ -1780,6 +1780,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::s7ed::compost::register(reg); n += 1;
     crate::s7ed::knighthood::register(reg); n += 1;
     crate::s7ed::bedlam::register(reg); n += 1;
+    crate::s7ed::familiar_ground::register(reg); n += 1;
     // --- ptk ---
     crate::ptk::barbarian_horde::register(reg); n += 1;
     crate::ptk::independent_troops::register(reg); n += 1;
@@ -2126,6 +2127,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::me4::kismet::register(reg); n += 1;
     crate::me4::serra_aviary::register(reg); n += 1;
     crate::me4::smoke::register(reg); n += 1;
+    crate::me4::mystic_decree::register(reg); n += 1;
     // --- thb ---
     crate::thb::nyxborn_courser::register(reg); n += 1;
     crate::thb::nyxborn_brute::register(reg); n += 1;
@@ -2968,6 +2970,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::leg::life_matrix::register(reg); n += 1;
     crate::leg::tolaria::register(reg); n += 1;
     crate::leg::lifeblood::register(reg); n += 1;
+    crate::leg::gravity_sphere::register(reg); n += 1;
     // --- som ---
     crate::som::alpha_tyrranax::register(reg); n += 1;
     crate::som::moriok_reaver::register(reg); n += 1;

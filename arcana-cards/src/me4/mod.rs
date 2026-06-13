@@ -85,3 +85,4 @@ pub mod staff_of_zegon;
 pub mod kismet;
 pub mod serra_aviary;
 pub mod smoke;
+pub mod mystic_decree;

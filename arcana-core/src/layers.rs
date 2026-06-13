@@ -547,6 +547,39 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "[filter] creatures can't be blocked by more than
+    /// `max` creature(s)" cap (Familiar Ground).
+    pub fn filtered_max_blockers(source: ObjectId,
+                                 filter: crate::targets::ObjectFilter,
+                                 max: u32,
+                                 duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredMaxBlockers { filter, max },
+        }
+    }
+
+    /// Build a GLOBAL "[filter] creatures lose [keyword]" removal
+    /// (Gravity Sphere) — the filtered sibling of
+    /// [`Self::remove_keyword`].
+    pub fn filtered_remove_keyword(source: ObjectId,
+                                   filter: crate::targets::ObjectFilter,
+                                   keyword: KeywordAbility,
+                                   duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredRemoveKeyword { filter, keyword },
+        }
+    }
+
     /// Build a Ghostly Prison / Propaganda attack tax protecting the
     /// source's controller.
     pub fn attack_tax(source: ObjectId, generic: u32,
@@ -805,6 +838,19 @@ pub enum ContinuousEffectKind {
     /// Enforced in the untap step in deterministic ascending-id order
     /// (the player-choice ordering is a documented stand-in).
     UntapCap { filter: crate::targets::ObjectFilter, max: u32 },
+    /// Marker — "each [filter] creature can't be blocked by more
+    /// than `max` creature(s)" (Familiar Ground class). Consumed by
+    /// [`crate::combat`]'s `block_constraints` (sets max_blockers).
+    FilteredMaxBlockers { filter: crate::targets::ObjectFilter, max: u32 },
+    /// Layer 6 — GLOBAL filtered keyword removal: "[filter] creatures
+    /// lose [keyword]" (Gravity Sphere "all creatures lose flying",
+    /// Mystic Decree). The filtered sibling of
+    /// [`Self::RemoveKeywordTarget`]; same base-characteristics
+    /// filter posture as [`Self::FilteredPump`].
+    FilteredRemoveKeyword {
+        filter: crate::targets::ObjectFilter,
+        keyword: KeywordAbility,
+    },
     /// Marker — Ghostly Prison / Propaganda: "creatures can't attack
     /// [the source's controller] unless their controller pays
     /// {generic} for each attacking creature". Consumed by
@@ -879,6 +925,7 @@ impl ContinuousEffectKind {
                     == Some(object_id)
             }
             Self::FilteredPump { filter, .. }
+            | Self::FilteredRemoveKeyword { filter, .. }
             | Self::FilteredGrantKeyword { filter, .. } => {
                 // Battlefield-only, base-characteristics filter from
                 // the source controller's perspective.
@@ -896,6 +943,7 @@ impl ContinuousEffectKind {
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
             | Self::UntapCap { .. }
+            | Self::FilteredMaxBlockers { .. }
             | Self::AttackTax { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
@@ -949,12 +997,16 @@ impl ContinuousEffectKind {
                     chars.keywords.push(keyword.clone());
                 }
             }
+            Self::FilteredRemoveKeyword { keyword, .. } => {
+                chars.keywords.retain(|k| k != keyword);
+            }
             Self::FilteredCantAttack { .. }
             | Self::FilteredCantBlock { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
             | Self::UntapCap { .. }
+            | Self::FilteredMaxBlockers { .. }
             | Self::AttackTax { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
@@ -1779,6 +1831,31 @@ mod tests {
         assert_eq!(s.computed_power(my_grounded), Some(2));
         assert_eq!(s.computed_power(their_flyer), Some(2));
         assert!(!s.has_keyword(their_flyer, &KeywordAbility::Vigilance));
+    }
+
+    #[test]
+    fn filtered_max_blockers_and_filtered_keyword_removal() {
+        let mut s = GameState::new(2, 0);
+        let ground = put_creature(&mut s, 0, 0, 4);
+        let mine = put_creature(&mut s, 0, 2, 2);
+        let theirs = put_creature(&mut s, 1, 2, 2);
+        // Familiar Ground: my creatures can't be blocked by >1.
+        s.add_continuous_effect(ContinuousEffect::filtered_max_blockers(
+            ground,
+            crate::targets::ObjectFilter::creature()
+                .controlled_by(crate::targets::ControllerConstraint::You),
+            1, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.block_constraints(mine).max_blockers, Some(1));
+        assert_eq!(s.block_constraints(theirs).max_blockers, None);
+
+        // Gravity Sphere: all creatures lose flying.
+        s.objects.get_mut(theirs).unwrap().characteristics.keywords
+            .push(KeywordAbility::Flying);
+        assert!(s.has_keyword(theirs, &KeywordAbility::Flying));
+        s.add_continuous_effect(ContinuousEffect::filtered_remove_keyword(
+            ground, crate::targets::ObjectFilter::creature(),
+            KeywordAbility::Flying, Duration::WhileSourceOnBattlefield));
+        assert!(!s.has_keyword(theirs, &KeywordAbility::Flying));
     }
 
     #[test]
