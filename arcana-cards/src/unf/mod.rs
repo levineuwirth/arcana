@@ -32,3 +32,4 @@ pub mod the_big_top;
 pub mod park_map;
 pub mod done_for_the_day;
 pub mod killer_cosplay;
+pub mod plot_armor;

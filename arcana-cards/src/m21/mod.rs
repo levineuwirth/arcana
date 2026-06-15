@@ -78,3 +78,5 @@ pub mod griffin_aerie;
 pub mod sanctum_of_calm_waters;
 pub mod sanctum_of_stone_fangs;
 pub mod sanctum_of_fruitful_harvest;
+pub mod furor_of_the_bitten;
+pub mod infernal_scarring;

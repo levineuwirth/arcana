@@ -39,3 +39,4 @@ pub mod personal_sanctuary;
 pub mod lifelink;
 pub mod firebreathing;
 pub mod flight;
+pub mod ice_cage;

@@ -71,3 +71,5 @@ pub mod mox_jasper;
 pub mod stillness_in_motion;
 pub mod smile_at_death;
 pub mod stormplain_detainment;
+pub mod fresh_start;
+pub mod ringing_strike_mastery;

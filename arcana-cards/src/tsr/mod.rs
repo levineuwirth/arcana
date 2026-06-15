@@ -53,3 +53,6 @@ pub mod urza_s_factory;
 pub mod flagstones_of_trokair;
 pub mod gaea_s_anthem;
 pub mod bound_in_silence;
+pub mod temporal_isolation;
+pub mod enslave;
+pub mod feebleness;

@@ -77,3 +77,5 @@ pub mod volrath_s_stronghold;
 pub mod maze_of_shadows;
 pub mod spellshock;
 pub mod pandemonium;
+pub mod cursed_flesh;
+pub mod volrath_s_curse;

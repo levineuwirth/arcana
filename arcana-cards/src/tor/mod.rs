@@ -20,3 +20,5 @@ pub mod cephalid_vandal;
 pub mod shambling_swarm;
 pub mod shade_s_form;
 pub mod strength_of_isolation;
+pub mod crackling_club;
+pub mod strength_of_lunacy;

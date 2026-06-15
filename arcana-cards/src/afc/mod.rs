@@ -15,3 +15,4 @@ pub mod vitu_ghazi_the_city_tree;
 pub mod zhalfirin_void;
 pub mod verdant_embrace;
 pub mod shielding_plax;
+pub mod angelic_gift;

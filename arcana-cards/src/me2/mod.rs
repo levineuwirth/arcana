@@ -63,3 +63,4 @@ pub mod krovikan_fetish;
 pub mod carapace;
 pub mod caribou_range;
 pub mod viscerid_armor;
+pub mod errantry;

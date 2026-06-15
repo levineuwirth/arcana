@@ -59,3 +59,5 @@ pub mod eyes_of_the_wisent;
 pub mod faerie_tauntings;
 pub mod militia_s_pride;
 pub mod merrow_commerce;
+pub mod soaring_hope;
+pub mod triclopean_sight;

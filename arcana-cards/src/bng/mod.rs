@@ -31,3 +31,5 @@ pub mod siren_song_lyre;
 pub mod epiphany_storm;
 pub mod eternity_snare;
 pub mod fearsome_temper;
+pub mod ephara_s_enlightenment;
+pub mod thunderous_might;

@@ -67,3 +67,7 @@ pub mod mirror_shield;
 pub mod bronze_sword;
 pub mod unknown_shores;
 pub mod dreadful_apathy;
+pub mod heliod_s_punishment;
+pub mod impending_doom;
+pub mod mogis_s_favor;
+pub mod commanding_presence;

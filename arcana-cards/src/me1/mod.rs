@@ -49,3 +49,5 @@ pub mod primal_order;
 pub mod urza_s_bauble;
 pub mod moat;
 pub mod bestial_fury;
+pub mod thrull_retainer;
+pub mod divine_transformation;

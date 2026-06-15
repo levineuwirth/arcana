@@ -67,3 +67,4 @@ pub mod root_maze;
 pub mod primal_rage;
 pub mod treetop_bracers;
 pub mod arcane_teachings;
+pub mod shimmering_wings;

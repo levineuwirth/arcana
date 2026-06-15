@@ -83,3 +83,4 @@ pub mod stuffed_bear;
 pub mod borrowed_time;
 pub mod ominous_roost;
 pub mod immolation;
+pub mod howl_of_the_hunt;

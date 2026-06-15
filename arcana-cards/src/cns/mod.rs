@@ -22,3 +22,5 @@ pub mod grixis_illusionist;
 pub mod dimir_doppelganger;
 pub mod reito_lantern;
 pub mod uncontrollable_anger;
+pub mod traveler_s_cloak;
+pub mod guardian_zendikon;

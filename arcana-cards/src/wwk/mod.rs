@@ -27,3 +27,4 @@ pub mod razor_boomerang;
 pub mod amulet_of_vigor;
 pub mod terra_eternal;
 pub mod corrupted_zendikon;
+pub mod crusher_zendikon;

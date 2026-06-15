@@ -26,3 +26,4 @@ pub mod slingshot_goblin;
 pub mod meteor_crater;
 pub mod dark_suspicions;
 pub mod destructive_flow;
+pub mod keldon_mantle;

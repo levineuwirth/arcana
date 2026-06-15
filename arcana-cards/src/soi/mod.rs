@@ -60,3 +60,5 @@ pub mod creeping_dread;
 pub mod trail_of_evidence;
 pub mod fevered_visions;
 pub mod equestrian_skill;
+pub mod senseless_rage;
+pub mod spiteful_motives;

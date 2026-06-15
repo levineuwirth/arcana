@@ -64,3 +64,4 @@ pub mod spirit_of_resistance;
 pub mod divine_presence;
 pub mod scavenged_weaponry;
 pub mod whip_silk;
+pub mod sleeper_s_robe;

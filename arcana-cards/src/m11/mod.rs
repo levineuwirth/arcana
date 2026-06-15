@@ -20,3 +20,4 @@ pub mod sorcerer_s_strongbox;
 pub mod voltaic_key;
 pub mod liliana_s_caress;
 pub mod dark_tutelage;
+pub mod primal_cocoon;

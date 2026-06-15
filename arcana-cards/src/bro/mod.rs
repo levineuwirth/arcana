@@ -78,3 +78,4 @@ pub mod symmetry_matrix;
 pub mod transmogrant_altar;
 pub mod thran_vigil;
 pub mod take_flight;
+pub mod prison_sentence;

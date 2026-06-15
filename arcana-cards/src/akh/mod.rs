@@ -48,3 +48,6 @@ pub mod hazoret_s_favor;
 pub mod protection_of_the_hekma;
 pub mod anointed_procession;
 pub mod compulsory_rest;
+pub mod cartouche_of_knowledge;
+pub mod cartouche_of_solidarity;
+pub mod cartouche_of_zeal;

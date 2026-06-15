@@ -52,3 +52,4 @@ pub mod campaign_of_vengeance;
 pub mod lunar_force;
 pub mod emrakul_s_influence;
 pub mod strange_augmentation;
+pub mod choking_restraints;

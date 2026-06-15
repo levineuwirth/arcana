@@ -36,3 +36,4 @@ pub mod strider_harness;
 pub mod path_of_discovery;
 pub mod squire_s_devotion;
 pub mod tilonalli_s_crown;
+pub mod see_red;

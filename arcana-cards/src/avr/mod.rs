@@ -46,3 +46,4 @@ pub mod triumph_of_ferocity;
 pub mod guise_of_fire;
 pub mod spirit_away;
 pub mod ghoulflesh;
+pub mod lightning_prowess;

@@ -58,3 +58,4 @@ pub mod feast_of_sanity;
 pub mod fae_offering;
 pub mod shattered_ego;
 pub mod captured_by_lagacs;
+pub mod so_shiny;

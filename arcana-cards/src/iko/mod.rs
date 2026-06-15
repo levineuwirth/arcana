@@ -65,3 +65,4 @@ pub mod ketria_triome;
 pub mod reptilian_reflection;
 pub mod escape_protocol;
 pub mod footfall_crater;
+pub mod mystic_subdual;

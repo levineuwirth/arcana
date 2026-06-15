@@ -47,3 +47,4 @@ pub mod screaming_shield;
 pub mod simic_locket;
 pub mod gruul_locket;
 pub mod cavalcade_of_calamity;
+pub mod slimebind;

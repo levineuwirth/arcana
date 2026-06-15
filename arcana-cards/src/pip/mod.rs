@@ -17,3 +17,5 @@ pub mod vault_11_voter_s_dilemma;
 pub mod junktown;
 pub mod power_fist;
 pub mod almost_perfect;
+pub mod acquired_mutation;
+pub mod nerd_rage;

@@ -31,3 +31,4 @@ pub mod ceta_sanctuary;
 pub mod ana_sanctuary;
 pub mod mask_of_intolerance;
 pub mod raka_sanctuary;
+pub mod bloodfire_infusion;

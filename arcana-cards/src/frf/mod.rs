@@ -30,3 +30,4 @@ pub mod sultai_emissary;
 pub mod frost_walker;
 pub mod qarsi_high_priest;
 pub mod abzan_beastmaster;
+pub mod jeskai_runemark;

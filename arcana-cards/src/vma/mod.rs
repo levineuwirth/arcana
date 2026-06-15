@@ -50,3 +50,4 @@ pub mod mox_pearl;
 pub mod strip_mine;
 pub mod astral_slide;
 pub mod giant_strength;
+pub mod empyrial_armor;

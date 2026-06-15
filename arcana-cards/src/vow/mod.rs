@@ -94,3 +94,4 @@ pub mod dying_to_serve;
 pub mod stensia_uprising;
 pub mod sigarda_s_summons;
 pub mod nurturing_presence;
+pub mod fear_of_death;

@@ -57,3 +57,4 @@ pub mod flamecast_wheel;
 pub mod nylea_s_presence;
 pub mod ordeal_of_purphoros;
 pub mod messenger_s_speed;
+pub mod viper_s_kiss;

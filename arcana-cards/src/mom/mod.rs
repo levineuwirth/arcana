@@ -107,3 +107,7 @@ pub mod kitesail;
 pub mod tribute_to_the_world_tree;
 pub mod crystal_carapace;
 pub mod astral_wingspan;
+pub mod realmbreaker_s_grasp;
+pub mod disturbing_conversion;
+pub mod stasis_field;
+pub mod failed_conversion;

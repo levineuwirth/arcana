@@ -15,3 +15,4 @@ pub mod veilstone_amulet;
 pub mod gift_of_granite;
 pub mod arcanum_wings;
 pub mod pooling_venom;
+pub mod fatal_attraction;

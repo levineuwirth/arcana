@@ -26,3 +26,4 @@ pub mod pain_magnification;
 pub mod proper_burial;
 pub mod street_savvy;
 pub mod riot_spikes;
+pub mod ocular_halo;

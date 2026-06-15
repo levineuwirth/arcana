@@ -77,3 +77,6 @@ pub mod mask_of_memory;
 pub mod furnace_celebration;
 pub mod vow_of_torment;
 pub mod on_serra_s_wings;
+pub mod aqueous_form;
+pub mod unquestioned_authority;
+pub mod vow_of_wildness;

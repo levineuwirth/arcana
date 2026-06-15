@@ -72,3 +72,6 @@ pub mod sphere_of_grace;
 pub mod sphere_of_reason;
 pub mod sphere_of_duty;
 pub mod druid_s_call;
+pub mod aboshan_s_desire;
+pub mod primal_frenzy;
+pub mod tattoo_ward;

@@ -124,3 +124,6 @@ pub mod parasitic_implant;
 pub mod mark_of_the_vampire;
 pub mod curious_obsession;
 pub mod presence_of_gond;
+pub mod vastwood_zendikon;
+pub mod indomitable_will;
+pub mod sky_tether;

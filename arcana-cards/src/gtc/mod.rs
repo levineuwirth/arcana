@@ -44,3 +44,4 @@ pub mod holy_mantle;
 pub mod alpha_authority;
 pub mod dying_wish;
 pub mod primal_visitation;
+pub mod skygames;

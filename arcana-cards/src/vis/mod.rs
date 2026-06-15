@@ -25,3 +25,4 @@ pub mod griffin_canyon;
 pub mod lightning_cloud;
 pub mod dark_privilege;
 pub mod spider_climb;
+pub mod death_watch;

@@ -151,3 +151,4 @@ pub mod anthem_of_champions;
 pub mod gratuitous_violence;
 pub mod unflinching_courage;
 pub mod ordeal_of_nylea;
+pub mod twinblade_blessing;
