@@ -8,6 +8,7 @@ pub mod swamp;
 pub mod mountain;
 pub mod forest;
 pub mod grizzly_bears;
+pub mod holy_strength;
 pub mod lightning_bolt;
 pub mod counterspell;
 pub mod disintegrate;

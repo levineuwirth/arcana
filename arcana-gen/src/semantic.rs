@@ -41,6 +41,11 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
             | Some("UtilityLand")
             | Some("Equipment")
             | Some("StaticEnchantment")
+            // Auras install an `attached_*` ContinuousEffect via
+            // `Effect::InstallContinuousEffect`; a GAP'd Aura (control
+            // change, host-trigger) constructs no `Effect::` and is
+            // correctly caught as a stub.
+            | Some("Aura")
     )
 }
 

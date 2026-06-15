@@ -418,6 +418,35 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build an "enchanted/equipped creature can't attack" marker
+    /// (Pacifism's attack half). Follows `source.attached_to`; pair
+    /// with [`Duration::WhileSourceOnBattlefield`]. Layer is irrelevant
+    /// (markers don't enter the characteristic pipeline) but recorded
+    /// as L6 for consistency with the other attached-grant effects.
+    pub fn attached_cant_attack(source: ObjectId, duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureCantAttack,
+        }
+    }
+
+    /// Build an "enchanted/equipped creature can't block" marker
+    /// (Pacifism's block half). Sibling of [`Self::attached_cant_attack`].
+    pub fn attached_cant_block(source: ObjectId, duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureCantBlock,
+        }
+    }
+
     /// Build a GLOBAL filtered pump ("[filter] creatures get +P/+T"),
     /// layer 7c. Filter is matched against BASE characteristics from
     /// the source controller's perspective.
@@ -808,6 +837,17 @@ pub enum ContinuousEffectKind {
     /// (Angelic Armaments' white half). ADDITIVE — contrast
     /// [`Self::SetColor`], which replaces per CR 613.3e.
     AttachedCreatureAddColors { colors: crate::types::ColorSet },
+    /// MARKER — "Enchanted/equipped creature can't attack" (Pacifism's
+    /// attack half, Faith's Fetters, Bound in Silence). Follows
+    /// `source.attached_to` dynamically (the dynamic sibling of
+    /// [`Self::CantAttack`], whose `target` is fixed at install time);
+    /// consumed by [`GameState::cant_attack`]. Inert while unattached.
+    AttachedCreatureCantAttack,
+    /// MARKER — "Enchanted/equipped creature can't block" (Pacifism's
+    /// block half, Pillory of the Sleepless). Dynamic sibling of
+    /// [`Self::CantBlock`]; follows `source.attached_to`; consumed by
+    /// [`GameState::cant_block`]. Inert while unattached.
+    AttachedCreatureCantBlock,
     /// "Equipped/enchanted creature gets +X/+Y where X/Y depend on
     /// board state" (Blackblade Reforged "+1/+1 for each land you
     /// control", Empyrial Armor "+1/+1 for each card in your hand").
@@ -998,6 +1038,8 @@ impl ContinuousEffectKind {
             // characteristics.
             Self::FilteredCantAttack { .. }
             | Self::FilteredCantBlock { .. }
+            | Self::AttachedCreatureCantAttack
+            | Self::AttachedCreatureCantBlock
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
@@ -1063,6 +1105,8 @@ impl ContinuousEffectKind {
             }
             Self::FilteredCantAttack { .. }
             | Self::FilteredCantBlock { .. }
+            | Self::AttachedCreatureCantAttack
+            | Self::AttachedCreatureCantBlock
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
@@ -1325,6 +1369,10 @@ impl GameState {
     pub fn cant_attack(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {
             ContinuousEffectKind::CantAttack { target } => *target == object_id,
+            ContinuousEffectKind::AttachedCreatureCantAttack =>
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .and_then(|s| s.attached_to) == Some(object_id),
             ContinuousEffectKind::FilteredCantAttack { filter } => {
                 e.is_live(self)
                     && self.objects.get(e.source)
@@ -1445,6 +1493,10 @@ impl GameState {
     pub fn cant_block(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {
             ContinuousEffectKind::CantBlock { target } => *target == object_id,
+            ContinuousEffectKind::AttachedCreatureCantBlock =>
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .and_then(|s| s.attached_to) == Some(object_id),
             ContinuousEffectKind::FilteredCantBlock { filter } => {
                 e.is_live(self)
                     && self.objects.get(e.source)
@@ -1681,6 +1733,38 @@ mod tests {
         assert_eq!(s.computed_power(mine1), Some(2));
         assert_eq!(s.computed_power(mine2), Some(3));
         assert_eq!(s.computed_power(theirs), Some(3)); // unchanged
+    }
+
+    #[test]
+    fn attached_cant_attack_block_follow_the_host() {
+        // Pacifism: an Aura whose can't-attack/block markers resolve
+        // through `source.attached_to`, so the restriction lands on the
+        // enchanted creature, not the Aura.
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, 2, 2);
+        let aura = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            aura, 0, Zone::Battlefield, 1, Characteristics {
+                types: TypeLine::ENCHANTMENT.into(),
+                ..Default::default()
+            }));
+
+        s.add_continuous_effect(
+            ContinuousEffect::attached_cant_attack(aura, Duration::WhileSourceOnBattlefield));
+        s.add_continuous_effect(
+            ContinuousEffect::attached_cant_block(aura, Duration::WhileSourceOnBattlefield));
+
+        // Unattached: inert.
+        assert!(!s.cant_attack(creature));
+        assert!(!s.cant_block(creature));
+
+        // Attach the Aura; the markers now bite the enchanted creature.
+        s.objects.get_mut(aura).unwrap().attached_to = Some(creature);
+        s.objects.get_mut(creature).unwrap().attachments.push(aura);
+        assert!(s.cant_attack(creature), "enchanted creature can't attack");
+        assert!(s.cant_block(creature), "enchanted creature can't block");
+        // The Aura itself is unaffected.
+        assert!(!s.cant_attack(aura));
     }
 
     #[test]

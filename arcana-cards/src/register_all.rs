@@ -23,6 +23,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::lea::mountain::register(reg); n += 1;
     crate::lea::forest::register(reg); n += 1;
     crate::lea::grizzly_bears::register(reg); n += 1;
+    crate::lea::holy_strength::register(reg); n += 1;
     crate::lea::lightning_bolt::register(reg); n += 1;
     crate::lea::counterspell::register(reg); n += 1;
     crate::lea::disintegrate::register(reg); n += 1;
@@ -3182,6 +3183,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::grn::drowned_secrets::register(reg); n += 1;
     // --- mir ---
     crate::mir::femeref_scouts::register(reg); n += 1;
+    crate::mir::pacifism::register(reg); n += 1;
     crate::mir::sandbar_crocodile::register(reg); n += 1;
     crate::mir::noble_elephant::register(reg); n += 1;
     crate::mir::mtenda_herder::register(reg); n += 1;

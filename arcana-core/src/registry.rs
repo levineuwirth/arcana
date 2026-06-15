@@ -369,6 +369,37 @@ impl CardDefinition {
         self
     }
 
+    /// Declare this enchantment as an Aura that enchants a permanent
+    /// matching `filter`. CR 303.4 — an Aura is cast targeting the
+    /// permanent it will enchant; the target is chosen as the spell is
+    /// put on the stack, rechecked at resolution (CR 608.2b — an Aura
+    /// whose only target is illegal is countered), and the Aura enters
+    /// the battlefield already attached to it (CR 303.4f, performed by
+    /// [`crate::state::GameState::finalize_resolved_spell`]).
+    ///
+    /// This installs a `spell_ability` whose sole job is to carry the
+    /// enchant target requirement to the cast path; its resolution
+    /// effect is empty because the engine performs the attach. Pair it
+    /// with the static/triggered abilities the Aura grants while
+    /// attached (Layer-6 `ContinuousEffect::attached_*`, ETB triggers,
+    /// etc.) the same way Equipment does. Auras with a controller
+    /// restriction ("enchant creature you control") or a player /
+    /// non-creature enchant clause should set `spell_ability` directly
+    /// with the appropriate [`TargetRequirement`].
+    pub fn with_enchant(mut self, filter: crate::targets::TargetFilter) -> Self {
+        self.spell_ability = Some(SpellAbilityDef {
+            text: "Enchant".into(),
+            target_requirements: vec![TargetRequirement {
+                filter,
+                count: crate::targets::TargetCount::Exactly(1),
+                controller: None,
+            }],
+            modal: None,
+            effect: aura_no_resolution_effect,
+        });
+        self
+    }
+
     /// CR 715 — Adventure. Declares the card's Adventure half (the
     /// instant/sorcery side, with its own name, mana cost, and
     /// rules text). The creature side lives on
@@ -632,6 +663,20 @@ fn equip_attach(
         equipment_or_aura: ctx.source,
         target,
     }]
+}
+
+/// Resolution effect for an Aura installed via
+/// [`CardDefinition::with_enchant`]: none. An Aura attaches to its
+/// enchanted permanent in `finalize_resolved_spell` (CR 303.4f), not
+/// through a stack effect, so its spell ability produces no effects.
+/// The `spell_ability` exists only to carry the enchant target
+/// requirement to the cast path.
+fn aura_no_resolution_effect(
+    _state: &GameState,
+    _entry: &StackEntry,
+    _reg: &CardRegistry,
+) -> Vec<crate::effects::Effect> {
+    Vec::new()
 }
 
 // =============================================================================

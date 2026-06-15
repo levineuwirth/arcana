@@ -96,6 +96,15 @@ pub fn classify(card: &Card) -> Classification {
     if is_modal(&text) {
         return Classification::new(Tier::Four, "modal spell (choose one / choose two)");
     }
+    // Wave-2: Auras route to the dedicated Aura shape. The "Enchant X"
+    // line + the grant read as two lines, so they'd otherwise be
+    // refused by the multi-line gate below; but behaviorally an Aura
+    // is one attached effect, and the Aura pack GAPs anything it can't
+    // express. Enchantment-creature Auras (Bestow) are excluded — they
+    // need the bestow cast mode, not modeled yet.
+    if card.type_line.contains("Aura") && !card.is_creature() {
+        return Classification::new(Tier::Three, "aura (Wave-2 attach)");
+    }
     if has_multiple_ability_lines(&text) {
         // Wave-1 carve-out (catalog-breadth plan §2): lands, mana-rock
         // artifacts, and Equipment are INHERENTLY two-line cards whose
@@ -723,16 +732,19 @@ mod tests {
     }
 
     #[test]
-    fn aura_is_not_a_static_enchantment() {
-        // Single-line Auras (rare, but defensive) must not take the
-        // static-enchantment route — the engine lacks resolution
-        // attach, so the prompt gate refuses them by type.
+    fn aura_routes_to_aura_tier_not_static() {
+        // Wave-2: Auras get their own T3 routing (resolution attach
+        // landed) and must NOT take the single-line static route.
         let c = mk_card(|c| {
             c.name = "Mysterious Aura".into();
             c.type_line = "Enchantment — Aura".into();
-            c.oracle_text = Some("Enchanted creature gets +2/+2.".into());
+            c.oracle_text = Some("Enchant creature\nEnchanted creature gets +2/+2.".into());
         });
-        assert_eq!(classify(&c).tier, Tier::Five);
+        let cls = classify(&c);
+        assert_eq!(cls.tier, Tier::Three);
+        assert!(cls.rationale.contains("aura"), "rationale={}", cls.rationale);
+        // And it is not misrouted as a static enchantment.
+        assert!(!is_single_line_static_enchantment(&c, "Enchanted creature gets +2/+2."));
     }
 
     // --- T5 --------------------------------------------------------

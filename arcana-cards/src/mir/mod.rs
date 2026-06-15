@@ -1,5 +1,6 @@
 //! MIR — set module. Auto-created by land_cards.py; add a proper set summary when curating.
 pub mod femeref_scouts;
+pub mod pacifism;
 pub mod sandbar_crocodile;
 pub mod noble_elephant;
 pub mod mtenda_herder;

@@ -799,6 +799,29 @@ impl GameState {
                 );
             }
             self.after_enter_battlefield(new_id);
+            // CR 303.4f — an Aura permanent enters the battlefield
+            // already attached to the object its spell was cast to
+            // enchant. That target was chosen at cast time (the Aura's
+            // sole target requirement, declared via
+            // `CardDefinition::with_enchant`) and survived the CR 608.2b
+            // recheck in `resolve_top_of_stack`, so it's still a legal
+            // attach target here. Attaching BEFORE the `EntersBattlefield`
+            // event means ETB triggers and the next SBA sweep both observe
+            // the Aura correctly attached — otherwise CR 704.5n would move
+            // the unattached Aura straight to the graveyard. Reuses the
+            // same `Effect::Attach` path Equipment's Equip ability drives.
+            if self.objects.get(new_id)
+                .is_some_and(|o| o.characteristics.is_aura)
+            {
+                if let Some(target) = entry.targets.targets.first()
+                    .and_then(|t| t.object_id())
+                {
+                    crate::effects::Effect::Attach {
+                        equipment_or_aura: new_id,
+                        target,
+                    }.execute(self);
+                }
+            }
             self.emit(GameEvent::EntersBattlefield {
                 object_id: new_id,
                 from_zone: from,
@@ -1563,6 +1586,73 @@ mod tests {
         assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|ev|
             matches!(ev, GameEvent::SpellCountered { object_id } if *object_id == stack_id)));
+    }
+
+    /// CR 303.4f — an Aura permanent spell, on resolution, enters the
+    /// battlefield already attached to the object its spell targeted.
+    /// `finalize_resolved_spell` performs the attach via `Effect::Attach`.
+    #[test]
+    fn aura_spell_attaches_to_target_on_resolution() {
+        let mut s = GameState::new(2, 0);
+        let creature = put_object(&mut s, 1, Zone::Battlefield, creature_chars(2, 2));
+        s.objects.get_mut(creature).unwrap().controller = 1;
+
+        let mut aura_chars = Characteristics {
+            mana_cost: Some(ManaCost::parse("{W}").unwrap()),
+            colors: ColorSet::white(),
+            types: TypeLine::ENCHANTMENT.into(),
+            ..Default::default()
+        };
+        aura_chars.is_aura = true;
+        let aura = put_object(&mut s, 0, Zone::Hand(0), aura_chars);
+
+        let stack_id = s.announce_spell_on_stack(
+            aura, 0, one_creature_target(creature), vec![], None, vec![]);
+        s.emit_spell_cast(stack_id);
+
+        let entry = s.pop_stack_entry().unwrap();
+        s.finalize_resolved_spell(entry);
+
+        // The Aura is on the battlefield (re-id'd off the stack) and wired
+        // bidirectionally to the creature it enchanted.
+        let aura_bf = s.objects.iter()
+            .find(|o| o.characteristics.is_aura && o.zone.is_battlefield())
+            .map(|o| o.id)
+            .expect("Aura should be on the battlefield");
+        assert_eq!(s.objects.get(aura_bf).unwrap().attached_to, Some(creature));
+        assert_eq!(s.objects.get(creature).unwrap().attachments, vec![aura_bf]);
+    }
+
+    /// An Aura whose only target became illegal before resolution is
+    /// countered by CR 608.2b — it never enters the battlefield (so the
+    /// auto-attach never fires on a dangling target).
+    #[test]
+    fn aura_spell_countered_when_target_vanishes() {
+        let mut s = GameState::new(2, 0);
+        let creature = put_object(&mut s, 1, Zone::Battlefield, creature_chars(2, 2));
+        let mut aura_chars = Characteristics {
+            types: TypeLine::ENCHANTMENT.into(),
+            ..Default::default()
+        };
+        aura_chars.is_aura = true;
+        let aura = put_object(&mut s, 0, Zone::Hand(0), aura_chars);
+
+        let stack_id = s.announce_spell_on_stack(
+            aura, 0, one_creature_target(creature), vec![], None, vec![]);
+        s.emit_spell_cast(stack_id);
+        // Enchanted creature leaves before the Aura resolves.
+        s.objects.get_mut(creature).unwrap().zone = Zone::Graveyard(1);
+
+        let entry = s.pop_stack_entry().unwrap();
+        let req = target_creature();
+        match s.recheck_and_classify_resolution(&entry, std::slice::from_ref(&req)) {
+            ResolutionOutcome::CounteredIllegalTargets => {}
+            _ => panic!("expected CounteredIllegalTargets"),
+        }
+        s.counter_resolved_spell(entry);
+        assert!(!s.objects.iter()
+            .any(|o| o.characteristics.is_aura && o.zone.is_battlefield()),
+            "countered Aura must not reach the battlefield");
     }
 
     // --- serde roundtrip of a StackEntry (spell) ---------------------------

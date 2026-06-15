@@ -121,6 +121,13 @@ pub enum PromptShape {
     /// effect (anthems, "creatures you control have flying") —
     /// the Glorious Anthem ETB-install pattern.
     StaticEnchantment,
+    /// Wave-2: Aura enchantment ("Enchant creature. Enchanted creature
+    /// …"). `with_enchant(filter)` carries the enchant target to the
+    /// cast path; the engine attaches the Aura on resolution (CR
+    /// 303.4f). The grant is an ETB-installed `attached_*`
+    /// `ContinuousEffect` that follows `source.attached_to` — the
+    /// Equipment idiom (Holy Strength / Pacifism patterns).
+    Aura,
 }
 
 /// Why a (card, tier) combination is not currently renderable. The
@@ -241,6 +248,7 @@ fn user_for_shape(card: &Card, shape: PromptShape) -> String {
         PromptShape::UtilityLand => user_utility_land(card),
         PromptShape::Equipment => user_equipment(card),
         PromptShape::StaticEnchantment => user_static_enchantment(card),
+        PromptShape::Aura => user_aura(card),
     }
 }
 
@@ -300,14 +308,13 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
     // carve-out the classifier now routes to T3).
     let text = card.effective_oracle_text();
     if card.is_enchantment() && !card.is_creature() && !card.is_land() {
-        // Auras: `is_aura` + the attachment SBA exist in the engine,
-        // but nothing attaches the Aura on spell resolution — they
-        // stay refused until the Wave-2 engine task lands.
+        // Auras (Wave-2): the engine attaches the Aura to its enchant
+        // target on resolution (CR 303.4f via `with_enchant` +
+        // `finalize_resolved_spell`), and the `attached_*` continuous
+        // effects carry the grant. Route buff / keyword / restriction
+        // Auras to their own pack.
         if card.type_line.contains("Aura") {
-            return Err(Unsupported::NoFewShotForShape {
-                tier,
-                detail: "aura (no resolution attach yet)",
-            });
+            return Ok(PromptShape::Aura);
         }
         if crate::classifier::has_triggered_ability(&text) {
             return Ok(PromptShape::TriggeredEnchantment);
@@ -539,6 +546,11 @@ const FS_GLORIOUS_ANTHEM: &str =
     include_str!("../../arcana-cards/src/po2/glorious_anthem.rs");
 const FS_BONESPLITTER: &str =
     include_str!("../../arcana-cards/src/mrd/bonesplitter.rs");
+// Wave-2 Aura seed exemplars.
+const FS_HOLY_STRENGTH: &str =
+    include_str!("../../arcana-cards/src/lea/holy_strength.rs");
+const FS_PACIFISM: &str =
+    include_str!("../../arcana-cards/src/mir/pacifism.rs");
 
 // =============================================================================
 // shared target-card spec block
@@ -1736,6 +1748,62 @@ Then the ETB trigger (`id: 1`, `TriggerCondition::SelfEntersBattlefield`, `inter
     )
 }
 
+/// Per-card prompt block for Aura (Wave 2). An Aura enchants a
+/// permanent on resolution and grants it an `attached_*` continuous
+/// effect — the Equipment idiom, minus the Equip ability, plus the
+/// engine-driven resolution attach.
+fn user_aura(card: &Card) -> String {
+    format!(
+        "Generate an AURA — an enchantment that attaches to a permanent and modifies it ('Enchant creature. Enchanted creature gets +1/+2.', 'Enchant creature. Enchanted creature can't attack or block.'). The engine handles attachment for you: `CardDefinition::with_enchant(<TargetFilter>)` installs the spell's enchant target requirement, and on resolution the engine attaches the Aura to the chosen target (CR 303.4f) — you NEVER write an `Effect::Attach`. The Aura's grant is an ETB-installed `attached_*` `ContinuousEffect` that follows `source.attached_to`, so it lands on the enchanted permanent and auto-expires when the Aura leaves the battlefield. This is EXACTLY the Equipment pattern (Bonesplitter / Trusty Machete) with `with_equip` swapped for `with_enchant` and the Equipment subtype swapped for an interned `Aura` subtype.
+
+REFERENCE 1 — Holy Strength ({{W}} Aura, 'Enchant creature. Enchanted creature gets +1/+2.' — the COMPLETE buff pattern; mirror it with only the numbers / builder swapped):
+```rust
+{FS_HOLY_STRENGTH}
+```
+
+REFERENCE 2 — Pacifism ({{1}}{{W}} Aura, 'Enchant creature. Enchanted creature can't attack or block.' — the restriction pattern; note TWO installs returned in the vec):
+```rust
+{FS_PACIFISM}
+```
+
+ENCHANT TARGET — `with_enchant(<TargetFilter>)` (import `TargetFilter` from `arcana_core::targets`):
+- 'Enchant creature' → `TargetFilter::Creature` (the overwhelming majority).
+- 'Enchant land' / 'Enchant artifact' / 'Enchant permanent' → `TargetFilter::Permanent(ObjectFilter::land())` / `Permanent(ObjectFilter::artifact())` / `Permanent(ObjectFilter::default())`.
+- 'Enchant creature you control' / '… an opponent controls': use `TargetFilter::Creature` anyway — the caster chooses which creature to target, so the controller wording is honored in practice; add a `// NOTE: controller wording approximated by caster's choice` comment.
+- 'Enchant PLAYER' (Curses) is NOT supported — the engine attaches to objects only. Emit the bones with `with_enchant(TargetFilter::Creature)` REMOVED and the effect fn returning `Vec::new()` with `// GAP: enchant player (Curse) — no player attachment`.
+
+ATTACHED-GRANT BUILDERS — constructed inside the ETB effect fn, each wrapped in `Effect::InstallContinuousEffect {{ effect: <builder> }}`. Import `ContinuousEffect`, `Duration` from `arcana_core::layers`. `trig.source` is the Aura. ALWAYS `Duration::WhileSourceOnBattlefield`.
+- 'Enchanted creature gets +P/+T.' (incl. negative, e.g. -2/-0) → `ContinuousEffect::attached_pt(trig.source, P, T, Duration::WhileSourceOnBattlefield)`.
+- 'Enchanted creature gets +X/+Y, where X is [a board count].' → `ContinuousEffect::attached_pt_dynamic(trig.source, <fn(&GameState, ObjectId) -> (i32, i32)>, Duration::WhileSourceOnBattlefield)` — a module-level fn that reads the SOURCE (the Aura) to count, like Empyrial Armor ('+1/+1 for each card in your hand').
+- 'Enchanted creature has [keyword].' → `ContinuousEffect::attached_keyword(trig.source, KeywordAbility::Flying, Duration::WhileSourceOnBattlefield)` — any `KeywordAbility` unit variant from the system-prompt list. 'has [kw1] and [kw2]' → TWO installs.
+- 'Enchanted creature loses [keyword]' / 'can't have its abilities … ' (keyword removal) → `ContinuousEffect::attached_loses_keyword(trig.source, KeywordAbility::Flying, Duration::WhileSourceOnBattlefield)`.
+- 'Enchanted creature can't attack.' → `ContinuousEffect::attached_cant_attack(trig.source, Duration::WhileSourceOnBattlefield)`; '… can't block.' → `attached_cant_block`; 'can't attack OR block' → BOTH (see Pacifism).
+- 'Enchanted creature is [color] [in addition].' → `ContinuousEffect::attached_colors(trig.source, ColorSet::blue(), Duration::WhileSourceOnBattlefield)` (ADDITIVE).
+- 'Enchanted creature is a(n) [subtype] [in addition to its other types].' → `ContinuousEffect::attached_subtypes(trig.source, {{ let mut s = SubtypeSet::default(); s.0.insert(reg.interner_mut().intern(\"Angel\")); s }}, Duration::WhileSourceOnBattlefield)`. (Intern subtypes BEFORE building the def, store the symbols, and capture them — you cannot call `reg` inside the effect fn. Follow the Holy Strength import/intern structure.) Adding a card TYPE ('is also an artifact') → `attached_types(trig.source, TypeLine::ARTIFACT.into(), Duration::WhileSourceOnBattlefield)`.
+- 'Enchanted creature gets +P/+T AND has [keyword]' (and any combination) → return ALL the matching installs in one vec.
+
+NOT EXPRESSIBLE — emit faithful bones (name/cost/colors/types + Aura subtype + `with_enchant`) and an effect fn returning `Vec::new()` with a `// GAP: <reason>` comment:
+- CONTROL-CHANGE Auras ('You control enchanted creature' — Control Magic, Mind Control). // GAP: control-change aura.
+- P/T SETTING ('Enchanted creature is 0/1' / 'has base power and toughness 1/1' — Lignify, Kasmina's). attached_pt is ADDITIVE only. // GAP: base-P/T-setting aura.
+- TRIGGERED abilities keyed on the enchanted creature ('When enchanted creature dies, …', 'Whenever enchanted creature deals combat damage, …') — no host-trigger hook. // GAP: triggered ability on enchanted creature.
+- ACTIVATED abilities granted to the enchanted creature, conditional 'as long as' clauses, 'enchant creature you don't control'-only-targeting restrictions, and any payoff that fires when the Aura itself enters/leaves. // GAP: <which>.
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — not from the reference cards. Transcribe verbatim:
+- `mana_cost`: exactly the spec's `Mana cost` into `ManaCost::parse(\"…\")`.
+- `colors`: exactly the colored pips of that cost; never add a color the cost lacks.
+- `types`: `TypeLine::ENCHANTMENT.into()` (NO power/toughness). Intern an `Aura` subtype into the `SubtypeSet` (see the references).
+- The ETB trigger is fixed boilerplate: `id: 1`, `TriggerCondition::SelfEntersBattlefield`, `intervening_if: None`, `trigger_zones: vec![Zone::Battlefield]`, `frequency: TriggerFrequency::EachTime`, `target_requirements: Vec::new()`.
+
+Never invent a `ContinuousEffect` builder, an `Effect` variant, or a filter the lists above don't show. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        FS_HOLY_STRENGTH = FS_HOLY_STRENGTH,
+        FS_PACIFISM = FS_PACIFISM,
+    )
+}
+
 // =============================================================================
 // tests
 // =============================================================================
@@ -2349,22 +2417,20 @@ mod tests {
     }
 
     #[test]
-    fn aura_is_refused_with_precise_detail() {
-        // The engine lacks resolution-time Aura attach — Auras must
-        // not slip into any Wave-1 enchantment shape.
+    fn aura_routes_to_aura_shape() {
+        // Wave-2: resolution-time attach landed, so Auras route to the
+        // dedicated Aura pack instead of being refused.
         let c = mk_card(|c| {
             c.name = "Arcane Binding".into();
             c.mana_cost = Some("{1}{W}".into());
             c.type_line = "Enchantment — Aura".into();
             c.oracle_text =
-                Some("Enchanted creature gets +2/+2.".into());
+                Some("Enchant creature. Enchanted creature gets +2/+2.".into());
         });
-        match render_prompt(&c, Tier::Two).unwrap_err() {
-            Unsupported::NoFewShotForShape { detail, .. } => {
-                assert_eq!(detail, "aura (no resolution attach yet)");
-            }
-            other => panic!("expected NoFewShotForShape, got {other:?}"),
-        }
+        let p = render_prompt(&c, Tier::Two).expect("Aura yields a prompt");
+        assert_eq!(p.shape, PromptShape::Aura);
+        assert!(p.user.contains("with_enchant"),
+            "Aura pack teaches the with_enchant idiom");
     }
 
     #[test]

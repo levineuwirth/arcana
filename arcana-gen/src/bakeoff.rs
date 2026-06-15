@@ -777,6 +777,7 @@ fn prompt_shape_name(s: PromptShape) -> &'static str {
         PromptShape::UtilityLand => "UtilityLand",
         PromptShape::Equipment => "Equipment",
         PromptShape::StaticEnchantment => "StaticEnchantment",
+        PromptShape::Aura => "Aura",
     }
 }
 
