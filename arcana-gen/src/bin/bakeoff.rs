@@ -453,6 +453,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                         "static-enchantment" | "staticenchantment" => {
                             "StaticEnchantment"
                         }
+                        "aura" => "Aura",
                         other => {
                             return Err(anyhow!(
                                 "--shapes: unknown shape '{other}' \
@@ -460,7 +461,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                                  triggered, activated, adventure, mdfc, \
                                  saga, class, battle, \
                                  triggered-enchantment, artifact, land, \
-                                 equipment, static-enchantment)"
+                                 equipment, static-enchantment, aura)"
                             ))
                         }
                     };
