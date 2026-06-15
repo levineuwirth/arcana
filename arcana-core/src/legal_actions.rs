@@ -2077,13 +2077,19 @@ fn enumerate_activation_actions(
         // 0..N are the registry's `activated_abilities`, N..N+M are
         // `intrinsic_activated_abilities`. The resolver inverts the
         // same way via `lookup_activated_ability_with_kind`.
+        // Flat index space: 0..R registry, R..R+I intrinsic,
+        // R+I.. granted-by-attachment (Aura/Equipment "enchanted
+        // creature has '[cost]: …'"). `lookup_activated_ability`
+        // inverts in the same order.
         let reg_count = registry.get(obj.card_id)
             .map_or(0, |d| d.activated_abilities.len());
+        let granted = state.granted_activated_for(obj.id);
         let abilities = registry.get(obj.card_id)
             .map(|d| d.activated_abilities.as_slice())
             .unwrap_or(&[])
             .iter()
-            .chain(obj.intrinsic_activated_abilities.iter());
+            .chain(obj.intrinsic_activated_abilities.iter())
+            .chain(granted.iter().copied());
         for (i, ability) in abilities.enumerate() {
             // Mark which list the index falls into for the activator's
             // benefit (debug); not surfaced in the Action — `i` alone
@@ -2295,15 +2301,23 @@ fn combinations(items: &[ObjectId], k: usize) -> Vec<Vec<ObjectId>> {
 pub(crate) fn lookup_activated_ability<'a>(
     obj: &'a crate::objects::GameObject,
     registry: &'a crate::registry::CardRegistry,
+    state: &'a GameState,
     index: usize,
 ) -> Option<&'a crate::registry::ActivatedAbilityDef> {
     let reg_count = registry.get(obj.card_id)
         .map_or(0, |d| d.activated_abilities.len());
+    let intrinsic_count = obj.intrinsic_activated_abilities.len();
     if index < reg_count {
         registry.get(obj.card_id)
             .and_then(|d| d.activated_abilities.get(index))
-    } else {
+    } else if index < reg_count + intrinsic_count {
         obj.intrinsic_activated_abilities.get(index - reg_count)
+    } else {
+        // Granted-by-attachment tier — same `continuous_effects` order
+        // as the enumerator (`granted_activated_for`).
+        state.granted_activated_for(obj.id)
+            .get(index - reg_count - intrinsic_count)
+            .copied()
     }
 }
 
@@ -3863,6 +3877,67 @@ mod tests {
         assert!(actions.iter().any(|a|
             matches!(a, Action::ActivateAbility { source, .. } if *source == token_id)),
             "Clue's intrinsic {{2}}, Sac: Draw activation should be enumerated");
+    }
+
+    #[test]
+    fn granted_activated_ability_from_attachment_shows_up_on_host() {
+        use crate::layers::{ContinuousEffect, Duration};
+        use crate::registry::{
+            ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+        };
+        use crate::effects::Effect;
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        // Host creature (player 0), able to tap.
+        let host = {
+            let id = s.allocate_object_id();
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, creature_chars(2, 2));
+            o.controller = 0;
+            o.status.summoning_sick = false;
+            s.objects.insert(o);
+            id
+        };
+        // Aura attached to the host.
+        let aura = {
+            let id = s.allocate_object_id();
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0,
+                Characteristics { types: TypeLine::ENCHANTMENT.into(), ..Default::default() });
+            o.controller = 0;
+            o.attached_to = Some(host);
+            s.objects.insert(o);
+            id
+        };
+        s.objects.get_mut(host).unwrap().attachments.push(aura);
+
+        fn granted_effect(_s: &GameState, _c: &ActivationContext, _r: &CardRegistry)
+            -> Vec<Effect> { Vec::new() }
+        let ability = ActivatedAbilityDef {
+            text: "{T}: granted".into(),
+            cost: ActivationCost { tap: true, ..ActivationCost::default() },
+            target_requirements: Vec::new(),
+            is_mana_ability: false,
+            is_loyalty_ability: false,
+            activation_zone: ActivationZone::Battlefield,
+            is_instant_speed: false,
+            face_gate: None,
+            effect: granted_effect,
+        };
+        s.add_continuous_effect(ContinuousEffect::attached_activated(
+            aura, ability, Duration::WhileSourceOnBattlefield));
+
+        // The HOST can activate the Aura-granted "{T}: …" ability.
+        let actions = legal_actions(&s, &reg);
+        assert!(actions.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == host)),
+            "Aura-granted activated ability should be enumerated on the host");
+
+        // Detach the Aura → the grant vanishes (auto-expiry).
+        s.objects.get_mut(aura).unwrap().attached_to = None;
+        let actions2 = legal_actions(&s, &reg);
+        assert!(!actions2.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == host)),
+            "an unattached Aura grants nothing");
     }
 
     #[test]

@@ -376,6 +376,14 @@ fn synth_event(
                 count: chapter.unwrap_or(1),
             }
         }
+        // Aura host trigger: synthesize the INNER condition's event on
+        // `source` so the effect still executes (panic-surfacing via the
+        // fallback). The live `matches` keys on `source.attached_to`,
+        // which the minimal probe doesn't seed, so the verdict honestly
+        // reports no-fire — same posture as other attachment-dependent
+        // checks.
+        TC::AttachedCreatureDoes { condition } =>
+            return synth_event(condition, source, controller, stack_spell, dummy),
         // Unreproducible — skip the verdict (still executed via ETB fallback).
         TC::Custom(_) => return None,
     })

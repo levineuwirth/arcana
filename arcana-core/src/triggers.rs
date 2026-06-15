@@ -236,6 +236,18 @@ pub enum TriggerCondition {
     SelfDies,
     /// "When ~ attacks".
     SelfAttacks,
+    /// Aura/Equipment host trigger — "When/Whenever ENCHANTED (or
+    /// equipped) creature <does X>". Wraps an inner condition and
+    /// evaluates it as though the source were `source.attached_to`
+    /// (the host), so `AttachedCreatureDoes(Box::new(SelfDies))` fires
+    /// when the enchanted creature dies, `…(SelfAttacks)` when it
+    /// attacks, etc. Inert while the Aura is unattached. The triggered
+    /// ability's effect still runs with `trig.source` = the Aura
+    /// (use the `PendingTrigger` accessors — `dying_object`,
+    /// `attacking_creature` — to reach the host). `source_controller`
+    /// stays the Aura's controller (a faithful approximation for the
+    /// rare host trigger that reads it).
+    AttachedCreatureDoes { condition: Box<TriggerCondition> },
     /// CR 702.21a — "Whenever ~ becomes the target of a spell or
     /// ability an opponent controls." Matches [`GameEvent::BecomesTarget`]
     /// where `target == source` and the targeting player passes
@@ -553,6 +565,17 @@ impl TriggerCondition {
                 let GameEvent::Sacrifice { object_id, .. } = event
                     else { return false; };
                 match_filter_on(state, *object_id, filter, source_controller)
+            }
+
+            AttachedCreatureDoes { condition } => {
+                // Re-evaluate the inner condition with the host
+                // substituted for the source. CR 303.4: the Aura's
+                // ability watches events on the enchanted permanent.
+                match state.objects.get(source).and_then(|o| o.attached_to) {
+                    Some(host) =>
+                        condition.matches(event, host, source_controller, state),
+                    None => false,
+                }
             }
 
             Custom(f) => f(event, state, source),
@@ -1138,6 +1161,32 @@ mod tests {
         let event = GameEvent::Dies { object_id: 1 };
         assert!(TriggerCondition::SelfDies.matches(&event, 1, 0, &s));
         assert!(!TriggerCondition::SelfDies.matches(&event, 2, 0, &s));
+    }
+
+    #[test]
+    fn attached_creature_does_substitutes_host() {
+        // An Aura (id=aura) attached to a creature (id=host). Its
+        // AttachedCreatureDoes(SelfDies) fires when the HOST dies, not
+        // when the Aura itself dies, and not while unattached.
+        let mut s = GameState::new(2, 0);
+        let host = put_creature(&mut s, 0, Zone::Battlefield);
+        let aura = put_creature(&mut s, 0, Zone::Battlefield); // stand-in object
+        let cond = TriggerCondition::AttachedCreatureDoes {
+            condition: Box::new(TriggerCondition::SelfDies),
+        };
+
+        // Unattached: inert.
+        let host_dies = GameEvent::Dies { object_id: host };
+        assert!(!cond.matches(&host_dies, aura, 0, &s));
+
+        // Attach the Aura to the host.
+        s.objects.get_mut(aura).unwrap().attached_to = Some(host);
+
+        // Host dies → the Aura's trigger fires.
+        assert!(cond.matches(&host_dies, aura, 0, &s));
+        // The Aura itself dying does NOT fire this trigger.
+        let aura_dies = GameEvent::Dies { object_id: aura };
+        assert!(!cond.matches(&aura_dies, aura, 0, &s));
     }
 
     #[test]

@@ -987,7 +987,7 @@ fn apply_activate_ability(
         // an intrinsic ability after the source object has been
         // sacrificed as part of the cost.
         let Some(ability) = crate::legal_actions::lookup_activated_ability(
-            obj, registry, ability_index,
+            obj, registry, state, ability_index,
         ) else { return; };
         (
             obj.card_id,

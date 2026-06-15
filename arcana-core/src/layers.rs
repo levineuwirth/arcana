@@ -447,6 +447,23 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build an "enchanted/equipped creature has '\[cost\]: \[effect\]'"
+    /// grant. The `ability`'s cost and effect run against the HOST when
+    /// the host's controller activates it. Pair with
+    /// [`Duration::WhileSourceOnBattlefield`].
+    pub fn attached_activated(source: ObjectId,
+                              ability: crate::registry::ActivatedAbilityDef,
+                              duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureGrantsActivated { ability },
+        }
+    }
+
     /// Build a GLOBAL filtered pump ("[filter] creatures get +P/+T"),
     /// layer 7c. Filter is matched against BASE characteristics from
     /// the source controller's perspective.
@@ -848,6 +865,17 @@ pub enum ContinuousEffectKind {
     /// [`Self::CantBlock`]; follows `source.attached_to`; consumed by
     /// [`GameState::cant_block`]. Inert while unattached.
     AttachedCreatureCantBlock,
+    /// MARKER — "Enchanted/equipped creature has '\[cost\]: \[effect\]'"
+    /// (Evanescent Intellect, Squirrel Nest, Murderous Betrayal). Grants
+    /// the held [`ActivatedAbilityDef`] to `source.attached_to`; gathered
+    /// by [`GameState::granted_activated_for`] and chained into the
+    /// host's activated-ability enumeration (the cost — e.g. `{T}` —
+    /// applies to the HOST). Inert while unattached; auto-expires when
+    /// the Aura/Equipment leaves (the effect is dropped from
+    /// `continuous_effects`).
+    AttachedCreatureGrantsActivated {
+        ability: crate::registry::ActivatedAbilityDef,
+    },
     /// "Equipped/enchanted creature gets +X/+Y where X/Y depend on
     /// board state" (Blackblade Reforged "+1/+1 for each land you
     /// control", Empyrial Armor "+1/+1 for each card in your hand").
@@ -1040,6 +1068,7 @@ impl ContinuousEffectKind {
             | Self::FilteredCantBlock { .. }
             | Self::AttachedCreatureCantAttack
             | Self::AttachedCreatureCantBlock
+            | Self::AttachedCreatureGrantsActivated { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
@@ -1107,6 +1136,7 @@ impl ContinuousEffectKind {
             | Self::FilteredCantBlock { .. }
             | Self::AttachedCreatureCantAttack
             | Self::AttachedCreatureCantBlock
+            | Self::AttachedCreatureGrantsActivated { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
@@ -1489,6 +1519,27 @@ impl GameState {
     }
 
     /// Does `object_id` have an active "can't block" restriction?
+    /// Activated abilities granted to `object_id` by an attached
+    /// Aura/Equipment (CR 303.4 / 702.6 "enchanted creature has
+    /// '\[cost\]: …'"). Gathers every live
+    /// [`ContinuousEffectKind::AttachedCreatureGrantsActivated`] whose
+    /// source is attached to `object_id`, in `continuous_effects`
+    /// order. The SAME order is used by both the legal-action
+    /// enumerator and `lookup_activated_ability`, so the flat ability
+    /// index stays consistent between enumeration and resolution.
+    pub fn granted_activated_for(&self, object_id: ObjectId)
+        -> Vec<&crate::registry::ActivatedAbilityDef>
+    {
+        self.continuous_effects.iter().filter_map(|e| match &e.kind {
+            ContinuousEffectKind::AttachedCreatureGrantsActivated { ability }
+                if e.is_live(self)
+                    && self.objects.get(e.source)
+                        .and_then(|s| s.attached_to) == Some(object_id) =>
+                Some(ability),
+            _ => None,
+        }).collect()
+    }
+
     /// Consumed by [`crate::combat::GameState::blocker_eligible`].
     pub fn cant_block(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {

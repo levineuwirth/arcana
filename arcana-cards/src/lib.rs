@@ -1391,6 +1391,7 @@ mod behavioral_triage {
             T::LifeGained{..} => "LifeGained", T::CounterAdded{..} => "CounterAdded(Saga)",
             T::CardDrawn{..} => "CardDrawn", T::CardDiscarded{..} => "CardDiscarded",
             T::CreatureAttacks{..} => "CreatureAttacks", T::Sacrificed{..} => "Sacrificed",
+            T::AttachedCreatureDoes{..} => "AttachedCreatureDoes",
             T::Custom(_) => "Custom",
         }
     }
