@@ -43,3 +43,4 @@ pub mod gallows_at_willow_hill;
 pub mod demonic_rising;
 pub mod triumph_of_cruelty;
 pub mod triumph_of_ferocity;
+pub mod guise_of_fire;

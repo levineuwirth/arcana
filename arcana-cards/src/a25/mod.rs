@@ -39,3 +39,5 @@ pub mod pendelhaven;
 pub mod rishadan_port;
 pub mod quicksand;
 pub mod goblin_war_drums;
+pub mod caustic_tar;
+pub mod pillory_of_the_sleepless;

@@ -27,3 +27,4 @@ pub mod rod_of_spanking;
 pub mod r_d_s_secret_lair;
 pub mod mox_lotus;
 pub mod ach_hans_run;
+pub mod loose_lips;

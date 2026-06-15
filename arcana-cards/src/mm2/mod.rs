@@ -27,3 +27,4 @@ pub mod spikeshot_elder;
 pub mod all_suns_dawn;
 pub mod copper_carapace;
 pub mod inexorable_tide;
+pub mod arrest;

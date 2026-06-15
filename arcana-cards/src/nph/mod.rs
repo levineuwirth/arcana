@@ -26,3 +26,4 @@ pub mod immolating_souleater;
 pub mod greenhilt_trainee;
 pub mod isolation_cell;
 pub mod soul_conduit;
+pub mod glistening_oil;

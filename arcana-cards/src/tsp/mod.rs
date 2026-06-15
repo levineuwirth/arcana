@@ -23,3 +23,4 @@ pub mod dementia_sliver;
 pub mod viscid_lemures;
 pub mod thunder_totem;
 pub mod opal_guardian;
+pub mod ghitu_firebreathing;

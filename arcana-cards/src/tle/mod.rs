@@ -48,3 +48,4 @@ pub mod founding_of_omashu;
 pub mod match_the_odds;
 pub mod bumi_s_feast_lecture;
 pub mod fire_nation_s_conquest;
+pub mod seismic_tutelage;

@@ -41,3 +41,4 @@ pub mod fecundity;
 pub mod sigil_of_the_new_dawn;
 pub mod raid_bombardment;
 pub mod back_to_basics;
+pub mod spider_umbra;

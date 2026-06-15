@@ -52,3 +52,5 @@ pub mod livewire_lash;
 pub mod bounty_of_the_luxa;
 pub mod bitterblossom;
 pub mod concordant_crossroads;
+pub mod hyena_umbra;
+pub mod rancor;

@@ -105,3 +105,4 @@ pub mod invasion_of_pyrulea_gargantuan_slabhorn;
 pub mod kor_halberd;
 pub mod kitesail;
 pub mod tribute_to_the_world_tree;
+pub mod crystal_carapace;

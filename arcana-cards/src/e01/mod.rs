@@ -7,3 +7,4 @@ pub mod gideon_s_lawkeeper;
 pub mod anointer_of_champions;
 pub mod obsidian_fireheart;
 pub mod obelisk_of_grixis;
+pub mod grasp_of_the_hieromancer;

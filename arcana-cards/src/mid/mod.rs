@@ -82,3 +82,4 @@ pub mod moonsilver_key;
 pub mod stuffed_bear;
 pub mod borrowed_time;
 pub mod ominous_roost;
+pub mod immolation;

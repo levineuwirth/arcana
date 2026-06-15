@@ -59,3 +59,5 @@ pub mod bleeding_woods;
 pub mod abandoned_campground;
 pub mod raucous_carnival;
 pub mod murky_sewer;
+pub mod sporogenic_infection;
+pub mod shardmage_s_rescue;

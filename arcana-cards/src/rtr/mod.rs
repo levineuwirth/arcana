@@ -51,3 +51,4 @@ pub mod pyroconvergence;
 pub mod conjured_currency;
 pub mod martial_law;
 pub mod collective_blessing;
+pub mod security_blockade;

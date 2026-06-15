@@ -11,3 +11,4 @@ pub mod leyline_phantom;
 pub mod putrid_leech;
 pub mod stonefare_crocodile;
 pub mod chronomaton;
+pub mod agoraphobia;

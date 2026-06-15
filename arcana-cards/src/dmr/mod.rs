@@ -60,3 +60,5 @@ pub mod lightning_rift;
 pub mod umbilicus;
 pub mod oversold_cemetery;
 pub mod invigorating_boon;
+pub mod squirrel_nest;
+pub mod seton_s_desire;

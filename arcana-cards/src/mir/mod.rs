@@ -64,3 +64,6 @@ pub mod misers_cage;
 pub mod razor_pendulum;
 pub mod paupers_cage;
 pub mod reparations;
+pub mod binding_agony;
+pub mod ritual_of_steel;
+pub mod soar;

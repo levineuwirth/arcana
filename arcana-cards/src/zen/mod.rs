@@ -33,3 +33,4 @@ pub mod kalitas_bloodchief_of_ghet;
 pub mod sea_gate_loremaster;
 pub mod trusty_machete;
 pub mod electropotence;
+pub mod savage_silhouette;

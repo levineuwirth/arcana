@@ -16,3 +16,4 @@ pub mod mox_poison;
 pub mod glade_of_the_pump_spells;
 pub mod omenpath_to_naya;
 pub mod temur_elevator;
+pub mod planeswalkerificate;

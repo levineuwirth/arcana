@@ -75,3 +75,5 @@ pub mod portable_hole;
 pub mod plus_2_mace;
 pub mod treasure_vault;
 pub mod teleportation_circle;
+pub mod a_precipitous_drop;
+pub mod fly;

@@ -56,3 +56,4 @@ pub mod verdant_catacombs;
 pub mod vectis_gloves;
 pub mod feast_of_sanity;
 pub mod fae_offering;
+pub mod shattered_ego;

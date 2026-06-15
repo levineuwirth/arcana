@@ -95,3 +95,4 @@ pub mod necroduality;
 pub mod unnatural_growth;
 pub mod mass_hysteria;
 pub mod intangible_virtue;
+pub mod lunarch_mantle;

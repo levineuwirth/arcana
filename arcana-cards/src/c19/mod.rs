@@ -17,3 +17,4 @@ pub mod song_of_the_worldsoul;
 pub mod faith_of_the_devoted;
 pub mod growing_ranks;
 pub mod secrets_of_the_dead;
+pub mod gift_of_doom;

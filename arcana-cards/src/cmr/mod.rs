@@ -75,3 +75,4 @@ pub mod seer_s_lantern;
 pub mod first_response;
 pub mod mask_of_memory;
 pub mod furnace_celebration;
+pub mod vow_of_torment;

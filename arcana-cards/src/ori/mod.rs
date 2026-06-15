@@ -42,3 +42,6 @@ pub mod chandra_fire_of_kaladesh_chandra_roaring_flame;
 pub mod jayemdae_tome;
 pub mod brawler_s_plate;
 pub mod veteran_s_sidearm;
+pub mod stratus_walk;
+pub mod mantle_of_webs;
+pub mod consecrated_by_blood;

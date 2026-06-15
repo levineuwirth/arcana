@@ -65,3 +65,5 @@ pub mod elegant_parlor;
 pub mod undergrowth_recon;
 pub mod chalk_outline;
 pub mod makeshift_binding;
+pub mod due_diligence;
+pub mod curious_inquiry;

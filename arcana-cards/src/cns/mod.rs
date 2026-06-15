@@ -21,3 +21,4 @@ pub mod heckling_fiends;
 pub mod grixis_illusionist;
 pub mod dimir_doppelganger;
 pub mod reito_lantern;
+pub mod uncontrollable_anger;

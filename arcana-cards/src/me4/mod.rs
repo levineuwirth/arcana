@@ -86,3 +86,5 @@ pub mod kismet;
 pub mod serra_aviary;
 pub mod smoke;
 pub mod mystic_decree;
+pub mod weakness;
+pub mod instill_energy;

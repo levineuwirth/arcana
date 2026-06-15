@@ -18,3 +18,4 @@ pub mod cephalid_snitch;
 pub mod crazed_firecat;
 pub mod cephalid_vandal;
 pub mod shambling_swarm;
+pub mod shade_s_form;

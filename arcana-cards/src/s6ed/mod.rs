@@ -34,3 +34,4 @@ pub mod serenity;
 pub mod dread_of_night;
 pub mod light_of_day;
 pub mod chill;
+pub mod hero_s_resolve;

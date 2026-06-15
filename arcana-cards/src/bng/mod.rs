@@ -28,3 +28,6 @@ pub mod aspect_of_hydra;
 pub mod acolyte_s_reward;
 pub mod gorgon_s_head;
 pub mod siren_song_lyre;
+pub mod epiphany_storm;
+pub mod eternity_snare;
+pub mod fearsome_temper;

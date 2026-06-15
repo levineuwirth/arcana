@@ -51,3 +51,4 @@ pub mod staff_of_the_sun_magus;
 pub mod staff_of_the_wild_magus;
 pub mod might_makes_right;
 pub mod feast_on_the_fallen;
+pub mod spectra_ward;

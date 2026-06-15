@@ -49,3 +49,5 @@ pub mod unholy_grotto;
 pub mod convalescent_care;
 pub mod death_match;
 pub mod aether_charge;
+pub mod crown_of_fury;
+pub mod mythic_proportions;

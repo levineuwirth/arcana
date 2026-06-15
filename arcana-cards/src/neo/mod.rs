@@ -82,3 +82,5 @@ pub mod roadside_reliquary;
 pub mod boseiju_who_endures;
 pub mod moonsnare_prototype;
 pub mod tempered_in_solitude;
+pub mod historian_s_wisdom;
+pub mod short_circuit;

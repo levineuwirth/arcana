@@ -36,3 +36,6 @@ pub mod worldslayer;
 pub mod honor_of_the_pure;
 pub mod levitation;
 pub mod personal_sanctuary;
+pub mod lifelink;
+pub mod firebreathing;
+pub mod flight;

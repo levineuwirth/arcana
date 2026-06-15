@@ -65,3 +65,5 @@ pub mod leonin_scimitar;
 pub mod citanul_flute;
 pub mod root_maze;
 pub mod primal_rage;
+pub mod treetop_bracers;
+pub mod arcane_teachings;

@@ -82,3 +82,5 @@ pub mod witch_s_oven;
 pub mod witch_s_cottage;
 pub mod idyllic_grange;
 pub mod revenge_of_ravens;
+pub mod tall_as_a_beanstalk;
+pub mod so_tiny;

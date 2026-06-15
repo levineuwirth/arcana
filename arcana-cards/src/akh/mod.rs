@@ -47,3 +47,4 @@ pub mod cradle_of_the_accursed;
 pub mod hazoret_s_favor;
 pub mod protection_of_the_hekma;
 pub mod anointed_procession;
+pub mod compulsory_rest;

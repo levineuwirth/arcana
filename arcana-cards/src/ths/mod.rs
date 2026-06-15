@@ -54,3 +54,6 @@ pub mod witches_eye;
 pub mod fleetfeather_sandals;
 pub mod nykthos_shrine_to_nyx;
 pub mod flamecast_wheel;
+pub mod nylea_s_presence;
+pub mod ordeal_of_purphoros;
+pub mod messenger_s_speed;

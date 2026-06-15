@@ -59,3 +59,4 @@ pub mod whirling_catapult;
 pub mod aeolipile;
 pub mod barbed_sextant;
 pub mod inheritance;
+pub mod krovikan_fetish;
