@@ -66,3 +66,4 @@ pub mod mishra_s_bauble;
 pub mod boon_reflection;
 pub mod tempered_steel;
 pub mod rage_reflection;
+pub mod yavimaya_s_embrace;

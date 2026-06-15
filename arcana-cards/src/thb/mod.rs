@@ -66,3 +66,4 @@ pub mod thassa_s_oracle;
 pub mod mirror_shield;
 pub mod bronze_sword;
 pub mod unknown_shores;
+pub mod dreadful_apathy;

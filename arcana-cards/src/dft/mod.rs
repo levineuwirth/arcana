@@ -48,3 +48,4 @@ pub mod riverpyre_verge;
 pub mod unstoppable_plan;
 pub mod silken_strength;
 pub mod lightwheel_enhancements;
+pub mod roadside_assistance;

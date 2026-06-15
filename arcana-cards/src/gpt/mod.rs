@@ -32,3 +32,4 @@ pub mod orzhova_the_church_of_deals;
 pub mod hissing_miasma;
 pub mod hatching_plans;
 pub mod hypervolt_grasp;
+pub mod fencer_s_magemark;

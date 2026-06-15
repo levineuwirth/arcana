@@ -62,3 +62,5 @@ pub mod pure_reflection;
 pub mod kavu_lair;
 pub mod spirit_of_resistance;
 pub mod divine_presence;
+pub mod scavenged_weaponry;
+pub mod whip_silk;

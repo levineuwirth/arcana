@@ -52,3 +52,4 @@ pub mod artifact_unknown_shores;
 pub mod the_alright_henge;
 pub mod white_rhystic_study;
 pub mod across_the_multiverse;
+pub mod unstickerify;

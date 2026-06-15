@@ -25,3 +25,4 @@ pub mod fugitive_of_the_judoon;
 pub mod the_sea_devils;
 pub mod trenzalore_clocktower;
 pub mod ominous_cemetery;
+pub mod become_the_pilot;

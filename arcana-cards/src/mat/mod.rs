@@ -5,3 +5,4 @@ pub mod filter_out;
 pub mod arni_metalbrow;
 pub mod drannith_ruins;
 pub mod training_grounds;
+pub mod leyline_immersion;

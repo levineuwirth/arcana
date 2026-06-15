@@ -24,3 +24,5 @@ pub mod magewright_s_stone;
 pub mod prahv_spires_of_order;
 pub mod pain_magnification;
 pub mod proper_burial;
+pub mod street_savvy;
+pub mod riot_spikes;

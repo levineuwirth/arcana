@@ -59,3 +59,4 @@ pub mod murderer_s_axe;
 pub mod creeping_dread;
 pub mod trail_of_evidence;
 pub mod fevered_visions;
+pub mod equestrian_skill;

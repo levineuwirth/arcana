@@ -5,3 +5,4 @@ pub mod shower_of_sparks;
 pub mod stand_firm;
 pub mod somberwald_vigilante;
 pub mod stun_sniper;
+pub mod daily_regimen;

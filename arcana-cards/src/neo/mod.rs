@@ -84,3 +84,6 @@ pub mod moonsnare_prototype;
 pub mod tempered_in_solitude;
 pub mod historian_s_wisdom;
 pub mod short_circuit;
+pub mod careful_cultivation;
+pub mod intercessor_s_arrest;
+pub mod akki_war_paint;

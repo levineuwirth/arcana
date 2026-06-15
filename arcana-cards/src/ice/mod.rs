@@ -43,3 +43,4 @@ pub mod malachite_talisman;
 pub mod lim_d_l_s_hex;
 pub mod monsoon;
 pub mod chaos_moon;
+pub mod snow_devil;

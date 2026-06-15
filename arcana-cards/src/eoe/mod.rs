@@ -66,3 +66,4 @@ pub mod banishing_light;
 pub mod seam_rip;
 pub mod weapons_manufacturing;
 pub mod requiem_monolith;
+pub mod cryoshatter;

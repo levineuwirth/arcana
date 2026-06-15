@@ -38,3 +38,4 @@ pub mod waterlogged_grove;
 pub mod nurturing_peatland;
 pub mod prismatic_vista;
 pub mod answered_prayers;
+pub mod sadistic_obsession;

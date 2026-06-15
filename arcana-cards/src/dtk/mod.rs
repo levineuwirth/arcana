@@ -48,3 +48,4 @@ pub mod spidersilk_net;
 pub mod sight_of_the_scalelords;
 pub mod silkwrap;
 pub mod virulent_plague;
+pub mod encase_in_ice;

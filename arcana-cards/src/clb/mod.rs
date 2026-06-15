@@ -121,3 +121,4 @@ pub mod flaming_fist;
 pub mod cultist_of_the_absolute;
 pub mod feywild_visitor;
 pub mod stunning_strike;
+pub mod stoneskin;

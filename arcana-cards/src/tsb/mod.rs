@@ -18,3 +18,4 @@ pub mod auratog;
 pub mod merfolk_assassin;
 pub mod claws_of_gix;
 pub mod war_barge;
+pub mod consecrate_land;

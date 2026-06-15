@@ -32,3 +32,4 @@ pub mod into_the_wilds;
 pub mod dark_prophecy;
 pub mod oath_of_the_ancient_wood;
 pub mod dismiss_into_dream;
+pub mod sensory_deprivation;

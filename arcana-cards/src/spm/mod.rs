@@ -39,3 +39,4 @@ pub mod kapow;
 pub mod web_shooters;
 pub mod spider_suit;
 pub mod web_up;
+pub mod spider_man_no_more;

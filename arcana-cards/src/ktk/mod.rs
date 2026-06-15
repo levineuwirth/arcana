@@ -53,3 +53,4 @@ pub mod goblinslide;
 pub mod quiet_contemplation;
 pub mod sultai_ascendancy;
 pub mod suspension_field;
+pub mod siegecraft;

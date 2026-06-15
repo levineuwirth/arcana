@@ -23,3 +23,4 @@ pub mod vectis_dominator;
 pub mod skyclaw_thrash;
 pub mod demonspine_whip;
 pub mod predatory_advantage;
+pub mod trace_of_abundance;

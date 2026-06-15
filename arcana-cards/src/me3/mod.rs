@@ -86,3 +86,5 @@ pub mod hammerheim;
 pub mod nova_pentacle;
 pub mod barl_s_cage;
 pub mod the_abyss;
+pub mod spectral_shield;
+pub mod spirit_shackle;

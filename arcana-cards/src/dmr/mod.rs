@@ -62,3 +62,5 @@ pub mod oversold_cemetery;
 pub mod invigorating_boon;
 pub mod squirrel_nest;
 pub mod seton_s_desire;
+pub mod griffin_guide;
+pub mod hermetic_study;

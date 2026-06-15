@@ -44,3 +44,4 @@ pub mod compost;
 pub mod knighthood;
 pub mod bedlam;
 pub mod familiar_ground;
+pub mod leshrac_s_rite;

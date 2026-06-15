@@ -62,3 +62,4 @@ pub mod planar_void;
 pub mod opal_caryatid;
 pub mod crosswinds;
 pub mod despondency;
+pub mod launch;

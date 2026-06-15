@@ -16,3 +16,4 @@ pub mod james_wandering_dad_follow_him;
 pub mod vault_11_voter_s_dilemma;
 pub mod junktown;
 pub mod power_fist;
+pub mod almost_perfect;

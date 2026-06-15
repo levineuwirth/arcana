@@ -47,3 +47,5 @@ pub mod pariah_s_shield;
 pub mod illusionist_s_bracers;
 pub mod guardian_project;
 pub mod fists_of_ironwood;
+pub mod taste_for_mayhem;
+pub mod wurmweaver_coil;

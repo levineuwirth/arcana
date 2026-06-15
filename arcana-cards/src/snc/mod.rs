@@ -77,3 +77,6 @@ pub mod jackhammer;
 pub mod riveteers_ascendancy;
 pub mod cabaretti_ascendancy;
 pub mod brokers_ascendancy;
+pub mod hold_for_ransom;
+pub mod public_enemy;
+pub mod a_public_enemy;

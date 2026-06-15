@@ -33,3 +33,4 @@ pub mod ogre_s_cleaver;
 pub mod time_of_heroes;
 pub mod luminous_wake;
 pub mod eland_umbra;
+pub mod drake_umbra;

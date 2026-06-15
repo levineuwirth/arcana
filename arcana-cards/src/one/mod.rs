@@ -46,3 +46,4 @@ pub mod copperline_gorge;
 pub mod seachrome_coast;
 pub mod veil_of_assimilation;
 pub mod prosthetic_injector;
+pub mod necrogen_communion;

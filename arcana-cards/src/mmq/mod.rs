@@ -119,3 +119,6 @@ pub mod statecraft;
 pub mod squeeze;
 pub mod high_seas;
 pub mod flaming_sword;
+pub mod buoyancy;
+pub mod soul_channeling;
+pub mod cave_sense;

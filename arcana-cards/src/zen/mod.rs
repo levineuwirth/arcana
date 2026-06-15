@@ -34,3 +34,4 @@ pub mod sea_gate_loremaster;
 pub mod trusty_machete;
 pub mod electropotence;
 pub mod savage_silhouette;
+pub mod mire_blight;

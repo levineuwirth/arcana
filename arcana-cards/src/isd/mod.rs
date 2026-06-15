@@ -41,3 +41,4 @@ pub mod ghoulcaller_s_bell;
 pub mod stensia_bloodhall;
 pub mod graveyard_shovel;
 pub mod parallel_lives;
+pub mod spectral_flight;

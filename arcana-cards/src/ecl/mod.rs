@@ -72,3 +72,6 @@ pub mod mirrormind_crown;
 pub mod springleaf_drum;
 pub mod liminal_hold;
 pub mod lasting_tarfire;
+pub mod gilt_leaf_s_embrace;
+pub mod spiral_into_solitude;
+pub mod aquitect_s_defenses;

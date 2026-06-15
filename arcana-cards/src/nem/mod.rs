@@ -41,3 +41,4 @@ pub mod kor_haven;
 pub mod belbe_s_armor;
 pub mod noble_stand;
 pub mod aether_barrier;
+pub mod parallax_dementia;

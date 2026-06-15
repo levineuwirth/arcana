@@ -44,3 +44,5 @@ pub mod demonic_rising;
 pub mod triumph_of_cruelty;
 pub mod triumph_of_ferocity;
 pub mod guise_of_fire;
+pub mod spirit_away;
+pub mod ghoulflesh;

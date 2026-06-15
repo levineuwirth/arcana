@@ -45,3 +45,4 @@ pub mod veteran_s_sidearm;
 pub mod stratus_walk;
 pub mod mantle_of_webs;
 pub mod consecrated_by_blood;
+pub mod suppression_bonds;

@@ -100,3 +100,4 @@ pub mod glowcap_lantern;
 pub mod mephitic_draught;
 pub mod deeproot_pilgrimage;
 pub mod might_of_the_ancestors;
+pub mod etali_s_favor;

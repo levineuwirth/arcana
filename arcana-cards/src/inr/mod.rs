@@ -96,3 +96,6 @@ pub mod unnatural_growth;
 pub mod mass_hysteria;
 pub mod intangible_virtue;
 pub mod lunarch_mantle;
+pub mod bound_by_moonsilver;
+pub mod gryff_s_boon;
+pub mod faith_unbroken;

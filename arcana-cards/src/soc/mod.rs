@@ -113,3 +113,5 @@ pub mod awakening_zone;
 pub mod monologue_tax;
 pub mod forum_filibuster;
 pub mod tocasia_s_welcome;
+pub mod flickering_ward;
+pub mod parasitic_impetus;

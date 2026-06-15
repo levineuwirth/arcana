@@ -59,3 +59,4 @@ pub mod jade_statue;
 pub mod sacred_ground;
 pub mod serra_s_blessing;
 pub mod worship;
+pub mod fishliver_oil;

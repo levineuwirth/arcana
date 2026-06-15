@@ -8,3 +8,4 @@ pub mod morgue_toad;
 pub mod spitemare;
 pub mod ajani_s_mantra;
 pub mod searing_meditation;
+pub mod recumbent_bliss;
