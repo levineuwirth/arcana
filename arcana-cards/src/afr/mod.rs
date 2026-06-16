@@ -108,3 +108,5 @@ pub mod a_cloister_gargoyle;
 pub mod ebondeath_dracolich;
 pub mod triumphant_adventurer;
 pub mod ochre_jelly;
+pub mod red_dragon;
+pub mod acererak_the_archlich;

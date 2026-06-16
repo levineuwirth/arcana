@@ -121,3 +121,5 @@ pub mod edgewall_pack;
 pub mod tenacious_tomeseeker;
 pub mod storyteller_pixie;
 pub mod provisions_merchant;
+pub mod hamlet_glutton;
+pub mod harried_spearguard;

@@ -78,3 +78,4 @@ pub mod aethersquall_ancient;
 pub mod empyreal_voyager;
 pub mod thriving_grubs;
 pub mod thriving_rhino;
+pub mod embraal_bruiser;

@@ -54,3 +54,4 @@ pub mod barbed_field;
 pub mod noxious_field;
 pub mod stormwatch_eagle;
 pub mod jeweled_spirit;
+pub mod glittering_lion;

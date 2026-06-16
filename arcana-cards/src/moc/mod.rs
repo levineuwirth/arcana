@@ -44,3 +44,4 @@ pub mod the_locust_god;
 pub mod flamerush_rider;
 pub mod high_sentinels_of_arashin;
 pub mod darksteel_splicer;
+pub mod abzan_battle_priest;

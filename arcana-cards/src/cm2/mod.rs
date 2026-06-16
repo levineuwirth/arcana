@@ -23,3 +23,6 @@ pub mod bred_for_the_hunt;
 pub mod memory_erosion;
 pub mod vow_of_malice;
 pub mod troll_ascetic;
+pub mod arbiter_of_knollridge;
+pub mod vorosh_the_hunter;
+pub mod extractor_demon;

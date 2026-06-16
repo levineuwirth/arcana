@@ -99,3 +99,4 @@ pub mod scrapwork_cohort;
 pub mod skystrike_officer;
 pub mod tyrant_of_kher_ridges;
 pub mod mishra_tamer_of_mak_fawa;
+pub mod thran_spider;

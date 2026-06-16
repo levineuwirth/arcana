@@ -34,3 +34,4 @@ pub mod reiver_demon;
 pub mod oni_of_wild_places;
 pub mod thief_of_blood;
 pub mod skyward_eye_prophets;
+pub mod gwyllion_hedge_mage;

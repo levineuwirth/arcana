@@ -80,3 +80,4 @@ pub mod edge_rover;
 pub mod seedship_broodtender;
 pub mod biomechan_engineer;
 pub mod kav_landseeker;
+pub mod tannuk_steadfast_second;

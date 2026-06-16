@@ -42,3 +42,4 @@ pub mod corrupted_conscience;
 pub mod tezzeret_agent_of_bolas;
 pub mod myr_welder;
 pub mod tine_shrike;
+pub mod mirran_spy;

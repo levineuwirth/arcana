@@ -155,3 +155,6 @@ pub mod raggadragga_goreguts_boss;
 pub mod dusk_mangler;
 pub mod angler_turtle;
 pub mod ancient_bronze_dragon;
+pub mod ancient_brass_dragon;
+pub mod oji_the_exquisite_blade;
+pub mod solemn_recruit;

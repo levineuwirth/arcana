@@ -73,3 +73,5 @@ pub mod vohar_vodalian_desecrator;
 pub mod sengir_connoisseur;
 pub mod ratadrabik_of_urborg;
 pub mod a_tatyova_steward_of_tides;
+pub mod defiler_of_faith;
+pub mod aether_channeler;

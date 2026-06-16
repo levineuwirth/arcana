@@ -84,3 +84,5 @@ pub mod dragonsguard_elite;
 pub mod hall_monitor;
 pub mod waterfall_aerialist;
 pub mod relic_sloth;
+pub mod maelstrom_muse;
+pub mod dream_strix;

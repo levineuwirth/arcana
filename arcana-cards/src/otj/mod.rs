@@ -80,3 +80,4 @@ pub mod calamity_galloping_inferno;
 pub mod djinn_of_fool_s_fall;
 pub mod oasis_gardener;
 pub mod deadeye_duelist;
+pub mod outlaw_medic;

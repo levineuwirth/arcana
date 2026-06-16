@@ -26,3 +26,4 @@ pub mod geist_honored_monk;
 pub mod ethereal_valkyrie;
 pub mod poison_tip_archer;
 pub mod soulherder;
+pub mod inspired_sphinx;

@@ -53,3 +53,4 @@ pub mod kashi_tribe_elite;
 pub mod ghost_lit_warder;
 pub mod sokenzan_spellblade;
 pub mod matsu_tribe_birdstalker;
+pub mod skull_collector;

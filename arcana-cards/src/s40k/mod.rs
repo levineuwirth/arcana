@@ -43,3 +43,7 @@ pub mod abaddon_the_despoiler;
 pub mod magnus_the_red;
 pub mod lictor;
 pub mod trazyn_the_infinite;
+pub mod aberrant;
+pub mod toxicrene;
+pub mod exocrine;
+pub mod skorpekh_destroyer;

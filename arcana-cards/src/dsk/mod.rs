@@ -85,3 +85,4 @@ pub mod ripchain_razorkin;
 pub mod miasma_demon;
 pub mod undead_sprinter;
 pub mod popular_egotist;
+pub mod enduring_courage;

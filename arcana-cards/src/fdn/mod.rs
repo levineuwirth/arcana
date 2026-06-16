@@ -188,3 +188,5 @@ pub mod arahbo_the_first_fang;
 pub mod mischievous_mystic;
 pub mod lightshell_duo;
 pub mod elementalist_adept;
+pub mod ball_lightning;
+pub mod drakuseth_maw_of_flames;

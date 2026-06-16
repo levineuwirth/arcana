@@ -8,3 +8,4 @@ pub mod teyo_aegis_adept;
 pub mod sarkhan_wanderer_to_shiv;
 pub mod davriel_soul_broker;
 pub mod skyshroud_lookout;
+pub mod subversive_acolyte;

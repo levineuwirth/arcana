@@ -116,3 +116,5 @@ pub mod kyodai_soul_of_kamigawa;
 pub mod kami_of_transience;
 pub mod moonsnare_specialist;
 pub mod blade_of_the_oni;
+pub mod goro_goro_disciple_of_ryusei;
+pub mod a_silver_fur_master;

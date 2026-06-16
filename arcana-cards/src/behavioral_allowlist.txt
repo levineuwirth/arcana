@@ -15,6 +15,7 @@ Aladdin
 All Suns' Dawn
 Altar of the Wretched
 Amulet of Vigor
+Arbiter of Knollridge
 Armed Response
 Ashcoat of the Shadow Swarm
 Auriok Transfixer
@@ -93,6 +94,7 @@ Drownyard Temple
 Dumb Ass
 Durable Coilbug
 Elder Druid
+Eldrazi Ravager
 Electrosiphon
 Elvish Scout
 Elvish Vatkeeper
@@ -147,12 +149,14 @@ Invert Polarity
 Inverted Iceberg
 Ire of Kaminari
 It'll Quench Ya!
+Iwamori of the Open Fist
 Ixidor's Will
 Jace, Ingenious Mind-Mage
 Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
+Kellogg, Dangerous Mind
 Keruga, the Macrosage
 Kindlespark Duo
 Kindred Denial
@@ -160,6 +164,7 @@ Kiora's Follower
 Kiora, Behemoth Beckoner
 Kiora, the Tide's Fury
 Koh, the Face Stealer
+Kraul Swarm
 Kumano Faces Kakkazan
 Lapse of Certainty
 Lay Bare
@@ -168,6 +173,7 @@ Lifeline
 Lightning-Rig Crew
 Lingering Phantom
 Liquify
+Lita, Mechanical Engineer
 Lofty Denial
 Loyal Retainers
 Lunar Force
@@ -197,6 +203,7 @@ Minamo's Meddling
 Minamo, School at Water's Edge
 Mindstatic
 Minor Misstep
+Mirran Spy
 Mirror Universe
 Mishra's Helix
 Moonstone Harbinger
@@ -318,6 +325,7 @@ The Akroan War
 The Legend of Yangchen
 The Modern Age
 The Reaper, King No More
+Thermo-Alchemist
 Thing in the Ice
 Thistledown Players
 Thoughtbind

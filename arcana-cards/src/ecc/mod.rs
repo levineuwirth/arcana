@@ -41,3 +41,4 @@ pub mod glissa_sunslayer;
 pub mod the_reaper_king_no_more;
 pub mod impulsivity;
 pub mod puppeteer_clique;
+pub mod horde_of_notions;

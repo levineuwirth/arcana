@@ -11,3 +11,4 @@ pub mod tectonic_edge;
 pub mod true_conviction;
 pub mod dulcet_sirens;
 pub mod frost_titan;
+pub mod requiem_angel;

@@ -50,3 +50,4 @@ pub mod fallen_angel;
 pub mod pyre_hound;
 pub mod skirk_commando;
 pub mod horror_of_the_broken_lands;
+pub mod iwamori_of_the_open_fist;

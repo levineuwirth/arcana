@@ -116,3 +116,4 @@ pub mod panicked_altisaur;
 pub mod stinging_cave_crawler;
 pub mod stalactite_stalker;
 pub mod intrepid_paleontologist;
+pub mod digsite_conservator;

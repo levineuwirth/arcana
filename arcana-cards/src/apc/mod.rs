@@ -42,3 +42,4 @@ pub mod anavolver;
 pub mod necra_disciple;
 pub mod necravolver;
 pub mod kavu_mauler;
+pub mod haunted_angel;

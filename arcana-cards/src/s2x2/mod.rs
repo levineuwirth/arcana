@@ -79,3 +79,4 @@ pub mod seeker_of_the_way;
 pub mod lyev_skyknight;
 pub mod shadowborn_apostle;
 pub mod sedraxis_specter;
+pub mod sensor_splicer;

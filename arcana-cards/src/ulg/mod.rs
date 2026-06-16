@@ -33,3 +33,4 @@ pub mod sluggishness;
 pub mod bloated_toad;
 pub mod defender_of_law;
 pub mod tethered_skirge;
+pub mod yavimaya_granger;

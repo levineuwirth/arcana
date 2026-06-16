@@ -112,3 +112,5 @@ pub mod creeping_trailblazer;
 pub mod atemsis_all_seeing;
 pub mod goldmane_griffin;
 pub mod dawning_angel;
+pub mod celestial_messenger;
+pub mod tomebound_lich;

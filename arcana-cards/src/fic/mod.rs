@@ -36,3 +36,4 @@ pub mod shelinda_yevon_acolyte;
 pub mod tifa_martial_artist;
 pub mod cid_freeflier_pilot;
 pub mod umaro_raging_yeti;
+pub mod siegfried_famed_swordsman;

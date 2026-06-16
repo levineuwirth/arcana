@@ -33,3 +33,4 @@ pub mod sinister_strength;
 pub mod insolence;
 pub mod tahngarth_talruum_hero;
 pub mod steel_leaf_paladin;
+pub mod caldera_kavu;

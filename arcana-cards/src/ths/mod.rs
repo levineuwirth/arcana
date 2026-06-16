@@ -67,3 +67,4 @@ pub mod agent_of_the_fates;
 pub mod cavern_lampad;
 pub mod deathbellow_raider;
 pub mod medomai_the_ageless;
+pub mod mistcutter_hydra;

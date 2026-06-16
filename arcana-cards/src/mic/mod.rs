@@ -23,3 +23,4 @@ pub mod sigarda_heron_s_grace;
 pub mod tomb_tyrant;
 pub mod dearly_departed;
 pub mod kyler_sigardian_emissary;
+pub mod sigarda_s_vanguard;

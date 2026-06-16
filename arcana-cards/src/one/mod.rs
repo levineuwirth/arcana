@@ -76,3 +76,4 @@ pub mod atmosphere_surgeon;
 pub mod lattice_blade_mantis;
 pub mod atraxa_grand_unifier;
 pub mod bloated_contaminator;
+pub mod chimney_rabble;

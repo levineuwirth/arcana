@@ -73,3 +73,5 @@ pub mod fear;
 pub mod robe_of_mirrors;
 pub mod dehydration;
 pub mod contaminated_bond;
+pub mod scalpelexis;
+pub mod avatar_of_might;

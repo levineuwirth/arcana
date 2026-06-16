@@ -26,3 +26,4 @@ pub mod foster;
 pub mod arcane_melee;
 pub mod azorius_herald;
 pub mod divinity_of_pride;
+pub mod hunted_troll;

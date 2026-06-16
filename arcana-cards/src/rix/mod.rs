@@ -43,3 +43,4 @@ pub mod huatli_radiant_champion;
 pub mod siren_reaver;
 pub mod sun_collared_raptor;
 pub mod resplendent_griffin;
+pub mod soul_of_the_rapids;

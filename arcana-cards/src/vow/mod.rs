@@ -109,3 +109,6 @@ pub mod olivia_crimson_bride;
 pub mod ollenbock_escort;
 pub mod frenzied_devils;
 pub mod ascendant_packleader;
+pub mod hamlet_vanguard;
+pub mod cruel_witness;
+pub mod cloaked_cadet;

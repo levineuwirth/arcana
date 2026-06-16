@@ -44,3 +44,4 @@ pub mod synod_artificer;
 pub mod arcbound_overseer;
 pub mod arcbound_lancer;
 pub mod neurok_transmuter;
+pub mod greater_harvester;

@@ -40,3 +40,4 @@ pub mod runner_s_bane;
 pub mod krasis_incubation;
 pub mod sinister_possession;
 pub mod maze_abomination;
+pub mod woodlot_crawler;

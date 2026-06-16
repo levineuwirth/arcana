@@ -122,3 +122,5 @@ pub mod spell_queller;
 pub mod soul_guide_gryff;
 pub mod noose_constrictor;
 pub mod wandering_mind;
+pub mod thermo_alchemist;
+pub mod hullbreaker_horror;

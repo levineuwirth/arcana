@@ -54,3 +54,4 @@ pub mod drowner_of_hope;
 pub mod tide_drifter;
 pub mod eyeless_watcher;
 pub mod dominator_drone;
+pub mod beastcaller_savant;

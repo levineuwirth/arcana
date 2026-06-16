@@ -41,3 +41,4 @@ pub mod gigantiform;
 pub mod nissa_revane;
 pub mod chandra_ablaze;
 pub mod shoal_serpent;
+pub mod noble_vestige;

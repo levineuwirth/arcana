@@ -100,3 +100,4 @@ pub mod sensei_golden_tail;
 pub mod myojin_of_infinite_rage;
 pub mod marrow_gnawer;
 pub mod venerable_kumo;
+pub mod nagao_bound_by_honor;

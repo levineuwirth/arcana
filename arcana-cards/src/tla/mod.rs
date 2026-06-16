@@ -77,3 +77,4 @@ pub mod white_lotus_reinforcements;
 pub mod knowledge_seeker;
 pub mod earth_rumble_wrestlers;
 pub mod koh_the_face_stealer;
+pub mod glider_kids;

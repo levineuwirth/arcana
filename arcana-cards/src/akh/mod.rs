@@ -60,3 +60,4 @@ pub mod soulstinger;
 pub mod defiant_greatmaw;
 pub mod angler_drake;
 pub mod vizier_of_deferment;
+pub mod shadowstorm_vizier;

@@ -8,3 +8,4 @@ pub mod drudge_skeletons;
 pub mod bad_moon;
 pub mod lignify;
 pub mod stampeding_wildebeests;
+pub mod wall_of_bone;

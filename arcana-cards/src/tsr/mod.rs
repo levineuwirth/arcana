@@ -69,3 +69,6 @@ pub mod utopia_mycon;
 pub mod shade_of_trokair;
 pub mod celestial_crusader;
 pub mod cloudseeder;
+pub mod dunerider_outlaw;
+pub mod keldon_halberdier;
+pub mod mycologist;

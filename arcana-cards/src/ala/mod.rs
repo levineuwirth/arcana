@@ -60,3 +60,4 @@ pub mod predator_dragon;
 pub mod naya_battlemage;
 pub mod skill_borrower;
 pub mod esper_battlemage;
+pub mod fatestitcher;

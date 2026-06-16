@@ -76,3 +76,7 @@ pub mod ocelot_pride;
 pub mod nightshade_dryad;
 pub mod annoyed_altisaur;
 pub mod hydra_trainer;
+pub mod nyxborn_unicorn;
+pub mod golden_tail_trainer;
+pub mod eldrazi_ravager;
+pub mod petrifying_meddler;

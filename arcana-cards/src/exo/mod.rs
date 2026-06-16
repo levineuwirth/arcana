@@ -34,3 +34,5 @@ pub mod predatory_hunger;
 pub mod welkin_hawk;
 pub mod soltari_visionary;
 pub mod spike_rogue;
+pub mod workhorse;
+pub mod dauthi_cutthroat;

@@ -103,3 +103,6 @@ pub mod moria_marauder;
 pub mod witch_king_bringer_of_ruin;
 pub mod the_balrog_flame_of_ud_n;
 pub mod samwise_gamgee;
+pub mod gandalf_the_white;
+pub mod denethor_ruling_steward;
+pub mod aragorn_the_uniter;

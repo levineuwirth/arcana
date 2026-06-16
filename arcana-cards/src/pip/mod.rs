@@ -32,3 +32,4 @@ pub mod marcus_mutant_mayor;
 pub mod desdemona_freedom_s_edge;
 pub mod dr_madison_li;
 pub mod armory_paladin;
+pub mod kellogg_dangerous_mind;

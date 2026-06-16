@@ -77,3 +77,6 @@ pub mod omnath_locus_of_creation;
 pub mod tazri_beacon_of_unity;
 pub mod a_moss_pit_skeleton;
 pub mod zareth_san_the_trickster;
+pub mod skyclave_sentinel;
+pub mod attended_healer;
+pub mod living_tempest;

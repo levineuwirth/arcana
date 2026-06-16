@@ -112,3 +112,6 @@ pub mod balamb_t_rexaur;
 pub mod cloudbound_moogle;
 pub mod lightning_security_sergeant;
 pub mod hill_gigas;
+pub mod sazh_katzroy;
+pub mod magitek_infantry;
+pub mod kain_traitorous_dragoon;

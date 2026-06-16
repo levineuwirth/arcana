@@ -148,3 +148,5 @@ pub mod chamber_sentry;
 pub mod steel_plume_marshal;
 pub mod prescient_chimera;
 pub mod liliana_s_reaver;
+pub mod belltower_sphinx;
+pub mod gargoyle_sentinel;

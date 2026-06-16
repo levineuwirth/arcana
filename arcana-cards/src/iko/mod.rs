@@ -77,3 +77,4 @@ pub mod proud_wildbonder;
 pub mod umori_the_collector;
 pub mod lavabrink_venturer;
 pub mod keruga_the_macrosage;
+pub mod cunning_nightbonder;
